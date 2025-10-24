@@ -3,12 +3,14 @@
  * Professional form with complete validation, API integration, and error handling
  */
 
-import { Component, EventEmitter, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Output, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { CreateTenantRequest, TenantAddress } from '@core/models/tenant.model';
+import { GeographyService, Country, State } from '@core/services/geography.service';
 
 interface FormErrors {
   [key: string]: string;
@@ -17,47 +19,140 @@ interface FormErrors {
 @Component({
   selector: 'app-tenant-create-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgSelectModule],
   templateUrl: './tenant-create-modal.html',
   styleUrls: ['./tenant-create-modal.scss']
 })
-export class TenantCreateModalComponent {
+export class TenantCreateModalComponent implements OnInit {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
+  private geographyService = inject(GeographyService);
 
   @Output() close = new EventEmitter<void>();
   @Output() tenantCreated = new EventEmitter<void>();
 
+  constructor() {
+    console.log('🎉 TenantCreateModalComponent initialized!');
+  }
+
+  /**
+   * Initialize component - load countries
+   */
+  ngOnInit(): void {
+    this.loadCountries();
+  }
+
+  /**
+   * Load all countries for dropdowns
+   */
+  loadCountries(): void {
+    this.loadingCountries = true;
+    this.geographyService.getCountries().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.countries = response.data;
+          console.log(`✅ Loaded ${response.count} countries`);
+        }
+        this.loadingCountries = false;
+      },
+      error: (error) => {
+        console.error('❌ Error loading countries:', error);
+        this.toastService.error('Failed to load countries', 'Error');
+        this.loadingCountries = false;
+      }
+    });
+  }
+
+  /**
+   * Handle tenant country change - load states for selected country
+   */
+  onTenantCountryChange(countryId: number | null): void {
+    this.formData.tenant_official_address.state_id = 0;
+    this.tenantStates = [];
+    
+    if (!countryId || countryId === 0) return;
+    
+    this.loadingTenantStates = true;
+    this.geographyService.getStatesByCountry(countryId).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.tenantStates = response.data;
+          console.log(`✅ Loaded ${response.count} states for tenant address`);
+        }
+        this.loadingTenantStates = false;
+      },
+      error: (error) => {
+        console.error('❌ Error loading states:', error);
+        this.toastService.error('Failed to load states/provinces', 'Error');
+        this.loadingTenantStates = false;
+      }
+    });
+  }
+
+  /**
+   * Handle primary user country change - load states for selected country
+   */
+  onPrimaryCountryChange(countryId: number | null): void {
+    this.formData.primary_user_address.state_id = 0;
+    this.primaryStates = [];
+    
+    if (!countryId || countryId === 0) return;
+    
+    this.loadingPrimaryStates = true;
+    this.geographyService.getStatesByCountry(countryId).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.primaryStates = response.data;
+          console.log(`✅ Loaded ${response.count} states for primary user address`);
+        }
+        this.loadingPrimaryStates = false;
+      },
+      error: (error) => {
+        console.error('❌ Error loading states:', error);
+        this.toastService.error('Failed to load states/provinces', 'Error');
+        this.loadingPrimaryStates = false;
+      }
+    });
+  }
+
+  // Geographic data for dropdowns
+  countries: Country[] = [];
+  tenantStates: State[] = [];
+  primaryStates: State[] = [];
+
+  // Loading states
+  loadingCountries = false;
+  loadingTenantStates = false;
+  loadingPrimaryStates = false;
+
   // Form data
   formData: CreateTenantRequest = {
     tenant_name: '',
+    slogan: '',
+    tenant_official_address: {
+      line1: '',
+      line2: '',
+      country_id: 0,
+      state_id: 0,
+      district: '',
+      pin_zip_code: ''
+    },
     primary_user_name: '',
     primary_user_email: '',
     primary_contact_number: '',
-    secondary_user_name: '',
-    secondary_user_email: '',
-    secondary_contact_number: '',
-    official_address: {
+    primary_user_address: {
       line1: '',
       line2: '',
+      country_id: 0,
+      state_id: 0,
       district: '',
-      state_province: '',
-      country: '',
-      pin_zip_code: ''
-    },
-    official_address2: {
-      line1: '',
-      line2: '',
-      district: '',
-      state_province: '',
-      country: '',
       pin_zip_code: ''
     }
   };
 
   // State management
   isSubmitting = false;
-  showAddress2 = false;
+  sameAsTenantAddress = false;
   logoPreviewUrl: string | null = null;
   logoFileName: string = '';
   formErrors: FormErrors = {};
@@ -77,20 +172,32 @@ export class TenantCreateModalComponent {
   }
 
   /**
-   * Toggle second address section
+   * Handle "Same as Tenant Address" checkbox change
    */
-  toggleAddress2(): void {
-    this.showAddress2 = !this.showAddress2;
-    if (!this.showAddress2) {
-      // Clear address2 data when hiding
-      this.formData.official_address2 = {
+  onSameAsTenantAddressChange(): void {
+    if (this.sameAsTenantAddress) {
+      // Copy tenant official address to primary user address
+      this.formData.primary_user_address = {
+        line1: this.formData.tenant_official_address.line1,
+        line2: this.formData.tenant_official_address.line2,
+        country_id: this.formData.tenant_official_address.country_id,
+        state_id: this.formData.tenant_official_address.state_id,
+        district: this.formData.tenant_official_address.district,
+        pin_zip_code: this.formData.tenant_official_address.pin_zip_code
+      };
+      // Also copy the states array
+      this.primaryStates = [...this.tenantStates];
+    } else {
+      // Clear primary user address when unchecked
+      this.formData.primary_user_address = {
         line1: '',
         line2: '',
+        country_id: 0,
+        state_id: 0,
         district: '',
-        state_province: '',
-        country: '',
         pin_zip_code: ''
       };
+      this.primaryStates = [];
     }
   }
 
@@ -128,6 +235,28 @@ export class TenantCreateModalComponent {
       isValid = false;
     }
 
+    // Tenant official address validation
+    if (!this.formData.tenant_official_address.line1?.trim()) {
+      this.formErrors['tenant_official_address.line1'] = 'Tenant address line 1 is required';
+      isValid = false;
+    }
+    if (!this.formData.tenant_official_address.country_id || this.formData.tenant_official_address.country_id === 0) {
+      this.formErrors['tenant_official_address.country_id'] = 'Tenant country is required';
+      isValid = false;
+    }
+    if (!this.formData.tenant_official_address.state_id || this.formData.tenant_official_address.state_id === 0) {
+      this.formErrors['tenant_official_address.state_id'] = 'Tenant state/province is required';
+      isValid = false;
+    }
+    if (!this.formData.tenant_official_address.district?.trim()) {
+      this.formErrors['tenant_official_address.district'] = 'Tenant district/city is required';
+      isValid = false;
+    }
+    if (!this.formData.tenant_official_address.pin_zip_code?.trim()) {
+      this.formErrors['tenant_official_address.pin_zip_code'] = 'Tenant PIN/ZIP code is required';
+      isValid = false;
+    }
+
     // Primary user name
     if (!this.formData.primary_user_name?.trim()) {
       this.formErrors['primary_user_name'] = 'Primary user name is required';
@@ -149,31 +278,25 @@ export class TenantCreateModalComponent {
       isValid = false;
     }
 
-    // Secondary email validation (if provided)
-    if (this.formData.secondary_user_email?.trim() && !this.isValidEmail(this.formData.secondary_user_email)) {
-      this.formErrors['secondary_user_email'] = 'Please enter a valid email address';
+    // Primary user address validation
+    if (!this.formData.primary_user_address.line1?.trim()) {
+      this.formErrors['primary_user_address.line1'] = 'Address line 1 is required';
       isValid = false;
     }
-
-    // Official address validation
-    if (!this.formData.official_address.line1?.trim()) {
-      this.formErrors['official_address.line1'] = 'Address line 1 is required';
+    if (!this.formData.primary_user_address.country_id || this.formData.primary_user_address.country_id === 0) {
+      this.formErrors['primary_user_address.country_id'] = 'Country is required';
       isValid = false;
     }
-    if (!this.formData.official_address.district?.trim()) {
-      this.formErrors['official_address.district'] = 'District is required';
+    if (!this.formData.primary_user_address.state_id || this.formData.primary_user_address.state_id === 0) {
+      this.formErrors['primary_user_address.state_id'] = 'State/Province is required';
       isValid = false;
     }
-    if (!this.formData.official_address.state_province?.trim()) {
-      this.formErrors['official_address.state_province'] = 'State/Province is required';
+    if (!this.formData.primary_user_address.district?.trim()) {
+      this.formErrors['primary_user_address.district'] = 'District/City is required';
       isValid = false;
     }
-    if (!this.formData.official_address.country?.trim()) {
-      this.formErrors['official_address.country'] = 'Country is required';
-      isValid = false;
-    }
-    if (!this.formData.official_address.pin_zip_code?.trim()) {
-      this.formErrors['official_address.pin_zip_code'] = 'PIN/ZIP code is required';
+    if (!this.formData.primary_user_address.pin_zip_code?.trim()) {
+      this.formErrors['primary_user_address.pin_zip_code'] = 'PIN/ZIP code is required';
       isValid = false;
     }
 
@@ -199,20 +322,31 @@ export class TenantCreateModalComponent {
    * Submit form
    */
   onSubmit(): void {
+    console.log('🔵 onSubmit() called!');
+    console.log('Form data:', this.formData);
+    
     // Mark all fields as touched
     Object.keys(this.formData).forEach(key => {
       this.touched[key] = true;
     });
-    Object.keys(this.formData.official_address).forEach(key => {
-      this.touched[`official_address.${key}`] = true;
+    Object.keys(this.formData.primary_user_address).forEach(key => {
+      this.touched[`primary_user_address.${key}`] = true;
     });
 
     // Validate form
-    if (!this.validateForm()) {
+    console.log('🔍 Validating form...');
+    const isValid = this.validateForm();
+    console.log('Form validation result:', isValid);
+    console.log('Form errors:', this.formErrors);
+    
+    if (!isValid) {
+      console.log('❌ Validation failed!');
       this.serverError = 'Please fix the validation errors before submitting';
       return;
     }
 
+    console.log('✅ Validation passed! Preparing API call...');
+    
     // Clear previous errors
     this.serverError = '';
     this.successMessage = '';
@@ -221,51 +355,44 @@ export class TenantCreateModalComponent {
     // Prepare request data
     const requestData: CreateTenantRequest = {
       tenant_name: this.formData.tenant_name.trim(),
+      tenant_official_address: this.formData.tenant_official_address,
       primary_user_name: this.formData.primary_user_name.trim(),
       primary_user_email: this.formData.primary_user_email.trim(),
       primary_contact_number: this.formData.primary_contact_number.trim(),
-      official_address: this.formData.official_address,
+      primary_user_address: this.formData.primary_user_address,
       tenant_logo: this.formData.tenant_logo
     };
 
-    // Add optional fields if provided
-    if (this.formData.secondary_user_name?.trim()) {
-      requestData.secondary_user_name = this.formData.secondary_user_name.trim();
-    }
-    if (this.formData.secondary_user_email?.trim()) {
-      requestData.secondary_user_email = this.formData.secondary_user_email.trim();
-    }
-    if (this.formData.secondary_contact_number?.trim()) {
-      requestData.secondary_contact_number = this.formData.secondary_contact_number.trim();
-    }
-
-    // Add second address if provided
-    if (this.showAddress2 && this.formData.official_address2) {
-      const addr2 = this.formData.official_address2;
-      if (addr2.line1?.trim()) {
-        requestData.official_address2 = addr2;
-      }
+    // Add optional slogan if provided
+    if (this.formData.slogan?.trim()) {
+      requestData.slogan = this.formData.slogan.trim();
     }
 
     // Call API
     this.tenantService.createTenant(requestData).subscribe({
       next: (response) => {
+        console.log('Tenant creation response:', response);
         this.isSubmitting = false;
+        
         if (response.success) {
           // Show success toast
+          console.log('Showing success toast');
           this.toastService.success(
             response.message || 'Tenant created successfully!',
             'Success',
             5000
           );
           
-          // Close modal immediately and refresh list
-          this.tenantCreated.emit();
-          this.resetForm();
-          this.close.emit();
+          // Close modal after a brief delay to see the toast
+          setTimeout(() => {
+            this.tenantCreated.emit();
+            this.resetForm();
+            this.close.emit();
+          }, 500);
         }
       },
       error: (error) => {
+        console.error('Tenant creation error:', error);
         this.isSubmitting = false;
         
         // Show error toast
@@ -358,30 +485,30 @@ export class TenantCreateModalComponent {
   resetForm(): void {
     this.formData = {
       tenant_name: '',
+      slogan: '',
+      tenant_official_address: {
+        line1: '',
+        line2: '',
+        country_id: 0,
+        state_id: 0,
+        district: '',
+        pin_zip_code: ''
+      },
       primary_user_name: '',
       primary_user_email: '',
       primary_contact_number: '',
-      secondary_user_name: '',
-      secondary_user_email: '',
-      secondary_contact_number: '',
-      official_address: {
+      primary_user_address: {
         line1: '',
         line2: '',
+        country_id: 0,
+        state_id: 0,
         district: '',
-        state_province: '',
-        country: '',
-        pin_zip_code: ''
-      },
-      official_address2: {
-        line1: '',
-        line2: '',
-        district: '',
-        state_province: '',
-        country: '',
         pin_zip_code: ''
       }
     };
-    this.showAddress2 = false;
+    this.tenantStates = [];
+    this.primaryStates = [];
+    this.sameAsTenantAddress = false;
     this.logoPreviewUrl = null;
     this.logoFileName = '';
     this.formErrors = {};

@@ -1,30 +1,23 @@
 /**
  * Tenant Model
  * Defines all interfaces and types for tenant management
+ * Updated for normalized database structure
  */
 
+import { User, Address, USER_TYPE_PRIMARY_CONTACT, USER_TYPE_SECONDARY_CONTACT } from './user.model';
+
+// Re-export for convenience
+export { User, Address, USER_TYPE_PRIMARY_CONTACT, USER_TYPE_SECONDARY_CONTACT };
+
 /**
- * Complete tenant entity from API
+ * Complete tenant entity from API (NORMALIZED STRUCTURE)
  */
 export interface Tenant {
   id: number;
   name: string;
+  slogan?: string | null;
   slug: string;
   domain?: string | null;
-  
-  // Primary user information
-  primary_user_name: string;
-  primary_user_email: string;
-  primary_contact_number: string;
-  
-  // Secondary user information
-  secondary_user_name?: string | null;
-  secondary_user_email?: string | null;
-  secondary_contact_number?: string | null;
-  
-  // Address information
-  official_address: TenantAddress;
-  official_address2?: TenantAddress | null;
   
   // Subscription & limits
   plan: TenantPlan;
@@ -51,21 +44,31 @@ export interface Tenant {
   created_at: string;
   updated_at: string;
   
-  // Relations (when included)
-  creator?: any;
-  updater?: any;
-  users?: any[];
+  // Normalized Relations (NEW)
+  // Backend returns snake_case, but we keep camelCase for consistency
+  primaryContact?: User;
+  primary_contact?: User; // API returns snake_case
+  secondaryContact?: User | null;
+  secondary_contact?: User | null; // API returns snake_case
+  addresses?: Address[];
+  users?: User[];
+  creator?: User;
+  updater?: User;
 }
 
 /**
- * Tenant address structure
+ * Tenant address structure (for API requests - backward compatible)
+ */
+/**
+ * Tenant address structure for API requests
+ * Updated to use geographic IDs for country and state, district remains string
  */
 export interface TenantAddress {
   line1: string;
   line2?: string;
-  district: string;
-  state_province: string;
-  country: string;
+  country_id: number;       // Foreign key to countries table
+  state_id: number;         // Foreign key to states table
+  district: string;         // Text input (not a dropdown)
   pin_zip_code: string;
 }
 
@@ -95,22 +98,24 @@ export interface TenantStats {
  */
 export interface CreateTenantRequest {
   tenant_name: string;
+  slogan?: string;
   slug?: string;
   domain?: string;
+  
+  // Tenant official address (mandatory)
+  tenant_official_address: TenantAddress;
   
   // Primary user (mandatory)
   primary_user_name: string;
   primary_user_email: string;
   primary_contact_number: string;
+  primary_user_address: TenantAddress;
   
   // Secondary user (optional)
   secondary_user_name?: string;
   secondary_user_email?: string;
   secondary_contact_number?: string;
-  
-  // Addresses
-  official_address: TenantAddress;
-  official_address2?: TenantAddress;
+  secondary_user_address?: TenantAddress;
   
   // Logo (File will be added separately via FormData)
   tenant_logo?: File;
@@ -239,4 +244,132 @@ export interface TenantState {
   loading: boolean;
   error: string | null;
   pagination: TenantListResponse['pagination'] | null;
+}
+
+/**
+ * Helper functions for accessing normalized tenant data
+ */
+export class TenantHelpers {
+  /**
+   * Get primary contact name from tenant
+   */
+  static getPrimaryContactName(tenant: Tenant): string {
+    return tenant.primaryContact?.name || '';
+  }
+
+  /**
+   * Get primary contact email from tenant
+   */
+  static getPrimaryContactEmail(tenant: Tenant): string {
+    return tenant.primaryContact?.email || '';
+  }
+
+  /**
+   * Get primary contact phone from tenant
+   */
+  static getPrimaryContactPhone(tenant: Tenant): string {
+    return tenant.primaryContact?.contact_number || '';
+  }
+
+  /**
+   * Get primary contact address from tenant
+   */
+  static getPrimaryContactAddress(tenant: Tenant): Address | null {
+    if (tenant.primaryContact?.addresses && tenant.primaryContact.addresses.length > 0) {
+      return tenant.primaryContact.addresses.find(addr => addr.address_type === 'primary' && addr.is_default) 
+        || tenant.primaryContact.addresses[0];
+    }
+    return null;
+  }
+
+  /**
+   * Get secondary contact name from tenant
+   */
+  static getSecondaryContactName(tenant: Tenant): string {
+    return tenant.secondaryContact?.name || '';
+  }
+
+  /**
+   * Get secondary contact email from tenant
+   */
+  static getSecondaryContactEmail(tenant: Tenant): string {
+    return tenant.secondaryContact?.email || '';
+  }
+
+  /**
+   * Get secondary contact phone from tenant
+   */
+  static getSecondaryContactPhone(tenant: Tenant): string {
+    return tenant.secondaryContact?.contact_number || '';
+  }
+
+  /**
+   * Get secondary contact address from tenant
+   */
+  static getSecondaryContactAddress(tenant: Tenant): Address | null {
+    if (tenant.secondaryContact?.addresses && tenant.secondaryContact.addresses.length > 0) {
+      return tenant.secondaryContact.addresses.find(addr => addr.address_type === 'primary' && addr.is_default)
+        || tenant.secondaryContact.addresses[0];
+    }
+    return null;
+  }
+
+  /**
+   * Format address for display
+   */
+  static formatAddress(address: Address | null): string {
+    if (!address) return '';
+    
+    const parts: string[] = [];
+    if (address.line1) parts.push(address.line1);
+    if (address.line2) parts.push(address.line2);
+    if (address.district) parts.push(address.district);
+    if (address.state_province) parts.push(address.state_province);
+    if (address.country) parts.push(address.country);
+    if (address.pin_zip_code) parts.push(address.pin_zip_code);
+    
+    return parts.join(', ');
+  }
+
+  /**
+   * Check if tenant has primary contact
+   */
+  static hasPrimaryContact(tenant: Tenant): boolean {
+    return !!tenant.primaryContact;
+  }
+
+  /**
+   * Check if tenant has secondary contact
+   */
+  static hasSecondaryContact(tenant: Tenant): boolean {
+    return !!tenant.secondaryContact;
+  }
+
+  /**
+   * Get user type label from integer value
+   */
+  static getUserTypeLabel(userType: number | null): string {
+    switch (userType) {
+      case USER_TYPE_PRIMARY_CONTACT:
+        return 'Primary Contact';
+      case USER_TYPE_SECONDARY_CONTACT:
+        return 'Secondary Contact';
+      default:
+        return 'Unknown';
+    }
+  }
+
+  /**
+   * Check if user is primary contact
+   */
+  static isPrimaryContact(user: User): boolean {
+    return user.user_type === USER_TYPE_PRIMARY_CONTACT;
+  }
+
+  /**
+   * Check if user is secondary contact
+   */
+  static isSecondaryContact(user: User): boolean {
+    return user.user_type === USER_TYPE_SECONDARY_CONTACT;
+  }
 }

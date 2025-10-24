@@ -14,28 +14,22 @@ export const tenantGuard: CanActivateFn = (route: ActivatedRouteSnapshot) => {
     return false;
   }
 
-  const currentTenant = tenantService.getCurrentTenant();
-  
-  // If we already have the correct tenant loaded, allow access
-  if (currentTenant && currentTenant.id === parseInt(tenantId)) {
-    if (tenantService.isTenantActive()) {
-      return true;
-    } else {
-      router.navigate(['/auth/login'], { 
-        queryParams: { error: 'Tenant is not active' }
-      });
-      return false;
-    }
-  }
-
-  // Otherwise, load the tenant
+  // Load and validate tenant
   return tenantService.getTenant(parseInt(tenantId)).pipe(
-    map(tenant => {
-      if (tenantService.isTenantActive()) {
-        return true;
+    map(response => {
+      if (response.success && response.data) {
+        // Check if tenant is active
+        if (response.data.active === 1) {
+          return true;
+        } else {
+          router.navigate(['/auth/login'], { 
+            queryParams: { error: 'Tenant is not active' }
+          });
+          return false;
+        }
       } else {
         router.navigate(['/auth/login'], { 
-          queryParams: { error: 'Tenant is not active' }
+          queryParams: { error: 'Invalid tenant' }
         });
         return false;
       }

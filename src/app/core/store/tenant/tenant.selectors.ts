@@ -30,6 +30,6 @@ export const selectCurrentTenantId = createSelector(
 
 export const selectCurrentTenantStatus = createSelector(
   selectCurrentTenant,
-  (tenant) => tenant?.status ?? null
+  (tenant) => tenant?.active ?? null
 );
 

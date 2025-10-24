@@ -68,23 +68,38 @@
         </div>
         
         <div class="tenant-name">{{ tenant.name }}</div>
-        
-        <div class="tenant-details">
-          <div class="detail-item">
-            <span class="detail-icon">👤</span>
-            <span class="detail-text">{{ tenant.primary_user_name }}</span>
+
+        <!-- Two Column Layout: Address & Contact Details -->
+        <div class="tenant-content-grid">
+          <!-- Left Column: Official Address -->
+          <div class="tenant-address" *ngIf="getOfficialAddress(tenant)">
+            <div class="address-header">
+              <span class="address-icon">📍</span>
+              <span class="address-label">Official Address</span>
+            </div>
+            <div class="address-content">
+              {{ formatAddress(getOfficialAddress(tenant)) }}
+            </div>
           </div>
-          <div class="detail-item">
-            <span class="detail-icon">📧</span>
-            <span class="detail-text">{{ tenant.primary_user_email }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-icon">📅</span>
-            <span class="detail-text">{{ formatDate(tenant.created_at) }}</span>
-          </div>
-          <div class="detail-item">
-            <span class="detail-icon">⭐</span>
-            <span class="detail-text">{{ tenant.plan }}</span>
+
+          <!-- Right Column: Contact Details -->
+          <div class="tenant-details">
+            <div class="detail-item">
+              <span class="detail-icon">👤</span>
+              <span class="detail-text">{{ tenant.primary_contact?.name || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-icon">📧</span>
+              <span class="detail-text">{{ tenant.primary_contact?.email || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-icon">📅</span>
+              <span class="detail-text">{{ formatDate(tenant.created_at) }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-icon">⭐</span>
+              <span class="detail-text">{{ tenant.plan }}</span>
+            </div>
           </div>
         </div>
         

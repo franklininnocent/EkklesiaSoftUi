@@ -55,25 +55,72 @@
   justify-content: space-between;
   align-items: center;
   padding: var(--spacing-lg) var(--spacing-xl);
-  border-bottom: 1px solid var(--gray-200);
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #4338ca 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+  position: relative;
+  overflow: hidden;
   gap: var(--spacing-md);
+  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.25);
+  
+  // Decorative overlay pattern
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
+      radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
+    pointer-events: none;
+  }
+  
+  // Decorative accent line at bottom
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, 
+      rgba(255, 255, 255, 0.3) 0%, 
+      rgba(255, 255, 255, 0.6) 50%, 
+      rgba(255, 255, 255, 0.3) 100%);
+  }
+}
+
+@keyframes gradientShift {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
 }
 
 .modal-title {
   font-size: 1.5rem;
   font-weight: 700;
-  color: var(--text-primary);
+  color: #ffffff;
   margin: 0;
   line-height: 1.3;
   word-wrap: break-word;
   overflow-wrap: break-word;
   flex: 1;
   min-width: 0;
+  position: relative;
+  z-index: 1;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  letter-spacing: 0.3px;
 }
 
 .modal-close {
-  background: transparent;
-  border: none;
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   width: 36px;
   height: 36px;
   border-radius: var(--radius-md);
@@ -81,16 +128,21 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: var(--text-secondary);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  color: #ffffff;
+  position: relative;
+  z-index: 1;
 
   &:hover {
-    background-color: var(--gray-100);
-    color: var(--text-primary);
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.4);
+    transform: rotate(90deg) scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
   }
 
   &:active {
-    background-color: var(--gray-200);
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg) scale(1.05);
   }
 }
 
@@ -198,6 +250,76 @@
   }
 }
 
+// Form select (dropdown) styling
+.form-select {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  color: var(--text-primary);
+  background-color: white;
+  border: 2px solid var(--gray-300);
+  border-radius: var(--radius-md);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-family: inherit;
+  line-height: 1.5;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+
+  &:hover:not(:disabled):not(:focus) {
+    border-color: var(--gray-400);
+    background-color: var(--gray-50);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  }
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: white;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1),
+                0 4px 12px rgba(0, 0, 0, 0.1);
+    animation: inputFocusPulse 0.5s ease-out;
+  }
+
+  &.input-error {
+    border-color: var(--error-color);
+    background-color: rgba(239, 68, 68, 0.05);
+    
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1),
+                  0 4px 12px rgba(239, 68, 68, 0.15);
+    }
+  }
+
+  &:disabled {
+    background-color: var(--gray-100);
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none !important;
+    box-shadow: none !important;
+  }
+
+  option {
+    padding: 0.5rem;
+    background-color: white;
+    color: var(--text-primary);
+    
+    &:hover {
+      background-color: var(--gray-50);
+    }
+    
+    &:checked {
+      background-color: var(--primary-color);
+      color: white;
+    }
+  }
+}
+
 @keyframes inputFocusPulse {
   0% {
     box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4);
@@ -297,6 +419,72 @@
   flex-wrap: wrap;
 }
 
+.subsection-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  padding-left: 0.5rem;
+  border-left: 3px solid var(--primary-color);
+}
+
+// Address header with checkbox
+.address-header-with-checkbox {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: var(--spacing-lg) 0 var(--spacing-md) 0;
+  gap: var(--spacing-md);
+  flex-wrap: wrap;
+
+  .subsection-title {
+    margin: 0;
+    flex: 1;
+  }
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s ease;
+
+  &:hover {
+    opacity: 0.8;
+  }
+}
+
+.checkbox-input {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: var(--primary-color);
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+  }
+}
+
+.checkbox-text {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  transition: color 0.2s ease;
+
+  .checkbox-input:checked + & {
+    color: var(--primary-color);
+    font-weight: 600;
+  }
+}
+
 // Form Rows (for side-by-side inputs)
 .form-row {
   display: grid;
@@ -378,7 +566,7 @@
   }
   to {
     opacity: 1;
-    max-height: 1000px;
+    max-height: 2000px;
     transform: translateY(0);
   }
 }
@@ -670,10 +858,12 @@
   .modal-header {
     padding: var(--spacing-md) var(--spacing-lg);
     gap: var(--spacing-sm);
+    box-shadow: 0 3px 15px rgba(79, 70, 229, 0.2);
   }
 
   .modal-title {
     font-size: 1.25rem;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
   }
 
   .modal-close {
@@ -780,10 +970,12 @@
   .modal-header {
     padding: var(--spacing-sm) var(--spacing-md);
     gap: var(--spacing-xs);
+    box-shadow: 0 2px 12px rgba(79, 70, 229, 0.18);
   }
 
   .modal-title {
     font-size: 1.125rem;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
   }
 
   .modal-close {
@@ -891,6 +1083,7 @@
 
   .modal-title {
     font-size: 1.625rem;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
   }
 
   .section-title {
@@ -920,10 +1113,12 @@
 
   .modal-header {
     padding: 0.875rem 1.25rem;
+    box-shadow: 0 3px 16px rgba(79, 70, 229, 0.22);
   }
 
   .modal-title {
     font-size: 1.25rem;
+    text-shadow: 0 1px 6px rgba(0, 0, 0, 0.12);
   }
 
   .close-icon {
@@ -1043,10 +1238,12 @@
 
   .modal-header {
     padding: 1.25rem 1.75rem;
+    box-shadow: 0 4px 24px rgba(79, 70, 229, 0.28);
   }
 
   .modal-title {
     font-size: 1.75rem;
+    text-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
   }
 
   .close-icon {

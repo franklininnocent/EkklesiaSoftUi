@@ -27,6 +27,7 @@ export class ToastService {
    * Show a success toast
    */
   success(message: string, title?: string, duration?: number): void {
+    console.log('Toast service - success called:', { message, title, duration });
     this.show({
       type: 'success',
       message,
@@ -79,7 +80,10 @@ export class ToastService {
     const newToast: Toast = { ...toast, id };
     
     const currentToasts = this.toastsSubject.value;
+    console.log('Toast service - showing toast:', newToast);
+    console.log('Current toasts:', currentToasts);
     this.toastsSubject.next([...currentToasts, newToast]);
+    console.log('Toasts after update:', this.toastsSubject.value);
 
     // Auto-remove after duration
     if (toast.duration && toast.duration > 0) {

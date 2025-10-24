@@ -14,8 +14,8 @@ export class TenantEffects {
     this.actions$.pipe(
       ofType(TenantActions.loadTenants),
       switchMap(() =>
-        this.tenantService.getUserTenants().pipe(
-          map(tenants => TenantActions.loadTenantsSuccess({ tenants })),
+        this.tenantService.listTenants().pipe(
+          map(response => TenantActions.loadTenantsSuccess({ tenants: response.data || [] })),
           catchError(error => of(TenantActions.loadTenantsFailure({ error: error.message })))
         )
       )
@@ -27,7 +27,7 @@ export class TenantEffects {
       ofType(TenantActions.loadTenant),
       switchMap(({ tenantId }) =>
         this.tenantService.getTenant(tenantId).pipe(
-          map(tenant => TenantActions.loadTenantSuccess({ tenant })),
+          map(response => TenantActions.loadTenantSuccess({ tenant: response.data })),
           catchError(error => of(TenantActions.loadTenantFailure({ error: error.message })))
         )
       )

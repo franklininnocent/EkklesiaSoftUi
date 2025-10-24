@@ -135,4 +135,46 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   retryLoad(): void {
     this.loadTenants();
   }
+
+  /**
+   * Get official address from tenant
+   */
+  getOfficialAddress(tenant: Tenant): any {
+    if (!tenant.addresses || tenant.addresses.length === 0) {
+      return null;
+    }
+    return tenant.addresses.find(addr => addr.address_type === 'official') || null;
+  }
+
+  /**
+   * Format address for display
+   */
+  formatAddress(address: any): string {
+    if (!address) return '';
+
+    const parts: string[] = [];
+
+    // Add address lines
+    if (address.line1) parts.push(address.line1);
+    if (address.line2) parts.push(address.line2);
+
+    // Build city/district line
+    const locationParts: string[] = [];
+    if (address.district) locationParts.push(address.district);
+    if (address.city) locationParts.push(address.city);
+    if (locationParts.length > 0) {
+      parts.push(locationParts.join(', '));
+    }
+
+    // Add state and country line
+    const regionParts: string[] = [];
+    if (address.state_province) regionParts.push(address.state_province);
+    if (address.country) regionParts.push(address.country);
+    if (address.pin_zip_code) regionParts.push(address.pin_zip_code);
+    if (regionParts.length > 0) {
+      parts.push(regionParts.join(', '));
+    }
+
+    return parts.join('\n');
+  }
 }
