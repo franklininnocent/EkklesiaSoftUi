@@ -1,0 +1,15 @@
+{
+  "name": "@saas/source",
+  "version": "0.0.0",
+  "license": "MIT",
+  "scripts": {},
+  "private": true,
+  "dependencies": {},
+  "devDependencies": {
+    "@angular-devkit/core": "~20.3.0",
+    "@nx/angular": "22.0.1",
+    "@nx/workspace": "22.0.1",
+    "nx": "22.0.1",
+    "typescript": "~5.9.2"
+  }
+}
