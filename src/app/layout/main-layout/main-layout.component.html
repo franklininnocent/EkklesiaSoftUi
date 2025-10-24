@@ -1,0 +1,158 @@
+<div class="layout">
+  <!-- Sidebar -->
+  <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
+    <div class="sidebar-header">
+      <h2 class="sidebar-logo">{{ (currentTenant$ | async)?.name || 'EkklesiaSoft' }}</h2>
+      <button class="sidebar-toggle" (click)="toggleSidebar()">
+        <span>☰</span>
+      </button>
+    </div>
+
+    <nav class="sidebar-nav">
+      <a routerLink="dashboard" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">📊</span>
+        <span class="nav-text">Dashboard</span>
+      </a>
+      <a routerLink="tenants" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">🏢</span>
+        <span class="nav-text">Tenants</span>
+      </a>
+      <a routerLink="users" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">👥</span>
+        <span class="nav-text">Users</span>
+      </a>
+      <a routerLink="settings" routerLinkActive="active" class="nav-item">
+        <span class="nav-icon">⚙️</span>
+        <span class="nav-text">Settings</span>
+      </a>
+    </nav>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <button class="mobile-menu-btn" (click)="toggleSidebar()">
+          <span>☰</span>
+        </button>
+      </div>
+      
+      <div class="topbar-right">
+        <div class="user-menu" *ngIf="currentUser$ | async as user">
+          <div class="user-dropdown" [class.open]="isUserMenuOpen && !isUserMenuClosing">
+            <button class="user-trigger" (click)="toggleUserMenu($event)">
+              <div class="user-avatar">
+                <span class="avatar-text">{{ getInitials(user.name) }}</span>
+              </div>
+              <span class="user-name">{{ user.name }}</span>
+              <span class="dropdown-arrow">▾</span>
+            </button>
+            
+            <div class="dropdown-panel" 
+                 *ngIf="isUserMenuOpen || isUserMenuClosing" 
+                 [class.closing]="isUserMenuClosing"
+                 (click)="$event.stopPropagation()">
+              <div class="dropdown-header">
+                <div class="user-info">
+                  <div class="user-avatar-large">
+                    <span class="avatar-text">{{ getInitials(user.name) }}</span>
+                  </div>
+                  <div class="user-details">
+                    <div class="user-name-large">{{ user.name }}</div>
+                    <div class="user-email">{{ user.email }}</div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="dropdown-divider"></div>
+              
+              <div class="dropdown-menu">
+                <button class="dropdown-item" (click)="navigateToProfile()">
+                  <span class="item-icon">👤</span>
+                  <span class="item-text">Profile</span>
+                </button>
+                
+                <div class="dropdown-divider"></div>
+                
+                <button class="dropdown-item logout" (click)="logout()">
+                  <span class="item-icon">🚪</span>
+                  <span class="item-text">Logout</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Page Content -->
+    <main class="page-content">
+      <!-- Breadcrumb Navigation -->
+      <app-breadcrumb></app-breadcrumb>
+      
+      <router-outlet></router-outlet>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <div class="footer-content">
+        <p class="footer-text">All rights reserved © EkklesiaSoft {{ currentYear }}</p>
+      </div>
+    </footer>
+
+    <!-- Theme Settings Button (Floating) -->
+    <div class="theme-settings-fab">
+      <button class="theme-fab-button" (click)="toggleThemePanel()">
+        <span class="theme-icon">⚙</span>
+      </button>
+
+      <!-- Theme Settings Panel -->
+      <div class="theme-panel" 
+           *ngIf="isThemePanelOpen"
+           [@slideIn]>
+        <div class="theme-panel-header">
+          <div class="header-content">
+            <div class="header-text">
+              <h3 class="theme-panel-title">Display Settings</h3>
+              <p class="theme-panel-subtitle">Customize your viewing experience</p>
+            </div>
+            <button class="close-button" (click)="closeThemePanel()" aria-label="Close">
+              <span class="close-icon">×</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="theme-panel-divider"></div>
+
+        <div class="theme-panel-content">
+          <div class="theme-section">
+            <label class="theme-section-label">Font Size</label>
+            <p class="theme-section-description">Adjust text size across the application</p>
+            
+                <div class="font-size-options">
+                  <button 
+                    *ngFor="let option of fontSizeOptions"
+                    class="font-size-option"
+                    [class.active]="isCurrentFontSize(option.value)"
+                    (click)="selectFontSize(option.value)">
+                    <div class="option-icon">
+                      <span class="icon-text" [style.font-size]="option.value === 'small' ? '10px' : option.value === 'standard' ? '14px' : '18px'">
+                        A
+                      </span>
+                    </div>
+                    <div class="option-details">
+                      <span class="option-name">{{ option.name }}</span>
+                    </div>
+                    <div class="option-check" *ngIf="isCurrentFontSize(option.value)">
+                      <span>✓</span>
+                    </div>
+                  </button>
+                </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+

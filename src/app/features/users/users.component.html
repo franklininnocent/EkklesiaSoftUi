@@ -1,0 +1,48 @@
+<div class="users">
+  <div class="users-header">
+    <div>
+      <h1>Users</h1>
+      <p>Manage your team members and their permissions</p>
+    </div>
+    <app-button variant="primary">
+      + Add User
+    </app-button>
+  </div>
+
+  <app-card [padding]="'none'">
+    <div class="table-container">
+      <table class="users-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td class="user-name">{{ user.name }}</td>
+            <td class="user-email">{{ user.email }}</td>
+            <td><span class="role-badge">{{ user.role }}</span></td>
+            <td>
+              <span 
+                class="status-badge" 
+                [class.status-active]="user.status === 'Active'"
+                [class.status-inactive]="user.status === 'Inactive'"
+              >
+                {{ user.status }}
+              </span>
+            </td>
+            <td class="actions">
+              <button class="action-btn">Edit</button>
+              <button class="action-btn danger">Delete</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </app-card>
+</div>
+

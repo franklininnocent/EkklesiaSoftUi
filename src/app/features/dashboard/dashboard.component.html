@@ -1,0 +1,89 @@
+<div class="dashboard">
+  <div class="dashboard-header">
+    <div class="header-content">
+      <h1>Dashboard</h1>
+      <p *ngIf="currentUser$ | async as user" class="welcome-text">
+        Welcome back, <strong>{{ user.name }}</strong>! 👋
+      </p>
+    </div>
+    <div class="header-actions">
+      <span class="date">{{ today | date:'fullDate' }}</span>
+    </div>
+  </div>
+
+  <!-- Stats Grid -->
+  <div class="stats-grid">
+    <app-card *ngFor="let stat of stats" [padding]="'md'" [shadow]="true">
+      <div class="stat-card">
+        <div class="stat-icon">{{ stat.icon }}</div>
+        <div class="stat-content">
+          <h3 class="stat-title">{{ stat.title }}</h3>
+          <div class="stat-value">{{ stat.value }}</div>
+          <div class="stat-change" [class.positive]="stat.trend === 'up'" [class.negative]="stat.trend === 'down'">
+            <span class="trend-icon">{{ stat.trend === 'up' ? '↗' : '↘' }}</span>
+            {{ stat.change }}
+          </div>
+        </div>
+      </div>
+    </app-card>
+  </div>
+
+  <!-- Main Content -->
+  <div class="dashboard-content">
+    <div class="content-row">
+      <!-- Recent Activity -->
+      <div class="content-col">
+        <app-card title="Recent Activity" [shadow]="true">
+          <div class="activity-list">
+            <div class="activity-item" *ngFor="let activity of recentActivities">
+              <div class="activity-icon" [class]="activity.type">{{ activity.icon }}</div>
+              <div class="activity-details">
+                <div class="activity-title">{{ activity.title }}</div>
+                <div class="activity-description">{{ activity.description }}</div>
+                <div class="activity-time">{{ activity.time }}</div>
+              </div>
+            </div>
+          </div>
+        </app-card>
+      </div>
+
+      <!-- Quick Actions -->
+      <div class="content-col">
+        <app-card title="Quick Actions" [shadow]="true">
+          <div class="quick-actions">
+            <button class="action-btn" 
+                    *ngFor="let action of quickActions"
+                    (click)="handleAction(action.action)"
+                    [class]="action.color">
+              <span class="action-icon">{{ action.icon }}</span>
+              <span class="action-label">{{ action.label }}</span>
+            </button>
+          </div>
+        </app-card>
+
+        <!-- System Status -->
+        <app-card title="System Status" [shadow]="true" class="mt-4">
+          <div class="system-status">
+            <div class="status-item">
+              <span class="status-label">Server Status</span>
+              <span class="status-badge success">Online</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">Database</span>
+              <span class="status-badge success">Connected</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">API Services</span>
+              <span class="status-badge success">Running</span>
+            </div>
+            <div class="status-item">
+              <span class="status-label">Cache</span>
+              <span class="status-badge warning">Low Memory</span>
+            </div>
+          </div>
+        </app-card>
+      </div>
+    </div>
+  </div>
+</div>
+

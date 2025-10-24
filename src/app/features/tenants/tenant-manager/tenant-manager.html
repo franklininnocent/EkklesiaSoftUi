@@ -1,0 +1,116 @@
+<div class="tenant-manager">
+  <!-- Header Section -->
+  <div class="tenant-header">
+    <div class="header-content">
+      <h1>Tenants</h1>
+      <p>Manage all tenants and organizations in your system</p>
+    </div>
+    <button class="btn-create" (click)="openCreateModal()" [disabled]="loading" title="Create New Tenant">
+      <span class="btn-icon">+</span>
+      <span class="btn-tooltip">Create New Tenant</span>
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="loading-spinner-large">
+      <div class="spinner-large"></div>
+      <p>Loading tenants...</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container">
+    <div class="error-icon">⚠️</div>
+    <h3>Failed to Load Tenants</h3>
+    <p>{{ error }}</p>
+    <button class="btn-retry" (click)="retryLoad()">
+      <span>🔄</span>
+      <span>Retry</span>
+    </button>
+  </div>
+
+  <!-- Content (shown when not loading and no error) -->
+  <ng-container *ngIf="!loading && !error">
+    <!-- Stats Section -->
+    <div class="tenant-stats">
+      <div class="stat-card">
+        <div class="stat-icon">🏢</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ totalTenants }}</div>
+          <div class="stat-label">Total Tenants</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">✅</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ activeTenants }}</div>
+          <div class="stat-label">Active</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">👥</div>
+        <div class="stat-content">
+          <div class="stat-value">{{ totalUsers }}</div>
+          <div class="stat-label">Total Users</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tenants Grid -->
+    <div class="tenants-grid" *ngIf="totalTenants > 0">
+      <div *ngFor="let tenant of tenants" class="tenant-card">
+        <div class="tenant-header-row">
+          <div class="tenant-icon">🏢</div>
+          <span class="tenant-status" [ngClass]="getStatusBadgeClass(tenant.active)">
+            {{ getStatusText(tenant.active) }}
+          </span>
+        </div>
+        
+        <div class="tenant-name">{{ tenant.name }}</div>
+        
+        <div class="tenant-details">
+          <div class="detail-item">
+            <span class="detail-icon">👤</span>
+            <span class="detail-text">{{ tenant.primary_user_name }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-icon">📧</span>
+            <span class="detail-text">{{ tenant.primary_user_email }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-icon">📅</span>
+            <span class="detail-text">{{ formatDate(tenant.created_at) }}</span>
+          </div>
+          <div class="detail-item">
+            <span class="detail-icon">⭐</span>
+            <span class="detail-text">{{ tenant.plan }}</span>
+          </div>
+        </div>
+        
+        <div class="tenant-actions">
+          <button class="btn-action btn-primary">Manage</button>
+          <button class="btn-action btn-secondary">Settings</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empty State -->
+    <div *ngIf="totalTenants === 0" class="empty-state">
+      <div class="empty-icon">🏢</div>
+      <h3>No Tenants Found</h3>
+      <p>Get started by creating your first tenant organization</p>
+      <button class="btn-primary-large" (click)="openCreateModal()">
+        <span class="btn-icon-large">+</span>
+        <span>Create Your First Tenant</span>
+      </button>
+    </div>
+  </ng-container>
+</div>
+
+<!-- Create Tenant Modal -->
+<app-tenant-create-modal 
+  *ngIf="showCreateModal"
+  (close)="closeCreateModal()"
+  (tenantCreated)="onTenantCreated()">
+</app-tenant-create-modal>

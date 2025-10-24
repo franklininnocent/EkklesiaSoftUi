@@ -1,0 +1,9 @@
+<div class="card" [class]="'card-' + padding" [class.card-shadow]="shadow">
+  <div *ngIf="title" class="card-header">
+    <h3 class="card-title">{{ title }}</h3>
+  </div>
+  <div class="card-content">
+    <ng-content></ng-content>
+  </div>
+</div>
+

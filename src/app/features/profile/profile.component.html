@@ -1,0 +1,62 @@
+<div class="profile-container" *ngIf="currentUser$ | async as user">
+  <div class="profile-header">
+    <h1 class="page-title">Profile</h1>
+    <p class="page-description">Manage your account information</p>
+  </div>
+
+  <div class="profile-content">
+    <div class="profile-card">
+      <div class="profile-avatar-section">
+        <div class="profile-avatar">
+          <span class="avatar-text">{{ getInitials(user.name) }}</span>
+        </div>
+        <h2 class="profile-name">{{ user.name }}</h2>
+        <p class="profile-email">{{ user.email }}</p>
+      </div>
+
+      <div class="profile-divider"></div>
+
+      <div class="profile-info-section">
+        <h3 class="section-title">Account Information</h3>
+        
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Full Name</span>
+            <span class="info-value">{{ user.name }}</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Email Address</span>
+            <span class="info-value">{{ user.email }}</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">User ID</span>
+            <span class="info-value">#{{ user.id }}</span>
+          </div>
+
+          <div class="info-item">
+            <span class="info-label">Account Status</span>
+            <span class="info-value">
+              <span class="status-badge active">Active</span>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="profile-divider"></div>
+
+      <div class="profile-actions">
+        <button class="btn btn-primary" disabled>
+          <span class="btn-icon">✏️</span>
+          <span>Edit Profile</span>
+        </button>
+        <button class="btn btn-secondary" disabled>
+          <span class="btn-icon">🔐</span>
+          <span>Change Password</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+

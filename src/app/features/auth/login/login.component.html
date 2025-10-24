@@ -1,0 +1,56 @@
+<div class="auth-container">
+  <div class="auth-box">
+    <div class="auth-header">
+      <h1 class="auth-title">Welcome Back</h1>
+      <p class="auth-subtitle">Sign in to your account to continue</p>
+    </div>
+
+    <app-card>
+      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <app-input
+            type="email"
+            label="Email Address"
+            placeholder="Enter your email"
+            formControlName="email"
+            [error]="getErrorMessage('email')"
+            [required]="true"
+          ></app-input>
+        </div>
+
+        <div class="form-group">
+          <app-input
+            type="password"
+            label="Password"
+            placeholder="Enter your password"
+            formControlName="password"
+            [error]="getErrorMessage('password')"
+            [required]="true"
+          ></app-input>
+        </div>
+
+        <div *ngIf="error$ | async as error" class="error-banner">
+          {{ error }}
+        </div>
+
+        <app-button
+          type="submit"
+          variant="primary"
+          size="lg"
+          [fullWidth]="true"
+          [loading]="(loading$ | async) ?? false"
+        >
+          Sign In
+        </app-button>
+
+        <div class="auth-footer">
+          <p>
+            Don't have an account?
+            <a routerLink="/auth/register" class="auth-link">Sign up</a>
+          </p>
+        </div>
+      </form>
+    </app-card>
+  </div>
+</div>
+

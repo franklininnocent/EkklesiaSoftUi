@@ -1,0 +1,18 @@
+<div class="settings">
+  <div class="settings-header">
+    <h1>Settings</h1>
+    <p>Manage your account and application preferences</p>
+  </div>
+
+  <div class="settings-grid">
+    <div *ngFor="let section of settingsSections" class="setting-section">
+      <div class="section-icon">{{ section.icon }}</div>
+      <div class="section-content">
+        <h3 class="section-title">{{ section.title }}</h3>
+        <p class="section-description">{{ section.description }}</p>
+      </div>
+      <button class="section-action" (click)="onConfigure(section)">Configure →</button>
+    </div>
+  </div>
+</div>
+
