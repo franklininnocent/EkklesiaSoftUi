@@ -5,11 +5,12 @@
 }
 
 .dashboard-header {
-  margin-bottom: var(--spacing-xl);
+  margin-top: 1.5rem; /* Consistent spacing from breadcrumb for better visual hierarchy */
+  margin-bottom: var(--spacing-md);
 
   h1 {
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.75rem; /* Standardized across all pages */
+    font-weight: 600;
     margin-bottom: var(--spacing-sm);
     line-height: 1.2;
   }
@@ -24,8 +25,8 @@
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
-  gap: var(--spacing-lg);
-  margin-bottom: var(--spacing-xl);
+  gap: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
   width: 100%;
 }
 
@@ -65,7 +66,7 @@
 
 .stat-value {
   font-size: 1.875rem;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-primary);
   margin-bottom: 0.25rem;
   line-height: 1.2;
@@ -94,7 +95,7 @@
 .content-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
   width: 100%;
 }
 
@@ -193,7 +194,8 @@
 /* Tablet breakpoint */
 @media (max-width: 1024px) and (min-width: 769px) {
   .dashboard-header h1 {
-    font-size: 1.75rem;
+    font-size: 1.75rem; /* Standardized across all pages */
+    font-weight: 600;
   }
 
   .stats-grid {
@@ -212,10 +214,11 @@
   }
 
   .dashboard-header {
+    margin-top: 1.25rem; /* Consistent mobile spacing from breadcrumb */
     margin-bottom: var(--spacing-lg);
 
     h1 {
-      font-size: 1.5rem;
+      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
     }
 
     p {
@@ -236,7 +239,7 @@
   }
 
   .stat-icon {
-    font-size: 2rem;
+    font-size: 1.5rem;
     width: 48px;
     height: 48px;
   }
@@ -292,7 +295,7 @@
 @media (max-width: 480px) {
   .dashboard-header {
     h1 {
-      font-size: 1.375rem;
+      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
     }
 
     p {
@@ -354,7 +357,8 @@
 /* Large desktop breakpoint */
 @media (min-width: 1280px) {
   .dashboard-header h1 {
-    font-size: 2.25rem;
+    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    font-weight: 600;
   }
 
   .stats-grid {
@@ -369,7 +373,8 @@
 /* Extra large desktop breakpoint */
 @media (min-width: 1536px) {
   .dashboard-header h1 {
-    font-size: 2.5rem;
+    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    font-weight: 600;
   }
 
   .stats-grid {
@@ -392,7 +397,8 @@
   }
 
   .dashboard-header h1 {
-    font-size: 2.75rem;
+    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    font-weight: 600;
   }
 
   .stats-grid {

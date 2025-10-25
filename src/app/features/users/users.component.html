@@ -4,7 +4,7 @@
       <h1>Users</h1>
       <p>Manage your team members and their permissions ({{ totalUsers }} users)</p>
     </div>
-    <app-button variant="primary">
+    <app-button variant="primary" (click)="openCreateUserModal()">
       + Add User
     </app-button>
   </div>
@@ -32,11 +32,11 @@
       <table class="users-table" *ngIf="users.length > 0">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Email</th>
-            <th>Contact</th>
-            <th>Role</th>
-            <th>Status</th>
+            <th [appSortable]="'name'" [direction]="sortColumn === 'name' ? sortDirection : null" (sort)="onSort($event)">Name</th>
+            <th [appSortable]="'email'" [direction]="sortColumn === 'email' ? sortDirection : null" (sort)="onSort($event)">Email</th>
+            <th [appSortable]="'contact_number'" [direction]="sortColumn === 'contact_number' ? sortDirection : null" (sort)="onSort($event)">Contact</th>
+            <th [appSortable]="'role'" [direction]="sortColumn === 'role' ? sortDirection : null" (sort)="onSort($event)">Role</th>
+            <th [appSortable]="'active'" [direction]="sortColumn === 'active' ? sortDirection : null" (sort)="onSort($event)">Status</th>
             <th>Actions</th>
           </tr>
         </thead>
@@ -45,7 +45,24 @@
             <td class="user-name">{{ user.name }}</td>
             <td class="user-email">{{ user.email }}</td>
             <td class="user-contact">{{ user.contact_number || 'N/A' }}</td>
-            <td><span class="role-badge">{{ getRoleName(user) }}</span></td>
+            <td class="user-roles">
+              <div class="roles-container">
+                <span 
+                  *ngFor="let role of getRoles(user); let i = index" 
+                  class="role-badge"
+                  [class.role-badge-primary]="i === 0"
+                  [class.role-badge-secondary]="i > 0"
+                >
+                  {{ role }}
+                </span>
+                <span 
+                  *ngIf="getRoleCount(user) === 0" 
+                  class="role-badge role-badge-empty"
+                >
+                  No Role
+                </span>
+              </div>
+            </td>
             <td>
               <span 
                 class="status-badge" 
@@ -57,24 +74,49 @@
             </td>
             <td class="actions">
               <button 
-                class="action-btn" 
+                class="action-btn action-btn-edit" 
+                (click)="openEditUserModal(user)"
+                title="Edit user"
+              >
+                Edit
+              </button>
+              <button 
+                class="action-btn action-btn-status" 
                 (click)="toggleUserStatus(user)"
+                title="{{ user.active === 1 ? 'Deactivate user' : 'Activate user' }}"
               >
                 {{ user.active === 1 ? 'Deactivate' : 'Activate' }}
               </button>
-              <button class="action-btn">Edit</button>
             </td>
           </tr>
         </tbody>
       </table>
 
+      <!-- Pagination -->
+      <app-pagination
+        *ngIf="users.length > 0"
+        [currentPage]="currentPage"
+        [pageSize]="pageSize"
+        [totalItems]="totalUsers"
+        [pageSizeOptions]="pageSizeOptions"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+
       <!-- Empty State -->
-      <div *ngIf="users.length === 0" class="empty-state">
+      <div *ngIf="users.length === 0 && !loading" class="empty-state">
         <div class="empty-icon">👥</div>
         <h3>No Users Found</h3>
         <p>There are no users in your organization yet</p>
       </div>
     </div>
   </app-card>
-</div>
 
+  <!-- User Form Modal -->
+  <app-user-form-modal
+    [show]="showUserModal"
+    [user]="selectedUser"
+    (closed)="closeUserModal()"
+    (saved)="onUserSaved($event)"
+  ></app-user-form-modal>
+</div>

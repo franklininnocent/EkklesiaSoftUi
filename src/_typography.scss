@@ -1,0 +1,458 @@
+/* ========================================================================
+   PROFESSIONAL ADMIN PANEL TYPOGRAPHY SYSTEM
+   ======================================================================== */
+
+/* Typography Variables */
+:root {
+  /* Font Families */
+  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  
+  /* Font Weights */
+  --font-light: 300;
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* Base Font Sizes */
+  --text-xs: 0.75rem;      /* 12px */
+  --text-sm: 0.875rem;     /* 14px */
+  --text-base: 1rem;       /* 16px */
+  --text-lg: 1.125rem;     /* 18px */
+  --text-xl: 1.25rem;      /* 20px */
+  --text-2xl: 1.5rem;      /* 24px */
+  --text-3xl: 1.875rem;    /* 30px */
+  --text-4xl: 2.25rem;     /* 36px */
+  --text-5xl: 3rem;        /* 48px */
+  
+  /* Line Heights */
+  --leading-none: 1;
+  --leading-tight: 1.25;
+  --leading-snug: 1.375;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose: 2;
+  
+  /* Letter Spacing */
+  --tracking-tighter: -0.05em;
+  --tracking-tight: -0.025em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.025em;
+  --tracking-wider: 0.05em;
+  --tracking-widest: 0.1em;
+}
+
+/* ========================================================================
+   GLOBAL HEADING STYLES
+   ======================================================================== */
+
+/* Page Titles - Main heading for each page */
+.page-title,
+h1.page-title {
+  font-size: 1.5rem !important;        /* 24px - Professional, not too large */
+  font-weight: var(--font-semibold) !important;
+  line-height: var(--leading-tight) !important;
+  color: var(--text-primary) !important;
+  margin: 0 !important;
+  letter-spacing: var(--tracking-tight) !important;
+  font-family: var(--font-primary) !important;
+}
+
+/* Page Subtitles */
+.page-subtitle,
+.page-description {
+  font-size: 0.875rem !important;      /* 14px */
+  font-weight: var(--font-normal) !important;
+  line-height: var(--leading-normal) !important;
+  color: var(--text-secondary) !important;
+  margin: 0 !important;
+  letter-spacing: var(--tracking-normal) !important;
+}
+
+/* Section Titles */
+.section-title,
+h2.section-title {
+  font-size: 1.25rem !important;       /* 20px */
+  font-weight: var(--font-semibold) !important;
+  line-height: var(--leading-snug) !important;
+  color: var(--text-primary) !important;
+  margin: 0 0 var(--spacing-md) 0 !important;
+  letter-spacing: var(--tracking-tight) !important;
+}
+
+/* Subsection Titles */
+.subsection-title,
+h3.subsection-title {
+  font-size: 1.125rem !important;      /* 18px */
+  font-weight: var(--font-medium) !important;
+  line-height: var(--leading-snug) !important;
+  color: var(--text-primary) !important;
+  margin: 0 0 var(--spacing-sm) 0 !important;
+  letter-spacing: var(--tracking-normal) !important;
+}
+
+/* Card Titles */
+.card-title {
+  font-size: 1rem !important;          /* 16px */
+  font-weight: var(--font-semibold) !important;
+  line-height: var(--leading-snug) !important;
+  color: var(--text-primary) !important;
+  margin: 0 !important;
+  letter-spacing: var(--tracking-normal) !important;
+}
+
+/* Modal Titles */
+.modal-title {
+  font-size: 1.25rem !important;       /* 20px */
+  font-weight: var(--font-semibold) !important;
+  line-height: var(--leading-snug) !important;
+  color: var(--modal-title-color) !important;
+  margin: 0 !important;
+  letter-spacing: var(--tracking-tight) !important;
+}
+
+/* ========================================================================
+   STANDARD HTML HEADINGS
+   ======================================================================== */
+
+h1 {
+  font-size: 1.5rem;
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md) 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+h2 {
+  font-size: 1.25rem;
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-snug);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md) 0;
+  letter-spacing: var(--tracking-tight);
+}
+
+h3 {
+  font-size: 1.125rem;
+  font-weight: var(--font-medium);
+  line-height: var(--leading-snug);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+  letter-spacing: var(--tracking-normal);
+}
+
+h4 {
+  font-size: 1rem;
+  font-weight: var(--font-medium);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-sm) 0;
+  letter-spacing: var(--tracking-normal);
+}
+
+h5 {
+  font-size: 0.875rem;
+  font-weight: var(--font-medium);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-xs) 0;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+h6 {
+  font-size: 0.75rem;
+  font-weight: var(--font-semibold);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+  margin: 0 0 var(--spacing-xs) 0;
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+}
+
+/* ========================================================================
+   BODY TEXT STYLES
+   ======================================================================== */
+
+body {
+  font-family: var(--font-primary);
+  font-size: var(--text-base);
+  font-weight: var(--font-normal);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  letter-spacing: var(--tracking-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+p {
+  font-size: var(--text-base);
+  line-height: var(--leading-relaxed);
+  color: var(--text-primary);
+  margin: 0 0 var(--spacing-md) 0;
+}
+
+/* Text Sizes */
+.text-xs { font-size: var(--text-xs) !important; }
+.text-sm { font-size: var(--text-sm) !important; }
+.text-base { font-size: var(--text-base) !important; }
+.text-lg { font-size: var(--text-lg) !important; }
+.text-xl { font-size: var(--text-xl) !important; }
+.text-2xl { font-size: var(--text-2xl) !important; }
+.text-3xl { font-size: var(--text-3xl) !important; }
+
+/* Font Weights */
+.font-light { font-weight: var(--font-light) !important; }
+.font-normal { font-weight: var(--font-normal) !important; }
+.font-medium { font-weight: var(--font-medium) !important; }
+.font-semibold { font-weight: var(--font-semibold) !important; }
+.font-bold { font-weight: var(--font-bold) !important; }
+
+/* Text Colors */
+.text-primary { color: var(--text-primary) !important; }
+.text-secondary { color: var(--text-secondary) !important; }
+.text-tertiary { color: var(--text-tertiary) !important; }
+.text-success { color: var(--success-color) !important; }
+.text-warning { color: var(--warning-color) !important; }
+.text-error { color: var(--error-color) !important; }
+.text-info { color: var(--info-color) !important; }
+
+/* ========================================================================
+   TABLE TYPOGRAPHY
+   ======================================================================== */
+
+.data-table {
+  thead th {
+    font-size: 0.8125rem !important;    /* 13px */
+    font-weight: var(--font-semibold) !important;
+    line-height: var(--leading-tight) !important;
+    color: var(--text-primary) !important;
+    letter-spacing: var(--tracking-wide) !important;
+    text-transform: uppercase;
+  }
+  
+  tbody td {
+    font-size: 0.875rem !important;     /* 14px */
+    font-weight: var(--font-normal) !important;
+    line-height: var(--leading-normal) !important;
+    color: var(--text-primary) !important;
+    letter-spacing: var(--tracking-normal) !important;
+  }
+}
+
+/* ========================================================================
+   FORM TYPOGRAPHY
+   ======================================================================== */
+
+label,
+.form-label {
+  font-size: 0.875rem !important;       /* 14px */
+  font-weight: var(--font-medium) !important;
+  line-height: var(--leading-normal) !important;
+  color: var(--text-primary) !important;
+  letter-spacing: var(--tracking-normal) !important;
+}
+
+input,
+select,
+textarea,
+.form-input,
+.form-select {
+  font-size: 0.875rem !important;       /* 14px */
+  font-weight: var(--font-normal) !important;
+  line-height: var(--leading-normal) !important;
+  color: var(--text-primary) !important;
+  letter-spacing: var(--tracking-normal) !important;
+  font-family: var(--font-primary) !important;
+}
+
+/* ========================================================================
+   BUTTON TYPOGRAPHY
+   ======================================================================== */
+
+button,
+.btn {
+  font-size: 0.875rem !important;       /* 14px */
+  font-weight: var(--font-medium) !important;
+  line-height: var(--leading-none) !important;
+  letter-spacing: var(--tracking-normal) !important;
+  font-family: var(--font-primary) !important;
+}
+
+.btn-sm {
+  font-size: 0.8125rem !important;      /* 13px */
+}
+
+.btn-lg {
+  font-size: 1rem !important;           /* 16px */
+}
+
+/* ========================================================================
+   BADGE TYPOGRAPHY
+   ======================================================================== */
+
+.badge,
+.status-badge,
+.type-badge,
+.level-badge,
+.module-badge {
+  font-size: 0.75rem !important;        /* 12px */
+  font-weight: var(--font-semibold) !important;
+  line-height: var(--leading-none) !important;
+  letter-spacing: var(--tracking-wide) !important;
+  text-transform: uppercase;
+}
+
+/* ========================================================================
+   RESPONSIVE TYPOGRAPHY
+   ======================================================================== */
+
+/* Tablet (768px - 1023px) */
+@media (max-width: 1023px) {
+  .page-title {
+    font-size: 1.375rem !important;     /* 22px */
+  }
+  
+  .section-title {
+    font-size: 1.125rem !important;     /* 18px */
+  }
+  
+  .subsection-title {
+    font-size: 1rem !important;         /* 16px */
+  }
+}
+
+/* Mobile (≤767px) */
+@media (max-width: 767px) {
+  .page-title {
+    font-size: 1.25rem !important;      /* 20px */
+  }
+  
+  .page-subtitle {
+    font-size: 0.8125rem !important;    /* 13px */
+  }
+  
+  .section-title {
+    font-size: 1rem !important;         /* 16px */
+  }
+  
+  .subsection-title {
+    font-size: 0.9375rem !important;    /* 15px */
+  }
+  
+  .data-table {
+    thead th {
+      font-size: 0.75rem !important;    /* 12px */
+    }
+    
+    tbody td {
+      font-size: 0.8125rem !important;  /* 13px */
+    }
+  }
+}
+
+/* Small Mobile (≤479px) */
+@media (max-width: 479px) {
+  .page-title {
+    font-size: 1.125rem !important;     /* 18px */
+  }
+  
+  .page-subtitle {
+    font-size: 0.75rem !important;      /* 12px */
+  }
+  
+  .section-title {
+    font-size: 0.9375rem !important;    /* 15px */
+  }
+  
+  .subsection-title {
+    font-size: 0.875rem !important;     /* 14px */
+  }
+  
+  .data-table {
+    thead th {
+      font-size: 0.6875rem !important;  /* 11px */
+    }
+    
+    tbody td {
+      font-size: 0.75rem !important;    /* 12px */
+    }
+  }
+  
+  button,
+  .btn {
+    font-size: 0.8125rem !important;    /* 13px */
+  }
+  
+  label,
+  .form-label {
+    font-size: 0.8125rem !important;    /* 13px */
+  }
+  
+  input,
+  select,
+  textarea {
+    font-size: 0.8125rem !important;    /* 13px */
+  }
+}
+
+/* ========================================================================
+   UTILITY CLASSES
+   ======================================================================== */
+
+/* Line Height */
+.leading-none { line-height: var(--leading-none) !important; }
+.leading-tight { line-height: var(--leading-tight) !important; }
+.leading-snug { line-height: var(--leading-snug) !important; }
+.leading-normal { line-height: var(--leading-normal) !important; }
+.leading-relaxed { line-height: var(--leading-relaxed) !important; }
+.leading-loose { line-height: var(--leading-loose) !important; }
+
+/* Letter Spacing */
+.tracking-tighter { letter-spacing: var(--tracking-tighter) !important; }
+.tracking-tight { letter-spacing: var(--tracking-tight) !important; }
+.tracking-normal { letter-spacing: var(--tracking-normal) !important; }
+.tracking-wide { letter-spacing: var(--tracking-wide) !important; }
+.tracking-wider { letter-spacing: var(--tracking-wider) !important; }
+.tracking-widest { letter-spacing: var(--tracking-widest) !important; }
+
+/* Text Transform */
+.uppercase { text-transform: uppercase !important; }
+.lowercase { text-transform: lowercase !important; }
+.capitalize { text-transform: capitalize !important; }
+.normal-case { text-transform: none !important; }
+
+/* Text Alignment */
+.text-left { text-align: left !important; }
+.text-center { text-align: center !important; }
+.text-right { text-align: right !important; }
+.text-justify { text-align: justify !important; }
+
+/* Text Decoration */
+.underline { text-decoration: underline !important; }
+.line-through { text-decoration: line-through !important; }
+.no-underline { text-decoration: none !important; }
+
+/* Text Truncation */
+.truncate {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+.line-clamp-2 {
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 2 !important;
+  -webkit-box-orient: vertical !important;
+}
+
+.line-clamp-3 {
+  overflow: hidden !important;
+  display: -webkit-box !important;
+  -webkit-line-clamp: 3 !important;
+  -webkit-box-orient: vertical !important;
+}
+

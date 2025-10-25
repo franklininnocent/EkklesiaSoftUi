@@ -1,8 +1,8 @@
 .breadcrumb {
   background-color: transparent;
   padding: 0;
-  margin-top: var(--spacing-sm);
-  margin-bottom: var(--spacing-sm);
+  margin-top: 0;
+  margin-bottom: 1.25rem; /* Increased from var(--spacing-sm) for better spacing */
 }
 
 .breadcrumb-list {
@@ -98,8 +98,8 @@
 /* Mobile */
 @media (max-width: 768px) {
   .breadcrumb {
-    margin-top: var(--spacing-xs);
-    margin-bottom: var(--spacing-xs);
+    margin-top: 0;
+    margin-bottom: 1rem; /* Increased for better mobile spacing */
   }
 
   .breadcrumb-list {
@@ -224,6 +224,54 @@
   .breadcrumb-separator svg {
     width: 14px;
     height: 14px;
+  }
+}
+
+
+/* ========================================================================
+   ZERO TOP SPACING - Force removal of all top spacing
+   ======================================================================== */
+
+:host {
+  display: block;
+  margin: 0 !important;
+  padding: 0 !important;
+  line-height: 1 !important;
+}
+
+.breadcrumb {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+  line-height: 1.2 !important;
+}
+
+.breadcrumb-list {
+  margin-top: 0 !important;
+  padding-top: 0 !important;
+}
+
+// Force zero spacing on all breakpoints
+@media (max-width: 768px) {
+  :host {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  
+  .breadcrumb {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  :host {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+  
+  .breadcrumb {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
   }
 }
 

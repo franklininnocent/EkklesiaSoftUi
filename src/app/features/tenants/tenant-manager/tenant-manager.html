@@ -129,6 +129,17 @@
       </div>
     </div>
 
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="totalTenants > 0"
+      [currentPage]="currentPage"
+      [pageSize]="pageSize"
+      [totalItems]="totalTenants"
+      [pageSizeOptions]="pageSizeOptions"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)"
+    ></app-pagination>
+
     <!-- Empty State -->
     <div *ngIf="totalTenants === 0" class="empty-state">
       <div class="empty-icon">🏢</div>

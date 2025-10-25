@@ -1,3 +1,5 @@
+import { Permission } from './permission.model';
+
 export interface Role {
   id: number;
   name: string;
@@ -15,6 +17,7 @@ export interface Role {
     id: number;
     name: string;
   } | null;
+  permissions?: Permission[];
   
   // Computed/additional fields
   users_count?: number;
@@ -37,6 +40,7 @@ export interface RoleUpdateRequest {
 }
 
 export interface RoleListResponse {
+  success: boolean;
   current_page: number;
   data: Role[];
   first_page_url: string;

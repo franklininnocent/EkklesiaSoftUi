@@ -5,11 +5,12 @@
 }
 
 .settings-header {
+  margin-top: 1.5rem; /* Consistent spacing from breadcrumb for better visual hierarchy */
   margin-bottom: var(--spacing-xl);
 
   h1 {
-    font-size: 2rem;
-    font-weight: 700;
+    font-size: 1.75rem; /* Standardized across all pages */
+    font-weight: 600;
     margin-bottom: var(--spacing-sm);
     line-height: 1.2;
   }
@@ -119,7 +120,8 @@
 /* Tablet breakpoint */
 @media (max-width: 1024px) and (min-width: 769px) {
   .settings-header h1 {
-    font-size: 1.75rem;
+    font-size: 1.75rem; /* Standardized across all pages */
+    font-weight: 600;
   }
 
   .settings-grid {
@@ -137,7 +139,7 @@
     margin-bottom: var(--spacing-lg);
 
     h1 {
-      font-size: 1.5rem;
+      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
     }
 
     p {
@@ -192,7 +194,7 @@
 @media (max-width: 480px) {
   .settings-header {
     h1 {
-      font-size: 1.375rem;
+      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
     }
 
     p {
@@ -231,7 +233,8 @@
 /* Large desktop breakpoint */
 @media (min-width: 1280px) {
   .settings-header h1 {
-    font-size: 2.25rem;
+    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    font-weight: 600;
   }
 
   .settings-grid {
@@ -246,7 +249,8 @@
 /* Extra large desktop breakpoint */
 @media (min-width: 1536px) {
   .settings-header h1 {
-    font-size: 2.5rem;
+    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    font-weight: 600;
   }
 
   .settings-grid {
@@ -271,7 +275,8 @@
   }
 
   .settings-header h1 {
-    font-size: 2.75rem;
+    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    font-weight: 600;
   }
 
   .settings-grid {

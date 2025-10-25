@@ -1,9 +1,15 @@
+import { Permission } from './permission.model';
+import { Role } from './role.model';
+
 /**
  * User Type Constants (matching backend)
  */
 export const USER_TYPE_PRIMARY_CONTACT = 1;    // Primary contact for tenant
 export const USER_TYPE_SECONDARY_CONTACT = 2;  // Secondary contact for tenant
 
+/**
+ * User Interface (Multi-Role Support)
+ */
 export interface User {
   id: number;
   name: string;
@@ -11,9 +17,12 @@ export interface User {
   contact_number?: string | null;
   user_type: 1 | 2 | null;  // 1 = primary_contact, 2 = secondary_contact
   tenant_id?: number | null;
+  
+  // Legacy single role support (deprecated)
   role_id?: number | null;
-  role_name?: string | null;  // Role name from backend (e.g., 'SuperAdmin', 'EkklesiaAdmin', 'Administrator')
-  role_level?: number | null; // Role level from backend
+  role_name?: string | null;
+  role_level?: number | null;
+  
   active: 0 | 1;
   email_verified_at?: string | null;
   created_at: string;
@@ -22,9 +31,65 @@ export interface User {
   
   // Relations
   addresses?: Address[];
-  role?: any; // Full role object
-  permissions?: string[];
+  role?: Role; // Legacy single role object (deprecated)
+  roles?: Role[]; // Multiple roles support
+  permissions?: Permission[]; // Aggregated permissions from all roles
   tenant?: any;
+}
+
+/**
+ * User List Response from API
+ */
+export interface UserListResponse {
+  success: boolean;
+  data: User[];
+  message?: string;
+  pagination?: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+  };
+  meta?: {
+    total: number;
+  };
+}
+
+/**
+ * Single User Response from API
+ */
+export interface UserResponse {
+  success: boolean;
+  data: User;
+  message?: string;
+}
+
+/**
+ * User Create/Update Request
+ */
+export interface UserRequest {
+  name: string;
+  email: string;
+  password?: string;
+  password_confirmation?: string;
+  contact_number?: string;
+  user_type?: 1 | 2;
+  role_ids: number[]; // Array of role IDs for multi-role support
+  active?: 0 | 1;
+}
+
+/**
+ * User Permissions Response
+ */
+export interface UserPermissionsResponse {
+  success: boolean;
+  data: {
+    user_id: number;
+    user_name: string;
+    roles: Role[];
+    permissions: Permission[];
+    total_permissions: number;
+  };
 }
 
 export interface Address {

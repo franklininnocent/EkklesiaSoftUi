@@ -6,7 +6,7 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TenantCreateModalComponent } from '../tenant-create-modal/tenant-create-modal';
-import { ConfirmationModalComponent, ConfirmationResult } from '@shared/components';
+import { ConfirmationModalComponent, ConfirmationResult, PaginationComponent } from '@shared/components';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { Tenant } from '@core/models/tenant.model';
@@ -16,7 +16,7 @@ import { environment } from '@environments/environment';
 @Component({
   selector: 'app-tenant-manager',
   standalone: true,
-  imports: [CommonModule, TenantCreateModalComponent, ConfirmationModalComponent],
+  imports: [CommonModule, TenantCreateModalComponent, ConfirmationModalComponent, PaginationComponent],
   templateUrl: './tenant-manager.html',
   styleUrls: ['./tenant-manager.scss']
 })
@@ -26,9 +26,20 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   showCreateModal = false;
+  allTenants: Tenant[] = [];
   tenants: Tenant[] = [];
   loading = false;
   error: string | null = null;
+
+  // Pagination state
+  currentPage: number = 1;
+  pageSize: number = 20;
+  pageSizeOptions: number[] = [10, 20, 50, 100];
+  totalTenants: number = 0;
+
+  // Sorting state
+  sortColumn: string = '';
+  sortDirection: 'asc' | 'desc' | null = null;
 
   // Confirmation modal state
   showConfirmationModal = false;
@@ -53,12 +64,14 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
 
-    this.tenantService.listTenants({ per_page: 50, sort_by: 'created_at', sort_order: 'desc' })
+    this.tenantService.listTenants({ per_page: 'all' })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            this.tenants = response.data;
+            this.allTenants = response.data;
+            this.totalTenants = response.pagination?.total || response.data.length;
+            this.applyFilters();
           }
           this.loading = false;
         },
@@ -67,6 +80,21 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
           this.loading = false;
         }
       });
+  }
+
+  /**
+   * Apply filters, sorting, and pagination
+   */
+  applyFilters(): void {
+    let filtered = [...this.allTenants];
+
+    // Apply sorting
+    if (this.sortColumn && this.sortDirection) {
+      filtered = this.applySorting(filtered, this.sortColumn, this.sortDirection);
+    }
+
+    // Apply pagination
+    this.tenants = this.applyPagination(filtered, this.currentPage, this.pageSize);
   }
 
   /**
@@ -118,17 +146,10 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get total tenants count
-   */
-  get totalTenants(): number {
-    return this.tenants.length;
-  }
-
-  /**
    * Get active tenants count
    */
   get activeTenants(): number {
-    return this.tenants.filter(t => t.active === 1).length;
+    return this.allTenants.filter(t => t.active === 1).length;
   }
 
   /**
@@ -137,7 +158,7 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   get totalUsers(): number {
     // Since API doesn't return user count directly in list, we show tenant count
     // In a real app, this would come from statistics API
-    return this.tenants.length * 15; // Placeholder calculation
+    return this.allTenants.length * 15; // Placeholder calculation
   }
 
   /**
@@ -342,5 +363,32 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
       this.pendingStatusChange.checkbox.checked = this.pendingStatusChange.tenant.active === 1;
       this.pendingStatusChange = null;
     }
+  }
+
+  /**
+   * Pagination event handlers
+   */
+  onPageChange(page: number): void {
+    this.currentPage = page;
+    this.applyFilters();
+  }
+
+  onPageSizeChange(size: number): void {
+    this.pageSize = size;
+    this.currentPage = 1; // Reset to first page
+    this.applyFilters();
+  }
+
+  /**
+   * Helper methods for pagination
+   */
+  private applyPagination(data: Tenant[], page: number, pageSize: number): Tenant[] {
+    const startIndex = (page - 1) * pageSize;
+    return data.slice(startIndex, startIndex + pageSize);
+  }
+
+  private applySorting(data: Tenant[], column: string, direction: 'asc' | 'desc'): Tenant[] {
+    // Sorting not currently used in grid view, but kept for future enhancement
+    return data;
   }
 }

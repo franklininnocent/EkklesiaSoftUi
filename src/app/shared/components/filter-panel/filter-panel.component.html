@@ -1,0 +1,120 @@
+<!-- Backdrop -->
+<div class="filter-backdrop" *ngIf="isOpen" (click)="onClose()"></div>
+
+<!-- Side Panel -->
+<div class="filter-panel" [class.open]="isOpen">
+  <!-- Panel Header -->
+  <div class="panel-header">
+    <div class="header-content">
+      <svg class="header-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+      </svg>
+      <h3 class="panel-title">{{ config.title }}</h3>
+    </div>
+    <button class="btn-close" (click)="onClose()" type="button" title="Close filters">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+  </div>
+
+  <!-- Panel Body -->
+  <div class="panel-body">
+    <!-- Search -->
+    <div class="filter-group" *ngIf="config.showSearch">
+      <label class="filter-label">
+        <svg class="label-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <path d="m21 21-4.35-4.35"></path>
+        </svg>
+        Search
+      </label>
+      <input
+        type="text"
+        class="filter-input"
+        [(ngModel)]="searchValue"
+        [placeholder]="config.searchPlaceholder || 'Search...'"
+      />
+    </div>
+
+    <!-- Status Filter -->
+    <div class="filter-group" *ngIf="config.showStatusFilter">
+      <label class="filter-label">
+        <svg class="label-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+        </svg>
+        Status
+      </label>
+      <select class="filter-select" [(ngModel)]="statusValue">
+        <option *ngFor="let option of statusOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Type Filter -->
+    <div class="filter-group" *ngIf="config.showTypeFilter">
+      <label class="filter-label">
+        <svg class="label-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M22 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        Type
+      </label>
+      <select class="filter-select" [(ngModel)]="typeValue">
+        <option *ngFor="let option of typeOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Module Filter -->
+    <div class="filter-group" *ngIf="config.showModuleFilter">
+      <label class="filter-label">
+        <svg class="label-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"></path>
+          <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"></path>
+        </svg>
+        Module
+      </label>
+      <input
+        type="text"
+        class="filter-input"
+        [(ngModel)]="moduleValue"
+        placeholder="Filter by module..."
+      />
+    </div>
+
+    <!-- Active Filters Badge -->
+    <div class="active-filters" *ngIf="hasActiveFilters()">
+      <svg class="badge-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="12"></line>
+        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+      </svg>
+      <span>Filters active</span>
+    </div>
+  </div>
+
+  <!-- Panel Footer -->
+  <div class="panel-footer">
+    <button class="btn-reset" (click)="onReset()" type="button" [disabled]="!hasActiveFilters()">
+      <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="1 4 1 10 7 10"></polyline>
+        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+      </svg>
+      Reset Filters
+    </button>
+    <button class="btn-apply" (click)="onApply()" type="button">
+      <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+      Apply Filters
+    </button>
+  </div>
+</div>
+

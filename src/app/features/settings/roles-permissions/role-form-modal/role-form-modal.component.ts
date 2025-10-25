@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Role, RoleCreateRequest, RoleUpdateRequest, Permission } from '@core/models';
@@ -44,22 +44,42 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
   ) {}
 
   ngOnInit(): void {
-    this.isEditMode = !!this.role;
-    this.initializeForm();
     this.loadPermissions();
-    
-    // If editing, load assigned permissions
-    if (this.isEditMode && this.role) {
-      this.loadRolePermissions();
-    }
   }
 
-  ngOnChanges(): void {
-    if (this.show && this.permissions.length === 0) {
-      this.loadPermissions();
+  ngOnChanges(changes: SimpleChanges): void {
+    // When the modal is shown or role changes, reinitialize
+    if (changes['show'] && this.show) {
+      // Set edit mode based on whether role is provided
+      this.isEditMode = !!this.role;
+      
+      // Initialize or reinitialize the form
+      this.initializeForm();
+      
+      // Load permissions if not already loaded
+      if (this.permissions.length === 0) {
+        this.loadPermissions();
+      }
+      
+      // If editing, load assigned permissions
+      if (this.isEditMode && this.role) {
+        this.loadRolePermissions();
+      } else {
+        // If creating new role, clear selected permissions
+        this.selectedPermissionIds.clear();
+      }
+      
+      // Clear any previous errors
+      this.errorMessage = null;
     }
-    if (this.show && this.role) {
-      this.loadRolePermissions();
+    
+    // Handle role changes (when switching between edit modals)
+    if (changes['role'] && this.role) {
+      this.isEditMode = true;
+      this.initializeForm();
+      if (this.show) {
+        this.loadRolePermissions();
+      }
     }
   }
 

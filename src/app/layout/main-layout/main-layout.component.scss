@@ -39,12 +39,14 @@
 }
 
 .sidebar-logo {
-  font-size: 1.25rem;
-  font-weight: 700;
-  margin: 0;
+  font-size: 1.25rem !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+  color: white !important;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3 !important;
 }
 
 .sidebar-toggle {
@@ -165,11 +167,11 @@
 }
 
 .topbar {
-  min-height: 64px;
+  min-height: 56px;
   height: auto;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-bottom: none;
-  padding: 0.75rem var(--spacing-lg);
+  padding: 0.625rem var(--spacing-lg);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -611,7 +613,7 @@
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: var(--spacing-xl);
+  padding: var(--spacing-md) var(--spacing-lg);
   background-color: var(--bg-secondary);
   min-height: 0;
 }
@@ -623,7 +625,7 @@
   }
 
   .page-content {
-    padding: var(--spacing-lg);
+    padding: var(--spacing-md) var(--spacing-md);
   }
 
   .dropdown-panel {
@@ -686,7 +688,7 @@
   }
 
   .page-content {
-    padding: var(--spacing-md);
+    padding: var(--spacing-sm) var(--spacing-md);
   }
 }
 
@@ -717,7 +719,7 @@
   }
 
   .page-content {
-    padding: var(--spacing-sm);
+    padding: var(--spacing-xs) var(--spacing-sm);
   }
 }
 
@@ -728,7 +730,7 @@
   }
 
   .page-content {
-    padding: var(--spacing-2xl);
+    padding: var(--spacing-lg) var(--spacing-xl);
   }
 
   .dropdown-panel {
@@ -744,7 +746,7 @@
   }
 
   .page-content {
-    padding: 2.5rem;
+    padding: var(--spacing-lg) var(--spacing-2xl);
   }
 }
 
@@ -755,13 +757,13 @@
   }
 
   .page-content {
-    padding: 3rem;
+    padding: var(--spacing-xl) var(--spacing-2xl);
     max-width: 1920px;
     margin: 0 auto;
   }
 
   .topbar {
-    padding: 0.875rem var(--spacing-2xl);
+    padding: 0.75rem var(--spacing-2xl);
   }
 }
 
@@ -1269,6 +1271,84 @@
 
   .theme-panel {
     width: 360px;
+  }
+}
+
+
+/* ========================================================================
+   AGGRESSIVE HEIGHT REDUCTION - Override all height settings
+   ======================================================================== */
+
+// Force topbar to be more compact
+.topbar {
+  height: 52px !important;
+  min-height: 52px !important;
+  max-height: 52px !important;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
+  line-height: 1.2 !important;
+}
+
+// Remove any extra spacing from user menu elements
+.user-trigger {
+  height: auto !important;
+  line-height: 1.2 !important;
+  
+  .user-name {
+    line-height: 1.2 !important;
+  }
+}
+
+.user-avatar {
+  width: 36px !important;
+  height: 36px !important;
+  min-width: 36px !important;
+  min-height: 36px !important;
+}
+
+// Ensure page content has no top margin
+.page-content {
+  margin-top: 0 !important;
+  padding-top: var(--spacing-md) !important;
+}
+
+// Mobile - even more compact
+@media (max-width: 768px) {
+  .topbar {
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding-top: 0.375rem !important;
+    padding-bottom: 0.375rem !important;
+  }
+  
+  .user-avatar {
+    width: 32px !important;
+    height: 32px !important;
+    min-width: 32px !important;
+    min-height: 32px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar {
+    height: 44px !important;
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding-top: 0.25rem !important;
+    padding-bottom: 0.25rem !important;
+  }
+  
+  .user-avatar {
+    width: 28px !important;
+    height: 28px !important;
+    min-width: 28px !important;
+    min-height: 28px !important;
+    font-size: 0.625rem !important;
+  }
+  
+  .page-content {
+    padding-top: var(--spacing-sm) !important;
   }
 }
 

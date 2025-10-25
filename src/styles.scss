@@ -1,4 +1,9 @@
-/* ng-select styles */
+/* Professional Theme System - Load in Order (Modern Sass @use syntax) */
+@use "./variables";
+@use "./typography";
+@use "./professional-theme";
+
+/* ng-select styles - CSS import remains as @import */
 @import "@ng-select/ng-select/themes/default.theme.css";
 
 /* Global Styles */
@@ -1015,6 +1020,510 @@ html.font-small {
   .ng-dropdown-panel .ng-dropdown-panel-items .ng-option {
     padding: 0.5rem 0.75rem;
     font-size: 0.875rem;
+  }
+}
+
+
+/* ========================================================================
+   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM
+   ======================================================================== */
+
+/* Mobile Portrait (320px - 479px) */
+@media (max-width: 479px) {
+  :root {
+    --spacing-sm: 0.375rem;
+    --spacing-md: 0.75rem;
+    --spacing-lg: 0.875rem;
+    --spacing-xl: 1.25rem;
+    --spacing-2xl: 1.5rem;
+  }
+
+  body {
+    font-size: 14px;
+  }
+
+  /* Page containers */
+  .container,
+  .page-container {
+    padding: 0.75rem !important;
+  }
+
+  /* Headers */
+  h1, .page-title {
+    font-size: 1.25rem !important;
+    line-height: 1.3 !important;
+  }
+
+  h2 {
+    font-size: 1.125rem !important;
+  }
+
+  h3 {
+    font-size: 1rem !important;
+  }
+
+  /* Tables */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .data-table {
+    font-size: 0.75rem !important;
+    
+    th, td {
+      padding: 0.5rem 0.625rem !important;
+      white-space: nowrap;
+    }
+  }
+
+  /* Cards */
+  .card, .tenant-card, .stat-card {
+    padding: 0.75rem !important;
+    margin-bottom: 0.75rem !important;
+  }
+
+  /* Buttons */
+  .btn, button {
+    font-size: 0.8125rem !important;
+    padding: 0.5rem 0.75rem !important;
+  }
+
+  .btn-create {
+    width: 40px !important;
+    height: 40px !important;
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+
+  /* Forms */
+  .form-group {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .form-input,
+  .form-select,
+  input,
+  select,
+  textarea {
+    font-size: 0.875rem !important;
+    padding: 0.5rem 0.625rem !important;
+  }
+
+  /* Modals */
+  .modal-dialog {
+    margin: 0.5rem !important;
+    max-width: calc(100% - 1rem) !important;
+  }
+
+  .modal-content {
+    border-radius: 0.5rem !important;
+  }
+
+  .modal-header {
+    padding: 0.875rem 1rem !important;
+  }
+
+  .modal-body {
+    padding: 1rem !important;
+    max-height: calc(100vh - 200px) !important;
+  }
+
+  .modal-footer {
+    padding: 0.875rem 1rem !important;
+    flex-direction: column !important;
+    
+    button {
+      width: 100% !important;
+      margin: 0.25rem 0 !important;
+    }
+  }
+
+  /* Grids */
+  .grid, .tenants-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+  }
+
+  /* Filters */
+  .filters-section {
+    flex-direction: column !important;
+    gap: 0.625rem !important;
+  }
+
+  .search-box {
+    max-width: 100% !important;
+  }
+
+  /* Badges */
+  .badge, .level-badge, .type-badge, .status-badge {
+    font-size: 0.6875rem !important;
+    padding: 0.1875rem 0.5rem !important;
+  }
+
+  /* Actions */
+  .action-btn {
+    width: 28px !important;
+    height: 28px !important;
+    font-size: 0.875rem !important;
+    margin-right: 0.25rem !important;
+  }
+
+  /* Hide on mobile */
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+/* Mobile Landscape & Small Tablets (480px - 767px) */
+@media (min-width: 480px) and (max-width: 767px) {
+  :root {
+    --spacing-sm: 0.5rem;
+    --spacing-md: 0.875rem;
+    --spacing-lg: 1rem;
+    --spacing-xl: 1.5rem;
+    --spacing-2xl: 2rem;
+  }
+
+  body {
+    font-size: 15px;
+  }
+
+  .container, .page-container {
+    padding: 1rem !important;
+  }
+
+  h1, .page-title {
+    font-size: 1.375rem !important;
+  }
+
+  .data-table {
+    font-size: 0.8125rem !important;
+  }
+
+  .modal-dialog {
+    margin: 1rem !important;
+    max-width: calc(100% - 2rem) !important;
+  }
+
+  .grid, .tenants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)) !important;
+  }
+
+  .btn-create {
+    width: 42px !important;
+    height: 42px !important;
+    min-width: 42px !important;
+    min-height: 42px !important;
+  }
+}
+
+/* Tablets (768px - 1023px) */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .container, .page-container {
+    padding: var(--spacing-md) var(--spacing-lg) !important;
+  }
+
+  .modal-dialog {
+    max-width: 700px !important;
+  }
+
+  .grid, .tenants-grid {
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)) !important;
+  }
+
+  .data-table {
+    font-size: 0.875rem !important;
+  }
+}
+
+/* Desktop (1024px - 1279px) */
+@media (min-width: 1024px) and (max-width: 1279px) {
+  .container, .page-container {
+    max-width: 1024px;
+  }
+
+  .modal-dialog {
+    max-width: 800px !important;
+  }
+}
+
+/* Large Desktop (1280px+) */
+@media (min-width: 1280px) {
+  .container, .page-container {
+    max-width: 1400px;
+  }
+
+  .modal-dialog {
+    max-width: 900px !important;
+  }
+}
+
+/* Landscape Orientation Fixes */
+@media (orientation: landscape) and (max-height: 600px) {
+  .modal-body {
+    max-height: calc(100vh - 150px) !important;
+    overflow-y: auto;
+  }
+
+  .page-header {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .filters-section {
+    margin-bottom: 0.75rem !important;
+  }
+}
+
+/* Touch Device Optimizations */
+@media (hover: none) and (pointer: coarse) {
+  button, .btn, a {
+    min-height: 44px !important; /* Apple's recommended touch target size */
+    min-width: 44px !important;
+  }
+
+  .action-btn {
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  /* Larger touch targets for mobile */
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 20px !important;
+    min-height: 20px !important;
+  }
+}
+
+/* High DPI / Retina Displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Print Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .btn, button, .action-btn {
+    display: none !important;
+  }
+
+  .sidebar, nav, .header {
+    display: none !important;
+  }
+
+  .modal {
+    position: static !important;
+  }
+
+  .card, .data-table {
+    box-shadow: none !important;
+    border: 1px solid #ccc !important;
+  }
+}
+
+/* Accessibility - Reduce Motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Dark Mode Support (if needed in future) */
+@media (prefers-color-scheme: dark) {
+  /* Placeholder for dark mode styles */
+}
+
+/* ========================================================================
+   UTILITY CLASSES FOR RESPONSIVE DESIGN
+   ======================================================================== */
+
+/* Show/Hide utilities */
+.show-mobile { display: none !important; }
+.hide-mobile { display: block !important; }
+
+@media (max-width: 767px) {
+  .show-mobile { display: block !important; }
+  .hide-mobile { display: none !important; }
+  .show-mobile-flex { display: flex !important; }
+  .show-mobile-inline { display: inline !important; }
+}
+
+.show-tablet { display: none !important; }
+@media (min-width: 768px) and (max-width: 1023px) {
+  .show-tablet { display: block !important; }
+}
+
+.show-desktop { display: none !important; }
+@media (min-width: 1024px) {
+  .show-desktop { display: block !important; }
+  .hide-desktop { display: none !important; }
+}
+
+/* Responsive text alignment */
+.text-center-mobile {
+  @media (max-width: 767px) {
+    text-align: center !important;
+  }
+}
+
+/* Responsive flex direction */
+.flex-col-mobile {
+  @media (max-width: 767px) {
+    flex-direction: column !important;
+  }
+}
+
+/* Full width on mobile */
+.full-width-mobile {
+  @media (max-width: 767px) {
+    width: 100% !important;
+  }
+}
+
+
+/* ========================================================================
+   ANGULAR COMPONENT HEIGHT OPTIMIZATIONS
+   ======================================================================== */
+
+/* Reduce height of Angular-generated wrapper elements */
+[class*="ng-tns-"] {
+  &.layout,
+  &.main-content,
+  &.page-content {
+    min-height: auto !important;
+  }
+}
+
+/* Further reduce topbar and header heights */
+.topbar,
+header.topbar,
+[class*="topbar"] {
+  min-height: 52px !important;
+  max-height: 52px !important;
+  padding: 0.5rem var(--spacing-lg) !important;
+}
+
+/* Optimize breadcrumb wrapper */
+app-breadcrumb,
+[class*="breadcrumb"] {
+  display: block;
+  margin: 0 !important;
+  padding: 0 !important;
+  
+  &:first-child {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+  }
+}
+
+/* Remove extra spacing from Angular component wrappers */
+app-breadcrumb,
+app-main-layout,
+[class*="ng-component"] {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+/* Mobile optimizations for component wrappers */
+@media (max-width: 768px) {
+  .topbar,
+  header.topbar {
+    min-height: 48px !important;
+    max-height: 48px !important;
+    padding: 0.375rem var(--spacing-md) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar,
+  header.topbar {
+    min-height: 44px !important;
+    max-height: 44px !important;
+    padding: 0.25rem var(--spacing-sm) !important;
+  }
+}
+
+
+/* ========================================================================
+   SORTABLE TABLE HEADERS
+   ======================================================================== */
+
+/* Sortable column styles */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  position: relative;
+  padding-right: 2rem !important;
+  transition: background-color 0.2s ease;
+
+  &:hover {
+    background-color: rgba(102, 126, 234, 0.08);
+  }
+
+  .sort-icon {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    opacity: 0.4;
+    transition: opacity 0.2s ease;
+    
+    &::before {
+      content: '⇅';
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+  }
+
+  &.asc .sort-icon::before {
+    content: '▲';
+    opacity: 1;
+    color: var(--primary-color);
+  }
+
+  &.desc .sort-icon::before {
+    content: '▼';
+    opacity: 1;
+    color: var(--primary-color);
+  }
+
+  &:hover .sort-icon {
+    opacity: 1;
+  }
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+  th.sortable {
+    padding-right: 1.5rem !important;
+    
+    .sort-icon {
+      right: 0.375rem;
+      width: 14px;
+      height: 14px;
+      
+      &::before {
+        font-size: 12px;
+      }
+    }
   }
 }
 

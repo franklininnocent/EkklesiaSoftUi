@@ -37,51 +37,73 @@
   <!-- Roles Tab -->
   <div class="tab-content" *ngIf="activeTab === 'roles'">
     <app-card [padding]="'lg'">
-      <!-- Filters and Actions -->
-      <div class="filters-section">
-        <div class="filters-left">
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input 
-              type="text" 
-              class="search-input" 
-              placeholder="Search roles..." 
-              [(ngModel)]="searchQuery"
-              (ngModelChange)="onSearchChange()"
-            />
-          </div>
-          
-          <select class="filter-select" [(ngModel)]="statusFilter" (ngModelChange)="onStatusFilterChange()">
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          
-          <select class="filter-select" [(ngModel)]="typeFilter" (ngModelChange)="onTypeFilterChange()">
-            <option value="all">All Types</option>
-            <option value="system">System Roles</option>
-            <option value="custom">Custom Roles</option>
-          </select>
-
-          <button class="btn-reset" (click)="resetFilters()" *ngIf="searchQuery || statusFilter !== 'all' || typeFilter !== 'all'">
-            <span>🔄</span>
-            <span>Reset</span>
+      <!-- Actions Bar with Filter Button -->
+      <div class="actions-bar">
+        <div class="actions-left">
+          <button 
+            class="btn-filter" 
+            (click)="openRolesFilterPanel()"
+            type="button"
+            [class.active]="hasActiveFilters()"
+            title="Filter roles">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            <span class="btn-text">Filters</span>
+            <span class="filter-badge" *ngIf="hasActiveFilters()">{{ hasActiveFilters() ? '●' : '' }}</span>
           </button>
+
+          <!-- Active Filter Chips -->
+          <div class="filter-chips" *ngIf="getActiveFilterChips().length > 0">
+            <!-- Visible Filter Chips -->
+            <div 
+              *ngFor="let chip of getVisibleFilterChips()" 
+              class="filter-chip"
+              [title]="chip.label + ': ' + chip.value">
+              <span class="chip-label">{{ chip.label }}:</span>
+              <span class="chip-value">{{ chip.value }}</span>
+              <button 
+                class="chip-remove" 
+                (click)="removeFilter(chip.type)"
+                type="button"
+                [title]="'Remove ' + chip.label + ' filter'">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <!-- "+N more" Chip -->
+            <button 
+              *ngIf="getHiddenChipsCount() > 0"
+              class="filter-chip filter-chip-more"
+              (click)="openFilterPanelWithCurrentFilters()"
+              type="button"
+              [title]="getHiddenChipsTooltip()">
+              <span class="chip-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="12" cy="5" r="1"></circle>
+                  <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+              </span>
+              <span class="chip-value">{{ getHiddenChipsCount() }} more</span>
+            </button>
+          </div>
         </div>
         
-        <div class="filters-right">
+        <div class="actions-right">
           <button 
             class="btn-create" 
             (click)="openCreateRoleModal()"
             type="button"
             title="Create New Role">
-            <svg class="btn-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path>
-              <circle cx="9" cy="7" r="4"></circle>
-              <line x1="19" y1="8" x2="19" y2="14"></line>
-              <line x1="22" y1="11" x2="16" y2="11"></line>
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            <span class="btn-tooltip">Create New Role</span>
+            <span class="btn-text">Create Role</span>
           </button>
         </div>
       </div>
@@ -108,12 +130,12 @@
         <table class="data-table" *ngIf="roles.length > 0">
           <thead>
             <tr>
-              <th>Role Name</th>
-              <th>Description</th>
-              <th>Level</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Tenant</th>
+              <th [appSortable]="'name'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Role Name</th>
+              <th [appSortable]="'description'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Description</th>
+              <th [appSortable]="'level'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Level</th>
+              <th [appSortable]="'is_custom'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Type</th>
+              <th [appSortable]="'active'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Status</th>
+              <th [appSortable]="'tenant.name'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Tenant</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -141,8 +163,12 @@
                 <button class="action-btn action-assign" (click)="openAssignPermissionsModal(role)" title="Assign Permissions">
                   🔗
                 </button>
-                <button class="action-btn action-toggle" (click)="toggleRoleStatus(role)" title="Toggle Status">
+                <button class="action-btn action-toggle" (click)="toggleRoleStatus(role)" *ngIf="canToggleRoleStatus(role)" [title]="role.active === 1 ? 'Deactivate Role' : 'Activate Role'">
                   {{ role.active === 1 ? '🔓' : '🔒' }}
+                </button>
+                <!-- Show locked icon for system roles that cannot be toggled -->
+                <button class="action-btn action-locked" *ngIf="!canToggleRoleStatus(role)" title="System Role - Cannot Toggle Status" disabled>
+                  🔒
                 </button>
                 <button class="action-btn action-edit" (click)="openEditRoleModal(role)" *ngIf="role.is_custom" title="Edit">
                   ✏️
@@ -164,6 +190,17 @@
             <span>+ Create First Role</span>
           </button>
         </div>
+
+        <!-- Roles Pagination -->
+        <app-pagination
+          *ngIf="roles.length > 0"
+          [currentPage]="rolesPage"
+          [pageSize]="rolesPageSize"
+          [totalItems]="totalRoles"
+          [pageSizeOptions]="rolesPageSizeOptions"
+          (pageChange)="onRolesPageChange($event)"
+          (pageSizeChange)="onRolesPageSizeChange($event)">
+        </app-pagination>
       </div>
     </app-card>
   </div>
@@ -172,58 +209,73 @@
   <div class="tab-content" *ngIf="activeTab === 'permissions'">
     <app-card [padding]="'lg'">
       <!-- Filters and Actions -->
-      <div class="filters-section">
-        <div class="filters-left">
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input 
-              type="text" 
-              class="search-input" 
-              placeholder="Search permissions..." 
-              [(ngModel)]="searchQuery"
-              (ngModelChange)="onSearchChange()"
-            />
-          </div>
-          
-          <select class="filter-select" [(ngModel)]="statusFilter" (ngModelChange)="onStatusFilterChange()">
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-          </select>
-          
-          <select class="filter-select" [(ngModel)]="typeFilter" (ngModelChange)="onTypeFilterChange()">
-            <option value="all">All Types</option>
-            <option value="system">System</option>
-            <option value="custom">Custom</option>
-          </select>
-
-          <input 
-            type="text" 
-            class="filter-input" 
-            placeholder="Filter by module..." 
-            [(ngModel)]="moduleFilter"
-            (ngModelChange)="onModuleFilterChange()"
-          />
-
-          <button class="btn-reset" (click)="resetFilters()" *ngIf="searchQuery || statusFilter !== 'all' || typeFilter !== 'all' || moduleFilter">
-            <span>🔄</span>
-            <span>Reset</span>
+      <!-- Actions Bar with Filter Button -->
+      <div class="actions-bar">
+        <div class="actions-left">
+          <button 
+            class="btn-filter" 
+            (click)="openPermissionsFilterPanel()"
+            type="button"
+            [class.active]="hasActiveFilters()"
+            title="Filter permissions">
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+            <span class="btn-text">Filters</span>
+            <span class="filter-badge" *ngIf="hasActiveFilters()">{{ hasActiveFilters() ? '●' : '' }}</span>
           </button>
+
+          <!-- Active Filter Chips -->
+          <div class="filter-chips" *ngIf="getActiveFilterChips().length > 0">
+            <!-- Visible Filter Chips -->
+            <div 
+              *ngFor="let chip of getVisibleFilterChips()" 
+              class="filter-chip"
+              [title]="chip.label + ': ' + chip.value">
+              <span class="chip-label">{{ chip.label }}:</span>
+              <span class="chip-value">{{ chip.value }}</span>
+              <button 
+                class="chip-remove" 
+                (click)="removeFilter(chip.type)"
+                type="button"
+                [title]="'Remove ' + chip.label + ' filter'">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <!-- "+N more" Chip -->
+            <button 
+              *ngIf="getHiddenChipsCount() > 0"
+              class="filter-chip filter-chip-more"
+              (click)="openFilterPanelWithCurrentFilters()"
+              type="button"
+              [title]="getHiddenChipsTooltip()">
+              <span class="chip-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="1"></circle>
+                  <circle cx="12" cy="5" r="1"></circle>
+                  <circle cx="12" cy="19" r="1"></circle>
+                </svg>
+              </span>
+              <span class="chip-value">{{ getHiddenChipsCount() }} more</span>
+            </button>
+          </div>
         </div>
         
-        <div class="filters-right">
+        <div class="actions-right">
           <button 
             class="btn-create" 
             (click)="openCreatePermissionModal()"
             type="button"
             title="Create New Permission">
-            <svg class="btn-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-              <line x1="12" y1="16" x2="12" y2="18"></line>
-              <line x1="10" y1="17" x2="14" y2="17"></line>
+            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
             </svg>
-            <span class="btn-tooltip">Create New Permission</span>
+            <span class="btn-text">Create Permission</span>
           </button>
         </div>
       </div>
@@ -245,47 +297,109 @@
         </button>
       </div>
 
-      <!-- Permissions Table -->
+      <!-- Bulk Actions for Module Toggles -->
+      <div class="bulk-actions" *ngIf="permissions.length > 0 && getModuleNames().length > 1">
+        <button 
+          class="btn-bulk-action" 
+          (click)="expandAllModules()"
+          type="button"
+          title="Expand All Modules">
+          <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="17 11 12 6 7 11"></polyline>
+            <polyline points="17 18 12 13 7 18"></polyline>
+          </svg>
+          <span class="btn-text">Expand All</span>
+        </button>
+        <button 
+          class="btn-bulk-action" 
+          (click)="collapseAllModules()"
+          type="button"
+          title="Collapse All Modules">
+          <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="7 13 12 18 17 13"></polyline>
+            <polyline points="7 6 12 11 17 6"></polyline>
+          </svg>
+          <span class="btn-text">Collapse All</span>
+        </button>
+      </div>
+
+      <!-- Permissions Table - Grouped by Module -->
       <div *ngIf="!loadingPermissions && !permissionsError" class="table-container">
-        <table class="data-table" *ngIf="permissions.length > 0">
-          <thead>
-            <tr>
-              <th>Permission Name</th>
-              <th>Display Name</th>
-              <th>Module</th>
-              <th>Category</th>
-              <th>Type</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let permission of permissions">
-              <td class="permission-name">{{ permission.name }}</td>
-              <td class="permission-display-name">{{ permission.display_name }}</td>
-              <td><span class="module-badge">{{ permission.module || '-' }}</span></td>
-              <td>{{ permission.category || '-' }}</td>
-              <td>
-                <span class="type-badge" [ngClass]="permission.is_custom ? 'badge-custom' : 'badge-system'">
-                  {{ permission.is_custom ? 'Custom' : 'System' }}
-                </span>
-              </td>
-              <td>
-                <span class="status-badge" [ngClass]="getStatusBadgeClass(permission.active)">
-                  {{ getStatusText(permission.active) }}
-                </span>
-              </td>
-              <td class="actions-cell">
-                <button class="action-btn action-edit" (click)="openEditPermissionModal(permission)" *ngIf="permission.is_custom" title="Edit">
-                  ✏️
-                </button>
-                <button class="action-btn action-delete" (click)="deletePermission(permission)" *ngIf="permission.is_custom" title="Delete">
-                  🗑️
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="permissions-grouped" *ngIf="permissions.length > 0">
+          <!-- Module Group -->
+          <div 
+            *ngFor="let module of getModuleNames()" 
+            class="module-group"
+            [class.collapsed]="isModuleCollapsed(module)">
+            
+            <!-- Module Header -->
+            <div 
+              class="module-header" 
+              (click)="toggleModuleCollapse(module)"
+              [title]="isModuleCollapsed(module) ? 'Click to expand' : 'Click to collapse'">
+              <div class="module-header-left">
+                <svg 
+                  class="collapse-icon" 
+                  [class.collapsed]="isModuleCollapsed(module)"
+                  xmlns="http://www.w3.org/2000/svg" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  stroke-width="2" 
+                  stroke-linecap="round" 
+                  stroke-linejoin="round">
+                  <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+                <span class="module-name">{{ module }}</span>
+                <span class="module-count">({{ getModulePermissionsCount(module) }} permissions)</span>
+              </div>
+              <div class="module-header-right">
+                <span class="toggle-hint">{{ isModuleCollapsed(module) ? 'Expand' : 'Collapse' }}</span>
+              </div>
+            </div>
+
+            <!-- Module Content (Collapsible) -->
+            <div class="module-content" *ngIf="!isModuleCollapsed(module)">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th [appSortable]="'name'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Permission Name</th>
+                    <th [appSortable]="'display_name'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Display Name</th>
+                    <th [appSortable]="'category'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Category</th>
+                    <th [appSortable]="'is_custom'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Type</th>
+                    <th [appSortable]="'active'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let permission of groupedPermissions[module]">
+                    <td class="permission-name">{{ permission.name }}</td>
+                    <td class="permission-display-name">{{ permission.display_name }}</td>
+                    <td>{{ permission.category || '-' }}</td>
+                    <td>
+                      <span class="type-badge" [ngClass]="permission.is_custom ? 'badge-custom' : 'badge-system'">
+                        {{ permission.is_custom ? 'Custom' : 'System' }}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="status-badge" [ngClass]="getStatusBadgeClass(permission.active)">
+                        {{ getStatusText(permission.active) }}
+                      </span>
+                    </td>
+                    <td class="actions-cell">
+                      <button class="action-btn action-edit" (click)="openEditPermissionModal(permission)" *ngIf="permission.is_custom" title="Edit">
+                        ✏️
+                      </button>
+                      <button class="action-btn action-delete" (click)="deletePermission(permission)" *ngIf="permission.is_custom" title="Delete">
+                        🗑️
+                      </button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
 
         <!-- Empty State -->
         <div *ngIf="permissions.length === 0" class="empty-state">
@@ -296,6 +410,17 @@
             <span>+ Create First Permission</span>
           </button>
         </div>
+
+        <!-- Permissions Pagination -->
+        <app-pagination
+          *ngIf="permissions.length > 0"
+          [currentPage]="permissionsPage"
+          [pageSize]="permissionsPageSize"
+          [totalItems]="totalPermissions"
+          [pageSizeOptions]="permissionsPageSizeOptions"
+          (pageChange)="onPermissionsPageChange($event)"
+          (pageSizeChange)="onPermissionsPageSizeChange($event)">
+        </app-pagination>
       </div>
     </app-card>
   </div>
@@ -333,4 +458,24 @@
   (closed)="closeEditRoleModal()"
   (saved)="onRoleSaved($event)">
 </app-role-form-modal>
+
+<!-- Roles Filter Panel -->
+<app-filter-panel
+  [isOpen]="showRolesFilterPanel"
+  [config]="rolesFilterConfig"
+  [initialValues]="getCurrentFilterValues()"
+  (close)="closeRolesFilterPanel()"
+  (apply)="applyRolesFilters($event)"
+  (reset)="resetRolesFilters()">
+</app-filter-panel>
+
+<!-- Permissions Filter Panel -->
+<app-filter-panel
+  [isOpen]="showPermissionsFilterPanel"
+  [config]="permissionsFilterConfig"
+  [initialValues]="getCurrentFilterValues()"
+  (close)="closePermissionsFilterPanel()"
+  (apply)="applyPermissionsFilters($event)"
+  (reset)="resetPermissionsFilters()">
+</app-filter-panel>
 
