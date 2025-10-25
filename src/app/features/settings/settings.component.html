@@ -5,7 +5,9 @@
   </div>
 
   <div class="settings-grid">
-    <div *ngFor="let section of settingsSections" class="setting-section">
+    <div *ngFor="let section of settingsSections" 
+         class="setting-section"
+         [class.hidden]="!shouldDisplaySection(section, (currentUser$ | async))">
       <div class="section-icon">{{ section.icon }}</div>
       <div class="section-content">
         <h3 class="section-title">{{ section.title }}</h3>

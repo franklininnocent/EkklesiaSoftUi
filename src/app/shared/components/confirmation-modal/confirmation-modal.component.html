@@ -1,0 +1,79 @@
+<!-- Confirmation Modal -->
+<div class="modal-backdrop" *ngIf="show" (click)="onBackdropClick($event)" [@fadeIn]>
+  <div class="modal-container" [@slideIn] role="dialog" 
+       aria-labelledby="modal-title" 
+       aria-describedby="modal-message"
+       aria-modal="true">
+    
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h2 id="modal-title" class="modal-title">{{ title }}</h2>
+      <button 
+        type="button"
+        class="modal-close"
+        (click)="onCancel()"
+        aria-label="Close modal"
+        [disabled]="isSubmitting"
+      >
+        <span class="close-icon">×</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <p id="modal-message" class="modal-message">{{ message }}</p>
+
+      <!-- Optional Description Input -->
+      <div class="form-group" *ngIf="showDescriptionInput">
+        <label for="description" class="form-label">
+          {{ descriptionLabel }}
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          class="form-control"
+          [(ngModel)]="description"
+          [placeholder]="descriptionPlaceholder"
+          [maxlength]="descriptionMaxLength"
+          [disabled]="isSubmitting"
+          rows="4"
+          aria-describedby="char-count"
+        ></textarea>
+        <div class="char-count" id="char-count">
+          <span [class.text-warning]="remainingCharacters < 50" 
+                [class.text-danger]="isDescriptionTooLong">
+            {{ remainingCharacters }} characters remaining
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="onCancel()"
+        [disabled]="isSubmitting"
+      >
+        {{ cancelText }}
+      </button>
+      <button
+        type="button"
+        class="btn"
+        [ngClass]="confirmButtonClass"
+        (click)="onConfirm()"
+        [disabled]="isSubmitting || isDescriptionTooLong"
+      >
+        <span *ngIf="!isSubmitting">{{ confirmText }}</span>
+        <span *ngIf="isSubmitting" class="spinner"></span>
+      </button>
+    </div>
+
+    <!-- Keyboard Shortcut Hint -->
+    <div class="modal-hint" *ngIf="!isSubmitting">
+      <small>Press <kbd>Esc</kbd> to cancel, <kbd>Ctrl+Enter</kbd> to confirm</small>
+    </div>
+  </div>
+</div>
+

@@ -149,6 +149,33 @@ export class TenantService {
   }
 
   /**
+   * Update tenant active status
+   */
+  updateTenantStatus(id: number, active: 0 | 1, description?: string): Observable<TenantResponse> {
+    this.clearError();
+
+    const payload: any = { active };
+    if (description) {
+      payload.description = description;
+    }
+
+    return this.http.patch<TenantResponse>(`${this.apiUrl}/${id}/status`, payload)
+      .pipe(
+        tap(response => {
+          if (response.success && response.data) {
+            // Update tenant status in the list
+            const currentTenants = this.tenantsSubject.value;
+            const updatedTenants = currentTenants.map(t => 
+              t.id === id ? { ...t, active: response.data.active } : t
+            );
+            this.tenantsSubject.next(updatedTenants);
+          }
+        }),
+        catchError(error => this.handleError(error))
+      );
+  }
+
+  /**
    * Upload or update tenant logo
    */
   uploadLogo(id: number, file: File): Observable<LogoUploadResponse> {

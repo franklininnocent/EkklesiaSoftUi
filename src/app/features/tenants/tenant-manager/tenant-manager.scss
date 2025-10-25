@@ -197,9 +197,102 @@
   align-items: center;
 }
 
-.tenant-icon {
+// Toggle Switch Styling
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 52px;
+  height: 28px;
+  cursor: pointer;
+  
+  input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+    
+    &:checked + .toggle-slider {
+      background-color: #22c55e;
+      
+      &:before {
+        transform: translateX(24px);
+      }
+    }
+    
+    &:disabled + .toggle-slider {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    &:focus + .toggle-slider {
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.2);
+    }
+  }
+}
+
+.toggle-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  border-radius: 34px;
+  transition: all 0.3s ease;
+  
+  &:before {
+    content: "";
+    position: absolute;
+    height: 22px;
+    width: 22px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  &:hover {
+    background-color: #94a3b8;
+  }
+}
+
+// Tenant Logo Container
+.tenant-logo-container {
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+  border: 2px solid #e2e8f0;
+  flex-shrink: 0;
+  position: relative;
+}
+
+// Tenant Logo Image
+.tenant-logo-image {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 4px;
+  background: white;
+  transition: all 0.3s ease;
+
+  &:hover {
+    transform: scale(1.05);
+  }
+}
+
+// Default Icon (when no logo)
+.tenant-icon-default {
   font-size: 2.5rem;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .tenant-status {
@@ -453,7 +546,12 @@
     padding: var(--spacing-md);
   }
 
-  .tenant-icon {
+  .tenant-logo-container {
+    width: 48px;
+    height: 48px;
+  }
+
+  .tenant-icon-default {
     font-size: 2rem;
   }
 
@@ -532,7 +630,12 @@
     gap: var(--spacing-sm);
   }
 
-  .tenant-icon {
+  .tenant-logo-container {
+    width: 44px;
+    height: 44px;
+  }
+
+  .tenant-icon-default {
     font-size: 1.875rem;
   }
 
@@ -601,7 +704,12 @@
     font-size: 2.125rem;
   }
 
-  .tenant-icon {
+  .tenant-logo-container {
+    width: 64px;
+    height: 64px;
+  }
+
+  .tenant-icon-default {
     font-size: 2.75rem;
   }
 }
@@ -644,7 +752,12 @@
     font-size: 2.25rem;
   }
 
-  .tenant-icon {
+  .tenant-logo-container {
+    width: 72px;
+    height: 72px;
+  }
+
+  .tenant-icon-default {
     font-size: 3rem;
   }
 

@@ -54,6 +54,9 @@ export interface Tenant {
   users?: User[];
   creator?: User;
   updater?: User;
+  
+  // UI state properties (not from API)
+  isTogglingStatus?: boolean;
 }
 
 /**

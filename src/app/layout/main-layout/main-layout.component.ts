@@ -30,6 +30,15 @@ import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb';
       transition(':leave', [
         animate('200ms cubic-bezier(0.4, 0, 1, 1)', style({ opacity: 0, transform: 'scale(0.9) translateY(10px)' }))
       ])
+    ]),
+    trigger('slideDown', [
+      transition(':enter', [
+        style({ height: 0, opacity: 0, overflow: 'hidden' }),
+        animate('300ms cubic-bezier(0.16, 1, 0.3, 1)', style({ height: '*', opacity: 1 }))
+      ]),
+      transition(':leave', [
+        animate('200ms cubic-bezier(0.4, 0, 1, 1)', style({ height: 0, opacity: 0, overflow: 'hidden' }))
+      ])
     ])
   ]
 })
@@ -160,6 +169,52 @@ export class MainLayoutComponent implements OnInit {
 
   isCurrentFontSize(size: FontSize): boolean {
     return this.themeService.getCurrentFontSize() === size;
+  }
+
+  /**
+   * Check if the current user can manage tenants.
+   * Only SuperAdmin and EkklesiaAdmin can see the Tenants menu.
+   */
+  canManageTenants(user: User | null): boolean {
+    if (!user) return false;
+    
+    // Check by role name (primary method)
+    if (user.role_name === 'SuperAdmin' || user.role_name === 'EkklesiaAdmin') {
+      return true;
+    }
+    
+    // Fallback: Check by role object
+    if (user.role?.name === 'SuperAdmin' || user.role?.name === 'EkklesiaAdmin') {
+      return true;
+    }
+    
+    // Tenant users (with tenant_id) cannot manage tenants
+    return false;
+  }
+
+  /**
+   * Check if the current user can manage roles and permissions.
+   * SuperAdmin, EkklesiaAdmin, and tenant Administrators can manage roles.
+   */
+  canManageRoles(user: User | null): boolean {
+    if (!user) return false;
+    
+    // SuperAdmins and EkklesiaAdmins can always manage roles
+    if (user.role_name === 'SuperAdmin' || user.role_name === 'EkklesiaAdmin' || user.role_name === 'EkklesiaManager') {
+      return true;
+    }
+    
+    // Fallback: Check by role object
+    if (user.role?.name === 'SuperAdmin' || user.role?.name === 'EkklesiaAdmin' || user.role?.name === 'EkklesiaManager') {
+      return true;
+    }
+    
+    // Tenant Administrators can also manage roles for their tenant
+    if (user.role_name === 'Administrator' && user.tenant_id) {
+      return true;
+    }
+    
+    return false;
   }
 }
 

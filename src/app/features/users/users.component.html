@@ -2,20 +2,39 @@
   <div class="users-header">
     <div>
       <h1>Users</h1>
-      <p>Manage your team members and their permissions</p>
+      <p>Manage your team members and their permissions ({{ totalUsers }} users)</p>
     </div>
     <app-button variant="primary">
       + Add User
     </app-button>
   </div>
 
-  <app-card [padding]="'none'">
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="loading-spinner"></div>
+    <p>Loading users...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container">
+    <div class="error-icon">⚠️</div>
+    <h3>Failed to Load Users</h3>
+    <p>{{ error }}</p>
+    <button class="btn-retry" (click)="loadUsers()">
+      <span>🔄</span>
+      <span>Retry</span>
+    </button>
+  </div>
+
+  <!-- Users Table -->
+  <app-card *ngIf="!loading && !error" [padding]="'none'">
     <div class="table-container">
-      <table class="users-table">
+      <table class="users-table" *ngIf="users.length > 0">
         <thead>
           <tr>
             <th>Name</th>
             <th>Email</th>
+            <th>Contact</th>
             <th>Role</th>
             <th>Status</th>
             <th>Actions</th>
@@ -25,23 +44,36 @@
           <tr *ngFor="let user of users">
             <td class="user-name">{{ user.name }}</td>
             <td class="user-email">{{ user.email }}</td>
-            <td><span class="role-badge">{{ user.role }}</span></td>
+            <td class="user-contact">{{ user.contact_number || 'N/A' }}</td>
+            <td><span class="role-badge">{{ getRoleName(user) }}</span></td>
             <td>
               <span 
                 class="status-badge" 
-                [class.status-active]="user.status === 'Active'"
-                [class.status-inactive]="user.status === 'Inactive'"
+                [class.status-active]="user.active === 1"
+                [class.status-inactive]="user.active === 0"
               >
-                {{ user.status }}
+                {{ getStatusText(user) }}
               </span>
             </td>
             <td class="actions">
+              <button 
+                class="action-btn" 
+                (click)="toggleUserStatus(user)"
+              >
+                {{ user.active === 1 ? 'Deactivate' : 'Activate' }}
+              </button>
               <button class="action-btn">Edit</button>
-              <button class="action-btn danger">Delete</button>
             </td>
           </tr>
         </tbody>
       </table>
+
+      <!-- Empty State -->
+      <div *ngIf="users.length === 0" class="empty-state">
+        <div class="empty-icon">👥</div>
+        <h3>No Users Found</h3>
+        <p>There are no users in your organization yet</p>
+      </div>
     </div>
   </app-card>
 </div>

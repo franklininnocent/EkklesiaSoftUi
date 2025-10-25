@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth.guard';
 import { tenantGuard } from '@core/guards/tenant.guard';
+import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 
 export const routes: Routes = [
@@ -37,6 +38,7 @@ export const routes: Routes = [
       },
       {
         path: 'tenants',
+        canActivate: [tenantAdminGuard],
         loadChildren: () => import('./features/tenants/tenants.routes').then(m => m.TENANTS_ROUTES)
       }
     ]

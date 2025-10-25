@@ -1,0 +1,467 @@
+// ==========================================
+// Confirmation Modal - Professional Design
+// Inspired by AdminLTE, ngx-admin, CoreUI
+// ==========================================
+
+// Backdrop
+.modal-backdrop {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(17, 24, 39, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: var(--spacing-lg);
+  animation: fadeIn 0.2s ease-out;
+}
+
+// Modal Container
+.modal-container {
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25),
+              0 0 0 1px rgba(0, 0, 0, 0.05);
+  max-width: 540px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  animation: slideIn 0.3s ease-out;
+  border-left: 4px solid var(--primary-color);
+}
+
+// Modal Header - Theme Colored (AdminLTE/CoreUI Style)
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.25rem 1.5rem;
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, 
+      rgba(255, 255, 255, 0.3) 0%, 
+      rgba(255, 255, 255, 0.1) 50%, 
+      rgba(255, 255, 255, 0.3) 100%);
+  }
+}
+
+.modal-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #ffffff;
+  margin: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  
+  &::before {
+    content: '⚠';
+    font-size: 1.5rem;
+    opacity: 0.9;
+  }
+}
+
+// Enhanced Close Button (More Visible - ngx-admin Style)
+.modal-close {
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #ffffff;
+  backdrop-filter: blur(4px);
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.25);
+    border-color: rgba(255, 255, 255, 0.3);
+    transform: scale(1.05);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .close-icon {
+    font-size: 1.75rem;
+    line-height: 1;
+    font-weight: 400;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+}
+
+// Modal Body (CoreUI/AdminLTE Style)
+.modal-body {
+  padding: 1.75rem 1.5rem;
+  overflow-y: auto;
+  flex: 1;
+  background: #fafbfc;
+}
+
+.modal-message {
+  font-size: 1rem;
+  line-height: 1.7;
+  color: #374151;
+  margin: 0 0 1.5rem 0;
+  padding: 1rem;
+  background: #ffffff;
+  border-left: 3px solid var(--primary-light);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+// Form Elements (Enhanced Visibility)
+.form-group {
+  margin-top: 1rem;
+  background: #ffffff;
+  padding: 1.25rem;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.form-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.938rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.75rem;
+  
+  &::before {
+    content: '✎';
+    font-size: 1.125rem;
+    opacity: 0.6;
+  }
+}
+
+.form-control {
+  width: 100%;
+  padding: 0.875rem 1rem;
+  font-size: 0.938rem;
+  line-height: 1.6;
+  color: #111827;
+  background-color: #ffffff;
+  border: 2px solid #d1d5db;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+  resize: vertical;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) inset;
+
+  &:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    background-color: #fefefe;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1),
+                0 1px 2px rgba(0, 0, 0, 0.05) inset;
+  }
+
+  &:disabled {
+    background-color: #f9fafb;
+    cursor: not-allowed;
+    opacity: 0.7;
+    border-color: #e5e7eb;
+  }
+
+  &::placeholder {
+    color: #9ca3af;
+    font-style: italic;
+  }
+}
+
+.char-count {
+  margin-top: 0.625rem;
+  text-align: right;
+  font-size: 0.813rem;
+  font-weight: 500;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.375rem;
+
+  &::before {
+    content: '📝';
+    font-size: 0.875rem;
+  }
+
+  .text-warning {
+    color: #f59e0b;
+    font-weight: 600;
+  }
+
+  .text-danger {
+    color: #ef4444;
+    font-weight: 700;
+  }
+}
+
+// Modal Footer (AdminLTE/ngx-admin Style)
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.875rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 2px solid #e5e7eb;
+  background: linear-gradient(to bottom, #ffffff 0%, #f9fafb 100%);
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.03);
+}
+
+// Buttons (CoreUI/ngx-admin Enhanced Style)
+.btn {
+  padding: 0.75rem 1.75rem;
+  font-size: 0.938rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+  height: 44px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  letter-spacing: 0.025em;
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+  
+  &:not(:disabled) {
+    &:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+.btn-secondary {
+  background: linear-gradient(180deg, #ffffff 0%, #f3f4f6 100%);
+  color: #374151;
+  border: 2px solid #d1d5db;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(180deg, #f9fafb 0%, #e5e7eb 100%);
+    border-color: #9ca3af;
+    color: #111827;
+  }
+
+  &:active:not(:disabled) {
+    background: #e5e7eb;
+  }
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-dark) 100%);
+  color: #ffffff;
+  border: 2px solid var(--primary-dark);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, var(--primary-dark) 0%, #3730a3 100%);
+    box-shadow: 0 6px 12px rgba(79, 70, 229, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    background: var(--primary-dark);
+  }
+}
+
+.btn-danger {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border: 2px solid #b91c1c;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 6px 12px rgba(239, 68, 68, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    background: #b91c1c;
+  }
+}
+
+.btn-success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: #ffffff;
+  border: 2px solid #047857;
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    box-shadow: 0 6px 12px rgba(16, 185, 129, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    background: #047857;
+  }
+}
+
+// Spinner
+.spinner {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Modal Hint (AdminLTE Style)
+.modal-hint {
+  padding: 0.875rem 1.5rem;
+  background: linear-gradient(to right, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%);
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.813rem;
+  font-weight: 500;
+  border-top: 1px solid #d1d5db;
+
+  kbd {
+    padding: 0.25rem 0.5rem;
+    background: #ffffff;
+    border: 1px solid #9ca3af;
+    border-radius: 4px;
+    font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1),
+                inset 0 -1px 0 rgba(0, 0, 0, 0.1);
+    color: #374151;
+  }
+}
+
+// Animations
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-20px) scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+// Responsive Design (Mobile-First Professional)
+@media (max-width: 640px) {
+  .modal-backdrop {
+    padding: 1rem;
+  }
+
+  .modal-container {
+    max-width: 100%;
+    border-radius: 10px;
+  }
+
+  .modal-header {
+    padding: 1rem 1.25rem;
+    
+    .modal-title {
+      font-size: 1.125rem;
+      
+      &::before {
+        font-size: 1.25rem;
+      }
+    }
+  }
+
+  .modal-body {
+    padding: 1.25rem;
+  }
+
+  .modal-message {
+    font-size: 0.938rem;
+    padding: 0.875rem;
+  }
+
+  .form-group {
+    padding: 1rem;
+  }
+
+  .form-label {
+    font-size: 0.875rem;
+  }
+
+  .form-control {
+    padding: 0.75rem 0.875rem;
+    font-size: 0.875rem;
+  }
+
+  .modal-footer {
+    padding: 1rem 1.25rem;
+    flex-direction: column-reverse;
+    gap: 0.75rem;
+  }
+
+  .btn {
+    width: 100%;
+    min-width: unset;
+    height: 42px;
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+  }
+
+  .modal-hint {
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    
+    kbd {
+      font-size: 0.688rem;
+      padding: 0.188rem 0.375rem;
+    }
+  }
+}
+

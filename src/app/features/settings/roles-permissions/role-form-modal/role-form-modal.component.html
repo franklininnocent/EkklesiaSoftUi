@@ -1,0 +1,246 @@
+<div class="modal-overlay" *ngIf="show" (click)="close()">
+  <div class="modal-container" (click)="onModalClick($event)">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="header-content">
+        <div class="header-icon-wrapper">
+          <div class="header-icon" [class.edit-mode]="isEditMode">
+            <!-- Create Mode Icon: Shield with Star (Authority/Role) -->
+            <svg *ngIf="!isEditMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <path d="M12 8l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5L7 11l3.5-.5L12 8z"></path>
+            </svg>
+            <!-- Edit Mode Icon: Settings/Gear -->
+            <svg *ngIf="isEditMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M12 1v6m0 6v6m6-12l-4.5 4.5m0 3L18 19m-6-6l4.5 4.5m0-9L12 13M1 12h6m6 0h6m-6-6l-4.5 4.5m0 3L6 19"></path>
+            </svg>
+            <div class="icon-glow"></div>
+          </div>
+        </div>
+        <div class="header-text">
+          <h2 class="modal-title">{{ isEditMode ? 'Edit Role' : 'Create New Role' }}</h2>
+          <p class="modal-subtitle">{{ isEditMode ? 'Update role details and permissions' : 'Define a new custom role for your tenant' }}</p>
+        </div>
+      </div>
+      <button class="btn-close" (click)="close()" [disabled]="isSubmitting" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <form [formGroup]="roleForm" (ngSubmit)="onSubmit()">
+        <!-- Error Message -->
+        <div class="error-alert" *ngIf="errorMessage">
+          <div class="error-icon">⚠️</div>
+          <div class="error-content">
+            <p class="error-title">Error</p>
+            <p class="error-message">{{ errorMessage }}</p>
+          </div>
+        </div>
+
+        <!-- Role Name Field -->
+        <div class="form-group">
+          <label for="roleName" class="form-label">
+            <span class="label-text">Role Name</span>
+            <span class="label-required">*</span>
+          </label>
+          <input
+            id="roleName"
+            type="text"
+            class="form-control"
+            formControlName="name"
+            placeholder="e.g., Content Manager, Team Lead"
+            [class.is-invalid]="name?.invalid && name?.touched"
+            [class.is-valid]="name?.valid && name?.touched"
+          />
+          <div class="validation-message error" *ngIf="name?.invalid && name?.touched">
+            <span class="validation-icon">❌</span>
+            <span>{{ getNameError() }}</span>
+          </div>
+          <div class="validation-message success" *ngIf="name?.valid && name?.touched">
+            <span class="validation-icon">✅</span>
+            <span>Role name is valid</span>
+          </div>
+          <p class="field-hint">Use a clear, descriptive name (letters, numbers, spaces, hyphens, underscores)</p>
+        </div>
+
+        <!-- Description Field -->
+        <div class="form-group">
+          <label for="roleDescription" class="form-label">
+            <span class="label-text">Description</span>
+            <span class="label-optional">(Optional)</span>
+          </label>
+          <textarea
+            id="roleDescription"
+            class="form-control textarea"
+            formControlName="description"
+            placeholder="Describe the role's purpose and responsibilities..."
+            rows="4"
+            [class.is-invalid]="description?.invalid && description?.touched"
+            [class.is-valid]="description?.valid && description?.touched && description?.value"
+          ></textarea>
+          <div class="field-footer">
+            <div class="validation-message error" *ngIf="description?.invalid && description?.touched">
+              <span class="validation-icon">❌</span>
+              <span>{{ getDescriptionError() }}</span>
+            </div>
+            <div class="char-counter" [class.warning]="descriptionRemainingChars < 50" [class.danger]="descriptionRemainingChars < 10">
+              <span class="counter-icon">📝</span>
+              <span>{{ descriptionCharCount }} / {{ maxDescriptionLength }}</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Level Field -->
+        <div class="form-group">
+          <label for="roleLevel" class="form-label">
+            <span class="label-text">Role Level</span>
+            <span class="label-required">*</span>
+            <span class="level-badge">Level {{ level?.value }}</span>
+          </label>
+          <div class="level-control">
+            <input
+              id="roleLevel"
+              type="range"
+              class="form-range"
+              formControlName="level"
+              [min]="minLevel"
+              [max]="maxLevel"
+              step="1"
+            />
+            <div class="level-markers">
+              <span *ngFor="let i of [minLevel, 6, 7, 8, 9, maxLevel]" class="level-marker" [class.active]="level?.value === i">
+                {{ i }}
+              </span>
+            </div>
+          </div>
+          <div class="level-description">
+            <span class="level-icon">ℹ️</span>
+            <span>{{ getLevelDescription(level?.value) }}</span>
+          </div>
+          <div class="validation-message error" *ngIf="level?.invalid && level?.touched">
+            <span class="validation-icon">❌</span>
+            <span>{{ getLevelError() }}</span>
+          </div>
+          <p class="field-hint">Higher levels indicate greater administrative access ({{ minLevel }}-{{ maxLevel }} for custom roles)</p>
+        </div>
+
+        <!-- Permissions Section -->
+        <div class="permissions-section">
+          <div class="permissions-header" (click)="togglePermissionsPanel()">
+            <div class="permissions-title">
+              <span class="permissions-icon">🔐</span>
+              <span class="permissions-title-text">Assign Permissions</span>
+              <span class="permissions-count" *ngIf="selectedPermissionsCount > 0">
+                {{ selectedPermissionsCount }} selected
+              </span>
+            </div>
+            <span class="toggle-icon" [class.expanded]="showPermissions">
+              {{ showPermissions ? '▼' : '▶' }}
+            </span>
+          </div>
+
+          <div class="permissions-body" *ngIf="showPermissions">
+            <!-- Loading State -->
+            <div *ngIf="loadingPermissions" class="permissions-loading">
+              <div class="spinner"></div>
+              <p>Loading permissions...</p>
+            </div>
+
+            <!-- Error State -->
+            <div *ngIf="permissionsError && !loadingPermissions" class="permissions-error">
+              <span class="error-icon">⚠️</span>
+              <p>{{ permissionsError }}</p>
+              <button class="btn-retry" (click)="loadPermissions()">Retry</button>
+            </div>
+
+            <!-- Permissions List -->
+            <div *ngIf="!loadingPermissions && !permissionsError" class="permissions-list">
+              <div *ngFor="let module of modules" class="permission-module">
+                <div class="module-header">
+                  <label class="module-checkbox">
+                    <input 
+                      type="checkbox" 
+                      [checked]="isModuleFullySelected(module)"
+                      [indeterminate]="isModulePartiallySelected(module)"
+                      (change)="toggleModulePermissions(module)"
+                    />
+                    <span class="module-name">{{ module }}</span>
+                    <span class="module-count">
+                      ({{ (permissionsByModule.get(module) || []).length }} permissions)
+                    </span>
+                  </label>
+                </div>
+                <div class="module-permissions">
+                  <label 
+                    *ngFor="let permission of permissionsByModule.get(module)" 
+                    class="permission-checkbox"
+                  >
+                    <input 
+                      type="checkbox" 
+                      [checked]="isPermissionSelected(permission.id)"
+                      (change)="togglePermission(permission.id)"
+                    />
+                    <div class="permission-info">
+                      <span class="permission-name">{{ permission.display_name }}</span>
+                      <span class="permission-description" *ngIf="permission.description">
+                        {{ permission.description }}
+                      </span>
+                      <span class="permission-category">{{ permission.category }}</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              <!-- Empty State -->
+              <div *ngIf="permissions.length === 0" class="permissions-empty">
+                <span class="empty-icon">📋</span>
+                <p>No permissions available</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Info Box -->
+        <div class="info-box">
+          <div class="info-icon">💡</div>
+          <div class="info-content">
+            <p class="info-title">Tenant-Specific Role</p>
+            <p class="info-text">This role will be created for your tenant only and can be customized to your organization's needs. Select permissions above to define what this role can do.</p>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="close()"
+        [disabled]="isSubmitting">
+        Cancel
+      </button>
+      <button 
+        type="submit" 
+        class="btn btn-primary" 
+        (click)="onSubmit()"
+        [disabled]="roleForm.invalid || isSubmitting">
+        <span *ngIf="!isSubmitting">
+          <span class="btn-icon">{{ isEditMode ? '💾' : '✨' }}</span>
+          <span>{{ isEditMode ? 'Update Role' : 'Create Role' }}</span>
+        </span>
+        <span *ngIf="isSubmitting" class="btn-loading">
+          <span class="spinner"></span>
+          <span>{{ isEditMode ? 'Updating...' : 'Creating...' }}</span>
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+

@@ -61,10 +61,25 @@
     <div class="tenants-grid" *ngIf="totalTenants > 0">
       <div *ngFor="let tenant of tenants" class="tenant-card">
         <div class="tenant-header-row">
-          <div class="tenant-icon">🏢</div>
-          <span class="tenant-status" [ngClass]="getStatusBadgeClass(tenant.active)">
-            {{ getStatusText(tenant.active) }}
-          </span>
+          <div class="tenant-logo-container">
+            <img 
+              *ngIf="tenant.logo_full_url || tenant.logo_url" 
+              [src]="tenant.logo_full_url || getTenantLogoUrl(tenant.logo_url!)" 
+              [alt]="tenant.name + ' Logo'"
+              class="tenant-logo-image"
+              (error)="onLogoError($event)"
+            />
+            <div *ngIf="!tenant.logo_full_url && !tenant.logo_url" class="tenant-icon-default">🏢</div>
+          </div>
+          <label class="toggle-switch" [attr.title]="tenant.active ? 'Active - Click to deactivate' : 'Inactive - Click to activate'">
+            <input 
+              type="checkbox" 
+              [checked]="tenant.active === 1" 
+              (change)="toggleTenantStatus(tenant, $event)"
+              [disabled]="tenant.isTogglingStatus"
+            />
+            <span class="toggle-slider"></span>
+          </label>
         </div>
         
         <div class="tenant-name">{{ tenant.name }}</div>
@@ -91,6 +106,10 @@
             <div class="detail-item">
               <span class="detail-icon">📧</span>
               <span class="detail-text">{{ tenant.primary_contact?.email || 'N/A' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="detail-icon">📞</span>
+              <span class="detail-text">{{ tenant.primary_contact?.contact_number || 'N/A' }}</span>
             </div>
             <div class="detail-item">
               <span class="detail-icon">📅</span>
@@ -129,3 +148,19 @@
   (close)="closeCreateModal()"
   (tenantCreated)="onTenantCreated()">
 </app-tenant-create-modal>
+
+<!-- Confirmation Modal for Status Change -->
+<app-confirmation-modal
+  [show]="showConfirmationModal"
+  [title]="confirmationTitle"
+  [message]="confirmationMessage"
+  [confirmButtonClass]="confirmButtonClass"
+  [showDescriptionInput]="true"
+  [descriptionLabel]="'Reason (Optional)'"
+  [descriptionPlaceholder]="'Enter a reason for this status change...'"
+  confirmText="Confirm"
+  cancelText="Cancel"
+  (confirmed)="onConfirmStatusChange($event)"
+  (cancelled)="onCancelStatusChange()"
+  (closed)="onCancelStatusChange()">
+</app-confirmation-modal>

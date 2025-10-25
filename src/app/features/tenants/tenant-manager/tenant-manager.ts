@@ -6,25 +6,36 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TenantCreateModalComponent } from '../tenant-create-modal/tenant-create-modal';
+import { ConfirmationModalComponent, ConfirmationResult } from '@shared/components';
 import { TenantService } from '@core/services/tenant.service';
+import { ToastService } from '@core/services/toast.service';
 import { Tenant } from '@core/models/tenant.model';
 import { Subject, takeUntil } from 'rxjs';
+import { environment } from '@environments/environment';
 
 @Component({
   selector: 'app-tenant-manager',
   standalone: true,
-  imports: [CommonModule, TenantCreateModalComponent],
+  imports: [CommonModule, TenantCreateModalComponent, ConfirmationModalComponent],
   templateUrl: './tenant-manager.html',
   styleUrls: ['./tenant-manager.scss']
 })
 export class TenantManagerComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
+  private toastService = inject(ToastService);
   private destroy$ = new Subject<void>();
 
   showCreateModal = false;
   tenants: Tenant[] = [];
   loading = false;
   error: string | null = null;
+
+  // Confirmation modal state
+  showConfirmationModal = false;
+  confirmationTitle = '';
+  confirmationMessage = '';
+  confirmButtonClass = '';
+  private pendingStatusChange: { tenant: Tenant; newStatus: 0 | 1; checkbox: HTMLInputElement } | null = null;
 
   ngOnInit(): void {
     this.loadTenants();
@@ -176,5 +187,160 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
     }
 
     return parts.join('\n');
+  }
+
+  /**
+   * Get full URL for tenant logo
+   * Handles both absolute and relative URLs
+   */
+  getTenantLogoUrl(logoUrl: string): string {
+    if (!logoUrl) return '';
+    
+    // If it's already an absolute URL (starts with http:// or https://), return as-is
+    if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
+      return logoUrl;
+    }
+    
+    // Otherwise, construct URL from backend base URL
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    
+    // Remove leading slash from logoUrl if present to avoid double slashes
+    const cleanLogoUrl = logoUrl.startsWith('/') ? logoUrl.substring(1) : logoUrl;
+    
+    return `${baseUrl}/${cleanLogoUrl}`;
+  }
+
+  /**
+   * Handle logo image load error - fallback to default icon
+   */
+  onLogoError(event: Event): void {
+    const imgElement = event.target as HTMLImageElement;
+    // Hide the image and let the default icon show
+    if (imgElement && imgElement.parentElement) {
+      imgElement.style.display = 'none';
+      
+      // Create and insert default icon if not already present
+      const parent = imgElement.parentElement;
+      if (!parent.querySelector('.tenant-icon-default')) {
+        const defaultIcon = document.createElement('div');
+        defaultIcon.className = 'tenant-icon-default';
+        defaultIcon.textContent = '🏢';
+        parent.appendChild(defaultIcon);
+      }
+    }
+  }
+
+  /**
+   * Toggle tenant active status - Shows confirmation modal first
+   */
+  toggleTenantStatus(tenant: Tenant, event: Event): void {
+    const checkbox = event.target as HTMLInputElement;
+    const newStatus = checkbox.checked ? 1 : 0;
+    
+    // Prevent multiple simultaneous toggles
+    if (tenant.isTogglingStatus) {
+      checkbox.checked = tenant.active === 1;
+      return;
+    }
+
+    // Store pending change
+    this.pendingStatusChange = { tenant, newStatus, checkbox };
+
+    // Configure confirmation modal based on action
+    if (newStatus === 1) {
+      this.confirmationTitle = 'Activate Tenant';
+      this.confirmationMessage = `Are you sure you want to activate "${tenant.name}"? This will enable all services for this tenant.`;
+      this.confirmButtonClass = 'btn-success';
+    } else {
+      this.confirmationTitle = 'Deactivate Tenant';
+      this.confirmationMessage = `Are you sure you want to deactivate "${tenant.name}"? This will disable all services for this tenant.`;
+      this.confirmButtonClass = 'btn-danger';
+    }
+
+    // Show confirmation modal
+    this.showConfirmationModal = true;
+  }
+
+  /**
+   * Handle confirmation modal result
+   */
+  onConfirmStatusChange(result: ConfirmationResult): void {
+    this.showConfirmationModal = false;
+
+    if (!result.confirmed || !this.pendingStatusChange) {
+      // User cancelled - revert checkbox
+      if (this.pendingStatusChange) {
+        this.pendingStatusChange.checkbox.checked = this.pendingStatusChange.tenant.active === 1;
+      }
+      this.pendingStatusChange = null;
+      return;
+    }
+
+    const { tenant, newStatus, checkbox } = this.pendingStatusChange;
+    const statusText = newStatus === 1 ? 'activated' : 'deactivated';
+    const description = result.description;
+
+    // Set loading state
+    tenant.isTogglingStatus = true;
+
+    this.tenantService.updateTenantStatus(tenant.id, newStatus, description)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            // Update local tenant object
+            tenant.active = newStatus;
+            
+            // Show success toast
+            this.toastService.success(
+              `${tenant.name} has been ${statusText} successfully`,
+              'Status Updated'
+            );
+            
+            console.log(`Tenant ${tenant.name} status updated to ${statusText}`, {
+              description: description || 'No description provided'
+            });
+          } else {
+            // Revert checkbox on failure
+            checkbox.checked = tenant.active === 1;
+            
+            // Show error toast
+            this.toastService.error(
+              response.message || 'Failed to update tenant status',
+              'Update Failed'
+            );
+            
+            this.error = response.message || 'Failed to update tenant status';
+          }
+          tenant.isTogglingStatus = false;
+          this.pendingStatusChange = null;
+        },
+        error: (err) => {
+          // Revert checkbox on error
+          checkbox.checked = tenant.active === 1;
+          
+          // Show error toast
+          const errorMessage = err.error?.message || 'Failed to update tenant status. Please try again.';
+          this.toastService.error(errorMessage, 'Error');
+          
+          this.error = errorMessage;
+          tenant.isTogglingStatus = false;
+          this.pendingStatusChange = null;
+          console.error('Error updating tenant status:', err);
+        }
+      });
+  }
+
+  /**
+   * Handle confirmation modal cancellation
+   */
+  onCancelStatusChange(): void {
+    this.showConfirmationModal = false;
+    
+    // Revert checkbox
+    if (this.pendingStatusChange) {
+      this.pendingStatusChange.checkbox.checked = this.pendingStatusChange.tenant.active === 1;
+      this.pendingStatusChange = null;
+    }
   }
 }

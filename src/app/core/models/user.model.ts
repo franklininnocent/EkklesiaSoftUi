@@ -12,6 +12,8 @@ export interface User {
   user_type: 1 | 2 | null;  // 1 = primary_contact, 2 = secondary_contact
   tenant_id?: number | null;
   role_id?: number | null;
+  role_name?: string | null;  // Role name from backend (e.g., 'SuperAdmin', 'EkklesiaAdmin', 'Administrator')
+  role_level?: number | null; // Role level from backend
   active: 0 | 1;
   email_verified_at?: string | null;
   created_at: string;
@@ -20,7 +22,7 @@ export interface User {
   
   // Relations
   addresses?: Address[];
-  role?: UserRole;
+  role?: any; // Full role object
   permissions?: string[];
   tenant?: any;
 }

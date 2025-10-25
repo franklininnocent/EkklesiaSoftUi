@@ -48,6 +48,10 @@
   &:active {
     transform: translateY(-1px);
   }
+
+  &.hidden {
+    display: none;
+  }
 }
 
 .section-icon {

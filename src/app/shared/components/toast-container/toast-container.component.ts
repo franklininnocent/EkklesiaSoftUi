@@ -18,11 +18,11 @@ import { Observable } from 'rxjs';
   animations: [
     trigger('slideIn', [
       transition(':enter', [
-        style({ transform: 'translateX(120%)', opacity: 0 }),
-        animate('300ms cubic-bezier(0.4, 0, 0.2, 1)', style({ transform: 'translateX(0)', opacity: 1 }))
+        style({ transform: 'translateX(100%)', opacity: 0 }),
+        animate('400ms ease-out', style({ transform: 'translateX(0)', opacity: 1 }))
       ]),
       transition(':leave', [
-        animate('200ms cubic-bezier(0.4, 0, 1, 1)', style({ transform: 'translateX(120%)', opacity: 0 }))
+        animate('320ms ease-in', style({ transform: 'translateX(100%)', opacity: 0 }))
       ])
     ])
   ]
