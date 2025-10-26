@@ -120,5 +120,92 @@ export class AuthService {
   get currentUserValue(): User | null {
     return this.currentUserSubject.value;
   }
+
+  /**
+   * Check if the current user has a specific permission.
+   * 
+   * @param permission Permission name (e.g., 'users.create', 'roles.update')
+   * @returns True if user has the permission, false otherwise
+   */
+  hasPermission(permission: string): boolean {
+    const user = this.currentUserValue;
+    if (!user || !user.permissions) {
+      return false;
+    }
+    return user.permissions.some(p => p.name === permission);
+  }
+
+  /**
+   * Check if the current user has any of the given permissions.
+   * 
+   * @param permissions Array of permission names
+   * @returns True if user has at least one permission, false otherwise
+   */
+  hasAnyPermission(permissions: string[]): boolean {
+    const user = this.currentUserValue;
+    if (!user || !user.permissions) {
+      return false;
+    }
+    return permissions.some(permission => 
+      user.permissions!.some(p => p.name === permission)
+    );
+  }
+
+  /**
+   * Check if the current user has all of the given permissions.
+   * 
+   * @param permissions Array of permission names
+   * @returns True if user has all permissions, false otherwise
+   */
+  hasAllPermissions(permissions: string[]): boolean {
+    const user = this.currentUserValue;
+    if (!user || !user.permissions) {
+      return false;
+    }
+    return permissions.every(permission => 
+      user.permissions!.some(p => p.name === permission)
+    );
+  }
+
+  /**
+   * Check if the current user has a specific role.
+   * 
+   * @param roleName Role name (e.g., 'Administrator', 'Manager')
+   * @returns True if user has the role, false otherwise
+   */
+  hasRole(roleName: string): boolean {
+    const user = this.currentUserValue;
+    if (!user || !user.roles) {
+      return false;
+    }
+    return user.roles.some(r => r.name === roleName);
+  }
+
+  /**
+   * Check if the current user is a Super Admin.
+   * 
+   * @returns True if user is Super Admin, false otherwise
+   */
+  isSuperAdmin(): boolean {
+    return this.hasRole('Super Admin');
+  }
+
+  /**
+   * Check if the current user is an Ekklesia Admin.
+   * 
+   * @returns True if user is Ekklesia Admin, false otherwise
+   */
+  isEkklesiaAdmin(): boolean {
+    return this.hasRole('Ekklesia Admin');
+  }
+
+  /**
+   * Check if the current user is a Tenant Administrator.
+   * 
+   * @returns True if user is a Tenant Administrator, false otherwise
+   */
+  isTenantAdmin(): boolean {
+    return this.hasRole('Administrator');
+  }
 }
 

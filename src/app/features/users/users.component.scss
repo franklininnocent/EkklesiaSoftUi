@@ -135,9 +135,38 @@
   }
 }
 
+// Primary Admin Badge
+.badge-primary-admin {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin-left: 0.5rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  cursor: help;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 3px 6px rgba(102, 126, 234, 0.4);
+  }
+}
+
 .actions {
   display: flex;
   gap: var(--spacing-sm);
+  align-items: center;
+  min-height: 44px; // Maintain consistent row height
+}
+
+.no-actions {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 0.5rem 0;
 }
 
 .action-btn {

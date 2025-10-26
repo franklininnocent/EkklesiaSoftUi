@@ -35,6 +35,17 @@
 
     <!-- Modal Body -->
     <div class="modal-body">
+      <!-- Self-Edit Restriction Warning -->
+      <div *ngIf="isEditingSelf" class="alert alert-warning">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+        </svg>
+        <div>
+          <strong>Viewing Your Own Account</strong>
+          <p>You cannot edit your own account details. Please contact your administrator if you need to make changes to your name, email, contact number, roles, or account status.</p>
+        </div>
+      </div>
+
       <!-- Error Alert -->
       <div *ngIf="errorMessage" class="alert alert-error">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -62,6 +73,7 @@
                 (blur)="markFieldAsTouched('name')"
                 (input)="validateField('name')"
                 [class.input-error]="hasError('name')"
+                [disabled]="isEditingSelf"
                 placeholder="Enter full name"
                 required
               />
@@ -79,6 +91,7 @@
                 (blur)="markFieldAsTouched('email')"
                 (input)="validateField('email')"
                 [class.input-error]="hasError('email')"
+                [disabled]="isEditingSelf"
                 placeholder="user@example.com"
                 required
               />
@@ -95,6 +108,7 @@
                 name="contact_number"
                 class="form-input"
                 [(ngModel)]="formData.contact_number"
+                [disabled]="isEditingSelf"
                 placeholder="+1 (555) 000-0000"
               />
             </div>
@@ -106,6 +120,7 @@
                 name="user_type"
                 class="form-select"
                 [(ngModel)]="formData.user_type"
+                [disabled]="isEditingSelf"
               >
                 <option [value]="1">Primary Contact</option>
                 <option [value]="2">Secondary Contact</option>
@@ -192,11 +207,13 @@
               *ngFor="let role of availableRoles"
               class="role-checkbox-card"
               [class.selected]="isRoleSelected(role.id)"
+              [class.disabled]="isEditingSelf"
             >
               <input
                 type="checkbox"
                 [checked]="isRoleSelected(role.id)"
                 (change)="toggleRole(role.id)"
+                [disabled]="isEditingSelf"
                 class="role-checkbox"
               />
               <div class="role-card-content">
@@ -230,50 +247,20 @@
           </div>
 
           <span *ngIf="hasError('role_ids')" class="error-message">{{ getError('role_ids') }}</span>
-
-          <!-- Permissions Preview -->
-          <div class="permissions-preview" *ngIf="getRoleCount() > 0">
-            <button
-              type="button"
-              class="permissions-toggle"
-              (click)="togglePermissionsPreview()"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-              <span>
-                {{ showPermissionsPreview ? 'Hide' : 'Preview' }} Aggregated Permissions
-                ({{ getPermissionCount() }})
-              </span>
-              <svg class="chevron" [class.rotated]="showPermissionsPreview" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            <div class="permissions-list" *ngIf="showPermissionsPreview">
-              <div *ngFor="let permission of aggregatedPermissions" class="permission-item">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="permission-name">{{ permission.name }}</span>
-                <span class="permission-description" *ngIf="permission.description">{{ permission.description }}</span>
-              </div>
-            </div>
-          </div>
         </div>
 
         <!-- Status Section -->
         <div class="form-section">
           <h3 class="section-title">Status</h3>
           <div class="form-group">
-            <label class="toggle-label">
+            <label class="toggle-label" [class.disabled]="isEditingSelf">
               <input
                 type="checkbox"
                 class="toggle-input"
                 [(ngModel)]="formData.active"
                 [ngModelOptions]="{standalone: true}"
                 [value]="formData.active === 1"
+                [disabled]="isEditingSelf"
                 (change)="formData.active = formData.active === 1 ? 0 : 1"
               />
               <span class="toggle-slider"></span>
@@ -293,27 +280,33 @@
     <div class="modal-footer">
       <button
         type="button"
-        class="btn btn-secondary"
+        class="btn-cancel"
         (click)="closeModal()"
         [disabled]="isSubmitting"
+        title="Cancel and close"
       >
-        Cancel
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span>Cancel</span>
       </button>
       <button
         type="submit"
-        class="btn btn-primary"
+        class="btn-save"
         (click)="onSubmit()"
         [disabled]="isSubmitting"
+        [title]="isEditMode ? 'Update user' : 'Create user'"
       >
         <span *ngIf="!isSubmitting">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
           </svg>
-          <span>{{ isEditMode ? 'Update User' : 'Create User' }}</span>
+          <span>Submit</span>
         </span>
         <span *ngIf="isSubmitting" class="btn-loading">
           <div class="spinner-small"></div>
-          <span>{{ isEditMode ? 'Updating...' : 'Creating...' }}</span>
+          <span>Submitting...</span>
         </span>
       </button>
     </div>

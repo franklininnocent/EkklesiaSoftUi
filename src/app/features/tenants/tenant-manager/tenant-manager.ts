@@ -9,6 +9,7 @@ import { TenantCreateModalComponent } from '../tenant-create-modal/tenant-create
 import { ConfirmationModalComponent, ConfirmationResult, PaginationComponent } from '@shared/components';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { Tenant } from '@core/models/tenant.model';
 import { Subject, takeUntil } from 'rxjs';
 import { environment } from '@environments/environment';
@@ -23,6 +24,7 @@ import { environment } from '@environments/environment';
 export class TenantManagerComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
+  public authService = inject(AuthService);  // Made public for template access
   private destroy$ = new Subject<void>();
 
   showCreateModal = false;

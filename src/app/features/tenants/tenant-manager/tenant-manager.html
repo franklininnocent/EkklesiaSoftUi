@@ -5,9 +5,19 @@
       <h1>Tenants</h1>
       <p>Manage all tenants and organizations in your system</p>
     </div>
-    <button class="btn-create" (click)="openCreateModal()" [disabled]="loading" title="Create New Tenant">
-      <span class="btn-icon">+</span>
-      <span class="btn-tooltip">Create New Tenant</span>
+    <button 
+      *ngIf="authService.hasPermission('tenants.create')"
+      class="btn-create" 
+      (click)="openCreateModal()" 
+      [disabled]="loading" 
+      type="button" 
+      title="Create new tenant">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="8" x2="12" y2="16"></line>
+        <line x1="8" y1="12" x2="16" y2="12"></line>
+      </svg>
+      <span>Create Tenant</span>
     </button>
   </div>
 
@@ -24,8 +34,12 @@
     <div class="error-icon">⚠️</div>
     <h3>Failed to Load Tenants</h3>
     <p>{{ error }}</p>
-    <button class="btn-retry" (click)="retryLoad()">
-      <span>🔄</span>
+    <button class="btn-refresh" (click)="retryLoad()" type="button" title="Retry loading tenants">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
       <span>Retry</span>
     </button>
   </div>
@@ -71,7 +85,10 @@
             />
             <div *ngIf="!tenant.logo_full_url && !tenant.logo_url" class="tenant-icon-default">🏢</div>
           </div>
-          <label class="toggle-switch" [attr.title]="tenant.active ? 'Active - Click to deactivate' : 'Inactive - Click to activate'">
+          <label 
+            *ngIf="authService.hasPermission('tenants.update')"
+            class="toggle-switch" 
+            [attr.title]="tenant.active ? 'Active - Click to deactivate' : 'Inactive - Click to activate'">
             <input 
               type="checkbox" 
               [checked]="tenant.active === 1" 
@@ -123,8 +140,33 @@
         </div>
         
         <div class="tenant-actions">
-          <button class="btn-action btn-primary">Manage</button>
-          <button class="btn-action btn-secondary">Settings</button>
+          <button 
+            *ngIf="authService.hasPermission('tenants.update')"
+            class="btn-edit" 
+            type="button" 
+            title="Manage tenant">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+            </svg>
+            <span>Manage</span>
+          </button>
+          <button 
+            *ngIf="authService.hasPermission('tenants.update')"
+            class="btn-settings" 
+            type="button" 
+            title="Tenant settings">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+            <span>Settings</span>
+          </button>
+          <span 
+            *ngIf="!authService.hasPermission('tenants.update')" 
+            class="no-actions">
+            No actions available
+          </span>
         </div>
       </div>
     </div>
@@ -145,8 +187,18 @@
       <div class="empty-icon">🏢</div>
       <h3>No Tenants Found</h3>
       <p>Get started by creating your first tenant organization</p>
-      <button class="btn-primary-large" (click)="openCreateModal()">
-        <span class="btn-icon-large">+</span>
+      <button 
+        *ngIf="authService.hasPermission('tenants.create')"
+        class="btn-create" 
+        (click)="openCreateModal()" 
+        type="button" 
+        title="Create your first tenant" 
+        style="min-width: auto; padding: 0.75rem 1.5rem;">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="16"></line>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
         <span>Create Your First Tenant</span>
       </button>
     </div>

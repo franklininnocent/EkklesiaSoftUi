@@ -1,22 +1,26 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Role, Permission } from '@core/models';
 import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { CardComponent, PaginationComponent, FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { RoleFormModalComponent } from './role-form-modal/role-form-modal.component';
+import { AssignPermissionsModalComponent } from './assign-permissions-modal/assign-permissions-modal.component';
 
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent],
+  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss'
 })
 export class RolesPermissionsComponent implements OnInit {
+  @ViewChild('assignModal') assignModalRef!: AssignPermissionsModalComponent;
+  
   activeTab: 'roles' | 'permissions' | 'assign' = 'roles';
   
   // Filter Panel State
@@ -91,11 +95,13 @@ export class RolesPermissionsComponent implements OnInit {
   
   selectedRole: Role | null = null;
   selectedPermission: Permission | null = null;
+  selectedRoleForAssignment: Role | null = null; // For Assign Permissions tab
 
   constructor(
     private rolesService: RolesService,
     private permissionsService: PermissionsService,
     private toastService: ToastService,
+    public authService: AuthService,  // Made public for template access
     public cdr: ChangeDetectorRef  // Changed to public for template access
   ) {}
 
@@ -425,6 +431,28 @@ export class RolesPermissionsComponent implements OnInit {
   closeAssignPermissionsModal(): void {
     this.showAssignPermissionsModal = false;
     this.selectedRole = null;
+  }
+
+  onPermissionsAssigned(): void {
+    this.loadRoles(); // Reload roles to reflect changes
+    this.toastService.success('Permissions assigned successfully', 'Success');
+  }
+
+  // Assign Permissions Tab Methods
+  selectRoleForAssignment(role: Role): void {
+    if (role.active) {
+      this.selectedRoleForAssignment = role;
+    }
+  }
+
+  clearRoleSelection(): void {
+    this.selectedRoleForAssignment = null;
+  }
+
+  onPermissionsAssignedInTab(): void {
+    this.loadRoles(); // Reload roles to reflect changes
+    this.selectedRoleForAssignment = null; // Clear selection
+    this.toastService.success('Permissions assigned successfully', 'Success');
   }
 
   // Filters

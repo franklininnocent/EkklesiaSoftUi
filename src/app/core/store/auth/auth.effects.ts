@@ -5,6 +5,7 @@ import { of } from 'rxjs';
 import { map, catchError, switchMap, tap } from 'rxjs/operators';
 import { AuthService } from '@core/services/auth.service';
 import * as AuthActions from './auth.actions';
+import * as TenantActions from '../tenant/tenant.actions';
 
 @Injectable()
 export class AuthEffects {
@@ -98,10 +99,31 @@ export class AuthEffects {
       ofType(AuthActions.loadUser),
       switchMap(() =>
         this.authService.getCurrentUser().pipe(
+          tap(user => {
+            console.log('👤 User loaded:', user);
+            // Set tenant in store if user has tenant data
+            if (user.tenant) {
+              console.log('🏢 Setting current tenant:', user.tenant);
+            }
+          }),
           map(user => AuthActions.loadUserSuccess({ user })),
           catchError(error => of(AuthActions.loadUserFailure({ error: error.message })))
         )
       )
+    )
+  );
+
+  loadUserSuccess$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.loadUserSuccess),
+      switchMap(({ user }) => {
+        // If user has tenant data, dispatch setCurrentTenant action
+        if (user.tenant) {
+          console.log('🏢 Dispatching setCurrentTenant:', user.tenant);
+          return of(TenantActions.setCurrentTenant({ tenant: user.tenant }));
+        }
+        return of(); // Return empty observable if no tenant
+      })
     )
   );
 

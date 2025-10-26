@@ -15,7 +15,6 @@ import { ToastService } from '@core/services/toast.service';
  * Features:
  * - Create and Edit modes
  * - Multi-role selection with checkboxes
- * - Permission preview (aggregated from selected roles)
  * - Form validation
  * - Password complexity requirements
  * - Responsive design
@@ -44,6 +43,8 @@ export class UserFormModalComponent implements OnInit, OnChanges {
   isSubmitting = false;
   errorMessage: string | null = null;
   isEditMode = false;
+  isEditingSelf = false;  // True when editing own account
+  editRestrictionReason: string | null = null;  // Reason why editing is restricted
 
   // Form data
   formData = {
@@ -67,10 +68,6 @@ export class UserFormModalComponent implements OnInit, OnChanges {
   rolesError: string | null = null;
   selectedRoleIds: Set<number> = new Set();
 
-  // Permissions preview
-  aggregatedPermissions: Permission[] = [];
-  showPermissionsPreview = false;
-
   // Configuration
   passwordMinLength = 8;
   passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
@@ -83,6 +80,16 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     // When the modal is shown or user changes, reinitialize
     if (changes['show'] && this.show) {
       this.isEditMode = !!this.user;
+      
+      // Check if editing own account
+      if (this.isEditMode && this.user) {
+        this.isEditingSelf = this.user.is_self === true;
+        this.editRestrictionReason = this.user.edit_restriction_reason || null;
+      } else {
+        this.isEditingSelf = false;
+        this.editRestrictionReason = null;
+      }
+      
       this.initializeForm();
       
       if (this.availableRoles.length === 0) {
@@ -102,6 +109,8 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     
     if (changes['user'] && this.user) {
       this.isEditMode = true;
+      this.isEditingSelf = this.user.is_self === true;
+      this.editRestrictionReason = this.user.edit_restriction_reason || null;
       this.initializeForm();
       if (this.show) {
         this.loadUserData();
@@ -130,8 +139,6 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     } else {
       this.resetForm();
     }
-    
-    this.updateAggregatedPermissions();
   }
 
   private loadUserData(): void {
@@ -153,8 +160,6 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     if (this.user.roles) {
       this.user.roles.forEach(role => this.selectedRoleIds.add(role.id));
     }
-    
-    this.updateAggregatedPermissions();
   }
 
   private loadRoles(): void {
@@ -188,7 +193,6 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     }
     
     this.formData.role_ids = Array.from(this.selectedRoleIds);
-    this.updateAggregatedPermissions();
     this.validateField('role_ids');
   }
 
@@ -196,25 +200,6 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     return this.selectedRoleIds.has(roleId);
   }
 
-  private updateAggregatedPermissions(): void {
-    const permissionsMap = new Map<number, Permission>();
-    
-    this.availableRoles
-      .filter(role => this.selectedRoleIds.has(role.id))
-      .forEach(role => {
-        if (role.permissions) {
-          role.permissions.forEach(permission => {
-            permissionsMap.set(permission.id, permission);
-          });
-        }
-      });
-    
-    this.aggregatedPermissions = Array.from(permissionsMap.values());
-  }
-
-  togglePermissionsPreview(): void {
-    this.showPermissionsPreview = !this.showPermissionsPreview;
-  }
 
   // Form validation
   markFieldAsTouched(fieldName: string): void {
@@ -418,20 +403,14 @@ export class UserFormModalComponent implements OnInit, OnChanges {
       active: 1
     };
     this.selectedRoleIds.clear();
-    this.aggregatedPermissions = [];
     this.validationErrors = {};
     this.touchedFields.clear();
     this.errorMessage = null;
-    this.showPermissionsPreview = false;
   }
 
   // Utility methods
   getRoleCount(): number {
     return this.selectedRoleIds.size;
-  }
-
-  getPermissionCount(): number {
-    return this.aggregatedPermissions.length;
   }
 }
 

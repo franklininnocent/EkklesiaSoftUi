@@ -81,12 +81,29 @@
         </svg>
         Module
       </label>
-      <input
-        type="text"
-        class="filter-input"
-        [(ngModel)]="moduleValue"
-        placeholder="Filter by module..."
-      />
+      <select class="filter-select" [(ngModel)]="moduleValue">
+        <option *ngFor="let option of moduleOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
+
+    <!-- Role Filter -->
+    <div class="filter-group" *ngIf="config.showRoleFilter">
+      <label class="filter-label">
+        <svg class="label-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        Role
+      </label>
+      <select class="filter-select" [(ngModel)]="roleValue">
+        <option *ngFor="let option of roleOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
     </div>
 
     <!-- Active Filters Badge -->
@@ -102,18 +119,18 @@
 
   <!-- Panel Footer -->
   <div class="panel-footer">
-    <button class="btn-reset" (click)="onReset()" type="button" [disabled]="!hasActiveFilters()">
-      <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <button class="btn-cancel" (click)="onReset()" type="button" [disabled]="!hasActiveFilters()" title="Reset all filters">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="1 4 1 10 7 10"></polyline>
         <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
       </svg>
-      Reset Filters
+      <span>Reset Filters</span>
     </button>
-    <button class="btn-apply" (click)="onApply()" type="button">
-      <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <button class="btn-save" (click)="onApply()" type="button" title="Apply selected filters">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>
-      Apply Filters
+      <span>Apply Filters</span>
     </button>
   </div>
 </div>

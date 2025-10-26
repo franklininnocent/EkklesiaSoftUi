@@ -411,6 +411,13 @@
   gap: var(--spacing-sm);
   padding-top: var(--spacing-sm);
   margin-top: auto;
+  
+  .no-actions {
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    font-style: italic;
+    padding: 0.5rem 0;
+  }
 }
 
 .btn-action {

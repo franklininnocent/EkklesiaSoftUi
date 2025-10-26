@@ -1,7 +1,11 @@
 /* Professional Theme System - Load in Order (Modern Sass @use syntax) */
+@use "./color-system";  /* Enterprise Color System - Load First */
 @use "./variables";
 @use "./typography";
 @use "./professional-theme";
+
+/* Global 3D Button System - Icon-Only with Tooltips */
+@use "./styles/button-system";
 
 /* ng-select styles - CSS import remains as @import */
 @import "@ng-select/ng-select/themes/default.theme.css";

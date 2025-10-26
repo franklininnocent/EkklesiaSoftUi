@@ -8,9 +8,12 @@ export interface FilterPanelConfig {
   showStatusFilter?: boolean;
   showTypeFilter?: boolean;
   showModuleFilter?: boolean;
+  showRoleFilter?: boolean;
   searchPlaceholder?: string;
   statusOptions?: { value: string; label: string }[];
   typeOptions?: { value: string; label: string }[];
+  roleOptions?: { value: string; label: string }[];
+  moduleOptions?: { value: string; label: string }[];
 }
 
 export interface FilterValues {
@@ -18,6 +21,7 @@ export interface FilterValues {
   status?: string;
   type?: string;
   module?: string;
+  role?: string;
 }
 
 @Component({
@@ -48,6 +52,7 @@ export class FilterPanelComponent implements OnInit {
   statusValue = 'all';
   typeValue = 'all';
   moduleValue = '';
+  roleValue = 'all';
 
   ngOnInit(): void {
     // Initialize with provided values
@@ -56,6 +61,7 @@ export class FilterPanelComponent implements OnInit {
       this.statusValue = this.initialValues.status || 'all';
       this.typeValue = this.initialValues.type || 'all';
       this.moduleValue = this.initialValues.module || '';
+      this.roleValue = this.initialValues.role || 'all';
     }
   }
 
@@ -68,7 +74,8 @@ export class FilterPanelComponent implements OnInit {
       search: this.searchValue,
       status: this.statusValue,
       type: this.typeValue,
-      module: this.moduleValue
+      module: this.moduleValue,
+      role: this.roleValue
     };
     this.apply.emit(filters);
     this.close.emit();
@@ -79,6 +86,7 @@ export class FilterPanelComponent implements OnInit {
     this.statusValue = 'all';
     this.typeValue = 'all';
     this.moduleValue = '';
+    this.roleValue = 'all';
     this.reset.emit();
     this.close.emit();
   }
@@ -87,7 +95,8 @@ export class FilterPanelComponent implements OnInit {
     return this.searchValue !== '' ||
            this.statusValue !== 'all' ||
            this.typeValue !== 'all' ||
-           this.moduleValue !== '';
+           this.moduleValue !== '' ||
+           this.roleValue !== 'all';
   }
 
   get statusOptions() {
@@ -103,6 +112,18 @@ export class FilterPanelComponent implements OnInit {
       { value: 'all', label: 'All Types' },
       { value: 'system', label: 'System' },
       { value: 'custom', label: 'Custom' }
+    ];
+  }
+
+  get roleOptions() {
+    return this.config.roleOptions || [
+      { value: 'all', label: 'All Roles' }
+    ];
+  }
+
+  get moduleOptions() {
+    return this.config.moduleOptions || [
+      { value: '', label: 'All Modules' }
     ];
   }
 }

@@ -1,6 +1,6 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CardComponent, ButtonComponent, PaginationComponent } from '@shared/components';
+import { CardComponent, PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { UsersService } from '@core/services/users.service';
 import { User } from '@core/models';
@@ -9,7 +9,7 @@ import { UserFormModalComponent } from './user-form-modal/user-form-modal.compon
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, CardComponent, ButtonComponent, PaginationComponent, SortableDirective, UserFormModalComponent],
+  imports: [CommonModule, CardComponent, PaginationComponent, SortableDirective, UserFormModalComponent],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss'
 })
@@ -94,6 +94,12 @@ export class UsersComponent implements OnInit {
 
   toggleUserStatus(user: User): void {
     const newStatus = user.active === 1 ? 0 : 1;
+    
+    // Prevent deactivation of primary admin
+    if (user.is_primary_admin && newStatus === 0) {
+      alert('The primary admin account cannot be deactivated. This account is essential for maintaining tenant administrative continuity.');
+      return;
+    }
     
     this.usersService.updateStatus(user.id, newStatus).subscribe({
       next: (response) => {

@@ -1,0 +1,481 @@
+// ============================================================================
+// GLOBAL 3D BUTTON SYSTEM - Icon-Only with Tooltips
+// ============================================================================
+// This file contains reusable button styles for the entire application
+// All buttons feature 3D depth, unique colors, glossy finish, and icon-only display
+
+// Base 3D button mixin
+@mixin btn-3d-base {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  padding: 0.5rem;  // Reduced from 0.625rem for more compact appearance
+  min-width: 36px;  // Reduced from 44px for table actions
+  min-height: 36px;
+  border: none;
+  border-radius: 8px;  // Slightly reduced from 10px for refined look
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+  color: white;
+
+  // 3D depth effect
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+  // Glossy overlay
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, rgba(255, 255, 255, 0) 100%);
+    border-radius: 8px 8px 0 0;  // Updated to match new border-radius
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  svg, .btn-icon {
+    width: 14px;  // Reduced from 18px for cleaner table appearance
+    height: 14px;
+    position: relative;
+    z-index: 1;
+    filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+    transition: transform 0.3s ease;
+  }
+
+  // Text label visibility controlled per context below
+  // By default, text labels are visible for modal/form buttons
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.05);
+    box-shadow: 
+      0 2px 4px rgba(0, 0, 0, 0.08),
+      0 8px 16px rgba(0, 0, 0, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
+    svg, .btn-icon {
+      transform: scale(1.1);
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0) scale(0.98);
+    box-shadow: 
+      0 1px 2px rgba(0, 0, 0, 0.1),
+      0 2px 4px rgba(0, 0, 0, 0.12),
+      inset 0 1px 2px rgba(0, 0, 0, 0.15);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  }
+}
+
+// ============================================================================
+// NAVIGATION BUTTONS
+// ============================================================================
+
+// Back Button - Cyan/Teal (Navigation)
+.btn-back, .btn-nav-back {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
+
+  svg, .btn-icon {
+    width: 16px;  // Reduced from 20px for consistency
+    height: 16px;
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
+    svg, .btn-icon {
+      transform: translateX(-3px) scale(1.1);
+    }
+  }
+}
+
+// ============================================================================
+// FILTER & SEARCH BUTTONS
+// ============================================================================
+
+// Filter Button - Blue with Amber Icon
+.btn-filter, .btn-filter-inline {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+
+  svg, .btn-icon {
+    color: #fbbf24;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 8px rgba(251, 191, 36, 0.4));
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    svg, .btn-icon {
+      color: #fde047;
+      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25)) drop-shadow(0 0 12px rgba(253, 224, 71, 0.6));
+      transform: scale(1.15) rotate(5deg);
+    }
+  }
+
+  &.active {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    svg, .btn-icon {
+      color: #fde047;
+      animation: filterIconPulse 1.5s ease-in-out infinite;
+    }
+  }
+
+  .filter-badge {
+    display: block;
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    width: 8px;
+    height: 8px;
+    background: linear-gradient(135deg, #fde047 0%, #fbbf24 100%);
+    border-radius: 50%;
+    border: 2px solid white;
+    box-shadow: 0 2px 4px rgba(251, 191, 36, 0.5);
+    z-index: 2;
+    animation: pulse 2s ease-in-out infinite;
+  }
+}
+
+@keyframes filterIconPulse {
+  0%, 100% {
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 16px rgba(253, 224, 71, 0.8));
+  }
+  50% {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 24px rgba(253, 224, 71, 1));
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
+}
+
+// ============================================================================
+// ACTION BUTTONS
+// ============================================================================
+
+// Select All - Green (Success/Positive)
+.btn-select-all, .btn-action-inline[title*="Select all"] {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  }
+}
+
+// Deselect All - Orange/Amber (Caution/Clear)
+.btn-deselect-all, .btn-action-inline[title*="Deselect all"] {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  }
+}
+
+// Expand All - Purple/Violet (Expansion)
+.btn-expand-all, .btn-action-inline[title*="Expand all"] {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+  }
+}
+
+// Collapse All - Slate/Gray (Reduction)
+.btn-collapse-all, .btn-action-inline[title*="Collapse all"] {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+  }
+}
+
+// ============================================================================
+// CRUD ACTION BUTTONS
+// ============================================================================
+
+// Create/Add - Pink/Rose (Primary Action)
+.btn-create, .btn-add, .btn-create-inline {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+  box-shadow: 
+    0 1px 2px rgba(236, 72, 153, 0.2),
+    0 4px 8px rgba(236, 72, 153, 0.15),
+    0 8px 16px rgba(236, 72, 153, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+
+  // Shimmer effect for primary action
+  &::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      45deg,
+      transparent 30%,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent 70%
+    );
+    animation: shimmer 3s infinite;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  @keyframes shimmer {
+    0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
+    100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
+  }
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #be185d 0%, #9f1239 100%);
+    box-shadow: 
+      0 2px 4px rgba(236, 72, 153, 0.25),
+      0 8px 16px rgba(236, 72, 153, 0.2),
+      0 12px 24px rgba(236, 72, 153, 0.15),
+      inset 0 1px 0 rgba(255, 255, 255, 0.4);
+
+    svg, .btn-icon {
+      transform: scale(1.1) rotate(90deg);
+    }
+  }
+}
+
+// Edit - Blue/Cyan (Modification)
+.btn-edit, .btn-modify {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  }
+}
+
+// Delete/Remove - Red (Danger/Destructive)
+.btn-delete, .btn-remove {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+  }
+}
+
+// Save - Green (Confirmation)
+.btn-save, .btn-confirm {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  }
+}
+
+// Cancel - Gray (Neutral)
+.btn-cancel, .btn-close {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
+  }
+}
+
+// ============================================================================
+// STATUS TOGGLE BUTTONS
+// ============================================================================
+
+// Activate - Green
+.btn-activate {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  }
+}
+
+// Deactivate - Orange
+.btn-deactivate {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  }
+}
+
+// ============================================================================
+// SPECIAL PURPOSE BUTTONS
+// ============================================================================
+
+// Refresh/Reload - Indigo
+.btn-refresh, .btn-reload {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
+    svg, .btn-icon {
+      transform: rotate(180deg) scale(1.1);
+    }
+  }
+}
+
+// Download/Export - Teal
+.btn-download, .btn-export {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #14b8a6 0%, #0d9488 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  }
+}
+
+// Upload/Import - Purple
+.btn-upload, .btn-import {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #9333ea 0%, #7e22ce 100%);
+  }
+}
+
+// Search - Blue
+.btn-search {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  }
+}
+
+// Settings/Config - Gray
+.btn-settings, .btn-config {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    svg, .btn-icon {
+      transform: rotate(90deg) scale(1.1);
+    }
+  }
+}
+
+// Info/Help - Sky Blue
+.btn-info, .btn-help {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  }
+}
+
+// Warning - Yellow/Orange
+.btn-warning {
+  @include btn-3d-base;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+  }
+}
+
+// ============================================================================
+// TEXT LABEL VISIBILITY
+// ============================================================================
+
+// Hide text labels for icon-only buttons in specific contexts
+// Table action buttons - icon only
+.users-table,
+.data-table,
+.tenants-grid,
+.tenant-card {
+  .btn-edit,
+  .btn-delete,
+  .btn-activate,
+  .btn-deactivate,
+  .btn-settings,
+  .btn-manage {
+    span:not(.filter-badge):not(.btn-icon):not(.btn-loading) {
+      display: none;
+    }
+  }
+}
+
+// Inline header buttons - icon only
+.btn-action-inline,
+.btn-filter-inline,
+.btn-create-inline {
+  span:not(.filter-badge):not(.btn-icon):not(.btn-loading) {
+    display: none;
+  }
+}
+
+// Modal/form buttons - show text (default)
+.modal-footer,
+.modal-actions,
+.form-actions,
+.dialog-actions {
+  .btn-save,
+  .btn-confirm,
+  .btn-cancel,
+  .btn-close,
+  .btn-create {
+    span {
+      display: inline-flex;
+    }
+  }
+}
+
+// ============================================================================
+// RESPONSIVE DESIGN
+// ============================================================================
+
+@media (max-width: 768px) {
+  .btn-3d-base,
+  [class*="btn-"] {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 0.625rem;
+
+    svg, .btn-icon {
+      width: 16px;  // Reduced from 20px for better mobile appearance
+      height: 16px;
+    }
+  }
+  
+  // Exception for back button on mobile - slightly larger for better visibility
+  .btn-back, .btn-nav-back {
+    svg, .btn-icon {
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+

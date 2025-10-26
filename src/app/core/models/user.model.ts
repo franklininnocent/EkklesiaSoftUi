@@ -16,6 +16,7 @@ export interface User {
   email: string;
   contact_number?: string | null;
   user_type: 1 | 2 | null;  // 1 = primary_contact, 2 = secondary_contact
+  is_primary_admin?: boolean;  // Primary admin created during tenant onboarding - cannot be deleted/deactivated by tenant users
   tenant_id?: number | null;
   
   // Legacy single role support (deprecated)
@@ -28,6 +29,11 @@ export interface User {
   created_at: string;
   updated_at: string;
   deleted_at?: string | null;
+  
+  // Authorization flags (from backend)
+  can_edit?: boolean;  // Whether the current user can edit this user
+  is_self?: boolean;   // Whether this is the current user's own account
+  edit_restriction_reason?: string | null;  // Reason why user cannot edit (if can_edit is false)
   
   // Relations
   addresses?: Address[];
