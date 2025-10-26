@@ -246,6 +246,38 @@ export class TenantService {
   }
 
   /**
+   * Get church profile for the current tenant user
+   * Maps to tenant record but presented as "church profile"
+   */
+  getChurchProfile(): Observable<TenantResponse> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.get<TenantResponse>(`${this.apiUrl}/church-profile`)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Update church profile for the current tenant user
+   * Updates the tenant record with church-specific information
+   */
+  updateChurchProfile(request: Partial<Tenant>): Observable<TenantResponse> {
+    this.setLoading(true);
+    this.clearError();
+
+    const formData = this.buildFormData(request as any);
+
+    return this.http.post<TenantResponse>(`${this.apiUrl}/church-profile?_method=PUT`, formData)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
    * Build FormData from request object
    * Handles nested objects and file uploads
    */

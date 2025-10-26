@@ -40,6 +40,10 @@ export const routes: Routes = [
         path: 'tenants',
         canActivate: [tenantAdminGuard],
         loadChildren: () => import('./features/tenants/tenants.routes').then(m => m.TENANTS_ROUTES)
+      },
+      {
+        path: 'church-profile',
+        loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
       }
     ]
   },
@@ -69,6 +73,10 @@ export const routes: Routes = [
       {
         path: 'users',
         loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
+      },
+      {
+        path: 'church-profile',
+        loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
       }
     ]
   },

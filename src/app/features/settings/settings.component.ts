@@ -27,7 +27,7 @@ export class SettingsComponent implements OnInit {
     { 
       title: 'Roles & Permissions', 
       description: 'Manage user roles and permissions', 
-      icon: '🔐', 
+      icon: '🛡️', 
       route: '/settings/roles-permissions',
       requiresRoleManagement: true
     }

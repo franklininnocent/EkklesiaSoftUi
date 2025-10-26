@@ -37,6 +37,28 @@ export interface Tenant {
   primary_color: string;
   secondary_color: string;
   
+  // Church Profile Fields (for Church Profile feature)
+  denomination?: string | null;
+  founded_year?: number | null;
+  pastor_name?: string | null;
+  associate_pastors?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  website?: string | null;
+  about?: string | null;
+  vision?: string | null;
+  mission?: string | null;
+  core_values?: string | null;
+  service_times?: string | null;
+  weekly_attendance?: number | null;
+  membership_count?: number | null;
+  
+  // Social Media Links
+  social_facebook?: string | null;
+  social_twitter?: string | null;
+  social_instagram?: string | null;
+  social_youtube?: string | null;
+  
   // Audit fields
   created_by?: number | null;
   updated_by?: number | null;

@@ -1,310 +1,497 @@
-.settings {
-  max-width: 1200px;
+// ============================================================================
+// SETTINGS PAGE - Custom Professional Styling
+// ============================================================================
+
+.settings-container {
+  max-width: 1400px;
   margin: 0 auto;
-  width: 100%;
+  padding: 0;
 }
 
-.settings-header {
-  margin-top: 1.5rem; /* Consistent spacing from breadcrumb for better visual hierarchy */
-  margin-bottom: var(--spacing-xl);
+// ============================================================================
+// PAGE HEADER
+// ============================================================================
 
-  h1 {
-    font-size: 1.75rem; /* Standardized across all pages */
+.settings-header {
+  margin-bottom: 2rem;
+  
+  .settings-title {
+    font-size: 1.75rem;
     font-weight: 600;
-    margin-bottom: var(--spacing-sm);
+    color: var(--color-text-primary, #1a202c);
+    margin-bottom: 0.5rem;
     line-height: 1.2;
   }
-
-  p {
-    color: var(--text-secondary);
+  
+  .settings-subtitle {
     font-size: 1rem;
+    color: var(--color-text-secondary, #64748b);
+    margin: 0;
     line-height: 1.5;
   }
 }
 
+// ============================================================================
+// SETTINGS GRID
+// ============================================================================
+
 .settings-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
-  gap: var(--spacing-lg);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr));
+  gap: 1.5rem;
   width: 100%;
 }
 
-.setting-section {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--spacing-md);
-  min-height: auto;
-  padding: var(--spacing-lg);
-  background-color: white;
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+// ============================================================================
+// SETTING CARD
+// ============================================================================
+
+.setting-card {
+  position: relative;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   cursor: pointer;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 220px;
 
+  // Animated gradient background
+  .setting-card-gradient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(
+      135deg,
+      rgba(79, 70, 229, 0.02) 0%,
+      rgba(99, 102, 241, 0.02) 50%,
+      rgba(139, 92, 246, 0.02) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  // Top accent bar
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(
+      90deg,
+      #4f46e5 0%,
+      #6366f1 50%,
+      #8b5cf6 100%
+    );
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    z-index: 1;
+  }
+
+  // Hover state
   &:hover {
-    box-shadow: var(--shadow-md);
-    transform: translateY(-2px);
+    transform: translateY(-6px);
+    border-color: rgba(79, 70, 229, 0.2);
+    box-shadow: 
+      0 10px 30px rgba(0, 0, 0, 0.08),
+      0 4px 12px rgba(79, 70, 229, 0.1);
+
+    &::before {
+      transform: scaleX(1);
+    }
+
+    .setting-card-gradient {
+      opacity: 1;
+    }
+
+    .setting-icon-wrapper {
+      transform: scale(1.1) rotate(5deg);
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+
+      .setting-icon {
+        filter: brightness(0) invert(1);
+      }
+    }
+
+    .setting-action-btn {
+      background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(79, 70, 229, 0.3);
+
+      .arrow-icon {
+        transform: translateX(4px);
+      }
+    }
   }
 
+  // Active/click state
   &:active {
-    transform: translateY(-1px);
-  }
-
-  &.hidden {
-    display: none;
+    transform: translateY(-4px);
+    box-shadow: 
+      0 6px 20px rgba(0, 0, 0, 0.06),
+      0 2px 8px rgba(79, 70, 229, 0.08);
   }
 }
 
-.section-icon {
-  font-size: 2rem;
-  flex-shrink: 0;
-  width: 48px;
-  height: 48px;
+// ============================================================================
+// CARD HEADER
+// ============================================================================
+
+.setting-card-header {
+  position: relative;
+  padding: 1.5rem 1.5rem 1rem;
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin-top: 0.125rem;
-}
+  gap: 1rem;
+  z-index: 1;
 
-.section-content {
-  flex: 1;
-  min-width: 0;
-}
+  .setting-icon-wrapper {
+    width: 56px;
+    height: 56px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 
-.section-title {
-  font-size: 1.125rem;
-  font-weight: 600;
-  color: var(--text-primary);
-  margin-bottom: 0.25rem;
-  line-height: 1.3;
-  word-wrap: break-word;
-}
-
-.section-description {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  margin: 0;
-  line-height: 1.5;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-}
-
-.section-action {
-  padding: 0.5rem 1rem;
-  background-color: var(--primary-color);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  font-size: 0.875rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  white-space: nowrap;
-  flex-shrink: 0;
-  align-self: flex-start;
-  margin-top: 0.125rem;
-
-  &:hover {
-    background-color: var(--primary-dark);
-    transform: translateX(2px);
-    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
+    .setting-icon {
+      font-size: 28px;
+      line-height: 1;
+      transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
   }
 
-  &:active {
-    transform: translateX(1px);
-  }
-}
-
-// Responsive adjustments
-
-/* Tablet breakpoint */
-@media (max-width: 1024px) and (min-width: 769px) {
-  .settings-header h1 {
-    font-size: 1.75rem; /* Standardized across all pages */
+  .setting-title {
+    font-size: 1.125rem;
     font-weight: 600;
+    color: var(--color-text-primary, #1a202c);
+    margin: 0;
+    line-height: 1.3;
+    flex: 1;
+  }
+}
+
+// ============================================================================
+// CARD BODY
+// ============================================================================
+
+.setting-card-body {
+  position: relative;
+  padding: 0 1.5rem;
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  z-index: 1;
+
+  .setting-description {
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--color-text-secondary, #64748b);
+    margin: 0;
+  }
+}
+
+// ============================================================================
+// CARD FOOTER
+// ============================================================================
+
+.setting-card-footer {
+  position: relative;
+  padding: 1rem 1.5rem 1.5rem;
+  z-index: 1;
+
+  .setting-action-btn {
+    width: 100%;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #64748b 0%, #475569 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+
+    .arrow-icon {
+      font-size: 16px;
+      line-height: 1;
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    &:hover {
+      background: linear-gradient(135deg, #475569 0%, #334155 100%);
+    }
+
+    &:active {
+      transform: translateY(0);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+  }
+}
+
+// ============================================================================
+// RESPONSIVE BREAKPOINTS
+// ============================================================================
+
+// Large Desktop (1200px+)
+@media (min-width: 1200px) {
+  .settings-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .setting-card {
+    min-height: 240px;
+  }
+}
+
+// Desktop (992px - 1199px)
+@media (min-width: 992px) and (max-width: 1199px) {
+  .settings-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+// Tablet (768px - 991px)
+@media (max-width: 991px) {
+  .settings-header {
+    margin-bottom: 1.5rem;
+
+    .settings-title {
+      font-size: 1.5rem;
+    }
+
+    .settings-subtitle {
+      font-size: 0.9375rem;
+    }
   }
 
   .settings-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+    gap: 1.25rem;
+  }
+
+  .setting-card {
+    min-height: 200px;
+
+    .setting-card-header {
+      padding: 1.25rem 1.25rem 0.875rem;
+
+      .setting-icon-wrapper {
+        width: 48px;
+        height: 48px;
+
+        .setting-icon {
+          font-size: 24px;
+        }
+      }
+
+      .setting-title {
+        font-size: 1.0625rem;
+      }
+    }
+
+    .setting-card-body {
+      padding: 0 1.25rem;
+
+      .setting-description {
+        font-size: 0.875rem;
+      }
+    }
+
+    .setting-card-footer {
+      padding: 0.875rem 1.25rem 1.25rem;
+    }
   }
 }
 
-/* Mobile breakpoint */
-@media (max-width: 768px) {
-  .settings {
-    padding: 0;
-  }
-
+// Mobile (576px - 767px)
+@media (max-width: 767px) {
   .settings-header {
-    margin-bottom: var(--spacing-lg);
+    margin-bottom: 1.25rem;
 
-    h1 {
-      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    .settings-title {
+      font-size: 1.375rem;
     }
 
-    p {
+    .settings-subtitle {
       font-size: 0.875rem;
     }
   }
 
   .settings-grid {
     grid-template-columns: 1fr;
-    gap: var(--spacing-md);
+    gap: 1rem;
   }
 
-  .setting-section {
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--spacing-md);
-    min-height: auto;
-    padding: var(--spacing-md) !important;
-  }
+  .setting-card {
+    min-height: 180px;
 
-  .section-icon {
-    font-size: 1.75rem;
-    width: 42px;
-    height: 42px;
-    margin-top: 0;
-  }
+    .setting-card-header {
+      padding: 1rem 1rem 0.75rem;
 
-  .section-content {
-    flex: 1 1 100%;
-    order: 2;
-  }
+      .setting-icon-wrapper {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
 
-  .section-title {
-    font-size: 1rem;
-  }
+        .setting-icon {
+          font-size: 22px;
+        }
+      }
 
-  .section-description {
-    font-size: 0.813rem;
-  }
+      .setting-title {
+        font-size: 1rem;
+      }
+    }
 
-  .section-action {
-    order: 3;
-    flex: 1 1 100%;
-    width: 100%;
-    text-align: center;
-    padding: 0.625rem 1rem;
-    justify-content: center;
+    .setting-card-body {
+      padding: 0 1rem;
+
+      .setting-description {
+        font-size: 0.8125rem;
+        line-height: 1.5;
+      }
+    }
+
+    .setting-card-footer {
+      padding: 0.75rem 1rem 1rem;
+
+      .setting-action-btn {
+        padding: 0.625rem 1rem;
+        font-size: 0.875rem;
+      }
+    }
   }
 }
 
-/* Small mobile breakpoint */
-@media (max-width: 480px) {
+// Small Mobile (< 576px)
+@media (max-width: 575px) {
   .settings-header {
-    h1 {
-      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
+    .settings-title {
+      font-size: 1.25rem;
     }
 
-    p {
-      font-size: 0.813rem;
+    .settings-subtitle {
+      font-size: 0.8125rem;
     }
   }
 
   .settings-grid {
-    gap: var(--spacing-sm);
+    gap: 0.875rem;
   }
 
-  .setting-section {
-    padding: var(--spacing-sm) !important;
-  }
+  .setting-card {
+    min-height: 160px;
+    border-radius: 10px;
 
-  .section-icon {
-    font-size: 1.5rem;
-    width: 36px;
-    height: 36px;
-  }
+    .setting-card-header {
+      padding: 0.875rem 0.875rem 0.625rem;
+      gap: 0.75rem;
 
-  .section-title {
-    font-size: 0.938rem;
-  }
+      .setting-icon-wrapper {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
 
-  .section-description {
-    font-size: 0.75rem;
-  }
+        .setting-icon {
+          font-size: 20px;
+        }
+      }
 
-  .section-action {
-    font-size: 0.813rem;
-    padding: 0.5rem 0.875rem;
-  }
-}
+      .setting-title {
+        font-size: 0.9375rem;
+      }
+    }
 
-/* Large desktop breakpoint */
-@media (min-width: 1280px) {
-  .settings-header h1 {
-    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
-    font-weight: 600;
-  }
+    .setting-card-body {
+      padding: 0 0.875rem;
 
-  .settings-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
-  }
+      .setting-description {
+        font-size: 0.75rem;
+        line-height: 1.4;
+      }
+    }
 
-  .setting-section {
-    min-height: auto;
-  }
-}
+    .setting-card-footer {
+      padding: 0.625rem 0.875rem 0.875rem;
 
-/* Extra large desktop breakpoint */
-@media (min-width: 1536px) {
-  .settings-header h1 {
-    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
-    font-weight: 600;
-  }
+      .setting-action-btn {
+        padding: 0.5rem 0.875rem;
+        font-size: 0.8125rem;
+        border-radius: 6px;
+      }
+    }
 
-  .settings-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  .setting-section {
-    padding: 1.5rem !important;
-  }
-
-  .section-icon {
-    font-size: 2.5rem;
-    width: 56px;
-    height: 56px;
+    &:hover {
+      transform: translateY(-4px);
+    }
   }
 }
 
-/* Ultra wide screens */
+// Ultra-wide Desktop (1920px+)
 @media (min-width: 1920px) {
-  .settings {
-    max-width: 1800px;
-  }
-
-  .settings-header h1 {
-    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
-    font-weight: 600;
+  .settings-container {
+    max-width: 1600px;
   }
 
   .settings-grid {
-    grid-template-columns: repeat(3, 1fr);
-    gap: var(--spacing-2xl);
+    gap: 2rem;
   }
 
-  .setting-section {
-    padding: 2rem !important;
-    min-height: auto;
-  }
+  .setting-card {
+    min-height: 260px;
 
-  .section-icon {
-    font-size: 2.75rem;
-    width: 60px;
-    height: 60px;
-  }
+    .setting-card-header {
+      padding: 1.75rem 1.75rem 1.125rem;
 
-  .section-title {
-    font-size: 1.25rem;
-  }
+      .setting-icon-wrapper {
+        width: 64px;
+        height: 64px;
 
-  .section-description {
-    font-size: 1rem;
-  }
+        .setting-icon {
+          font-size: 32px;
+        }
+      }
 
-  .section-action {
-    font-size: 1rem;
+      .setting-title {
+        font-size: 1.25rem;
+      }
+    }
+
+    .setting-card-body {
+      padding: 0 1.75rem;
+
+      .setting-description {
+        font-size: 1rem;
+        line-height: 1.7;
+      }
+    }
+
+    .setting-card-footer {
+      padding: 1.125rem 1.75rem 1.75rem;
+
+      .setting-action-btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+      }
+    }
   }
 }
 

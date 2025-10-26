@@ -1,0 +1,702 @@
+<div class="church-management-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="header-content">
+      <h1 class="page-title">
+        <span class="title-icon">⛪</span>
+        Church Management
+      </h1>
+      <p class="page-subtitle">Manage your church profile, leadership, statistics, and social media</p>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading && !churchProfile" class="state-card loading-state">
+    <div class="spinner"></div>
+    <p>Loading church data...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="state-card error-state">
+    <span class="state-icon">⚠️</span>
+    <h3>Error Loading Data</h3>
+    <p>{{ error }}</p>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!loading && churchProfile" class="content-wrapper">
+    
+    <!-- Tab Navigation -->
+    <div class="tab-navigation">
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'profile'"
+        (click)="setActiveTab('profile')">
+        <span class="tab-icon">🏛️</span>
+        <span class="tab-label">Church Profile</span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'leadership'"
+        (click)="setActiveTab('leadership')">
+        <span class="tab-icon">👥</span>
+        <span class="tab-label">Leadership</span>
+        <span class="tab-badge" *ngIf="leaders.length > 0">{{ leaders.length }}</span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'statistics'"
+        (click)="setActiveTab('statistics')">
+        <span class="tab-icon">📊</span>
+        <span class="tab-label">Statistics</span>
+        <span class="tab-badge" *ngIf="statistics.length > 0">{{ statistics.length }}</span>
+      </button>
+      <button 
+        class="tab-btn" 
+        [class.active]="activeTab === 'social'"
+        (click)="setActiveTab('social')">
+        <span class="tab-icon">📱</span>
+        <span class="tab-label">Social Media</span>
+        <span class="tab-badge" *ngIf="socialMedia.length > 0">{{ socialMedia.length }}</span>
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      
+      <!-- ====================================================================== -->
+      <!-- PROFILE TAB -->
+      <!-- ====================================================================== -->
+      <div *ngIf="activeTab === 'profile'" class="tab-pane profile-pane">
+        
+        <!-- Church Identity Section -->
+        <div class="section-card">
+          <div class="section-header">
+            <h2>⛪ Church Identity</h2>
+          </div>
+          <div class="identity-overview">
+            <div class="church-logo-section">
+              <div class="logo-display">
+                <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name">
+                <span *ngIf="!churchProfile.logo_full_url" class="logo-placeholder">⛪</span>
+              </div>
+            </div>
+            <div class="identity-info">
+              <h3 class="church-name">{{ churchProfile.name }}</h3>
+              <p class="church-slogan" *ngIf="churchProfile.slogan">{{ churchProfile.slogan }}</p>
+              <div class="church-badges">
+                <span class="badge" [class.badge-success]="churchProfile.active === 1" [class.badge-danger]="churchProfile.active === 0">
+                  {{ churchProfile.active === 1 ? '✓ Active' : '✗ Inactive' }}
+                </span>
+                <span class="badge badge-info">{{ churchProfile.plan | uppercase }}</span>
+                <span class="badge" *ngIf="extendedProfile && extendedProfile.founded_year">📅 Since {{ extendedProfile.founded_year }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Extended Profile Form -->
+        <form [formGroup]="profileForm" class="section-card">
+          <div class="section-header">
+            <h2>🏛️ Extended Church Profile</h2>
+            <div class="section-actions">
+              <button 
+                *ngIf="!editing && canEdit" 
+                class="btn-3d-action btn-3d-edit" 
+                type="button" 
+                (click)="startEditProfile()">
+                <span>✏️</span>
+                <span>Edit</span>
+              </button>
+              <div *ngIf="editing" class="button-group">
+                <button 
+                  class="btn-3d-action btn-3d-success" 
+                  type="button" 
+                  (click)="saveProfile()"
+                  [disabled]="saving || profileForm.invalid">
+                  <span>{{ saving ? '⏳' : '✓' }}</span>
+                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
+                </button>
+                <button 
+                  class="btn-3d-action btn-3d-secondary" 
+                  type="button" 
+                  (click)="cancelEditProfile()">
+                  <span>✗</span>
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            
+            <!-- Denomination -->
+            <div class="form-group">
+              <label for="denomination_id">Denomination</label>
+              <select 
+                id="denomination_id" 
+                formControlName="denomination_id"
+                (change)="onDenominationChange($any($event.target).value)"
+                class="form-control">
+                <option [value]="null">Select Denomination</option>
+                <option *ngFor="let denom of denominations" [value]="denom.id">
+                  {{ denom.name }}
+                </option>
+              </select>
+            </div>
+
+            <!-- Archdiocese -->
+            <div class="form-group">
+              <label for="archdiocese_id">Archdiocese / Diocese</label>
+              <select 
+                id="archdiocese_id" 
+                formControlName="archdiocese_id"
+                class="form-control">
+                <option [value]="null">Select Archdiocese</option>
+                <option *ngFor="let arch of filteredArchdioceses" [value]="arch.id">
+                  {{ arch.name }} ({{ arch.country }})
+                </option>
+              </select>
+            </div>
+
+            <!-- Founded Year -->
+            <div class="form-group">
+              <label for="founded_year">Founded Year</label>
+              <input 
+                type="number" 
+                id="founded_year" 
+                formControlName="founded_year"
+                class="form-control"
+                placeholder="e.g., 1985">
+            </div>
+
+            <!-- Country -->
+            <div class="form-group">
+              <label for="country">Country</label>
+              <input 
+                type="text" 
+                id="country" 
+                formControlName="country"
+                class="form-control"
+                placeholder="Country">
+            </div>
+
+            <!-- Phone -->
+            <div class="form-group">
+              <label for="phone">Phone</label>
+              <input 
+                type="tel" 
+                id="phone" 
+                formControlName="phone"
+                class="form-control"
+                placeholder="+1 (555) 123-4567">
+            </div>
+
+            <!-- Email -->
+            <div class="form-group">
+              <label for="email">Email</label>
+              <input 
+                type="email" 
+                id="email" 
+                formControlName="email"
+                class="form-control"
+                placeholder="info@church.org">
+            </div>
+
+            <!-- Website -->
+            <div class="form-group full-width">
+              <label for="website">Website</label>
+              <input 
+                type="url" 
+                id="website" 
+                formControlName="website"
+                class="form-control"
+                placeholder="https://www.church.org">
+            </div>
+
+            <!-- About -->
+            <div class="form-group full-width">
+              <label for="about">About</label>
+              <textarea 
+                id="about" 
+                formControlName="about"
+                class="form-control"
+                rows="3"
+                placeholder="Brief description of your church..."></textarea>
+            </div>
+
+            <!-- Vision -->
+            <div class="form-group full-width">
+              <label for="vision">Vision Statement</label>
+              <textarea 
+                id="vision" 
+                formControlName="vision"
+                class="form-control"
+                rows="2"
+                placeholder="Our vision for the future..."></textarea>
+            </div>
+
+            <!-- Mission -->
+            <div class="form-group full-width">
+              <label for="mission">Mission Statement</label>
+              <textarea 
+                id="mission" 
+                formControlName="mission"
+                class="form-control"
+                rows="2"
+                placeholder="Our mission and purpose..."></textarea>
+            </div>
+
+            <!-- Core Values -->
+            <div class="form-group full-width">
+              <label for="core_values">Core Values</label>
+              <textarea 
+                id="core_values" 
+                formControlName="core_values"
+                class="form-control"
+                rows="2"
+                placeholder="Our core values and beliefs..."></textarea>
+            </div>
+
+            <!-- Service Times -->
+            <div class="form-group full-width">
+              <label for="service_times">Service Times</label>
+              <textarea 
+                id="service_times" 
+                formControlName="service_times"
+                class="form-control"
+                rows="2"
+                placeholder="Sunday: 9:00 AM, 11:00 AM, 6:00 PM..."></textarea>
+            </div>
+
+          </div>
+        </form>
+
+      </div>
+
+      <!-- ====================================================================== -->
+      <!-- LEADERSHIP TAB -->
+      <!-- ====================================================================== -->
+      <div *ngIf="activeTab === 'leadership'" class="tab-pane leadership-pane">
+        
+        <div class="section-card">
+          <div class="section-header">
+            <h2>👥 Church Leadership</h2>
+            <button 
+              *ngIf="canEdit"
+              class="btn-3d-action btn-3d-create" 
+              (click)="openNewLeaderModal()">
+              <span>➕</span>
+              <span>Add Leader</span>
+            </button>
+          </div>
+
+          <!-- Leaders Table -->
+          <div *ngIf="leaders.length > 0" class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Role</th>
+                  <th>Title</th>
+                  <th>Contact</th>
+                  <th>Status</th>
+                  <th>Primary</th>
+                  <th *ngIf="canEdit">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let leader of leaders">
+                  <td><strong>{{ leader.full_name }}</strong></td>
+                  <td>{{ leader.role }}</td>
+                  <td>{{ leader.title || 'N/A' }}</td>
+                  <td>
+                    <div *ngIf="leader.email">📧 {{ leader.email }}</div>
+                    <div *ngIf="leader.phone">📞 {{ leader.phone }}</div>
+                  </td>
+                  <td>
+                    <span class="badge" [class.badge-success]="leader.active === 1" [class.badge-secondary]="leader.active === 0">
+                      {{ leader.active === 1 ? 'Active' : 'Inactive' }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge badge-warning" *ngIf="leader.is_primary === 1">⭐ Primary</span>
+                  </td>
+                  <td *ngIf="canEdit">
+                    <div class="action-buttons">
+                      <button class="btn-3d-mini btn-3d-edit" (click)="openEditLeaderModal(leader)" title="Edit">
+                        ✏️
+                      </button>
+                      <button class="btn-3d-mini btn-3d-delete" (click)="deleteLeader(leader)" title="Delete">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="leaders.length === 0" class="empty-state">
+            <span class="empty-icon">👥</span>
+            <h3>No Leaders Added</h3>
+            <p>Add church leaders, pastors, and ministry heads.</p>
+            <button 
+              *ngIf="canEdit"
+              class="btn-3d-action btn-3d-create" 
+              (click)="openNewLeaderModal()">
+              <span>➕</span>
+              <span>Add First Leader</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ====================================================================== -->
+      <!-- STATISTICS TAB -->
+      <!-- ====================================================================== -->
+      <div *ngIf="activeTab === 'statistics'" class="tab-pane statistics-pane">
+        
+        <div class="section-card">
+          <div class="section-header">
+            <h2>📊 Church Statistics</h2>
+            <button 
+              *ngIf="canEdit"
+              class="btn-3d-action btn-3d-create" 
+              (click)="openNewStatisticModal()">
+              <span>➕</span>
+              <span>Add Record</span>
+            </button>
+          </div>
+
+          <!-- Statistics Table -->
+          <div *ngIf="statistics.length > 0" class="table-responsive">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Period</th>
+                  <th>Membership</th>
+                  <th>Attendance</th>
+                  <th>Baptisms</th>
+                  <th>Marriages</th>
+                  <th>Tithes</th>
+                  <th *ngIf="canEdit">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let stat of statistics">
+                  <td><strong>{{ stat.period || (stat.year + '/' + (stat.month || 'Annual')) }}</strong></td>
+                  <td>{{ stat.membership_count || 'N/A' }}</td>
+                  <td>{{ stat.weekly_attendance || 'N/A' }}</td>
+                  <td>{{ stat.baptisms || 0 }}</td>
+                  <td>{{ stat.marriages || 0 }}</td>
+                  <td>{{ stat.tithes_offerings ? '$' + stat.tithes_offerings : 'N/A' }}</td>
+                  <td *ngIf="canEdit">
+                    <div class="action-buttons">
+                      <button class="btn-3d-mini btn-3d-edit" (click)="openEditStatisticModal(stat)" title="Edit">
+                        ✏️
+                      </button>
+                      <button class="btn-3d-mini btn-3d-delete" (click)="deleteStatistic(stat)" title="Delete">
+                        🗑️
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="statistics.length === 0" class="empty-state">
+            <span class="empty-icon">📊</span>
+            <h3>No Statistics Recorded</h3>
+            <p>Track membership, attendance, and church metrics over time.</p>
+            <button 
+              *ngIf="canEdit"
+              class="btn-3d-action btn-3d-create" 
+              (click)="openNewStatisticModal()">
+              <span>➕</span>
+              <span>Add First Record</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- ====================================================================== -->
+      <!-- SOCIAL MEDIA TAB -->
+      <!-- ====================================================================== -->
+      <div *ngIf="activeTab === 'social'" class="tab-pane social-pane">
+        
+        <div class="section-card">
+          <div class="section-header">
+            <h2>📱 Social Media Accounts</h2>
+            <button 
+              *ngIf="canEdit"
+              class="btn-3d-action btn-3d-create" 
+              (click)="openNewSocialModal()">
+              <span>➕</span>
+              <span>Add Account</span>
+            </button>
+          </div>
+
+          <!-- Social Media Cards -->
+          <div *ngIf="socialMedia.length > 0" class="social-grid">
+            <div *ngFor="let social of socialMedia" class="social-card">
+              <div class="social-header">
+                <span class="social-icon">{{ getPlatformIcon(social.platform) }}</span>
+                <h3>{{ social.platform | titlecase }}</h3>
+              </div>
+              <div class="social-body">
+                <div class="social-info">
+                  <p class="social-url">
+                    <a [href]="social.url" target="_blank" rel="noopener">{{ social.url }}</a>
+                  </p>
+                  <p *ngIf="social.username" class="social-username">@{{ social.username }}</p>
+                  <p *ngIf="social.follower_count" class="social-followers">
+                    👥 {{ social.follower_count | number }} followers
+                  </p>
+                </div>
+                <div class="social-badges">
+                  <span class="badge" [class.badge-success]="social.active === 1" [class.badge-secondary]="social.active === 0">
+                    {{ social.active === 1 ? 'Active' : 'Inactive' }}
+                  </span>
+                  <span class="badge badge-warning" *ngIf="social.is_primary === 1">⭐ Primary</span>
+                </div>
+              </div>
+              <div class="social-footer" *ngIf="canEdit">
+                <button class="btn-3d-mini btn-3d-edit" (click)="openEditSocialModal(social)">
+                  ✏️ Edit
+                </button>
+                <button class="btn-3d-mini btn-3d-delete" (click)="deleteSocialMedia(social)">
+                  🗑️ Delete
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div *ngIf="socialMedia.length === 0" class="empty-state">
+            <span class="empty-icon">📱</span>
+            <h3>No Social Media Accounts</h3>
+            <p>Connect your church's social media presence.</p>
+            <button 
+              *ngIf="canEdit"
+              class="btn-3d-action btn-3d-create" 
+              (click)="openNewSocialModal()">
+              <span>➕</span>
+              <span>Add First Account</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ====================================================================== -->
+<!-- MODALS -->
+<!-- ====================================================================== -->
+
+<!-- Leadership Modal -->
+<div *ngIf="showLeaderModal" class="modal-overlay" (click)="closeLeaderModal()">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ selectedLeader ? '✏️ Edit Leader' : '➕ Add New Leader' }}</h2>
+      <button class="modal-close" (click)="closeLeaderModal()">✕</button>
+    </div>
+    <form [formGroup]="leaderForm" (ngSubmit)="saveLeader()">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group full-width">
+            <label for="leader_full_name">Full Name *</label>
+            <input type="text" id="leader_full_name" formControlName="full_name" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="leader_role">Role *</label>
+            <select id="leader_role" formControlName="role" class="form-control" required>
+              <option value="">Select Role</option>
+              <option *ngFor="let role of leadershipRoles" [value]="role">{{ role }}</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="leader_title">Title</label>
+            <input type="text" id="leader_title" formControlName="title" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="leader_email">Email</label>
+            <input type="email" id="leader_email" formControlName="email" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="leader_phone">Phone</label>
+            <input type="tel" id="leader_phone" formControlName="phone" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="leader_appointed_date">Appointed Date</label>
+            <input type="date" id="leader_appointed_date" formControlName="appointed_date" class="form-control">
+          </div>
+          <div class="form-group full-width">
+            <label for="leader_biography">Biography</label>
+            <textarea id="leader_biography" formControlName="biography" class="form-control" rows="3"></textarea>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" formControlName="is_primary" [value]="1">
+              Primary Pastor
+            </label>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" formControlName="active" [value]="1">
+              Active
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeLeaderModal()">Cancel</button>
+        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving || leaderForm.invalid">
+          {{ saving ? '⏳ Saving...' : (selectedLeader ? '✓ Update' : '✓ Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Statistics Modal -->
+<div *ngIf="showStatisticModal" class="modal-overlay" (click)="closeStatisticModal()">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ selectedStatistic ? '✏️ Edit Statistic' : '➕ Add New Statistic' }}</h2>
+      <button class="modal-close" (click)="closeStatisticModal()">✕</button>
+    </div>
+    <form [formGroup]="statisticForm" (ngSubmit)="saveStatistic()">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="stat_year">Year *</label>
+            <input type="number" id="stat_year" formControlName="year" class="form-control" required>
+          </div>
+          <div class="form-group">
+            <label for="stat_month">Month (optional)</label>
+            <select id="stat_month" formControlName="month" class="form-control">
+              <option [value]="null">Annual</option>
+              <option [value]="1">January</option>
+              <option [value]="2">February</option>
+              <option [value]="3">March</option>
+              <option [value]="4">April</option>
+              <option [value]="5">May</option>
+              <option [value]="6">June</option>
+              <option [value]="7">July</option>
+              <option [value]="8">August</option>
+              <option [value]="9">September</option>
+              <option [value]="10">October</option>
+              <option [value]="11">November</option>
+              <option [value]="12">December</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="stat_membership">Membership Count</label>
+            <input type="number" id="stat_membership" formControlName="membership_count" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="stat_attendance">Weekly Attendance</label>
+            <input type="number" id="stat_attendance" formControlName="weekly_attendance" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="stat_baptisms">Baptisms</label>
+            <input type="number" id="stat_baptisms" formControlName="baptisms" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="stat_confirmations">Confirmations</label>
+            <input type="number" id="stat_confirmations" formControlName="confirmations" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="stat_marriages">Marriages</label>
+            <input type="number" id="stat_marriages" formControlName="marriages" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="stat_funerals">Funerals</label>
+            <input type="number" id="stat_funerals" formControlName="funerals" class="form-control">
+          </div>
+          <div class="form-group full-width">
+            <label for="stat_tithes">Tithes & Offerings</label>
+            <input type="number" id="stat_tithes" formControlName="tithes_offerings" class="form-control">
+          </div>
+          <div class="form-group full-width">
+            <label for="stat_notes">Notes</label>
+            <textarea id="stat_notes" formControlName="notes" class="form-control" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeStatisticModal()">Cancel</button>
+        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving || statisticForm.invalid">
+          {{ saving ? '⏳ Saving...' : (selectedStatistic ? '✓ Update' : '✓ Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Social Media Modal -->
+<div *ngIf="showSocialModal" class="modal-overlay" (click)="closeSocialModal()">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ selectedSocialMedia ? '✏️ Edit Social Media' : '➕ Add Social Media Account' }}</h2>
+      <button class="modal-close" (click)="closeSocialModal()">✕</button>
+    </div>
+    <form [formGroup]="socialForm" (ngSubmit)="saveSocialMedia()">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="social_platform">Platform *</label>
+            <select id="social_platform" formControlName="platform" class="form-control" required>
+              <option value="">Select Platform</option>
+              <option *ngFor="let platform of socialPlatforms" [value]="platform.value">
+                {{ platform.icon }} {{ platform.label }}
+              </option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="social_username">Username</label>
+            <input type="text" id="social_username" formControlName="username" class="form-control" placeholder="@username">
+          </div>
+          <div class="form-group full-width">
+            <label for="social_url">URL *</label>
+            <input type="url" id="social_url" formControlName="url" class="form-control" required placeholder="https://...">
+          </div>
+          <div class="form-group">
+            <label for="social_followers">Follower Count</label>
+            <input type="number" id="social_followers" formControlName="follower_count" class="form-control">
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" formControlName="is_primary" [value]="1">
+              Primary Account
+            </label>
+          </div>
+          <div class="form-group">
+            <label>
+              <input type="checkbox" formControlName="active" [value]="1">
+              Active
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeSocialModal()">Cancel</button>
+        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving || socialForm.invalid">
+          {{ saving ? '⏳ Saving...' : (selectedSocialMedia ? '✓ Update' : '✓ Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

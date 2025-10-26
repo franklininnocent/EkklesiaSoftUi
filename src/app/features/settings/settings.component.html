@@ -1,20 +1,41 @@
-<div class="settings">
+<div class="settings-container">
+  <!-- Page Header -->
   <div class="settings-header">
-    <h1>Settings</h1>
-    <p>Manage your account and application preferences</p>
+    <h1 class="settings-title">Settings</h1>
+    <p class="settings-subtitle">Manage your account and application preferences</p>
   </div>
 
+  <!-- Settings Grid -->
   <div class="settings-grid">
-    <div *ngFor="let section of settingsSections" 
-         class="setting-section"
-         [class.hidden]="!shouldDisplaySection(section, (currentUser$ | async))">
-      <div class="section-icon">{{ section.icon }}</div>
-      <div class="section-content">
-        <h3 class="section-title">{{ section.title }}</h3>
-        <p class="section-description">{{ section.description }}</p>
+    <div 
+      *ngFor="let section of settingsSections" 
+      class="setting-card"
+      [class.d-none]="!shouldDisplaySection(section, (currentUser$ | async))"
+      (click)="onConfigure(section)">
+      
+      <!-- Card Header with Icon -->
+      <div class="setting-card-header">
+        <div class="setting-icon-wrapper">
+          <span class="setting-icon">{{ section.icon }}</span>
+        </div>
+        <h3 class="setting-title">{{ section.title }}</h3>
       </div>
-      <button class="section-action" (click)="onConfigure(section)">Configure →</button>
+
+      <!-- Card Body with Description -->
+      <div class="setting-card-body">
+        <p class="setting-description">{{ section.description }}</p>
+      </div>
+
+      <!-- Card Footer with Action Button -->
+      <div class="setting-card-footer">
+        <button class="setting-action-btn">
+          <span>Configure</span>
+          <span class="arrow-icon">→</span>
+        </button>
+      </div>
+
+      <!-- Animated Background Gradient -->
+      <div class="setting-card-gradient"></div>
     </div>
   </div>
 </div>
-

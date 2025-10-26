@@ -17,7 +17,12 @@ import { environment } from '@environments/environment';
 @Component({
   selector: 'app-tenant-manager',
   standalone: true,
-  imports: [CommonModule, TenantCreateModalComponent, ConfirmationModalComponent, PaginationComponent],
+  imports: [
+    CommonModule,
+    TenantCreateModalComponent,
+    ConfirmationModalComponent,
+    PaginationComponent
+  ],
   templateUrl: './tenant-manager.html',
   styleUrls: ['./tenant-manager.scss']
 })
@@ -49,6 +54,8 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   confirmationMessage = '';
   confirmButtonClass = '';
   private pendingStatusChange: { tenant: Tenant; newStatus: 0 | 1; checkbox: HTMLInputElement } | null = null;
+
+  constructor() {}
 
   ngOnInit(): void {
     this.loadTenants();
