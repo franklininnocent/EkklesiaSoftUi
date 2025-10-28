@@ -34,6 +34,9 @@ export interface User {
   can_edit?: boolean;  // Whether the current user can edit this user
   is_self?: boolean;   // Whether this is the current user's own account
   edit_restriction_reason?: string | null;  // Reason why user cannot edit (if can_edit is false)
+  is_super_admin?: boolean;  // User has SuperAdmin role
+  is_admin?: boolean;  // User has SuperAdmin or EkklesiaAdmin role
+  has_ekklesia_role?: boolean;  // User has any Ekklesia role (SuperAdmin, EkklesiaAdmin, EkklesiaManager, EkklesiaUser)
   
   // Relations
   addresses?: Address[];

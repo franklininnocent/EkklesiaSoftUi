@@ -1,0 +1,20 @@
+<div 
+  class="spinner-container" 
+  [class.spinner-centered]="centered"
+  role="status"
+  [attr.aria-label]="text">
+  
+  <div 
+    class="spinner"
+    [class.spinner-small]="size === 'small'"
+    [class.spinner-medium]="size === 'medium'"
+    [class.spinner-large]="size === 'large'"
+    [class.spinner-primary]="color === 'primary'"
+    [class.spinner-secondary]="color === 'secondary'"
+    [class.spinner-white]="color === 'white'">
+  </div>
+  
+  <span *ngIf="showText" class="spinner-text">{{ text }}</span>
+  <span class="sr-only">{{ text }}</span>
+</div>
+

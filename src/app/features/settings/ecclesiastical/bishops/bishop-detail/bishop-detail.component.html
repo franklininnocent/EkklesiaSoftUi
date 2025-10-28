@@ -1,0 +1,293 @@
+<!-- Breadcrumb Navigation -->
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol class="breadcrumb-list">
+    <li class="breadcrumb-item">
+      <a [routerLink]="['/settings']" class="breadcrumb-link">Settings</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a [routerLink]="['/settings/ecclesiastical']" class="breadcrumb-link">Ecclesiastical Data</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a [routerLink]="['/settings/ecclesiastical/bishops']" class="breadcrumb-link">Bishops</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+      {{ loading ? 'Loading...' : (bishop?.full_name || 'Detail') }}
+    </li>
+  </ol>
+</nav>
+
+<!-- Loading State -->
+<div *ngIf="loading" class="loading-container">
+  <app-loading-skeleton type="card" [rows]="8"></app-loading-skeleton>
+</div>
+
+<!-- Bishop Detail Content -->
+<div *ngIf="!loading && bishop" class="bishop-detail animate-fade-in-up">
+  
+  <!-- Header Section -->
+  <div class="detail-header">
+    <div class="header-photo-section">
+      <div class="photo-container">
+        <img 
+          *ngIf="bishop.photo_url" 
+          [src]="bishop.photo_url" 
+          [alt]="bishop.full_name"
+          class="bishop-photo">
+        <div *ngIf="!bishop.photo_url" class="bishop-photo-placeholder">
+          {{ getInitials(bishop.full_name) }}
+        </div>
+      </div>
+    </div>
+
+    <div class="header-info">
+      <h1 class="detail-title">{{ bishop.full_name }}</h1>
+      <p class="bishop-title" *ngIf="bishop.ecclesiastical_title">
+        {{ bishop.ecclesiastical_title?.name }}
+      </p>
+      <div class="header-badges">
+        <span [class]="getStatusBadgeClass(bishop.status)">
+          {{ bishop.status || 'Unknown' }}
+        </span>
+        <span class="info-badge" *ngIf="bishop.nationality">
+          🌍 {{ bishop.nationality }}
+        </span>
+        <span class="info-badge" *ngIf="bishop.religious_order">
+          {{ bishop.religious_order?.abbreviation || bishop.religious_order?.name }}
+        </span>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary hover-lift transition-all focus-ring"
+        (click)="goBack()"
+        aria-label="Go back">
+        ← Back
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary hover-lift transition-all focus-ring"
+        (click)="onEdit()"
+        aria-label="Edit bishop">
+        ✏️ Edit
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-danger hover-lift transition-all focus-ring"
+        (click)="onDelete()"
+        aria-label="Delete bishop">
+        🗑️ Delete
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="detail-grid">
+    
+    <!-- Personal Information Card -->
+    <div class="detail-card">
+      <h2 class="card-title">Personal Information</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Full Name</span>
+          <span class="info-value">{{ bishop.full_name }}</span>
+        </div>
+        <div class="info-item" *ngIf="bishop.birth_name && bishop.birth_name !== bishop.full_name">
+          <span class="info-label">Birth Name</span>
+          <span class="info-value">{{ bishop.birth_name }}</span>
+        </div>
+        <div class="info-item" *ngIf="bishop.date_of_birth">
+          <span class="info-label">Date of Birth</span>
+          <span class="info-value">
+            {{ formatDate(bishop.date_of_birth) }}
+            <span class="age-badge">{{ calculateAge(bishop.date_of_birth) }}</span>
+          </span>
+        </div>
+        <div class="info-item" *ngIf="bishop.place_of_birth">
+          <span class="info-label">Place of Birth</span>
+          <span class="info-value">{{ bishop.place_of_birth }}</span>
+        </div>
+        <div class="info-item" *ngIf="bishop.nationality">
+          <span class="info-label">Nationality</span>
+          <span class="info-value">{{ bishop.nationality }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ecclesiastical Information Card -->
+    <div class="detail-card">
+      <h2 class="card-title">Ecclesiastical Information</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Title</span>
+          <span class="info-value">{{ bishop.ecclesiastical_title?.name || 'N/A' }}</span>
+        </div>
+        <div class="info-item" *ngIf="bishop.religious_order">
+          <span class="info-label">Religious Order</span>
+          <span class="info-value">
+            {{ bishop.religious_order?.name }}
+            <span *ngIf="bishop.religious_order?.abbreviation" class="order-abbrev">
+              ({{ bishop.religious_order?.abbreviation }})
+            </span>
+          </span>
+        </div>
+        <div class="info-item" *ngIf="bishop.ordained_priest_date">
+          <span class="info-label">Ordained Priest</span>
+          <span class="info-value">
+            {{ formatDate(bishop.ordained_priest_date) }}
+            <span class="service-badge">{{ calculateYearsOfService(bishop.ordained_priest_date) }} of service</span>
+          </span>
+        </div>
+        <div class="info-item" *ngIf="bishop.ordained_bishop_date">
+          <span class="info-label">Ordained Bishop</span>
+          <span class="info-value">
+            {{ formatDate(bishop.ordained_bishop_date) }}
+            <span class="service-badge">{{ calculateYearsOfService(bishop.ordained_bishop_date) }} as bishop</span>
+          </span>
+        </div>
+        <div class="info-item" *ngIf="bishop.appointed_date">
+          <span class="info-label">Current Appointment</span>
+          <span class="info-value">{{ formatDate(bishop.appointed_date) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Diocese Information Card -->
+    <div class="detail-card" *ngIf="bishop.archdiocese">
+      <h2 class="card-title">Diocese Assignment</h2>
+      <div class="diocese-card-content">
+        <div class="diocese-header">
+          <div class="diocese-icon">⛪</div>
+          <div class="diocese-info">
+            <h3 class="diocese-name">{{ bishop.archdiocese?.name }}</h3>
+            <p class="diocese-type">
+              {{ bishop.archdiocese?.is_archdiocese ? 'Archdiocese' : 'Diocese' }}
+            </p>
+          </div>
+        </div>
+        <button 
+          type="button"
+          class="btn btn-outline hover-lift transition-all"
+          (click)="viewDiocese(bishop.archdiocese.id)"
+          aria-label="View diocese details">
+          View Diocese Details →
+        </button>
+      </div>
+    </div>
+
+    <!-- Additional Information Card -->
+    <div class="detail-card">
+      <h2 class="card-title">Additional Information</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Status</span>
+          <span class="info-value">
+            <span [class]="getStatusBadgeClass(bishop.status)">
+              {{ bishop.status || 'Unknown' }}
+            </span>
+          </span>
+        </div>
+        <div class="info-item" *ngIf="bishop.date_of_death">
+          <span class="info-label">Date of Death</span>
+          <span class="info-value deceased">{{ formatDate(bishop.date_of_death) }} 🕊️</span>
+        </div>
+        <div class="info-item" *ngIf="bishop.retirement_date">
+          <span class="info-label">Retirement Date</span>
+          <span class="info-value">{{ formatDate(bishop.retirement_date) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Biography Card -->
+    <div class="detail-card full-width" *ngIf="bishop.biography">
+      <h2 class="card-title">Biography</h2>
+      <div class="biography-content">
+        <p>{{ bishop.biography }}</p>
+      </div>
+    </div>
+
+    <!-- Contact Information Card -->
+    <div class="detail-card full-width" *ngIf="bishop.email || bishop.phone">
+      <h2 class="card-title">Contact Information</h2>
+      <div class="contact-grid">
+        <div class="contact-item" *ngIf="bishop.email">
+          <span class="contact-icon">✉️</span>
+          <div class="contact-info">
+            <span class="contact-label">Email</span>
+            <a [href]="'mailto:' + bishop.email" class="contact-link">{{ bishop.email }}</a>
+          </div>
+        </div>
+        <div class="contact-item" *ngIf="bishop.phone">
+          <span class="contact-icon">📞</span>
+          <div class="contact-info">
+            <span class="contact-label">Phone</span>
+            <a [href]="'tel:' + bishop.phone" class="contact-link">{{ bishop.phone }}</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Timeline Card -->
+    <div class="detail-card full-width timeline-card">
+      <h2 class="card-title">Timeline</h2>
+      <div class="timeline">
+        <div class="timeline-item" *ngIf="bishop.date_of_birth">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <span class="timeline-date">{{ formatDate(bishop.date_of_birth) }}</span>
+            <span class="timeline-event">Born in {{ bishop.place_of_birth || 'unknown location' }}</span>
+          </div>
+        </div>
+        <div class="timeline-item" *ngIf="bishop.ordained_priest_date">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <span class="timeline-date">{{ formatDate(bishop.ordained_priest_date) }}</span>
+            <span class="timeline-event">Ordained as Priest</span>
+          </div>
+        </div>
+        <div class="timeline-item" *ngIf="bishop.ordained_bishop_date">
+          <div class="timeline-marker highlight"></div>
+          <div class="timeline-content">
+            <span class="timeline-date">{{ formatDate(bishop.ordained_bishop_date) }}</span>
+            <span class="timeline-event">Ordained as Bishop</span>
+          </div>
+        </div>
+        <div class="timeline-item" *ngIf="bishop.appointed_date">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <span class="timeline-date">{{ formatDate(bishop.appointed_date) }}</span>
+            <span class="timeline-event">Appointed to current position</span>
+          </div>
+        </div>
+        <div class="timeline-item" *ngIf="bishop.retirement_date">
+          <div class="timeline-marker"></div>
+          <div class="timeline-content">
+            <span class="timeline-date">{{ formatDate(bishop.retirement_date) }}</span>
+            <span class="timeline-event">Retired</span>
+          </div>
+        </div>
+        <div class="timeline-item" *ngIf="bishop.date_of_death">
+          <div class="timeline-marker deceased"></div>
+          <div class="timeline-content">
+            <span class="timeline-date">{{ formatDate(bishop.date_of_death) }}</span>
+            <span class="timeline-event">Passed away 🕊️</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<app-confirmation-modal
+  [show]="showDeleteModal"
+  title="Delete Bishop"
+  [message]="'Are you sure you want to delete ' + (bishop?.full_name || 'this bishop') + '? This action cannot be undone.'"
+  confirmText="Delete"
+  cancelText="Cancel"
+  confirmButtonClass="btn-danger"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()">
+</app-confirmation-modal>
+

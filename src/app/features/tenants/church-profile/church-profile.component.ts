@@ -13,6 +13,7 @@
 import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
@@ -42,7 +43,7 @@ import {
 @Component({
   selector: 'app-church-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, NgSelectModule],
   templateUrl: './church-profile.component.html',
   styleUrl: './church-profile.component.scss'
 })
@@ -74,11 +75,25 @@ export class ChurchProfileComponent implements OnInit {
   // UI State
   loading = true;
   saving = false;
-  editing = false;
   error: string | null = null;
+  
+  // Section-level editing state
+  editingSections: {
+    general: boolean;
+    contact: boolean;
+    identity: boolean;
+  } = {
+    general: false,
+    contact: false,
+    identity: false
+  };
+  
   showLeaderModal = false;
   showStatisticModal = false;
   showSocialModal = false;
+  
+  // Country list
+  countries: string[] = [];
   
   // Forms
   profileForm!: FormGroup;
@@ -89,7 +104,7 @@ export class ChurchProfileComponent implements OnInit {
   // Service Injections
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
-  private authService = inject(AuthService);
+  public authService = inject(AuthService); // Made public for template access
   private fb = inject(FormBuilder);
   
   // Church Management Services
@@ -124,6 +139,23 @@ export class ChurchProfileComponent implements OnInit {
     'Ministry Leader',
     'Administrator',
     'Other'
+  ];
+
+  // Month Options for Statistics
+  monthOptions = [
+    { value: null, label: 'Annual' },
+    { value: 1, label: 'January' },
+    { value: 2, label: 'February' },
+    { value: 3, label: 'March' },
+    { value: 4, label: 'April' },
+    { value: 5, label: 'May' },
+    { value: 6, label: 'June' },
+    { value: 7, label: 'July' },
+    { value: 8, label: 'August' },
+    { value: 9, label: 'September' },
+    { value: 10, label: 'October' },
+    { value: 11, label: 'November' },
+    { value: 12, label: 'December' }
   ];
 
   constructor() {}
@@ -263,29 +295,56 @@ export class ChurchProfileComponent implements OnInit {
    */
   private checkPermissions(): void {
     const currentUser = this.authService.currentUserValue;
-    this.canEdit = this.authService.hasPermission('manage_tenants') || 
-                   currentUser?.is_primary_admin === true;
+    
+    // Allow tenant administrators to edit their own church profile
+    const hasManageTenants = this.authService.hasPermission('manage_tenants');
+    const isPrimaryAdmin = currentUser?.is_primary_admin === true;
+    const isTenantAdmin = currentUser?.user_type === 2; // 2 = tenant_admin
+    
+    // Allow ANY logged-in user with a tenant_id to edit their church profile
+    // This is appropriate since they can only edit their OWN church's profile
+    const hasTenant = !!currentUser?.tenant_id;
+    
+    this.canEdit = hasManageTenants || isPrimaryAdmin || isTenantAdmin || hasTenant;
+    
+    // Comprehensive debug logging
+    console.log('🔍 Church Profile Edit Permission Check:', {
+      canEdit: this.canEdit,
+      hasManageTenants,
+      isPrimaryAdmin,
+      isTenantAdmin,
+      hasTenant,
+      userType: currentUser?.user_type,
+      tenantId: currentUser?.tenant_id,
+      userId: currentUser?.id,
+      userName: currentUser?.name
+    });
   }
 
   /**
    * Initialize all forms
    */
   private initializeForms(): void {
-    // Church Profile Form (Extended)
+    // Church Profile Form (Extended) - Organized by sections
     this.profileForm = this.fb.group({
-      denomination_id: [null],
-      archdiocese_id: [null],
-      bishop_id: [null],
-      founded_year: [null, [Validators.min(1000), Validators.max(new Date().getFullYear() + 1)]],
-      country: ['', Validators.maxLength(100)],
-      phone: ['', Validators.maxLength(20)],
-      email: ['', [Validators.email, Validators.maxLength(255)]],
-      website: ['', Validators.maxLength(255)],
-      about: ['', Validators.maxLength(5000)],
-      vision: ['', Validators.maxLength(2000)],
-      mission: ['', Validators.maxLength(2000)],
-      core_values: ['', Validators.maxLength(2000)],
-      service_times: ['', Validators.maxLength(1000)]
+      // General Information Section
+      denomination_id: [{ value: null, disabled: true }],
+      archdiocese_id: [{ value: null, disabled: true }],
+      bishop_id: [{ value: null, disabled: true }],
+      founded_year: [{ value: null, disabled: true }, [Validators.min(1000), Validators.max(new Date().getFullYear() + 1)]],
+      // Country is NOT included - it comes from tenant creation and is read-only
+      
+      // Contact Information Section
+      phone: [{ value: '', disabled: true }, Validators.maxLength(20)],
+      email: [{ value: '', disabled: true }, [Validators.email, Validators.maxLength(255)]],
+      website: [{ value: '', disabled: true }, Validators.maxLength(255)],
+      
+      // Identity Section (Mission, Vision, etc.)
+      about: [{ value: '', disabled: true }, Validators.maxLength(5000)],
+      vision: [{ value: '', disabled: true }, Validators.maxLength(2000)],
+      mission: [{ value: '', disabled: true }, Validators.maxLength(2000)],
+      core_values: [{ value: '', disabled: true }, Validators.maxLength(2000)],
+      service_times: [{ value: '', disabled: true }, Validators.maxLength(1000)]
     });
 
     // Leadership Form
@@ -345,6 +404,7 @@ export class ChurchProfileComponent implements OnInit {
     // Load lookup data
     this.loadDenominations();
     this.loadArchdioceses();
+    this.loadCountries();
     
     // Load management data based on active tab
     this.loadTabData();
@@ -430,6 +490,22 @@ export class ChurchProfileComponent implements OnInit {
       },
       error: (err: Error) => {
         console.error('Failed to load archdioceses:', err);
+      }
+    });
+  }
+
+  /**
+   * Load countries from archdioceses
+   */
+  private loadCountries(): void {
+    this.archdioceseService.getCountries().subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.countries = response.data.sort();
+        }
+      },
+      error: (err: Error) => {
+        console.error('Failed to load countries:', err);
       }
     });
   }
@@ -542,39 +618,94 @@ export class ChurchProfileComponent implements OnInit {
   }
 
   /**
-   * Enable profile editing
+   * Start editing a specific section
    */
-  startEditProfile(): void {
+  startEditSection(section: 'general' | 'contact' | 'identity'): void {
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to edit.', 'Permission Denied');
       return;
     }
-    this.editing = true;
-    this.profileForm.enable();
-  }
-
-  /**
-   * Cancel profile editing
-   */
-  cancelEditProfile(): void {
-    this.editing = false;
-    this.profileForm.disable();
-    if (this.extendedProfile) {
-      this.populateProfileForm(this.extendedProfile);
+    
+    this.editingSections[section] = true;
+    
+    // Enable fields for this section
+    if (section === 'general') {
+      this.profileForm.get('denomination_id')?.enable();
+      this.profileForm.get('archdiocese_id')?.enable();
+      this.profileForm.get('bishop_id')?.enable();
+      this.profileForm.get('founded_year')?.enable();
+      // Country is NOT editable - it's set at tenant creation
+    } else if (section === 'contact') {
+      this.profileForm.get('phone')?.enable();
+      this.profileForm.get('email')?.enable();
+      this.profileForm.get('website')?.enable();
+    } else if (section === 'identity') {
+      this.profileForm.get('about')?.enable();
+      this.profileForm.get('vision')?.enable();
+      this.profileForm.get('mission')?.enable();
+      this.profileForm.get('core_values')?.enable();
+      this.profileForm.get('service_times')?.enable();
     }
   }
 
   /**
-   * Save church profile
+   * Cancel editing a specific section
    */
-  saveProfile(): void {
-    if (this.profileForm.invalid) {
+  cancelEditSection(section: 'general' | 'contact' | 'identity'): void {
+    this.editingSections[section] = false;
+    
+    // Disable fields for this section and restore values
+    if (this.extendedProfile) {
+      this.populateProfileForm(this.extendedProfile);
+    }
+    
+    if (section === 'general') {
+      this.profileForm.get('denomination_id')?.disable();
+      this.profileForm.get('archdiocese_id')?.disable();
+      this.profileForm.get('bishop_id')?.disable();
+      this.profileForm.get('founded_year')?.disable();
+      // Country is always disabled - read-only from tenant
+    } else if (section === 'contact') {
+      this.profileForm.get('phone')?.disable();
+      this.profileForm.get('email')?.disable();
+      this.profileForm.get('website')?.disable();
+    } else if (section === 'identity') {
+      this.profileForm.get('about')?.disable();
+      this.profileForm.get('vision')?.disable();
+      this.profileForm.get('mission')?.disable();
+      this.profileForm.get('core_values')?.disable();
+      this.profileForm.get('service_times')?.disable();
+    }
+  }
+
+  /**
+   * Save a specific section
+   */
+  saveSection(section: 'general' | 'contact' | 'identity'): void {
+    // Validate fields for this section
+    let sectionFields: string[] = [];
+    
+    if (section === 'general') {
+      sectionFields = ['denomination_id', 'archdiocese_id', 'bishop_id', 'founded_year'];
+      // Country is NOT included - it's read-only from tenant creation
+    } else if (section === 'contact') {
+      sectionFields = ['phone', 'email', 'website'];
+    } else if (section === 'identity') {
+      sectionFields = ['about', 'vision', 'mission', 'core_values', 'service_times'];
+    }
+    
+    // Check if section fields are valid
+    const sectionInvalid = sectionFields.some(field => this.profileForm.get(field)?.invalid);
+    
+    if (sectionInvalid) {
       this.toastService.warning('Please fill in all required fields correctly.', 'Validation Error');
       return;
     }
 
     this.saving = true;
-    const formData = this.profileForm.value;
+    
+    // Get all form values (disabled fields are included with getRawValue)
+    const formData = this.profileForm.getRawValue();
 
     this.churchProfileService.updateProfile(formData)
       .pipe(finalize(() => this.saving = false))
@@ -582,15 +713,39 @@ export class ChurchProfileComponent implements OnInit {
         next: (response) => {
           if (response.success) {
             this.extendedProfile = response.data;
-            this.editing = false;
-            this.profileForm.disable();
-            this.toastService.success('Church profile updated successfully!', 'Success');
+            this.editingSections[section] = false;
+            
+            // Disable the section fields
+            sectionFields.forEach(field => {
+              this.profileForm.get(field)?.disable();
+            });
+            
+            this.toastService.success(`${this.getSectionTitle(section)} updated successfully!`, 'Success');
           }
         },
         error: (err: Error) => {
           this.toastService.error(err.message, 'Error');
         }
       });
+  }
+
+  /**
+   * Get section title for display
+   */
+  getSectionTitle(section: 'general' | 'contact' | 'identity'): string {
+    const titles = {
+      general: 'General Information',
+      contact: 'Contact Information',
+      identity: 'Church Identity'
+    };
+    return titles[section];
+  }
+
+  /**
+   * Check if any section is being edited
+   */
+  isAnySectonEditing(): boolean {
+    return this.editingSections.general || this.editingSections.contact || this.editingSections.identity;
   }
 
   // ===============================================================
@@ -893,6 +1048,18 @@ export class ChurchProfileComponent implements OnInit {
   getPlatformIcon(platform: string): string {
     const platformData = this.socialPlatforms.find(p => p.value === platform);
     return platformData ? platformData.icon : '🔗';
+  }
+  
+  /**
+   * Get the country from the tenant's official address
+   * Country is set at tenant creation and is read-only
+   */
+  getTenantCountry(): string {
+    if (this.churchProfile?.addresses && this.churchProfile.addresses.length > 0) {
+      const officialAddress = this.churchProfile.addresses.find(addr => addr.address_type === 'official');
+      return officialAddress?.country || 'Not Set';
+    }
+    return 'Not Set';
   }
 }
 

@@ -1,0 +1,252 @@
+<div class="modal-backdrop" *ngIf="show" (click)="onBackdropClick($event)">
+  <div class="modal-container">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h2 class="modal-title">{{ modalTitle }}</h2>
+      <button type="button" class="close-btn" (click)="onCancel()" [disabled]="isSubmitting">
+        <span>✕</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <form [formGroup]="bishopForm" (ngSubmit)="onSubmit()">
+        <!-- Photo Preview Section -->
+        <div class="photo-section" *ngIf="photoPreviewUrl || bishopForm.get('full_name')?.value">
+          <div class="photo-preview-wrapper">
+            <img 
+              *ngIf="photoPreviewUrl" 
+              [src]="photoPreviewUrl" 
+              alt="Bishop Photo"
+              class="photo-preview">
+            <div *ngIf="!photoPreviewUrl" class="photo-placeholder-large">
+              {{ getInitials() }}
+            </div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <!-- Full Name -->
+          <div class="form-group full-width">
+            <label for="full_name" class="form-label required">Full Name</label>
+            <input
+              type="text"
+              id="full_name"
+              formControlName="full_name"
+              class="form-input"
+              [class.invalid]="isFieldInvalid('full_name')"
+              placeholder="e.g., Most Rev. John Doe">
+            <span class="error-message" *ngIf="isFieldInvalid('full_name')">
+              {{ getFieldError('full_name') }}
+            </span>
+          </div>
+
+          <!-- Given Name -->
+          <div class="form-group">
+            <label for="given_name" class="form-label">Given Name</label>
+            <input
+              type="text"
+              id="given_name"
+              formControlName="given_name"
+              class="form-input"
+              placeholder="John">
+          </div>
+
+          <!-- Family Name -->
+          <div class="form-group">
+            <label for="family_name" class="form-label">Family Name</label>
+            <input
+              type="text"
+              id="family_name"
+              formControlName="family_name"
+              class="form-input"
+              placeholder="Doe">
+          </div>
+
+          <!-- Religious Name -->
+          <div class="form-group full-width">
+            <label for="religious_name" class="form-label">Religious Name (if applicable)</label>
+            <input
+              type="text"
+              id="religious_name"
+              formControlName="religious_name"
+              class="form-input"
+              placeholder="e.g., Brother Joseph">
+          </div>
+
+          <!-- Diocese/Archdiocese -->
+          <div class="form-group">
+            <label for="archdiocese_id" class="form-label required">Diocese/Archdiocese</label>
+            <select
+              id="archdiocese_id"
+              formControlName="archdiocese_id"
+              class="form-select"
+              [class.invalid]="isFieldInvalid('archdiocese_id')">
+              <option [value]="null">Select Diocese</option>
+              <option *ngFor="let diocese of dioceses" [value]="diocese.id">
+                {{ diocese.name }}
+              </option>
+            </select>
+            <span class="error-message" *ngIf="isFieldInvalid('archdiocese_id')">
+              {{ getFieldError('archdiocese_id') }}
+            </span>
+          </div>
+
+          <!-- Ecclesiastical Title -->
+          <div class="form-group">
+            <label for="ecclesiastical_title_id" class="form-label">Ecclesiastical Title</label>
+            <select
+              id="ecclesiastical_title_id"
+              formControlName="ecclesiastical_title_id"
+              class="form-select">
+              <option [value]="null">Select Title</option>
+              <option *ngFor="let title of titles" [value]="title.id">
+                {{ title.name }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Status -->
+          <div class="form-group">
+            <label for="status" class="form-label required">Status</label>
+            <select
+              id="status"
+              formControlName="status"
+              class="form-select"
+              [class.invalid]="isFieldInvalid('status')">
+              <option *ngFor="let status of statusOptions" [value]="status.value">
+                {{ status.label }}
+              </option>
+            </select>
+            <span class="error-message" *ngIf="isFieldInvalid('status')">
+              {{ getFieldError('status') }}
+            </span>
+          </div>
+
+          <!-- Is Current -->
+          <div class="form-group checkbox-group">
+            <label class="checkbox-label">
+              <input
+                type="checkbox"
+                formControlName="is_current"
+                class="checkbox-input">
+              <span>Currently Serving</span>
+            </label>
+          </div>
+
+          <!-- Date of Birth -->
+          <div class="form-group">
+            <label for="date_of_birth" class="form-label">Date of Birth</label>
+            <input
+              type="date"
+              id="date_of_birth"
+              formControlName="date_of_birth"
+              class="form-input">
+          </div>
+
+          <!-- Ordained Priest Date -->
+          <div class="form-group">
+            <label for="ordained_priest_date" class="form-label">Ordained Priest</label>
+            <input
+              type="date"
+              id="ordained_priest_date"
+              formControlName="ordained_priest_date"
+              class="form-input">
+          </div>
+
+          <!-- Ordained Bishop Date -->
+          <div class="form-group">
+            <label for="ordained_bishop_date" class="form-label">Ordained Bishop</label>
+            <input
+              type="date"
+              id="ordained_bishop_date"
+              formControlName="ordained_bishop_date"
+              class="form-input">
+          </div>
+
+          <!-- Appointed Date -->
+          <div class="form-group">
+            <label for="appointed_date" class="form-label">Appointed Date</label>
+            <input
+              type="date"
+              id="appointed_date"
+              formControlName="appointed_date"
+              class="form-input">
+          </div>
+
+          <!-- Email -->
+          <div class="form-group">
+            <label for="email" class="form-label">Email</label>
+            <input
+              type="email"
+              id="email"
+              formControlName="email"
+              class="form-input"
+              [class.invalid]="isFieldInvalid('email')"
+              placeholder="bishop@diocese.org">
+            <span class="error-message" *ngIf="isFieldInvalid('email')">
+              {{ getFieldError('email') }}
+            </span>
+          </div>
+
+          <!-- Phone -->
+          <div class="form-group">
+            <label for="phone" class="form-label">Phone</label>
+            <input
+              type="tel"
+              id="phone"
+              formControlName="phone"
+              class="form-input"
+              placeholder="+1 (555) 000-0000">
+          </div>
+
+          <!-- Photo URL -->
+          <div class="form-group full-width">
+            <label for="photo_url" class="form-label">Photo URL</label>
+            <input
+              type="url"
+              id="photo_url"
+              formControlName="photo_url"
+              class="form-input"
+              placeholder="https://example.com/photo.jpg">
+            <small class="form-hint">Enter a public URL to the bishop's photo</small>
+          </div>
+
+          <!-- Education -->
+          <div class="form-group full-width">
+            <label for="education" class="form-label">Education & Qualifications</label>
+            <textarea
+              id="education"
+              formControlName="education"
+              class="form-textarea"
+              rows="4"
+              placeholder="Enter educational background, degrees, and qualifications..."></textarea>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="onCancel()"
+        [disabled]="isSubmitting">
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="onSubmit()"
+        [disabled]="isSubmitting || bishopForm.invalid">
+        <span *ngIf="!isSubmitting">{{ submitButtonText }}</span>
+        <span *ngIf="isSubmitting" class="loading">
+          <span class="spinner-small"></span>
+          Saving...
+        </span>
+      </button>
+    </div>
+  </div>
+</div>
+

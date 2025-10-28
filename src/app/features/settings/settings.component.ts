@@ -30,6 +30,13 @@ export class SettingsComponent implements OnInit {
       icon: '🛡️', 
       route: '/settings/roles-permissions',
       requiresRoleManagement: true
+    },
+    { 
+      title: 'Ecclesiastical Data', 
+      description: 'Manage dioceses, bishops, and church hierarchy', 
+      icon: '⛪', 
+      route: '/settings/ecclesiastical',
+      requiresEkklesiaRole: true
     }
   ];
 
@@ -75,9 +82,38 @@ export class SettingsComponent implements OnInit {
   }
 
   /**
+   * Check if the current user has an Ekklesia role.
+   * Only Ekklesia users (SuperAdmin, EkklesiaAdmin, EkklesiaManager, EkklesiaUser) can access Ecclesiastical Data.
+   */
+  hasEkklesiaRole(user: User | null): boolean {
+    if (!user) return false;
+    
+    // Primary check: Use the backend-provided flag
+    if (user.has_ekklesia_role !== undefined) {
+      return user.has_ekklesia_role;
+    }
+    
+    // Fallback: Check by role name
+    const ekklesiaRoles = ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'];
+    if (user.role_name && ekklesiaRoles.includes(user.role_name)) {
+      return true;
+    }
+    
+    // Fallback: Check by role object
+    if (user.role?.name && ekklesiaRoles.includes(user.role.name)) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
    * Check if a section should be displayed based on user permissions.
    */
   shouldDisplaySection(section: any, user: User | null): boolean {
+    if (section.requiresEkklesiaRole) {
+      return this.hasEkklesiaRole(user);
+    }
     if (section.requiresRoleManagement) {
       return this.canManageRoles(user);
     }

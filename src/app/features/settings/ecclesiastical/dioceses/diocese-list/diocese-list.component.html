@@ -1,0 +1,172 @@
+<div class="diocese-list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <div class="header-left">
+      <h2 class="list-title">Dioceses & Archdioceses</h2>
+      <p class="list-subtitle">Manage ecclesiastical territories and hierarchies</p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-primary" (click)="onCreateDiocese()">
+        <span class="btn-icon">➕</span>
+        Add Diocese
+      </button>
+    </div>
+  </div>
+
+  <!-- Search and Filters -->
+  <div class="search-filter-bar">
+    <div class="search-box">
+      <input 
+        type="text" 
+        [(ngModel)]="searchTerm"
+        (keyup.enter)="onSearch()"
+        placeholder="Search dioceses..."
+        class="search-input">
+      <button (click)="onSearch()" class="search-btn">🔍</button>
+    </div>
+
+    <button (click)="toggleFilters()" class="filter-toggle-btn">
+      <span class="btn-icon">🔽</span>
+      Filters
+    </button>
+  </div>
+
+  <!-- Filter Panel -->
+  <div class="filter-panel" *ngIf="showFilters">
+    <div class="filter-grid">
+      <div class="filter-item">
+        <label>Country</label>
+        <select [(ngModel)]="selectedCountry" (change)="onFilterChange()" class="filter-select">
+          <option [value]="null">All Countries</option>
+          <option *ngFor="let country of countries" [value]="country.id">{{ country.name }}</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label>Denomination</label>
+        <select [(ngModel)]="selectedDenomination" (change)="onFilterChange()" class="filter-select">
+          <option [value]="null">All Denominations</option>
+          <option *ngFor="let denom of denominations" [value]="denom.id">{{ denom.name }}</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <label>Status</label>
+        <select [(ngModel)]="activeFilter" (change)="onFilterChange()" class="filter-select">
+          <option [value]="null">All Status</option>
+          <option [value]="true">Active Only</option>
+          <option [value]="false">Inactive Only</option>
+        </select>
+      </div>
+
+      <div class="filter-item">
+        <button (click)="clearFilters()" class="btn btn-secondary">Clear Filters</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <app-loading-skeleton 
+      type="table" 
+      [rows]="10" 
+      [columns]="7">
+    </app-loading-skeleton>
+  </div>
+
+  <!-- Empty State -->
+  <app-empty-state
+    *ngIf="!loading && dioceses.length === 0"
+    icon="⛪"
+    [title]="searchTerm || selectedCountry || selectedDenomination ? 'No dioceses match your filters' : 'No dioceses found'"
+    [description]="searchTerm || selectedCountry || selectedDenomination ? 'Try adjusting your search or filters to find what you\'re looking for.' : 'Get started by adding your first diocese to the system.'"
+    [buttonText]="searchTerm || selectedCountry || selectedDenomination ? 'Clear Filters' : 'Add First Diocese'"
+    (action)="searchTerm || selectedCountry || selectedDenomination ? clearFilters() : onCreateDiocese()">
+  </app-empty-state>
+
+  <!-- Table -->
+  <div *ngIf="!loading && dioceses.length > 0" class="table-container">
+    <table class="diocese-table">
+      <thead>
+        <tr>
+          <th (click)="onSort('name')" class="sortable" tabindex="0" role="button" 
+              [attr.aria-sort]="sortBy === 'name' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Name {{ getSortIcon('name') }}
+          </th>
+          <th>Type</th>
+          <th (click)="onSort('country_id')" class="sortable" tabindex="0" role="button"
+              [attr.aria-sort]="sortBy === 'country_id' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Country {{ getSortIcon('country_id') }}
+          </th>
+          <th>Denomination</th>
+          <th>Status</th>
+          <th (click)="onSort('established_date')" class="sortable" tabindex="0" role="button"
+              [attr.aria-sort]="sortBy === 'established_date' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Established {{ getSortIcon('established_date') }}
+          </th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let diocese of dioceses; trackBy: trackByDioceseId" class="data-row">
+          <td class="name-cell">
+            <strong>{{ diocese.name }}</strong>
+            <small *ngIf="diocese.code" class="code-badge">{{ diocese.code }}</small>
+          </td>
+          <td>
+            <span class="type-badge">{{ getTypeBadge(diocese.is_archdiocese) }}</span>
+          </td>
+          <td>{{ diocese.country?.name || 'N/A' }}</td>
+          <td>{{ diocese.denomination?.name || 'N/A' }}</td>
+          <td>
+            <span [class]="getStatusBadgeClass(diocese.active)">
+              {{ diocese.active ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>{{ diocese.established_date ? (diocese.established_date | date: 'MMM d, y') : 'N/A' }}</td>
+          <td class="actions-cell">
+            <button (click)="onViewDiocese(diocese)" class="action-btn view" title="View Details">
+              👁️
+            </button>
+            <button (click)="onEditDiocese(diocese)" class="action-btn edit" title="Edit">
+              ✏️
+            </button>
+            <button (click)="onDeleteDiocese(diocese)" class="action-btn delete" title="Delete">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <app-pagination
+    *ngIf="!loading && dioceses.length > 0"
+    [currentPage]="currentPage"
+    [pageSize]="perPage"
+    [totalItems]="totalItems"
+    (pageChange)="onPageChange($event)">
+  </app-pagination>
+
+  <!-- Delete Confirmation Modal -->
+  <app-confirmation-modal
+    *ngIf="showDeleteModal"
+    [show]="showDeleteModal"
+    [title]="'Delete Diocese'"
+    [message]="'Are you sure you want to delete ' + dioceseToDelete?.name + '? This action cannot be undone.'"
+    [confirmText]="'Delete'"
+    [confirmButtonClass]="'btn-danger'"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()">
+  </app-confirmation-modal>
+
+  <!-- Diocese Form Modal -->
+  <app-diocese-form-modal
+    [show]="showFormModal"
+    [diocese]="selectedDiocese"
+    (saved)="onFormSaved($event)"
+    (cancelled)="onFormCancelled()">
+  </app-diocese-form-modal>
+</div>
+

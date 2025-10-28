@@ -95,32 +95,35 @@
           </div>
         </div>
 
-        <!-- Extended Profile Form -->
+        <!-- General Information Section -->
         <form [formGroup]="profileForm" class="section-card">
           <div class="section-header">
-            <h2>🏛️ Extended Church Profile</h2>
-            <div class="section-actions">
+            <h2>🏛️ General Information</h2>
+            <div class="section-actions" *ngIf="canEdit">
               <button 
-                *ngIf="!editing && canEdit" 
+                *ngIf="!editingSections.general" 
                 class="btn-3d-action btn-3d-edit" 
                 type="button" 
-                (click)="startEditProfile()">
-                <span>✏️</span>
-                <span>Edit</span>
+                title="Edit"
+                (click)="startEditSection('general')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
               </button>
-              <div *ngIf="editing" class="button-group">
+              <div *ngIf="editingSections.general" class="button-group">
                 <button 
                   class="btn-3d-action btn-3d-success" 
                   type="button" 
-                  (click)="saveProfile()"
-                  [disabled]="saving || profileForm.invalid">
+                  (click)="saveSection('general')"
+                  [disabled]="saving">
                   <span>{{ saving ? '⏳' : '✓' }}</span>
                   <span>{{ saving ? 'Saving...' : 'Save' }}</span>
                 </button>
                 <button 
                   class="btn-3d-action btn-3d-secondary" 
                   type="button" 
-                  (click)="cancelEditProfile()">
+                  (click)="cancelEditSection('general')">
                   <span>✗</span>
                   <span>Cancel</span>
                 </button>
@@ -133,30 +136,41 @@
             <!-- Denomination -->
             <div class="form-group">
               <label for="denomination_id">Denomination</label>
-              <select 
-                id="denomination_id" 
+              <ng-select
+                id="denomination_id"
                 formControlName="denomination_id"
-                (change)="onDenominationChange($any($event.target).value)"
-                class="form-control">
-                <option [value]="null">Select Denomination</option>
-                <option *ngFor="let denom of denominations" [value]="denom.id">
-                  {{ denom.name }}
-                </option>
-              </select>
+                [items]="denominations"
+                bindLabel="name"
+                bindValue="id"
+                placeholder="Select Denomination"
+                [clearable]="true"
+                [searchable]="true"
+                (change)="onDenominationChange($event?.id)">
+              </ng-select>
             </div>
 
             <!-- Archdiocese -->
             <div class="form-group">
               <label for="archdiocese_id">Archdiocese / Diocese</label>
-              <select 
-                id="archdiocese_id" 
+              <ng-select
+                id="archdiocese_id"
                 formControlName="archdiocese_id"
-                class="form-control">
-                <option [value]="null">Select Archdiocese</option>
-                <option *ngFor="let arch of filteredArchdioceses" [value]="arch.id">
-                  {{ arch.name }} ({{ arch.country }})
-                </option>
-              </select>
+                [items]="filteredArchdioceses"
+                bindLabel="name"
+                bindValue="id"
+                placeholder="Select Archdiocese"
+                [clearable]="true"
+                [searchable]="true">
+                <ng-template ng-label-tmp let-item="item">
+                  {{ item.name }}
+                </ng-template>
+                <ng-template ng-option-tmp let-item="item">
+                  <div class="ng-option-custom">
+                    <strong>{{ item.name }}</strong>
+                    <small class="text-muted">{{ item.country }}</small>
+                  </div>
+                </ng-template>
+              </ng-select>
             </div>
 
             <!-- Founded Year -->
@@ -173,14 +187,50 @@
             <!-- Country -->
             <div class="form-group">
               <label for="country">Country</label>
-              <input 
-                type="text" 
-                id="country" 
-                formControlName="country"
-                class="form-control"
-                placeholder="Country">
+              <div class="form-control-static">
+                {{ getTenantCountry() }}
+              </div>
             </div>
+          </div>
+        </form>
 
+        <!-- Contact Information Section -->
+        <form [formGroup]="profileForm" class="section-card">
+          <div class="section-header">
+            <h2>📞 Contact Information</h2>
+            <div class="section-actions" *ngIf="canEdit">
+              <button 
+                *ngIf="!editingSections.contact" 
+                class="btn-3d-action btn-3d-edit" 
+                type="button" 
+                title="Edit"
+                (click)="startEditSection('contact')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <div *ngIf="editingSections.contact" class="button-group">
+                <button 
+                  class="btn-3d-action btn-3d-success" 
+                  type="button" 
+                  (click)="saveSection('contact')"
+                  [disabled]="saving">
+                  <span>{{ saving ? '⏳' : '✓' }}</span>
+                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
+                </button>
+                <button 
+                  class="btn-3d-action btn-3d-secondary" 
+                  type="button" 
+                  (click)="cancelEditSection('contact')">
+                  <span>✗</span>
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid">
             <!-- Phone -->
             <div class="form-group">
               <label for="phone">Phone</label>
@@ -213,7 +263,46 @@
                 class="form-control"
                 placeholder="https://www.church.org">
             </div>
+          </div>
+        </form>
 
+        <!-- Church Identity Section -->
+        <form [formGroup]="profileForm" class="section-card">
+          <div class="section-header">
+            <h2>✨ Church Identity</h2>
+            <div class="section-actions" *ngIf="canEdit">
+              <button 
+                *ngIf="!editingSections.identity" 
+                class="btn-3d-action btn-3d-edit" 
+                type="button" 
+                title="Edit"
+                (click)="startEditSection('identity')">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+              <div *ngIf="editingSections.identity" class="button-group">
+                <button 
+                  class="btn-3d-action btn-3d-success" 
+                  type="button" 
+                  (click)="saveSection('identity')"
+                  [disabled]="saving">
+                  <span>{{ saving ? '⏳' : '✓' }}</span>
+                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
+                </button>
+                <button 
+                  class="btn-3d-action btn-3d-secondary" 
+                  type="button" 
+                  (click)="cancelEditSection('identity')">
+                  <span>✗</span>
+                  <span>Cancel</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-grid">
             <!-- About -->
             <div class="form-group full-width">
               <label for="about">About</label>
@@ -521,10 +610,15 @@
           </div>
           <div class="form-group">
             <label for="leader_role">Role *</label>
-            <select id="leader_role" formControlName="role" class="form-control" required>
-              <option value="">Select Role</option>
-              <option *ngFor="let role of leadershipRoles" [value]="role">{{ role }}</option>
-            </select>
+            <ng-select
+              id="leader_role"
+              formControlName="role"
+              [items]="leadershipRoles"
+              placeholder="Select Role"
+              [clearable]="false"
+              [searchable]="true"
+              required>
+            </ng-select>
           </div>
           <div class="form-group">
             <label for="leader_title">Title</label>
@@ -586,21 +680,16 @@
           </div>
           <div class="form-group">
             <label for="stat_month">Month (optional)</label>
-            <select id="stat_month" formControlName="month" class="form-control">
-              <option [value]="null">Annual</option>
-              <option [value]="1">January</option>
-              <option [value]="2">February</option>
-              <option [value]="3">March</option>
-              <option [value]="4">April</option>
-              <option [value]="5">May</option>
-              <option [value]="6">June</option>
-              <option [value]="7">July</option>
-              <option [value]="8">August</option>
-              <option [value]="9">September</option>
-              <option [value]="10">October</option>
-              <option [value]="11">November</option>
-              <option [value]="12">December</option>
-            </select>
+            <ng-select
+              id="stat_month"
+              formControlName="month"
+              [items]="monthOptions"
+              bindLabel="label"
+              bindValue="value"
+              placeholder="Select Month"
+              [clearable]="true"
+              [searchable]="true">
+            </ng-select>
           </div>
           <div class="form-group">
             <label for="stat_membership">Membership Count</label>
@@ -658,12 +747,23 @@
         <div class="form-grid">
           <div class="form-group">
             <label for="social_platform">Platform *</label>
-            <select id="social_platform" formControlName="platform" class="form-control" required>
-              <option value="">Select Platform</option>
-              <option *ngFor="let platform of socialPlatforms" [value]="platform.value">
-                {{ platform.icon }} {{ platform.label }}
-              </option>
-            </select>
+            <ng-select
+              id="social_platform"
+              formControlName="platform"
+              [items]="socialPlatforms"
+              bindLabel="label"
+              bindValue="value"
+              placeholder="Select Platform"
+              [clearable]="false"
+              [searchable]="true"
+              required>
+              <ng-template ng-label-tmp let-item="item">
+                {{ item.icon }} {{ item.label }}
+              </ng-template>
+              <ng-template ng-option-tmp let-item="item">
+                {{ item.icon }} {{ item.label }}
+              </ng-template>
+            </ng-select>
           </div>
           <div class="form-group">
             <label for="social_username">Username</label>

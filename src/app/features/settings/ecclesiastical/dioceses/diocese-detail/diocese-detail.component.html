@@ -1,0 +1,238 @@
+<!-- Breadcrumb Navigation -->
+<nav class="breadcrumb" aria-label="Breadcrumb">
+  <ol class="breadcrumb-list">
+    <li class="breadcrumb-item">
+      <a [routerLink]="['/settings']" class="breadcrumb-link">Settings</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a [routerLink]="['/settings/ecclesiastical']" class="breadcrumb-link">Ecclesiastical Data</a>
+    </li>
+    <li class="breadcrumb-item">
+      <a [routerLink]="['/settings/ecclesiastical/dioceses']" class="breadcrumb-link">Dioceses</a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">
+      {{ loading ? 'Loading...' : (diocese?.name || 'Detail') }}
+    </li>
+  </ol>
+</nav>
+
+<!-- Loading State -->
+<div *ngIf="loading" class="loading-container">
+  <app-loading-skeleton type="card" [rows]="8"></app-loading-skeleton>
+</div>
+
+<!-- Diocese Detail Content -->
+<div *ngIf="!loading && diocese" class="diocese-detail animate-fade-in-up">
+  
+  <!-- Header Section -->
+  <div class="detail-header">
+    <div class="header-content">
+      <div class="header-icon">⛪</div>
+      <div class="header-text">
+        <h1 class="detail-title">{{ diocese.name }}</h1>
+        <div class="header-badges">
+          <span class="type-badge" [class.archdiocese]="diocese.is_archdiocese">
+            {{ getTypeBadge(diocese.is_archdiocese) }}
+          </span>
+          <span [class]="getStatusBadgeClass(diocese.active)">
+            {{ diocese.active ? 'Active' : 'Inactive' }}
+          </span>
+          <span *ngIf="diocese.code" class="code-badge">{{ diocese.code }}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary hover-lift transition-all focus-ring"
+        (click)="goBack()"
+        aria-label="Go back">
+        ← Back
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary hover-lift transition-all focus-ring"
+        (click)="onEdit()"
+        aria-label="Edit diocese">
+        ✏️ Edit
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-danger hover-lift transition-all focus-ring"
+        (click)="onDelete()"
+        aria-label="Delete diocese">
+        🗑️ Delete
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Content Grid -->
+  <div class="detail-grid">
+    
+    <!-- General Information Card -->
+    <div class="detail-card">
+      <h2 class="card-title">General Information</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Full Name</span>
+          <span class="info-value">{{ diocese.name }}</span>
+        </div>
+        <div class="info-item" *ngIf="diocese.code">
+          <span class="info-label">Code</span>
+          <span class="info-value">{{ diocese.code }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Type</span>
+          <span class="info-value">{{ getTypeBadge(diocese.is_archdiocese) }}</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Status</span>
+          <span class="info-value">
+            <span [class]="getStatusBadgeClass(diocese.active)">
+              {{ diocese.active ? 'Active' : 'Inactive' }}
+            </span>
+          </span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Denomination</span>
+          <span class="info-value">{{ diocese.denomination?.name || 'N/A' }}</span>
+        </div>
+        <div class="info-item" *ngIf="diocese.established_date">
+          <span class="info-label">Established</span>
+          <span class="info-value">{{ formatDate(diocese.established_date) }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Location Information Card -->
+    <div class="detail-card">
+      <h2 class="card-title">Location Information</h2>
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Country</span>
+          <span class="info-value">{{ diocese.country?.name || 'N/A' }}</span>
+        </div>
+        <div class="info-item" *ngIf="diocese.state">
+          <span class="info-label">State/Province</span>
+          <span class="info-value">{{ diocese.state?.name || 'N/A' }}</span>
+        </div>
+        <div class="info-item" *ngIf="diocese.city">
+          <span class="info-label">City</span>
+          <span class="info-value">{{ diocese.city }}</span>
+        </div>
+        <div class="info-item" *ngIf="diocese.address_line1">
+          <span class="info-label">Address</span>
+          <span class="info-value">{{ diocese.address_line1 }}</span>
+        </div>
+        <div class="info-item" *ngIf="diocese.postal_code">
+          <span class="info-label">Postal Code</span>
+          <span class="info-value">{{ diocese.postal_code }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contact Information Card -->
+    <div class="detail-card">
+      <h2 class="card-title">Contact Information</h2>
+      <div class="info-grid">
+        <div class="info-item" *ngIf="diocese.phone">
+          <span class="info-label">Phone</span>
+          <span class="info-value">
+            <a [href]="'tel:' + diocese.phone" class="contact-link">{{ diocese.phone }}</a>
+          </span>
+        </div>
+        <div class="info-item" *ngIf="diocese.email">
+          <span class="info-label">Email</span>
+          <span class="info-value">
+            <a [href]="'mailto:' + diocese.email" class="contact-link">{{ diocese.email }}</a>
+          </span>
+        </div>
+        <div class="info-item" *ngIf="diocese.website">
+          <span class="info-label">Website</span>
+          <span class="info-value">
+            <a [href]="diocese.website" target="_blank" rel="noopener noreferrer" class="contact-link">
+              {{ diocese.website }} ↗
+            </a>
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Related Bishops Card -->
+    <div class="detail-card full-width">
+      <div class="card-header-with-action">
+        <h2 class="card-title">Bishops in this {{ getTypeBadge(diocese.is_archdiocese) }}</h2>
+        <span class="badge-count">{{ relatedBishops.length }}</span>
+      </div>
+
+      <!-- Loading Bishops -->
+      <div *ngIf="loadingBishops">
+        <app-loading-skeleton type="list" [rows]="3"></app-loading-skeleton>
+      </div>
+
+      <!-- No Bishops -->
+      <app-empty-state
+        *ngIf="!loadingBishops && relatedBishops.length === 0"
+        icon="👤"
+        title="No bishops assigned"
+        description="There are currently no bishops assigned to this diocese."
+        [showButton]="false">
+      </app-empty-state>
+
+      <!-- Bishops List -->
+      <div *ngIf="!loadingBishops && relatedBishops.length > 0" class="bishops-list">
+        <div 
+          *ngFor="let bishop of relatedBishops" 
+          class="bishop-item hover-lift transition-all"
+          (click)="viewBishop(bishop.id)"
+          role="button"
+          tabindex="0"
+          [attr.aria-label]="'View details for ' + bishop.full_name">
+          
+          <div class="bishop-photo">
+            <img 
+              *ngIf="bishop.photo_url" 
+              [src]="bishop.photo_url" 
+              [alt]="bishop.full_name"
+              class="photo">
+            <div *ngIf="!bishop.photo_url" class="photo-placeholder">
+              {{ bishop.full_name?.substring(0, 2).toUpperCase() }}
+            </div>
+          </div>
+
+          <div class="bishop-info">
+            <h3 class="bishop-name">{{ bishop.full_name }}</h3>
+            <p class="bishop-title" *ngIf="bishop.ecclesiastical_title">
+              {{ bishop.ecclesiastical_title?.name }}
+            </p>
+            <p class="bishop-dates">
+              <span *ngIf="bishop.ordained_bishop_date">
+                Ordained: {{ formatDate(bishop.ordained_bishop_date) }}
+              </span>
+            </p>
+          </div>
+
+          <div class="bishop-status">
+            <span class="status-badge" [ngClass]="'badge-' + bishop.status">
+              {{ bishop.status }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<app-confirmation-modal
+  [show]="showDeleteModal"
+  title="Delete Diocese"
+  [message]="'Are you sure you want to delete ' + (diocese?.name || 'this diocese') + '? This action cannot be undone.'"
+  confirmText="Delete"
+  cancelText="Cancel"
+  confirmButtonClass="btn-danger"
+  (confirmed)="confirmDelete()"
+  (cancelled)="cancelDelete()">
+</app-confirmation-modal>
+

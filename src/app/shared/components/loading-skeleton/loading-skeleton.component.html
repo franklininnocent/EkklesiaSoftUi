@@ -1,0 +1,77 @@
+<!-- Table Skeleton -->
+<div *ngIf="type === 'table'" class="skeleton-table" role="status" aria-label="Loading table data">
+  <div class="skeleton-table-header">
+    <div 
+      *ngFor="let col of getArray(columns)" 
+      class="skeleton-table-header-cell skeleton-shimmer">
+    </div>
+  </div>
+  <div class="skeleton-table-body">
+    <div *ngFor="let row of getArray(rows)" class="skeleton-table-row">
+      <div 
+        *ngFor="let col of getArray(columns)" 
+        class="skeleton-table-cell skeleton-shimmer">
+      </div>
+    </div>
+  </div>
+  <span class="sr-only">Loading content, please wait...</span>
+</div>
+
+<!-- Card Skeleton -->
+<div *ngIf="type === 'card'" class="skeleton-card" role="status" aria-label="Loading card">
+  <div class="skeleton-card-header skeleton-shimmer"></div>
+  <div class="skeleton-card-body">
+    <div class="skeleton-line skeleton-shimmer" style="width: 90%;"></div>
+    <div class="skeleton-line skeleton-shimmer" style="width: 80%;"></div>
+    <div class="skeleton-line skeleton-shimmer" style="width: 70%;"></div>
+  </div>
+  <span class="sr-only">Loading content, please wait...</span>
+</div>
+
+<!-- List Skeleton -->
+<div *ngIf="type === 'list'" class="skeleton-list" role="status" aria-label="Loading list">
+  <div *ngFor="let item of getArray(rows)" class="skeleton-list-item">
+    <div class="skeleton-circle skeleton-shimmer"></div>
+    <div class="skeleton-list-content">
+      <div class="skeleton-line skeleton-shimmer" style="width: 60%;"></div>
+      <div class="skeleton-line skeleton-shimmer" style="width: 40%;"></div>
+    </div>
+  </div>
+  <span class="sr-only">Loading content, please wait...</span>
+</div>
+
+<!-- Text Skeleton -->
+<div 
+  *ngIf="type === 'text'" 
+  class="skeleton-text skeleton-shimmer" 
+  [style.height]="height"
+  [style.width]="width"
+  [style.border-radius]="borderRadius"
+  role="status"
+  aria-label="Loading text">
+  <span class="sr-only">Loading content, please wait...</span>
+</div>
+
+<!-- Circle Skeleton -->
+<div 
+  *ngIf="type === 'circle'" 
+  class="skeleton-circle skeleton-shimmer" 
+  [style.width]="width"
+  [style.height]="height"
+  role="status"
+  aria-label="Loading image">
+  <span class="sr-only">Loading content, please wait...</span>
+</div>
+
+<!-- Rectangle Skeleton -->
+<div 
+  *ngIf="type === 'rectangle'" 
+  class="skeleton-rectangle skeleton-shimmer" 
+  [style.height]="height"
+  [style.width]="width"
+  [style.border-radius]="borderRadius"
+  role="status"
+  aria-label="Loading content">
+  <span class="sr-only">Loading content, please wait...</span>
+</div>
+
