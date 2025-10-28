@@ -47,17 +47,17 @@ import { RouterModule } from '@angular/router';
   `,
   styles: [`
     .ecclesiastical-container {
-      padding: 2rem;
+      padding: 1.5rem;
       max-width: 1400px;
       margin: 0 auto;
     }
 
     .ecclesiastical-header {
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
 
     .ecclesiastical-title {
-      font-size: 2rem;
+      font-size: 1.75rem;
       font-weight: 700;
       color: #1f2937;
       margin: 0 0 0.5rem 0;
@@ -73,14 +73,14 @@ import { RouterModule } from '@angular/router';
       display: flex;
       gap: 1rem;
       border-bottom: 2px solid #e5e7eb;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
     }
 
     .nav-tab {
       display: flex;
       align-items: center;
       gap: 0.5rem;
-      padding: 1rem 1.5rem;
+      padding: 0.75rem 1.25rem;
       color: #6b7280;
       text-decoration: none;
       font-weight: 500;
@@ -130,7 +130,7 @@ import { RouterModule } from '@angular/router';
       }
 
       .nav-tab {
-        padding: 0.75rem 1rem;
+        padding: 0.625rem 1rem;
         font-size: 0.875rem;
       }
 

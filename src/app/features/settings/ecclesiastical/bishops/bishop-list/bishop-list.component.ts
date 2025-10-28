@@ -10,6 +10,7 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
 import { BishopFormModalComponent } from '../bishop-form-modal/bishop-form-modal.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 
 @Component({
   selector: 'app-bishop-list',
@@ -21,7 +22,8 @@ import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.
     ConfirmationModalComponent, 
     BishopFormModalComponent,
     LoadingSkeletonComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    AdvancedSearchPanelComponent
   ],
   templateUrl: './bishop-list.component.html',
   styleUrl: './bishop-list.component.scss'
@@ -33,7 +35,7 @@ export class BishopListComponent implements OnInit {
   
   // Pagination
   currentPage = 1;
-  perPage = 15;
+  perPage = 20; // Increased to 20 for better screen utilization
   totalItems = 0;
   totalPages = 0;
 
@@ -47,11 +49,18 @@ export class BishopListComponent implements OnInit {
 
   // UI State
   loading = false;
-  showFilters = false;
   showDeleteModal = false;
   showFormModal = false;
   bishopToDelete: Bishop | null = null;
   selectedBishop: Bishop | null = null;
+
+  // Advanced Search
+  searchFields: SearchField[] = [];
+  showAdvancedSearch = false;
+  advancedSearchValues: { [key: string]: any } = {};
+  
+  // Quick Search
+  private searchTimeout: any;
 
   // Status options
   statusOptions = [
@@ -91,9 +100,9 @@ export class BishopListComponent implements OnInit {
       next: (response) => {
         if (response.data) {
           this.bishops = response.data.data || [];
-          this.totalItems = response.data.meta?.total || 0;
-          this.currentPage = response.data.meta?.current_page || 1;
-          this.totalPages = response.data.meta?.last_page || 1;
+          this.totalItems = response.data.total || 0;
+          this.currentPage = response.data.current_page || 1;
+          this.totalPages = response.data.last_page || 1;
         }
         this.loading = false;
       },
@@ -110,6 +119,7 @@ export class BishopListComponent implements OnInit {
     this.dioceseService.getDioceses().subscribe({
       next: (response) => {
         this.dioceses = response.data?.data || [];
+        this.initializeSearchFields();
       },
       error: (error) => console.error('Error loading dioceses:', error)
     });
@@ -124,9 +134,172 @@ export class BishopListComponent implements OnInit {
       { id: 5, name: 'Emeritus Archbishop' },
       { id: 6, name: 'Emeritus Bishop' }
     ];
+    this.initializeSearchFields();
+  }
+
+  initializeSearchFields(): void {
+    this.searchFields = [
+      {
+        key: 'full_name',
+        label: 'Bishop Name',
+        type: 'text',
+        placeholder: 'Search by name...'
+      },
+      {
+        key: 'diocese_id',
+        label: 'Diocese',
+        type: 'select',
+        options: this.dioceses.map(d => ({ value: d.id, label: d.name }))
+      },
+      {
+        key: 'title_id',
+        label: 'Title',
+        type: 'select',
+        options: this.titles.map(t => ({ value: t.id, label: t.name }))
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: this.statusOptions
+      },
+      {
+        key: 'ordained_from',
+        label: 'Ordained From',
+        type: 'date'
+      },
+      {
+        key: 'ordained_to',
+        label: 'Ordained To',
+        type: 'date'
+      },
+      {
+        key: 'is_current',
+        label: 'Current Position',
+        type: 'boolean',
+        placeholder: 'Currently serving'
+      }
+    ];
+  }
+
+  onAdvancedSearch(searchValues: { [key: string]: any }): void {
+    this.advancedSearchValues = searchValues;
+    
+    // Map advanced search values to existing filter properties
+    if (searchValues['full_name']) {
+      this.searchTerm = searchValues['full_name'];
+    }
+    if (searchValues['diocese_id']) {
+      this.selectedDiocese = searchValues['diocese_id'];
+    }
+    if (searchValues['title_id']) {
+      this.selectedTitle = searchValues['title_id'];
+    }
+    if (searchValues['status']) {
+      this.selectedStatus = searchValues['status'];
+    }
+
+    this.currentPage = 1;
+    this.showAdvancedSearch = false; // Auto-close panel after applying
+    this.loadBishops();
+  }
+
+  onClearAdvancedSearch(): void {
+    this.advancedSearchValues = {};
+    this.clearFilters();
+    this.showAdvancedSearch = false; // Auto-close panel after clearing
+  }
+
+  onToggleAdvancedSearch(isExpanded: boolean): void {
+    this.showAdvancedSearch = isExpanded;
+  }
+
+  /**
+   * Get active filters with labels for display
+   */
+  getActiveFilters(): Array<{ key: string; label: string; value: any; displayValue: string }> {
+    const activeFilters: Array<{ key: string; label: string; value: any; displayValue: string }> = [];
+
+    Object.keys(this.advancedSearchValues).forEach(key => {
+      const value = this.advancedSearchValues[key];
+      if (value !== '' && value !== null && value !== undefined) {
+        const field = this.searchFields.find(f => f.key === key);
+        if (field) {
+          let displayValue = value;
+
+          // Format display value based on field type
+          if (field.type === 'select' && field.options) {
+            const option = field.options.find(opt => opt.value === value);
+            displayValue = option ? option.label : value;
+          } else if (field.type === 'boolean') {
+            displayValue = value ? 'Yes' : 'No';
+          } else if (field.type === 'date') {
+            displayValue = new Date(value).toLocaleDateString();
+          }
+
+          activeFilters.push({
+            key,
+            label: field.label,
+            value,
+            displayValue: displayValue.toString()
+          });
+        }
+      }
+    });
+
+    return activeFilters;
+  }
+
+  /**
+   * Remove a single filter chip
+   */
+  removeFilter(filter: { key: string; label: string; value: any; displayValue: string }): void {
+    delete this.advancedSearchValues[filter.key];
+    
+    // Also clear mapped properties
+    if (filter.key === 'full_name') this.searchTerm = '';
+    if (filter.key === 'diocese_id') this.selectedDiocese = null;
+    if (filter.key === 'title_id') this.selectedTitle = null;
+    if (filter.key === 'status') this.selectedStatus = null;
+    
+    this.currentPage = 1;
+    this.loadBishops();
+  }
+
+  /**
+   * Clear all filters
+   */
+  clearAllFilters(): void {
+    this.advancedSearchValues = {};
+    this.clearFilters();
   }
 
   onSearch(): void {
+    this.currentPage = 1;
+    this.loadBishops();
+  }
+
+  /**
+   * Quick search with debouncing (300ms delay)
+   */
+  onQuickSearch(): void {
+    // Clear previous timeout
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+
+    // Set new timeout for debounced search
+    this.searchTimeout = setTimeout(() => {
+      this.currentPage = 1;
+      this.loadBishops();
+    }, 300);
+  }
+
+  /**
+   * Clear search term and refresh results
+   */
+  clearSearch(): void {
+    this.searchTerm = '';
     this.currentPage = 1;
     this.loadBishops();
   }
@@ -157,6 +330,12 @@ export class BishopListComponent implements OnInit {
 
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.loadBishops();
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.perPage = pageSize;
+    this.currentPage = 1; // Reset to first page
     this.loadBishops();
   }
 
@@ -212,10 +391,6 @@ export class BishopListComponent implements OnInit {
     this.bishopToDelete = null;
   }
 
-  toggleFilters(): void {
-    this.showFilters = !this.showFilters;
-  }
-
   getSortIcon(column: string): string {
     if (this.sortBy !== column) return '⇅';
     return this.sortDir === 'asc' ? '↑' : '↓';
@@ -253,6 +428,13 @@ export class BishopListComponent implements OnInit {
     const given = bishop.given_name || bishop.full_name?.split(' ')[0] || '';
     const family = bishop.family_name || bishop.full_name?.split(' ').pop() || '';
     return `${given.charAt(0)}${family.charAt(0)}`.toUpperCase();
+  }
+
+  /**
+   * Get count of active filters for badge display
+   */
+  getActiveFilterCount(): number {
+    return this.getActiveFilters().length;
   }
 
   /**

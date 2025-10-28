@@ -84,7 +84,10 @@ export interface BishopListParams {
 export interface BishopStatistics {
   total_bishops: number;
   active_bishops: number;
+  inactive_bishops: number;
+  retired_bishops: number;
   by_title: Array<{ title: string; total: number }>;
-  inactive: number;
+  by_diocese: Array<{ diocese: string; total: number }>;
+  recent_additions: any[];
 }
 

@@ -70,7 +70,11 @@ export interface DioceseListParams {
 export interface DioceseStatistics {
   total_dioceses: number;
   active_dioceses: number;
+  inactive_dioceses: number;
+  total_archdioceses: number;
+  total_regular_dioceses: number;
   by_country: Array<{ country: string; total: number }>;
   by_denomination: Array<{ denomination: string; total: number }>;
+  recent_additions: any[];
 }
 

@@ -6,6 +6,28 @@
       <p class="list-subtitle">Manage church leadership and hierarchy</p>
     </div>
     <div class="header-right">
+      <div class="search-box-header">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onQuickSearch()"
+          placeholder="Quick search..."
+          class="search-input-header"
+          aria-label="Quick search bishops">
+        <button 
+          *ngIf="searchTerm" 
+          class="clear-search-btn"
+          (click)="clearSearch()"
+          aria-label="Clear search">
+          ✕
+        </button>
+      </div>
+      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+        <span class="btn-icon">🔍</span>
+        Filters
+        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
+      </button>
       <button class="btn btn-primary" (click)="onCreateBishop()">
         <span class="btn-icon">➕</span>
         Add Bishop
@@ -13,56 +35,38 @@
     </div>
   </div>
 
-  <!-- Search and Filters -->
-  <div class="search-filter-bar">
-    <div class="search-box">
-      <input 
-        type="text" 
-        [(ngModel)]="searchTerm"
-        (keyup.enter)="onSearch()"
-        placeholder="Search bishops..."
-        class="search-input">
-      <button (click)="onSearch()" class="search-btn">🔍</button>
-    </div>
-
-    <button (click)="toggleFilters()" class="filter-toggle-btn">
-      <span class="btn-icon">🔽</span>
-      Filters
-    </button>
-  </div>
-
-  <!-- Filter Panel -->
-  <div class="filter-panel" *ngIf="showFilters">
-    <div class="filter-grid">
-      <div class="filter-item">
-        <label>Diocese/Archdiocese</label>
-        <select [(ngModel)]="selectedDiocese" (change)="onFilterChange()" class="filter-select">
-          <option [value]="null">All Dioceses</option>
-          <option *ngFor="let diocese of dioceses" [value]="diocese.id">{{ diocese.name }}</option>
-        </select>
+  <!-- Active Filter Chips - Inline Compact Design -->
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
+    <div class="chips-inline-wrapper">
+      <span class="chips-label">
+        <span class="filter-icon">🔍</span>
+        Active Filters ({{ getActiveFilters().length }}):
+      </span>
+      <div class="chips-list">
+        <div 
+          *ngFor="let filter of getActiveFilters()" 
+          class="filter-chip animate-scale-in"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
+          <span class="chip-content">
+            <span class="chip-label">{{ filter.label }}:</span>
+            <span class="chip-value">{{ filter.displayValue }}</span>
+          </span>
+          <button 
+            type="button"
+            class="chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label">
+            ✕
+          </button>
+        </div>
       </div>
-
-      <div class="filter-item">
-        <label>Ecclesiastical Title</label>
-        <select [(ngModel)]="selectedTitle" (change)="onFilterChange()" class="filter-select">
-          <option [value]="null">All Titles</option>
-          <option *ngFor="let title of titles" [value]="title.id">{{ title.name }}</option>
-        </select>
-      </div>
-
-      <div class="filter-item">
-        <label>Status</label>
-        <select [(ngModel)]="selectedStatus" (change)="onFilterChange()" class="filter-select">
-          <option [value]="null">All Status</option>
-          <option *ngFor="let status of statusOptions" [value]="status.value">
-            {{ status.label }}
-          </option>
-        </select>
-      </div>
-
-      <div class="filter-item">
-        <button (click)="clearFilters()" class="btn btn-secondary">Clear Filters</button>
-      </div>
+      <button 
+        type="button"
+        class="btn-clear-all-chips"
+        (click)="clearAllFilters()"
+        aria-label="Clear all filters">
+        Clear All
+      </button>
     </div>
   </div>
 
@@ -153,11 +157,15 @@
 
   <!-- Pagination -->
   <app-pagination
-    *ngIf="!loading && bishops.length > 0"
+    *ngIf="!loading && totalItems > 0"
     [currentPage]="currentPage"
     [pageSize]="perPage"
     [totalItems]="totalItems"
-    (pageChange)="onPageChange($event)">
+    [pageSizeOptions]="[10, 20, 30, 50, 100]"
+    [showPageSizeSelector]="true"
+    [showPageInfo]="true"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)">
   </app-pagination>
 
   <!-- Delete Confirmation Modal -->
@@ -179,5 +187,15 @@
     (saved)="onFormSaved($event)"
     (cancelled)="onFormCancelled()">
   </app-bishop-form-modal>
+
+  <!-- Advanced Search Side Panel -->
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false">
+  </app-advanced-search-panel>
 </div>
 

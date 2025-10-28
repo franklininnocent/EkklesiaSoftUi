@@ -11,6 +11,7 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
 import { DioceseFormModalComponent } from '../diocese-form-modal/diocese-form-modal.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 
 @Component({
   selector: 'app-diocese-list',
@@ -22,7 +23,8 @@ import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.
     ConfirmationModalComponent, 
     DioceseFormModalComponent,
     LoadingSkeletonComponent,
-    EmptyStateComponent
+    EmptyStateComponent,
+    AdvancedSearchPanelComponent
   ],
   templateUrl: './diocese-list.component.html',
   styleUrl: './diocese-list.component.scss'
@@ -34,7 +36,7 @@ export class DioceseListComponent implements OnInit {
   
   // Pagination
   currentPage = 1;
-  perPage = 15;
+  perPage = 20; // Increased to 20 for better screen utilization
   totalItems = 0;
   totalPages = 0;
 
@@ -48,11 +50,18 @@ export class DioceseListComponent implements OnInit {
 
   // UI State
   loading = false;
-  showFilters = false;
   showDeleteModal = false;
   showFormModal = false;
   dioceseToDelete: Diocese | null = null;
   selectedDiocese: Diocese | null = null;
+
+  // Advanced Search
+  searchFields: SearchField[] = [];
+  showAdvancedSearch = false;
+  advancedSearchValues: { [key: string]: any } = {};
+  
+  // Quick Search
+  private searchTimeout: any;
 
   constructor(
     private dioceseService: DioceseService,
@@ -85,9 +94,9 @@ export class DioceseListComponent implements OnInit {
       next: (response) => {
         if (response.data) {
           this.dioceses = response.data.data || [];
-          this.totalItems = response.data.meta?.total || 0;
-          this.currentPage = response.data.meta?.current_page || 1;
-          this.totalPages = response.data.meta?.last_page || 1;
+          this.totalItems = response.data.total || 0;
+          this.currentPage = response.data.current_page || 1;
+          this.totalPages = response.data.last_page || 1;
         }
         this.loading = false;
       },
@@ -104,6 +113,7 @@ export class DioceseListComponent implements OnInit {
     this.geographyService.getCountries().subscribe({
       next: (response) => {
         this.countries = response.data || [];
+        this.initializeSearchFields();
       },
       error: (error) => console.error('Error loading countries:', error)
     });
@@ -112,12 +122,193 @@ export class DioceseListComponent implements OnInit {
     this.denominationService.getDenominations().subscribe({
       next: (response) => {
         this.denominations = response.data || [];
+        this.initializeSearchFields();
       },
       error: (error) => console.error('Error loading denominations:', error)
     });
   }
 
+  initializeSearchFields(): void {
+    this.searchFields = [
+      {
+        key: 'name',
+        label: 'Diocese Name',
+        type: 'text',
+        placeholder: 'Search by name...'
+      },
+      {
+        key: 'code',
+        label: 'Diocese Code',
+        type: 'text',
+        placeholder: 'Enter code...'
+      },
+      {
+        key: 'country_id',
+        label: 'Country',
+        type: 'select',
+        options: this.countries.map(c => ({ value: c.id, label: c.name }))
+      },
+      {
+        key: 'denomination_id',
+        label: 'Denomination',
+        type: 'select',
+        options: this.denominations.map(d => ({ value: d.id, label: d.name }))
+      },
+      {
+        key: 'is_archdiocese',
+        label: 'Type',
+        type: 'select',
+        options: [
+          { value: true, label: 'Archdiocese' },
+          { value: false, label: 'Diocese' }
+        ]
+      },
+      {
+        key: 'active',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: true, label: 'Active' },
+          { value: false, label: 'Inactive' }
+        ]
+      },
+      {
+        key: 'city',
+        label: 'City',
+        type: 'text',
+        placeholder: 'Search by city...'
+      },
+      {
+        key: 'established_date_from',
+        label: 'Established From',
+        type: 'date'
+      },
+      {
+        key: 'established_date_to',
+        label: 'Established To',
+        type: 'date'
+      }
+    ];
+  }
+
+  onAdvancedSearch(searchValues: { [key: string]: any }): void {
+    this.advancedSearchValues = searchValues;
+    
+    // Map advanced search values to existing filter properties
+    if (searchValues['name']) {
+      this.searchTerm = searchValues['name'];
+    }
+    if (searchValues['country_id']) {
+      this.selectedCountry = searchValues['country_id'];
+    }
+    if (searchValues['denomination_id']) {
+      this.selectedDenomination = searchValues['denomination_id'];
+    }
+    if (searchValues['active'] !== undefined) {
+      this.activeFilter = searchValues['active'];
+    }
+
+    this.currentPage = 1;
+    this.showAdvancedSearch = false; // Auto-close panel after applying
+    this.loadDioceses();
+  }
+
+  onClearAdvancedSearch(): void {
+    this.advancedSearchValues = {};
+    this.clearFilters();
+    this.showAdvancedSearch = false; // Auto-close panel after clearing
+  }
+
+  onToggleAdvancedSearch(isExpanded: boolean): void {
+    this.showAdvancedSearch = isExpanded;
+  }
+
+  /**
+   * Get active filters with labels for display
+   */
+  getActiveFilters(): Array<{ key: string; label: string; value: any; displayValue: string }> {
+    const activeFilters: Array<{ key: string; label: string; value: any; displayValue: string }> = [];
+
+    Object.keys(this.advancedSearchValues).forEach(key => {
+      const value = this.advancedSearchValues[key];
+      if (value !== '' && value !== null && value !== undefined) {
+        const field = this.searchFields.find(f => f.key === key);
+        if (field) {
+          let displayValue = value;
+
+          // Format display value based on field type
+          if (field.type === 'select' && field.options) {
+            const option = field.options.find(opt => opt.value === value);
+            displayValue = option ? option.label : value;
+          } else if (field.type === 'boolean') {
+            displayValue = value ? 'Yes' : 'No';
+          } else if (field.type === 'date') {
+            displayValue = new Date(value).toLocaleDateString();
+          }
+
+          activeFilters.push({
+            key,
+            label: field.label,
+            value,
+            displayValue: displayValue.toString()
+          });
+        }
+      }
+    });
+
+    return activeFilters;
+  }
+
+  /**
+   * Remove a single filter chip
+   */
+  removeFilter(filter: { key: string; label: string; value: any; displayValue: string }): void {
+    delete this.advancedSearchValues[filter.key];
+    
+    // Also clear mapped properties
+    if (filter.key === 'name') this.searchTerm = '';
+    if (filter.key === 'country_id') this.selectedCountry = null;
+    if (filter.key === 'denomination_id') this.selectedDenomination = null;
+    if (filter.key === 'active') this.activeFilter = null;
+    
+    this.currentPage = 1;
+    this.loadDioceses();
+  }
+
+  /**
+   * Clear all filters
+   */
+  clearAllFilters(): void {
+    this.advancedSearchValues = {};
+    this.clearFilters();
+  }
+
   onSearch(): void {
+    this.currentPage = 1;
+    this.loadDioceses();
+  }
+
+  /**
+   * Quick search with debouncing (300ms delay)
+   */
+  onQuickSearch(): void {
+    // Clear previous timeout
+    if (this.searchTimeout) {
+      clearTimeout(this.searchTimeout);
+    }
+
+    // Set new timeout for debounced search
+    this.searchTimeout = setTimeout(() => {
+      this.currentPage = 1;
+      this.loadDioceses();
+    }, 300);
+  }
+
+  /**
+   * Clear search term and refresh results
+   */
+  clearSearch(): void {
+    this.searchTerm = '';
     this.currentPage = 1;
     this.loadDioceses();
   }
@@ -148,6 +339,12 @@ export class DioceseListComponent implements OnInit {
 
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.loadDioceses();
+  }
+
+  onPageSizeChange(pageSize: number): void {
+    this.perPage = pageSize;
+    this.currentPage = 1; // Reset to first page
     this.loadDioceses();
   }
 
@@ -203,10 +400,6 @@ export class DioceseListComponent implements OnInit {
     this.dioceseToDelete = null;
   }
 
-  toggleFilters(): void {
-    this.showFilters = !this.showFilters;
-  }
-
   getSortIcon(column: string): string {
     if (this.sortBy !== column) return '⇅';
     return this.sortOrder === 'asc' ? '↑' : '↓';
@@ -216,8 +409,11 @@ export class DioceseListComponent implements OnInit {
     return active ? 'badge-success' : 'badge-inactive';
   }
 
-  getTypeBadge(isArchdiocese: boolean): string {
-    return isArchdiocese ? 'Archdiocese' : 'Diocese';
+  /**
+   * Get count of active filters for badge display
+   */
+  getActiveFilterCount(): number {
+    return this.getActiveFilters().length;
   }
 
   /**

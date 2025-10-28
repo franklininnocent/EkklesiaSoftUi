@@ -14,19 +14,21 @@ export interface ApiError {
 
 export interface PaginatedResponse<T> {
   data: T[];
-  meta: {
-    current_page: number;
-    from: number;
-    last_page: number;
-    per_page: number;
-    to: number;
-    total: number;
-  };
-  links: {
-    first: string;
-    last: string;
-    prev: string | null;
-    next: string | null;
-  };
+  current_page: number;
+  from: number;
+  last_page: number;
+  per_page: number;
+  to: number;
+  total: number;
+  first_page_url: string;
+  last_page_url: string;
+  prev_page_url: string | null;
+  next_page_url: string | null;
+  path: string;
+  links: Array<{
+    url: string | null;
+    label: string;
+    active: boolean;
+  }>;
 }
 
