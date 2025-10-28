@@ -12,6 +12,10 @@ export const SETTINGS_ROUTES: Routes = [
   {
     path: 'ecclesiastical',
     loadChildren: () => import('./ecclesiastical/ecclesiastical.routes').then(m => m.ECCLESIASTICAL_ROUTES)
+  },
+  {
+    path: 'sacraments',
+    loadChildren: () => import('./sacraments/sacraments.routes').then(m => m.SACRAMENTS_ROUTES)
   }
 ];
 

@@ -37,6 +37,13 @@ export class SettingsComponent implements OnInit {
       icon: '⛪', 
       route: '/settings/ecclesiastical',
       requiresEkklesiaRole: true
+    },
+    { 
+      title: 'Sacraments', 
+      description: 'Manage sacramental records and certificates', 
+      icon: '✝️', 
+      route: '/settings/sacraments',
+      requiresTenantAccess: true
     }
   ];
 
@@ -117,7 +124,18 @@ export class SettingsComponent implements OnInit {
     if (section.requiresRoleManagement) {
       return this.canManageRoles(user);
     }
+    if (section.requiresTenantAccess) {
+      // Tenant users (not Ekklesia users) can access Sacraments
+      return user !== null && user.tenant_id !== null;
+    }
     return true;
+  }
+
+  /**
+   * Get all visible sections for the current user
+   */
+  getVisibleSections(user: User | null): any[] {
+    return this.settingsSections.filter(section => this.shouldDisplaySection(section, user));
   }
 }
 

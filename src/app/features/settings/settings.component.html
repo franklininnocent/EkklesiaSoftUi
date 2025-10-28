@@ -1,41 +1,68 @@
 <div class="settings-container">
-  <!-- Page Header -->
+  <!-- Page Header with Breadcrumb -->
   <div class="settings-header">
-    <h1 class="settings-title">Settings</h1>
-    <p class="settings-subtitle">Manage your account and application preferences</p>
+    <div class="header-content">
+      <div class="breadcrumb">
+        <span class="breadcrumb-item">Home</span>
+        <span class="breadcrumb-separator">/</span>
+        <span class="breadcrumb-item active">Settings</span>
+      </div>
+      <h1 class="settings-title">Settings</h1>
+      <p class="settings-subtitle">Manage your workspace, security, and preferences</p>
+    </div>
   </div>
 
   <!-- Settings Grid -->
   <div class="settings-grid">
     <div 
-      *ngFor="let section of settingsSections" 
+      *ngFor="let section of settingsSections; let i = index" 
       class="setting-card"
       [class.d-none]="!shouldDisplaySection(section, (currentUser$ | async))"
-      (click)="onConfigure(section)">
+      [style.animation-delay.ms]="i * 50"
+      (click)="onConfigure(section)"
+      [attr.aria-label]="'Configure ' + section.title"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="onConfigure(section)"
+      (keydown.space)="onConfigure(section)">
       
-      <!-- Card Header with Icon -->
-      <div class="setting-card-header">
+      <!-- Card Content -->
+      <div class="card-content">
+        <!-- Icon -->
         <div class="setting-icon-wrapper">
-          <span class="setting-icon">{{ section.icon }}</span>
+          <span class="setting-icon" role="img" [attr.aria-label]="section.title + ' icon'">
+            {{ section.icon }}
+          </span>
         </div>
-        <h3 class="setting-title">{{ section.title }}</h3>
+
+        <!-- Text Content -->
+        <div class="setting-text">
+          <h3 class="setting-title">{{ section.title }}</h3>
+          <p class="setting-description">{{ section.description }}</p>
+        </div>
+
+        <!-- Action Arrow -->
+        <div class="setting-arrow">
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7.5 15L12.5 10L7.5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
       </div>
 
-      <!-- Card Body with Description -->
-      <div class="setting-card-body">
-        <p class="setting-description">{{ section.description }}</p>
-      </div>
-
-      <!-- Card Footer with Action Button -->
-      <div class="setting-card-footer">
-        <button class="setting-action-btn">
-          <span>Configure</span>
-          <span class="arrow-icon">→</span>
-        </button>
-      </div>
-
-      <!-- Animated Background Gradient -->
-      <div class="setting-card-gradient"></div>
+      <!-- Hover Effect Overlay -->
+      <div class="card-overlay"></div>
+      
+      <!-- Top Accent Border -->
+      <div class="card-accent"></div>
     </div>
+  </div>
+
+  <!-- Empty State (if no cards visible) -->
+  <div 
+    *ngIf="getVisibleSections((currentUser$ | async)).length === 0" 
+    class="empty-state">
+    <div class="empty-icon">⚙️</div>
+    <h3 class="empty-title">No Settings Available</h3>
+    <p class="empty-message">You don't have access to any settings sections. Please contact your administrator.</p>
   </div>
 </div>

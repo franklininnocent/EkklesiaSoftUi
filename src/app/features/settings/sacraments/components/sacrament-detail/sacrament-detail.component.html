@@ -1,0 +1,155 @@
+<div class="sacrament-detail-container">
+  <!-- Header -->
+  <div class="detail-header">
+    <button class="back-btn" (click)="onBack()">← Back to List</button>
+    <div class="header-actions">
+      <button class="btn btn-secondary" (click)="onPrint()">
+        <span class="btn-icon">🖨️</span> Print
+      </button>
+      <button class="btn btn-primary" (click)="onEdit()">
+        <span class="btn-icon">✏️</span> Edit
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading sacrament details...</p>
+  </div>
+
+  <!-- Content -->
+  <div *ngIf="!loading && sacrament" class="detail-content">
+    <!-- Certificate Header -->
+    <div class="certificate-header">
+      <h1 class="certificate-title">Sacramental Record Certificate</h1>
+      <div class="certificate-type">
+        <span class="sacrament-icon">✝️</span>
+        <span class="sacrament-name">{{ sacrament.sacrament_type?.name }}</span>
+      </div>
+      <span [class]="getStatusBadgeClass(sacrament.status)">
+        {{ sacrament.status | titlecase }}
+      </span>
+    </div>
+
+    <!-- Recipient Information -->
+    <div class="detail-section">
+      <h3 class="section-title">👤 Recipient Information</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Full Name</label>
+          <p>{{ sacrament.recipient_name }}</p>
+        </div>
+        <div class="detail-item" *ngIf="sacrament.recipient_birth_date">
+          <label>Date of Birth</label>
+          <p>{{ sacrament.recipient_birth_date | date: 'MMMM d, y' }}</p>
+        </div>
+        <div class="detail-item" *ngIf="sacrament.recipient_birth_place">
+          <label>Place of Birth</label>
+          <p>{{ sacrament.recipient_birth_place }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sacrament Details -->
+    <div class="detail-section">
+      <h3 class="section-title">✝️ Sacrament Details</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Date Administered</label>
+          <p>{{ sacrament.date_administered | date: 'MMMM d, y' }}</p>
+        </div>
+        <div class="detail-item" *ngIf="sacrament.place_administered">
+          <label>Place Administered</label>
+          <p>{{ sacrament.place_administered }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Minister Information -->
+    <div class="detail-section" *ngIf="sacrament.minister_name">
+      <h3 class="section-title">⛪ Minister</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Minister</label>
+          <p>
+            <span *ngIf="sacrament.minister_title">{{ sacrament.minister_title }}</span>
+            {{ sacrament.minister_name }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Parents (for Baptism) -->
+    <div class="detail-section" *ngIf="sacrament.father_name || sacrament.mother_name">
+      <h3 class="section-title">👨‍👩‍👦 Parents</h3>
+      <div class="detail-grid">
+        <div class="detail-item" *ngIf="sacrament.father_name">
+          <label>Father</label>
+          <p>{{ sacrament.father_name }}</p>
+        </div>
+        <div class="detail-item" *ngIf="sacrament.mother_name">
+          <label>Mother</label>
+          <p>{{ sacrament.mother_name }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Godparents/Sponsors -->
+    <div class="detail-section" *ngIf="sacrament.godparent1_name || sacrament.godparent2_name">
+      <h3 class="section-title">🤝 Godparents / Sponsors</h3>
+      <div class="detail-grid">
+        <div class="detail-item" *ngIf="sacrament.godparent1_name">
+          <label>First Godparent</label>
+          <p>{{ sacrament.godparent1_name }}</p>
+        </div>
+        <div class="detail-item" *ngIf="sacrament.godparent2_name">
+          <label>Second Godparent</label>
+          <p>{{ sacrament.godparent2_name }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Registry Information -->
+    <div class="detail-section">
+      <h3 class="section-title">📖 Registry Information</h3>
+      <div class="detail-grid">
+        <div class="detail-item" *ngIf="sacrament.certificate_number">
+          <label>Certificate Number</label>
+          <p>{{ sacrament.certificate_number }}</p>
+        </div>
+        <div class="detail-item" *ngIf="sacrament.book_number">
+          <label>Book Number</label>
+          <p>{{ sacrament.book_number }}</p>
+        </div>
+        <div class="detail-item" *ngIf="sacrament.page_number">
+          <label>Page Number</label>
+          <p>{{ sacrament.page_number }}</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Witnesses -->
+    <div class="detail-section" *ngIf="sacrament.witnesses">
+      <h3 class="section-title">👥 Witnesses</h3>
+      <p class="witnesses-text">{{ sacrament.witnesses }}</p>
+    </div>
+
+    <!-- Notes -->
+    <div class="detail-section" *ngIf="sacrament.notes">
+      <h3 class="section-title">📝 Notes</h3>
+      <p class="notes-text">{{ sacrament.notes }}</p>
+    </div>
+
+    <!-- Timestamps -->
+    <div class="detail-section timestamps">
+      <div class="timestamp-item">
+        <small>Created: {{ sacrament.created_at | date: 'MMM d, y h:mm a' }}</small>
+      </div>
+      <div class="timestamp-item">
+        <small>Last Updated: {{ sacrament.updated_at | date: 'MMM d, y h:mm a' }}</small>
+      </div>
+    </div>
+  </div>
+</div>
+

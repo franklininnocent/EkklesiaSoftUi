@@ -1,0 +1,210 @@
+<div class="sacrament-list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <div class="header-left">
+      <h2 class="list-title">Sacramental Records</h2>
+      <p class="list-subtitle">Manage baptisms, confirmations, marriages, and all sacraments</p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-primary" (click)="onCreateSacrament()">
+        <span class="btn-icon">➕</span>
+        Add Sacrament Record
+      </button>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters-section">
+    <div class="filter-row">
+      <!-- Search -->
+      <div class="filter-item search-filter">
+        <label>Search Recipient</label>
+        <input
+          type="text"
+          [(ngModel)]="searchTerm"
+          placeholder="Enter recipient name..."
+          class="filter-input"
+          (keyup.enter)="applyFilters()">
+      </div>
+
+      <!-- Sacrament Type -->
+      <div class="filter-item">
+        <label>Sacrament Type</label>
+        <select [(ngModel)]="selectedSacramentType" class="filter-select">
+          <option [ngValue]="null">All Types</option>
+          <option *ngFor="let type of sacramentTypes" [ngValue]="type.id">
+            {{ type.name }}
+          </option>
+        </select>
+      </div>
+
+      <!-- Status -->
+      <div class="filter-item">
+        <label>Status</label>
+        <select [(ngModel)]="selectedStatus" class="filter-select">
+          <option value="">All Status</option>
+          <option value="active">Active</option>
+          <option value="cancelled">Cancelled</option>
+          <option value="conditional">Conditional</option>
+        </select>
+      </div>
+
+      <!-- Date From -->
+      <div class="filter-item">
+        <label>Date From</label>
+        <input
+          type="date"
+          [(ngModel)]="dateFrom"
+          class="filter-input">
+      </div>
+
+      <!-- Date To -->
+      <div class="filter-item">
+        <label>Date To</label>
+        <input
+          type="date"
+          [(ngModel)]="dateTo"
+          class="filter-input">
+      </div>
+
+      <!-- Filter Actions -->
+      <div class="filter-actions">
+        <button class="btn btn-secondary" (click)="applyFilters()">
+          <span class="btn-icon">🔍</span>
+          Search
+        </button>
+        <button class="btn btn-text" (click)="clearFilters()">
+          Clear
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading sacraments...</p>
+  </div>
+
+  <!-- Sacraments Table -->
+  <div *ngIf="!loading" class="table-responsive">
+    <table class="sacrament-table">
+      <thead>
+        <tr>
+          <th (click)="onSort('recipient_name')" class="sortable">
+            Recipient {{ getSortIcon('recipient_name') }}
+          </th>
+          <th (click)="onSort('sacrament_type_id')" class="sortable">
+            Sacrament {{ getSortIcon('sacrament_type_id') }}
+          </th>
+          <th (click)="onSort('date_administered')" class="sortable">
+            Date {{ getSortIcon('date_administered') }}
+          </th>
+          <th>Place</th>
+          <th>Minister</th>
+          <th>Certificate #</th>
+          <th>Status</th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let sacrament of sacraments; trackBy: trackBySacramentId" class="data-row">
+          <td class="name-cell">
+            <strong>{{ sacrament.recipient_name }}</strong>
+          </td>
+          <td>{{ sacrament.sacrament_type?.name || getSacramentTypeName(sacrament.sacrament_type_id) }}</td>
+          <td>{{ sacrament.date_administered | date: 'MMM d, y' }}</td>
+          <td>{{ sacrament.place_administered || 'N/A' }}</td>
+          <td>
+            <span *ngIf="sacrament.minister_title">{{ sacrament.minister_title }}</span>
+            {{ sacrament.minister_name || 'N/A' }}
+          </td>
+          <td>{{ sacrament.certificate_number || 'N/A' }}</td>
+          <td>
+            <span [class]="getStatusBadgeClass(sacrament.status)">
+              {{ sacrament.status | titlecase }}
+            </span>
+          </td>
+          <td class="actions-cell">
+            <button (click)="onViewSacrament(sacrament)" class="action-btn view" title="View Details">
+              👁️
+            </button>
+            <button (click)="onEditSacrament(sacrament)" class="action-btn edit" title="Edit">
+              ✏️
+            </button>
+            <button (click)="onDeleteSacrament(sacrament)" class="action-btn delete" title="Delete">
+              🗑️
+            </button>
+          </td>
+        </tr>
+        <tr *ngIf="sacraments.length === 0" class="empty-row">
+          <td colspan="8" class="empty-message">
+            <div class="empty-state">
+              <span class="empty-icon">📋</span>
+              <h3>No Sacrament Records Found</h3>
+              <p>No sacraments match your current filters.</p>
+              <button class="btn btn-primary" (click)="onCreateSacrament()">
+                Add First Sacrament
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div *ngIf="!loading && totalItems > 0" class="pagination-container">
+    <div class="pagination-info">
+      Showing {{ (currentPage - 1) * perPage + 1 }} to 
+      {{ currentPage * perPage > totalItems ? totalItems : currentPage * perPage }} of {{ totalItems }} records
+    </div>
+    <div class="pagination-controls">
+      <button
+        class="pagination-btn"
+        [disabled]="currentPage === 1"
+        (click)="onPageChange(1)">
+        ««
+      </button>
+      <button
+        class="pagination-btn"
+        [disabled]="currentPage === 1"
+        (click)="onPageChange(currentPage - 1)">
+        ‹
+      </button>
+      <span class="pagination-current">Page {{ currentPage }} of {{ totalPages }}</span>
+      <button
+        class="pagination-btn"
+        [disabled]="currentPage === totalPages"
+        (click)="onPageChange(currentPage + 1)">
+        ›
+      </button>
+      <button
+        class="pagination-btn"
+        [disabled]="currentPage === totalPages"
+        (click)="onPageChange(totalPages)">
+        »»
+      </button>
+    </div>
+  </div>
+
+  <!-- Delete Confirmation Modal -->
+  <div *ngIf="showDeleteModal" class="modal-overlay" (click)="cancelDelete()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Confirm Deletion</h3>
+        <button class="modal-close" (click)="cancelDelete()">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete the sacrament record for:</p>
+        <p><strong>{{ sacramentToDelete?.recipient_name }}</strong></p>
+        <p class="warning-text">⚠️ This action cannot be undone.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
+        <button class="btn btn-danger" (click)="confirmDelete()">Delete</button>
+      </div>
+    </div>
+  </div>
+</div>
+
