@@ -1,0 +1,106 @@
+<div class="family-detail-container" *ngIf="!loading && !error && family">
+  <!-- Header / Actions -->
+  <section class="detail-header" aria-label="Family header">
+    <div class="title-block">
+      <h1 class="title" tabindex="0">{{ family.family_name }}</h1>
+      <div class="meta">
+        <span class="code" aria-label="Family code">Code: <strong>{{ family.family_code }}</strong></span>
+        <span class="dot">•</span>
+        <span class="status" [ngClass]="'status-' + family.status" aria-label="Status">{{ family.status }}</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="openEdit()"
+        aria-label="Edit family details"
+        title="Edit family">
+        <span class="btn-icon">✏️</span>
+        <span class="btn-text">Edit</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Info Grid -->
+  <section class="info-grid" aria-label="Family information">
+    <article class="card">
+      <header class="card-header">Contact</header>
+      <div class="card-body">
+        <div class="kv"><span class="k">Phone</span><span class="v">{{ family.primary_phone || '-' }}</span></div>
+        <div class="kv"><span class="k">Email</span><span class="v">{{ family.email || '-' }}</span></div>
+        <div class="kv"><span class="k">City</span><span class="v">{{ family.city || '-' }}</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <header class="card-header">Assignments</header>
+      <div class="card-body">
+        <div class="kv"><span class="k">BCC</span><span class="v">{{ family.bcc?.name || 'Not assigned' }}</span></div>
+      </div>
+    </article>
+
+    <article class="card">
+      <header class="card-header">Metadata</header>
+      <div class="card-body">
+        <div class="kv"><span class="k">Created</span><span class="v">{{ family.created_at | date:'medium' }}</span></div>
+        <div class="kv"><span class="k">Updated</span><span class="v">{{ family.updated_at | date:'medium' }}</span></div>
+      </div>
+    </article>
+  </section>
+
+  <!-- Members -->
+  <section class="members-section" aria-label="Family members">
+    <header class="section-header">
+      <h2>Members</h2>
+      <div class="count" aria-label="Total members">{{ family.members?.length || 0 }}</div>
+    </header>
+    <div class="table-responsive" *ngIf="(family.members?.length || 0) > 0; else emptyMembers">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Relationship</th>
+            <th>Status</th>
+            <th>Phone</th>
+            <th>Email</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let m of family.members">
+            <td>{{ m.full_name || (m.first_name + ' ' + m.last_name) }}</td>
+            <td>{{ m.relationship_to_head }}</td>
+            <td>{{ m.status }}</td>
+            <td>{{ m.phone || '-' }}</td>
+            <td>{{ m.email || '-' }}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <ng-template #emptyMembers>
+      <div class="empty-state">
+        <div class="empty-icon">👥</div>
+        <p>No members found</p>
+      </div>
+    </ng-template>
+  </section>
+
+  <!-- Edit Modal -->
+  <app-family-form
+    *ngIf="showEdit"
+    [family]="family"
+    (save)="onEditSave($event)"
+    (cancel)="onEditCancel()"
+  ></app-family-form>
+</div>
+
+<!-- Loading -->
+<div class="loading-container" *ngIf="loading" role="status" aria-live="polite">
+  <div class="spinner"></div>
+  <p>Loading family...</p>
+</div>
+
+<!-- Error -->
+<div class="error-container" *ngIf="!loading && error" role="alert">
+  <div class="error-message">{{ error }}</div>
+</div>

@@ -81,8 +81,10 @@ export class AuthService {
     localStorage.setItem(environment.tokenKey, response.access_token);
     localStorage.setItem(environment.refreshTokenKey, response.refresh_token);
     localStorage.setItem(environment.expiryTimeKey, response.expiry_time);
-    localStorage.setItem(environment.userIdKey, response.user_id.toString());
-    localStorage.setItem(environment.roleIdKey, response.role_id.toString());
+    localStorage.setItem(environment.userIdKey, response.user_id?.toString() || '');
+    if (response.role_id) {
+      localStorage.setItem(environment.roleIdKey, response.role_id.toString());
+    }
     
     // Fetch and set user details
     this.getCurrentUser().subscribe({

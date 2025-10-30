@@ -1,0 +1,120 @@
+import { Injectable } from '@angular/core';
+import { HttpClient, HttpParams } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
+import {
+  Family,
+  FamilyMember,
+  FamilyFilters,
+  FamilyStatistics,
+  PaginatedResponse,
+  ApiResponse
+} from '../models/family.model';
+
+@Injectable({
+  providedIn: 'root'
+})
+export class FamilyService {
+  private apiUrl = `${environment.apiUrl}/families`;
+
+  constructor(private http: HttpClient) {}
+
+  /**
+   * Get paginated list of families
+   */
+  getFamilies(filters: FamilyFilters = {}): Observable<PaginatedResponse<Family>> {
+    let params = new HttpParams();
+    
+    if (filters.search) params = params.set('search', filters.search);
+    if (filters.status) params = params.set('status', filters.status);
+    if (filters.bcc_id) params = params.set('bcc_id', filters.bcc_id);
+    if (filters.city) params = params.set('city', filters.city);
+    if (filters.sort_by) params = params.set('sort_by', filters.sort_by);
+    if (filters.sort_order) params = params.set('sort_order', filters.sort_order);
+    if (filters.per_page) params = params.set('per_page', filters.per_page.toString());
+    if (filters.page) params = params.set('page', filters.page.toString());
+
+    return this.http.get<PaginatedResponse<Family>>(this.apiUrl, { params });
+  }
+
+  /**
+   * Get a single family by ID
+   */
+  getFamily(id: string): Observable<ApiResponse<Family>> {
+    return this.http.get<ApiResponse<Family>>(`${this.apiUrl}/${id}`);
+  }
+
+  /**
+   * Create a new family
+   */
+  createFamily(family: Partial<Family>): Observable<ApiResponse<Family>> {
+    return this.http.post<ApiResponse<Family>>(this.apiUrl, family);
+  }
+
+  /**
+   * Update a family
+   */
+  updateFamily(id: string, family: Partial<Family>): Observable<ApiResponse<Family>> {
+    return this.http.put<ApiResponse<Family>>(`${this.apiUrl}/${id}`, family);
+  }
+
+  /**
+   * Delete a family
+   */
+  deleteFamily(id: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
+  }
+
+  /**
+   * Get family statistics
+   */
+  getStatistics(): Observable<ApiResponse<FamilyStatistics>> {
+    return this.http.get<ApiResponse<FamilyStatistics>>(`${this.apiUrl}/statistics`);
+  }
+
+  /**
+   * Get families without BCC assignment
+   */
+  getFamiliesWithoutBCC(): Observable<ApiResponse<Family[]>> {
+    return this.http.get<ApiResponse<Family[]>>(`${this.apiUrl}/without-bcc`);
+  }
+
+  /**
+   * Get families by BCC
+   */
+  getFamiliesByBCC(bccId: string): Observable<ApiResponse<Family[]>> {
+    return this.http.get<ApiResponse<Family[]>>(`${this.apiUrl}/bcc/${bccId}`);
+  }
+
+  // ==================== FAMILY MEMBER OPERATIONS ====================
+
+  /**
+   * Get all members of a family
+   */
+  getFamilyMembers(familyId: string): Observable<ApiResponse<FamilyMember[]>> {
+    return this.http.get<ApiResponse<FamilyMember[]>>(`${this.apiUrl}/${familyId}/members`);
+  }
+
+  /**
+   * Add a member to a family
+   */
+  addFamilyMember(familyId: string, member: Partial<FamilyMember>): Observable<ApiResponse<FamilyMember>> {
+    return this.http.post<ApiResponse<FamilyMember>>(`${this.apiUrl}/${familyId}/members`, member);
+  }
+
+  /**
+   * Update a family member
+   */
+  updateFamilyMember(familyId: string, memberId: string, member: Partial<FamilyMember>): Observable<ApiResponse<FamilyMember>> {
+    return this.http.put<ApiResponse<FamilyMember>>(`${this.apiUrl}/${familyId}/members/${memberId}`, member);
+  }
+
+  /**
+   * Delete a family member
+   */
+  deleteFamilyMember(familyId: string, memberId: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${familyId}/members/${memberId}`);
+  }
+}
+
+

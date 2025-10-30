@@ -2,81 +2,71 @@
   <!-- Header -->
   <div class="list-header">
     <div class="header-left">
-      <h2 class="list-title">Sacramental Records</h2>
+      <h2 class="list-title">Sacraments</h2>
       <p class="list-subtitle">Manage baptisms, confirmations, marriages, and all sacraments</p>
     </div>
     <div class="header-right">
+      <div class="search-box-header">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onQuickSearch()"
+          placeholder="Quick search..."
+          class="search-input-header"
+          aria-label="Quick search sacraments">
+        <button 
+          *ngIf="searchTerm" 
+          class="clear-search-btn"
+          (click)="clearSearch()"
+          aria-label="Clear search">
+          ✕
+        </button>
+      </div>
+      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+        <span class="btn-icon">🔍</span>
+        Filters
+        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
+      </button>
       <button class="btn btn-primary" (click)="onCreateSacrament()">
         <span class="btn-icon">➕</span>
-        Add Sacrament Record
+        Add Sacrament
       </button>
     </div>
   </div>
 
-  <!-- Filters -->
-  <div class="filters-section">
-    <div class="filter-row">
-      <!-- Search -->
-      <div class="filter-item search-filter">
-        <label>Search Recipient</label>
-        <input
-          type="text"
-          [(ngModel)]="searchTerm"
-          placeholder="Enter recipient name..."
-          class="filter-input"
-          (keyup.enter)="applyFilters()">
+  <!-- Active Filter Chips - Inline Compact Design -->
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
+    <div class="chips-inline-wrapper">
+      <span class="chips-label">
+        <span class="filter-icon">🔍</span>
+        Active Filters ({{ getActiveFilters().length }}):
+      </span>
+      <div class="chips-list">
+        <div 
+          *ngFor="let filter of getActiveFilters()" 
+          class="filter-chip animate-scale-in"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
+          <span class="chip-content">
+            <span class="chip-label">{{ filter.label }}:</span>
+            <span class="chip-value">{{ filter.displayValue }}</span>
+          </span>
+          <button 
+            type="button"
+            class="chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label">
+            ✕
+          </button>
+        </div>
       </div>
-
-      <!-- Sacrament Type -->
-      <div class="filter-item">
-        <label>Sacrament Type</label>
-        <select [(ngModel)]="selectedSacramentType" class="filter-select">
-          <option [ngValue]="null">All Types</option>
-          <option *ngFor="let type of sacramentTypes" [ngValue]="type.id">
-            {{ type.name }}
-          </option>
-        </select>
-      </div>
-
-      <!-- Status -->
-      <div class="filter-item">
-        <label>Status</label>
-        <select [(ngModel)]="selectedStatus" class="filter-select">
-          <option value="">All Status</option>
-          <option value="active">Active</option>
-          <option value="cancelled">Cancelled</option>
-          <option value="conditional">Conditional</option>
-        </select>
-      </div>
-
-      <!-- Date From -->
-      <div class="filter-item">
-        <label>Date From</label>
-        <input
-          type="date"
-          [(ngModel)]="dateFrom"
-          class="filter-input">
-      </div>
-
-      <!-- Date To -->
-      <div class="filter-item">
-        <label>Date To</label>
-        <input
-          type="date"
-          [(ngModel)]="dateTo"
-          class="filter-input">
-      </div>
-
-      <!-- Filter Actions -->
-      <div class="filter-actions">
-        <button class="btn btn-secondary" (click)="applyFilters()">
-          <span class="btn-icon">🔍</span>
-          Search
-        </button>
-        <button class="btn btn-text" (click)="clearFilters()">
-          Clear
-        </button>
-      </div>
+      <button 
+        type="button"
+        class="btn-clear-all-chips"
+        (click)="clearAllFilters()"
+        aria-label="Clear all filters">
+        Clear All
+      </button>
     </div>
   </div>
 
@@ -141,7 +131,7 @@
           <td colspan="8" class="empty-message">
             <div class="empty-state">
               <span class="empty-icon">📋</span>
-              <h3>No Sacrament Records Found</h3>
+              <h3>No Sacraments Found</h3>
               <p>No sacraments match your current filters.</p>
               <button class="btn btn-primary" (click)="onCreateSacrament()">
                 Add First Sacrament
@@ -154,39 +144,17 @@
   </div>
 
   <!-- Pagination -->
-  <div *ngIf="!loading && totalItems > 0" class="pagination-container">
-    <div class="pagination-info">
-      Showing {{ (currentPage - 1) * perPage + 1 }} to 
-      {{ currentPage * perPage > totalItems ? totalItems : currentPage * perPage }} of {{ totalItems }} records
-    </div>
-    <div class="pagination-controls">
-      <button
-        class="pagination-btn"
-        [disabled]="currentPage === 1"
-        (click)="onPageChange(1)">
-        ««
-      </button>
-      <button
-        class="pagination-btn"
-        [disabled]="currentPage === 1"
-        (click)="onPageChange(currentPage - 1)">
-        ‹
-      </button>
-      <span class="pagination-current">Page {{ currentPage }} of {{ totalPages }}</span>
-      <button
-        class="pagination-btn"
-        [disabled]="currentPage === totalPages"
-        (click)="onPageChange(currentPage + 1)">
-        ›
-      </button>
-      <button
-        class="pagination-btn"
-        [disabled]="currentPage === totalPages"
-        (click)="onPageChange(totalPages)">
-        »»
-      </button>
-    </div>
-  </div>
+  <app-pagination
+    *ngIf="!loading && totalItems > 0"
+    [currentPage]="currentPage"
+    [pageSize]="perPage"
+    [totalItems]="totalItems"
+    [pageSizeOptions]="[10, 20, 30, 50, 100]"
+    [showPageSizeSelector]="true"
+    [showPageInfo]="true"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)">
+  </app-pagination>
 
   <!-- Delete Confirmation Modal -->
   <div *ngIf="showDeleteModal" class="modal-overlay" (click)="cancelDelete()">
@@ -196,7 +164,7 @@
         <button class="modal-close" (click)="cancelDelete()">✕</button>
       </div>
       <div class="modal-body">
-        <p>Are you sure you want to delete the sacrament record for:</p>
+        <p>Are you sure you want to delete the sacrament for:</p>
         <p><strong>{{ sacramentToDelete?.recipient_name }}</strong></p>
         <p class="warning-text">⚠️ This action cannot be undone.</p>
       </div>
@@ -206,5 +174,23 @@
       </div>
     </div>
   </div>
+
+  <!-- Sacrament Form Modal -->
+  <app-sacrament-form-modal
+    *ngIf="showFormModal"
+    [sacrament]="sacramentToEdit"
+    (save)="onFormSave()"
+    (cancel)="onFormCancel()">
+  </app-sacrament-form-modal>
+
+  <!-- Advanced Search Side Panel -->
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false">
+  </app-advanced-search-panel>
 </div>
 

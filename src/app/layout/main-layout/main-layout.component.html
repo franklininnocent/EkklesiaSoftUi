@@ -24,6 +24,26 @@
          <span class="nav-text">Church Profile</span>
        </a>
        
+       <!-- Family Management - For tenant users -->
+       <a 
+         *ngIf="(currentUser$ | async)?.tenant_id" 
+         routerLink="families" 
+         routerLinkActive="active" 
+         class="nav-item">
+         <span class="nav-icon">👨‍👩‍👧‍👦</span>
+         <span class="nav-text">Families</span>
+       </a>
+       
+       <!-- BCC Management - For tenant users -->
+       <a 
+         *ngIf="(currentUser$ | async)?.tenant_id" 
+         routerLink="bccs" 
+         routerLinkActive="active" 
+         class="nav-item">
+         <span class="nav-icon">🏘️</span>
+         <span class="nav-text">BCCs</span>
+       </a>
+       
        <!-- Tenants menu - Only visible for SuperAdmin and EkklesiaAdmin -->
        <a 
          *ngIf="canManageTenants((currentUser$ | async))" 

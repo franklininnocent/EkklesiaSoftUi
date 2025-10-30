@@ -9,11 +9,20 @@ import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { take } from 'rxjs';
+import { SacramentFormModalComponent } from '../sacrament-form-modal/sacrament-form-modal.component';
+import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 
 @Component({
   selector: 'app-sacrament-list',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule, 
+    FormsModule, 
+    SacramentFormModalComponent,
+    AdvancedSearchPanelComponent,
+    PaginationComponent
+  ],
   templateUrl: './sacrament-list.component.html',
   styleUrl: './sacrament-list.component.scss',
   providers: [DatePipe]
@@ -46,6 +55,12 @@ export class SacramentListComponent implements OnInit {
   // Modal states
   showDeleteModal = false;
   sacramentToDelete: Sacrament | null = null;
+  showFormModal = false;
+  sacramentToEdit: Sacrament | null = null;
+  
+  // Advanced search panel state
+  showAdvancedSearch = false;
+  searchFields: SearchField[] = [];
 
   constructor(
     private sacramentService: SacramentService,
@@ -56,8 +71,47 @@ export class SacramentListComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.initializeSearchFields();
     this.loadCurrentUser();
     this.loadSacramentTypes();
+  }
+
+  /**
+   * Initialize search fields for advanced search panel
+   */
+  initializeSearchFields(): void {
+    this.searchFields = [
+      {
+        key: 'sacrament_type_id',
+        label: 'Sacrament Type',
+        type: 'select',
+        options: [], // Will be populated after sacrament types are loaded
+        value: this.selectedSacramentType
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'cancelled', label: 'Cancelled' },
+          { value: 'conditional', label: 'Conditional' }
+        ],
+        value: this.selectedStatus
+      },
+      {
+        key: 'date_from',
+        label: 'Date From',
+        type: 'date',
+        value: this.dateFrom
+      },
+      {
+        key: 'date_to',
+        label: 'Date To',
+        type: 'date',
+        value: this.dateTo
+      }
+    ];
   }
 
   /**
@@ -88,6 +142,14 @@ export class SacramentListComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.sacramentTypes = response.data;
+          // Update search field options
+          const sacramentTypeField = this.searchFields.find(f => f.key === 'sacrament_type_id');
+          if (sacramentTypeField) {
+            sacramentTypeField.options = this.sacramentTypes.map(type => ({
+              value: type.id,
+              label: type.name
+            }));
+          }
         }
       },
       error: (error) => {
@@ -182,17 +244,36 @@ export class SacramentListComponent implements OnInit {
   }
 
   /**
-   * Navigate to create page
+   * Show create modal
    */
   onCreateSacrament(): void {
-    this.router.navigate(['/settings/sacraments/create']);
+    this.sacramentToEdit = null;
+    this.showFormModal = true;
   }
 
   /**
-   * Navigate to edit page
+   * Show edit modal
    */
   onEditSacrament(sacrament: Sacrament): void {
-    this.router.navigate(['/settings/sacraments/edit', sacrament.id]);
+    this.sacramentToEdit = sacrament;
+    this.showFormModal = true;
+  }
+  
+  /**
+   * Handle form save
+   */
+  onFormSave(): void {
+    this.showFormModal = false;
+    this.sacramentToEdit = null;
+    this.loadSacraments();
+  }
+  
+  /**
+   * Handle form cancel
+   */
+  onFormCancel(): void {
+    this.showFormModal = false;
+    this.sacramentToEdit = null;
   }
 
   /**
@@ -219,14 +300,14 @@ export class SacramentListComponent implements OnInit {
     this.sacramentService.deleteSacrament(this.sacramentToDelete.id).subscribe({
       next: (response) => {
         if (response.success) {
-          this.toastService.success('Sacrament record deleted successfully.');
+          this.toastService.success('Sacrament deleted successfully.');
           this.loadSacraments();
         }
         this.cancelDelete();
       },
       error: (error) => {
         console.error('Error deleting sacrament:', error);
-        this.toastService.error('Failed to delete sacrament record.');
+        this.toastService.error('Failed to delete sacrament.');
         this.cancelDelete();
       }
     });
@@ -245,6 +326,15 @@ export class SacramentListComponent implements OnInit {
    */
   onPageChange(page: number): void {
     this.currentPage = page;
+    this.loadSacraments();
+  }
+
+  /**
+   * Handle page size change
+   */
+  onPageSizeChange(pageSize: number): void {
+    this.perPage = pageSize;
+    this.currentPage = 1;
     this.loadSacraments();
   }
 
@@ -279,5 +369,141 @@ export class SacramentListComponent implements OnInit {
   trackBySacramentId(index: number, sacrament: Sacrament): number {
     return sacrament.id;
   }
+
+  /**
+   * Handle advanced search
+   */
+  onAdvancedSearch(searchValues: { [key: string]: any }): void {
+    this.selectedSacramentType = searchValues['sacrament_type_id'] || null;
+    this.selectedStatus = searchValues['status'] || '';
+    this.dateFrom = searchValues['date_from'] || '';
+    this.dateTo = searchValues['date_to'] || '';
+    this.currentPage = 1;
+    this.loadSacraments();
+    this.showAdvancedSearch = false;
+  }
+
+  /**
+   * Clear advanced search filters
+   */
+  onClearAdvancedSearch(): void {
+    this.selectedSacramentType = null;
+    this.selectedStatus = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.currentPage = 1;
+    this.loadSacraments();
+  }
+
+  /**
+   * Quick search (search term only)
+   */
+  onQuickSearch(): void {
+    this.currentPage = 1;
+    this.loadSacraments();
+  }
+
+  /**
+   * Clear search term
+   */
+  clearSearch(): void {
+    this.searchTerm = '';
+    this.currentPage = 1;
+    this.loadSacraments();
+  }
+
+  /**
+   * Get active filters for display
+   */
+  getActiveFilters(): ActiveFilter[] {
+    const filters: ActiveFilter[] = [];
+
+    if (this.selectedSacramentType) {
+      const type = this.sacramentTypes.find(t => t.id === this.selectedSacramentType);
+      filters.push({
+        key: 'sacrament_type_id',
+        label: 'Sacrament Type',
+        value: this.selectedSacramentType,
+        displayValue: type?.name || String(this.selectedSacramentType)
+      });
+    }
+
+    if (this.selectedStatus) {
+      filters.push({
+        key: 'status',
+        label: 'Status',
+        value: this.selectedStatus,
+        displayValue: this.selectedStatus.charAt(0).toUpperCase() + this.selectedStatus.slice(1)
+      });
+    }
+
+    if (this.dateFrom) {
+      filters.push({
+        key: 'date_from',
+        label: 'Date From',
+        value: this.dateFrom,
+        displayValue: this.datePipe.transform(this.dateFrom, 'MMM d, y') || this.dateFrom
+      });
+    }
+
+    if (this.dateTo) {
+      filters.push({
+        key: 'date_to',
+        label: 'Date To',
+        value: this.dateTo,
+        displayValue: this.datePipe.transform(this.dateTo, 'MMM d, y') || this.dateTo
+      });
+    }
+
+    return filters;
+  }
+
+  /**
+   * Get count of active filters
+   */
+  getActiveFilterCount(): number {
+    return this.getActiveFilters().length;
+  }
+
+  /**
+   * Remove single filter
+   */
+  removeFilter(filter: ActiveFilter): void {
+    if (filter.key === 'sacrament_type_id') {
+      this.selectedSacramentType = null;
+    } else if (filter.key === 'status') {
+      this.selectedStatus = '';
+    } else if (filter.key === 'date_from') {
+      this.dateFrom = '';
+    } else if (filter.key === 'date_to') {
+      this.dateTo = '';
+    }
+
+    // Update search field value
+    const field = this.searchFields.find(f => f.key === filter.key);
+    if (field) {
+      field.value = undefined;
+    }
+
+    this.currentPage = 1;
+    this.loadSacraments();
+  }
+
+  /**
+   * Clear all filters
+   */
+  clearAllFilters(): void {
+    this.selectedSacramentType = null;
+    this.selectedStatus = '';
+    this.dateFrom = '';
+    this.dateTo = '';
+    this.searchTerm = '';
+    this.searchFields.forEach(field => {
+      field.value = undefined;
+    });
+    this.currentPage = 1;
+    this.loadSacraments();
+  }
 }
+
 

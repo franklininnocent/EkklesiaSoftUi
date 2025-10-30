@@ -39,9 +39,16 @@ export class SettingsComponent implements OnInit {
       requiresEkklesiaRole: true
     },
     { 
-      title: 'Sacraments', 
-      description: 'Manage sacramental records and certificates', 
+      title: 'Sacrament Types', 
+      description: 'Manage sacrament types master data', 
       icon: '✝️', 
+      route: '/settings/ecclesiastical/sacrament-types',
+      requiresEkklesiaRole: true
+    },
+    { 
+      title: 'Sacraments', 
+      description: 'Manage baptisms, confirmations, marriages, and all sacraments', 
+      icon: '📋', 
       route: '/settings/sacraments',
       requiresTenantAccess: true
     }
@@ -91,16 +98,29 @@ export class SettingsComponent implements OnInit {
   /**
    * Check if the current user has an Ekklesia role.
    * Only Ekklesia users (SuperAdmin, EkklesiaAdmin, EkklesiaManager, EkklesiaUser) can access Ecclesiastical Data.
+   * 
+   * IMPORTANT: Users with tenant_id are TENANT users and should NEVER have access to Ekklesia features.
    */
   hasEkklesiaRole(user: User | null): boolean {
     if (!user) return false;
     
-    // Primary check: Use the backend-provided flag
-    if (user.has_ekklesia_role !== undefined) {
-      return user.has_ekklesia_role;
+    // CRITICAL CHECK: If user has a tenant_id, they are a TENANT user, NOT an Ekklesia user
+    // Tenant users should NEVER have access to Ecclesiastical Data or Sacrament Types
+    if (user.tenant_id !== null && user.tenant_id !== undefined) {
+      return false;
     }
     
-    // Fallback: Check by role name
+    // Primary check: Use the backend-provided flag (this is the most reliable)
+    if (user.has_ekklesia_role === true) {
+      return true;
+    }
+    
+    // If has_ekklesia_role is explicitly false, return false immediately
+    if (user.has_ekklesia_role === false) {
+      return false;
+    }
+    
+    // Fallback: Check by role name (only if has_ekklesia_role is undefined)
     const ekklesiaRoles = ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'];
     if (user.role_name && ekklesiaRoles.includes(user.role_name)) {
       return true;
@@ -111,6 +131,7 @@ export class SettingsComponent implements OnInit {
       return true;
     }
     
+    // Default to false for safety - tenant users should NOT have access
     return false;
   }
 
@@ -125,8 +146,9 @@ export class SettingsComponent implements OnInit {
       return this.canManageRoles(user);
     }
     if (section.requiresTenantAccess) {
-      // Tenant users (not Ekklesia users) can access Sacraments
-      return user !== null && user.tenant_id !== null;
+      // ONLY Tenant users (NOT Ekklesia users) can access Sacraments
+      // Must have tenant_id AND must NOT have Ekklesia role
+      return user !== null && user.tenant_id !== null && !this.hasEkklesiaRole(user);
     }
     return true;
   }

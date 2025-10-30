@@ -1,0 +1,237 @@
+<div class="family-list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <div class="header-left">
+      <h2 class="list-title">Family Management</h2>
+      <p class="list-subtitle">Manage all families and their members</p>
+    </div>
+    <div class="header-right">
+      <div class="search-box-header">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onQuickSearch()"
+          placeholder="Quick search..."
+          class="search-input-header"
+          aria-label="Quick search families">
+        <button 
+          *ngIf="searchTerm" 
+          class="clear-search-btn"
+          (click)="clearSearch()"
+          aria-label="Clear search">
+          ✕
+        </button>
+      </div>
+      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+        <span class="btn-icon">🔍</span>
+        Filters
+        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
+      </button>
+      <button class="btn btn-primary" (click)="createFamily()">
+        <span class="btn-icon">➕</span>
+        Add Family
+      </button>
+    </div>
+  </div>
+
+  <!-- Active Filter Chips - Inline Compact Design -->
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
+    <div class="chips-inline-wrapper">
+      <span class="chips-label">
+        <span class="filter-icon">🔍</span>
+        Active Filters ({{ getActiveFilters().length }}):
+      </span>
+      <div class="chips-list">
+        <div 
+          *ngFor="let filter of getActiveFilters()" 
+          class="filter-chip animate-scale-in"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
+          <span class="chip-content">
+            <span class="chip-label">{{ filter.label }}:</span>
+            <span class="chip-value">{{ filter.displayValue }}</span>
+          </span>
+          <button 
+            type="button"
+            class="chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label">
+            ✕
+          </button>
+        </div>
+      </div>
+      <button 
+        type="button"
+        class="btn-clear-all-chips"
+        (click)="clearAllFilters()"
+        aria-label="Clear all filters">
+        Clear All
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="statistics-grid" *ngIf="statistics">
+    <div class="stat-card">
+      <div class="stat-icon">👨‍👩‍👧‍👦</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.total_families }}</div>
+        <div class="stat-label">Total Families</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.active_families }}</div>
+        <div class="stat-label">Active Families</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👤</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.total_members }}</div>
+        <div class="stat-label">Total Members</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">🏘️</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.families_with_bcc }}</div>
+        <div class="stat-label">In BCCs</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading families...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="error && !loading">
+    <div class="error-message">
+      <span class="error-icon">⚠️</span>
+      <p>{{ error }}</p>
+      <button class="btn btn-primary" (click)="loadFamilies()">Retry</button>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="table-container" *ngIf="!loading && !error">
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="families.length === 0">
+      <div class="empty-icon">📋</div>
+      <h3>No families found</h3>
+      <p>Start by adding your first family</p>
+      <button class="btn btn-primary" (click)="createFamily()">Add Family</button>
+    </div>
+
+    <!-- Table -->
+    <table class="data-table" *ngIf="families.length > 0">
+      <thead>
+        <tr>
+          <th (click)="sortBy('family_code')" class="sortable">
+            Family Code {{ getSortIcon('family_code') }}
+          </th>
+          <th (click)="sortBy('family_name')" class="sortable">
+            Family Name {{ getSortIcon('family_name') }}
+          </th>
+          <th>Head of Family</th>
+          <th>BCC</th>
+          <th>Members</th>
+          <th>Contact</th>
+          <th (click)="sortBy('status')" class="sortable">
+            Status {{ getSortIcon('status') }}
+          </th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let family of families">
+          <td class="family-code">
+            <button 
+              class="link-like"
+              (click)="viewFamily(family)"
+              [attr.aria-label]="'Open family ' + family.family_code + ' profile'"
+            >
+              {{ family.family_code }}
+            </button>
+          </td>
+          <td class="family-name">
+            <strong>{{ family.family_name }}</strong>
+          </td>
+          <td>{{ family.head_of_family || '-' }}</td>
+          
+          <td>
+            <span class="bcc-badge" *ngIf="family.bcc">
+              {{ family.bcc.name }}
+            </span>
+            <span *ngIf="!family.bcc" class="text-muted">Not assigned</span>
+          </td>
+          <td class="text-center">
+            <span class="member-count">{{ family.members?.length || 0 }}</span>
+          </td>
+          <td>
+            <div class="contact-info">
+              <div *ngIf="family.primary_phone">📞 {{ family.primary_phone }}</div>
+              <div *ngIf="family.email">✉️ {{ family.email }}</div>
+              <div *ngIf="!family.primary_phone && !family.email">-</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getStatusClass(family.status)">
+              {{ family.status }}
+            </span>
+          </td>
+          <td class="actions-column">
+            <div class="action-buttons">
+              
+              <button 
+                class="btn-icon btn-danger" 
+                (click)="deleteFamily(family)"
+                title="Delete"
+              >
+                🗑️
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+  </div>
+
+  <!-- Pagination -->
+  <app-pagination
+    *ngIf="!loading && totalRecords > 0"
+    [currentPage]="currentPage"
+    [pageSize]="perPage"
+    [totalItems]="totalRecords"
+    [pageSizeOptions]="[10, 20, 30, 50, 100]"
+    [showPageSizeSelector]="true"
+    [showPageInfo]="true"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)">
+  </app-pagination>
+
+  <!-- Family Form Modal -->
+  <app-family-form
+    *ngIf="showForm"
+    [family]="selectedFamily"
+    [bccs]="bccs"
+    (save)="onFormSave($event)"
+    (cancel)="onFormCancel()"
+  ></app-family-form>
+
+  <!-- Advanced Search Side Panel -->
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false">
+  </app-advanced-search-panel>
+</div>

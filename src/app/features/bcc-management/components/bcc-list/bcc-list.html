@@ -1,0 +1,259 @@
+<div class="bcc-list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <div class="header-left">
+      <h2 class="list-title">BCC Management</h2>
+      <p class="list-subtitle">Manage Basic Christian Communities</p>
+    </div>
+    <div class="header-right">
+      <div class="search-box-header">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onQuickSearch()"
+          placeholder="Quick search..."
+          class="search-input-header"
+          aria-label="Quick search BCCs">
+        <button 
+          *ngIf="searchTerm" 
+          class="clear-search-btn"
+          (click)="clearSearch()"
+          aria-label="Clear search">
+          ✕
+        </button>
+      </div>
+      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+        <span class="btn-icon">🔍</span>
+        Filters
+        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
+      </button>
+      <button class="btn btn-primary" (click)="createBCC()">
+        <span class="btn-icon">➕</span>
+        Add BCC
+      </button>
+    </div>
+  </div>
+
+  <!-- Active Filter Chips - Inline Compact Design -->
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
+    <div class="chips-inline-wrapper">
+      <span class="chips-label">
+        <span class="filter-icon">🔍</span>
+        Active Filters ({{ getActiveFilters().length }}):
+      </span>
+      <div class="chips-list">
+        <div 
+          *ngFor="let filter of getActiveFilters()" 
+          class="filter-chip animate-scale-in"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
+          <span class="chip-content">
+            <span class="chip-label">{{ filter.label }}:</span>
+            <span class="chip-value">{{ filter.displayValue }}</span>
+          </span>
+          <button 
+            type="button"
+            class="chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label">
+            ✕
+          </button>
+        </div>
+      </div>
+      <button 
+        type="button"
+        class="btn-clear-all-chips"
+        (click)="clearAllFilters()"
+        aria-label="Clear all filters">
+        Clear All
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Cards -->
+  <div class="statistics-grid" *ngIf="statistics">
+    <div class="stat-card">
+      <div class="stat-icon">🏘️</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.total_bccs }}</div>
+        <div class="stat-label">Total BCCs</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">✅</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.active_bccs }}</div>
+        <div class="stat-label">Active BCCs</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👨‍👩‍👧‍👦</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.total_families_in_bccs }}</div>
+        <div class="stat-label">Families in BCCs</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-content">
+        <div class="stat-value">{{ statistics.total_leaders }}</div>
+        <div class="stat-label">Leaders</div>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- Loading State -->
+  <div class="loading-container" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Loading BCCs...</p>
+  </div>
+
+  <!-- Error State -->
+  <div class="error-container" *ngIf="error && !loading">
+    <div class="error-message">
+      <span class="error-icon">⚠️</span>
+      <p>{{ error }}</p>
+      <button class="btn btn-primary" (click)="loadBCCs()">Retry</button>
+    </div>
+  </div>
+
+  <!-- Data Table -->
+  <div class="table-container" *ngIf="!loading && !error">
+    <!-- Empty State -->
+    <div class="empty-state" *ngIf="bccs.length === 0">
+      <div class="empty-icon">🏘️</div>
+      <h3>No BCCs found</h3>
+      <p>Start by adding your first BCC</p>
+      <button class="btn btn-primary" (click)="createBCC()">Add BCC</button>
+    </div>
+
+    <!-- Table -->
+    <table class="data-table" *ngIf="bccs.length > 0">
+      <thead>
+        <tr>
+          <th (click)="sortBy('bcc_code')" class="sortable">
+            BCC Code {{ getSortIcon('bcc_code') }}
+          </th>
+          <th (click)="sortBy('name')" class="sortable">
+            BCC Name {{ getSortIcon('name') }}
+          </th>
+          
+          <th>Capacity</th>
+          <th>Families</th>
+          <th>Leaders</th>
+          <th>Meeting Day</th>
+          <th>Contact</th>
+          <th (click)="sortBy('status')" class="sortable">
+            Status {{ getSortIcon('status') }}
+          </th>
+          <th class="actions-column">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let bcc of bccs">
+          <td class="bcc-code">{{ bcc.bcc_code }}</td>
+          <td class="bcc-name">
+            <strong>{{ bcc.name }}</strong>
+          </td>
+          
+          <td>
+            <div class="capacity-indicator">
+              <div class="capacity-bar">
+                <div 
+                  class="capacity-fill" 
+                  [style.width.%]="getCapacityPercentage(bcc)"
+                  [ngClass]="getCapacityClass(getCapacityPercentage(bcc))"
+                ></div>
+              </div>
+              <span class="capacity-text">
+                {{ bcc.current_family_count || 0 }}/{{ bcc.max_families }}
+                <span class="capacity-percentage">({{ getCapacityPercentage(bcc) | number:'1.0-0' }}%)</span>
+              </span>
+            </div>
+          </td>
+          <td class="text-center">
+            <span class="family-count">{{ bcc.current_family_count || 0 }}</span>
+          </td>
+          <td class="text-center">
+            <span class="leader-count">{{ bcc.leaders?.length || 0 }}</span>
+          </td>
+          <td>
+            <span *ngIf="bcc.meeting_day" class="meeting-day">
+              {{ bcc.meeting_day | titlecase }}
+            </span>
+            <span *ngIf="!bcc.meeting_day" class="text-muted">Not set</span>
+          </td>
+          <td>
+            <div class="contact-info">
+              <div *ngIf="bcc.contact_phone">📞 {{ bcc.contact_phone }}</div>
+              <div *ngIf="bcc.contact_email">✉️ {{ bcc.contact_email }}</div>
+              <div *ngIf="!bcc.contact_phone && !bcc.contact_email">-</div>
+            </div>
+          </td>
+          <td>
+            <span class="badge" [ngClass]="getStatusClass(bcc.status)">
+              {{ bcc.status }}
+            </span>
+          </td>
+          <td class="actions-column">
+            <div class="action-buttons">
+              <button 
+                class="btn-icon" 
+                (click)="viewBCC(bcc)"
+                title="View Details"
+              >
+                👁️
+              </button>
+              <button 
+                class="btn-icon" 
+                (click)="editBCC(bcc)"
+                title="Edit"
+              >
+                ✏️
+              </button>
+              <button 
+                class="btn-icon btn-danger" 
+                (click)="deleteBCC(bcc)"
+                title="Delete"
+              >
+                🗑️
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="!loading && totalRecords > 0"
+      [currentPage]="currentPage"
+      [pageSize]="perPage"
+      [totalItems]="totalRecords"
+      [pageSizeOptions]="[10, 20, 30, 50, 100]"
+      [showPageSizeSelector]="true"
+      [showPageInfo]="true"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)">
+    </app-pagination>
+  </div>
+
+  <!-- BCC Form Modal -->
+  <app-bcc-form
+    *ngIf="showForm"
+    [bcc]="selectedBCC"
+    (save)="onFormSave($event)"
+    (cancel)="onFormCancel()"
+  ></app-bcc-form>
+
+  <!-- Advanced Search Side Panel -->
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false">
+  </app-advanced-search-panel>
+</div>

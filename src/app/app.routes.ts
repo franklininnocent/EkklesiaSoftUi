@@ -3,6 +3,10 @@ import { authGuard } from '@core/guards/auth.guard';
 import { tenantGuard } from '@core/guards/tenant.guard';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
+import { FamilyListComponent } from './features/family-management/components/family-list/family-list';
+import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
+import { FamilyBreadcrumbResolver } from './features/family-management/resolvers/family-breadcrumb.resolver';
+import { BCCListComponent } from './features/bcc-management/components/bcc-list/bcc-list';
 
 export const routes: Routes = [
   {
@@ -44,6 +48,19 @@ export const routes: Routes = [
       {
         path: 'church-profile',
         loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
+      },
+      {
+        path: 'families',
+        component: FamilyListComponent
+      },
+      {
+        path: 'families/:id',
+        component: FamilyDetail,
+        resolve: { breadcrumbLabel: FamilyBreadcrumbResolver }
+      },
+      {
+        path: 'bccs',
+        component: BCCListComponent
       }
     ]
   },
@@ -77,6 +94,19 @@ export const routes: Routes = [
       {
         path: 'church-profile',
         loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
+      },
+      {
+        path: 'families',
+        component: FamilyListComponent
+      },
+      {
+        path: 'families/:id',
+        component: FamilyDetail,
+        resolve: { breadcrumbLabel: FamilyBreadcrumbResolver }
+      },
+      {
+        path: 'bccs',
+        component: BCCListComponent
       }
     ]
   },

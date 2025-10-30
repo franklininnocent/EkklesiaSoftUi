@@ -45,9 +45,6 @@ export class BreadcrumbComponent implements OnInit {
       .subscribe(() => {
         this.breadcrumbs = this.buildBreadcrumbs(this.activatedRoute.root);
       });
-
-    // Initial breadcrumb generation
-    this.breadcrumbs = this.buildBreadcrumbs(this.activatedRoute.root);
   }
 
   private buildBreadcrumbs(
@@ -80,8 +77,10 @@ export class BreadcrumbComponent implements OnInit {
       if (routeURL !== '') {
         url += `/${routeURL}`;
 
-        // Get the route's label
-        const label = this.getRouteLabel(routeURL);
+        // Prefer resolver-provided label (e.g., family_code)
+        let label = (child.snapshot.data && child.snapshot.data['breadcrumbLabel'])
+          ? child.snapshot.data['breadcrumbLabel']
+          : this.getRouteLabel(routeURL);
         
         // Skip auth routes from breadcrumbs
         if (routeURL === 'auth' || this.isAuthRoute(url)) {
@@ -89,6 +88,11 @@ export class BreadcrumbComponent implements OnInit {
         }
 
         // Only add to breadcrumbs if it's not already there
+        // Ensure parent list crumb appears for detail pages like families/:id
+        if (url.startsWith('/families/') && !breadcrumbs.find(b => b.url === '/families')) {
+          breadcrumbs.push({ label: this.getRouteLabel('families'), url: '/families' });
+        }
+
         if (!breadcrumbs.find(b => b.url === url)) {
           breadcrumbs.push({
             label: label,

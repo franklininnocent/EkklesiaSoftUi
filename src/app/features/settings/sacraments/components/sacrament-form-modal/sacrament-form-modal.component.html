@@ -1,0 +1,269 @@
+<div class="modal-overlay" (click)="onBackdropClick()">
+  <div class="modal-dialog modal-xl" (click)="onModalClick($event)">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="modal-title-wrapper">
+        <h2 class="modal-title">
+          {{ isEditMode ? 'Edit Sacrament' : 'Add New Sacrament' }}
+        </h2>
+        <p class="modal-subtitle">
+          {{ isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information' }}
+        </p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="onCancel()" [disabled]="saving">
+        ×
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+      </div>
+
+      <!-- Form -->
+      <form *ngIf="!loading" class="sacrament-form" (ngSubmit)="onSave()">
+        <!-- Sacrament Information -->
+        <div class="form-section">
+          <h3 class="section-title">✝️ Sacrament Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="required">Sacrament Type</label>
+              <select [(ngModel)]="formData.sacrament_type_id" name="sacrament_type_id" class="form-control" required>
+                <option [ngValue]="undefined">Select a sacrament...</option>
+                <option *ngFor="let type of sacramentTypes" [ngValue]="type.id">
+                  {{ type.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="required">Date Administered</label>
+              <input
+                type="date"
+                [(ngModel)]="formData.date_administered"
+                name="date_administered"
+                class="form-control"
+                required>
+            </div>
+
+            <div class="form-group">
+              <label>Place Administered</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.place_administered"
+                name="place_administered"
+                class="form-control"
+                placeholder="Church name or location">
+            </div>
+
+            <div class="form-group">
+              <label>Status</label>
+              <select [(ngModel)]="formData.status" name="status" class="form-control">
+                <option value="active">Active</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="conditional">Conditional</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipient Information -->
+        <div class="form-section">
+          <h3 class="section-title">👤 Recipient Information</h3>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label class="required">Full Name</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.recipient_name"
+                name="recipient_name"
+                class="form-control"
+                placeholder="Enter full name"
+                required>
+            </div>
+
+            <div class="form-group">
+              <label>Date of Birth</label>
+              <input
+                type="date"
+                [(ngModel)]="formData.recipient_birth_date"
+                name="recipient_birth_date"
+                class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label>Place of Birth</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.recipient_birth_place"
+                name="recipient_birth_place"
+                class="form-control"
+                placeholder="City, State">
+            </div>
+          </div>
+        </div>
+
+        <!-- Minister Information -->
+        <div class="form-section">
+          <h3 class="section-title">⛪ Minister Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Minister Name</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.minister_name"
+                name="minister_name"
+                class="form-control"
+                placeholder="Rev. John Doe">
+            </div>
+
+            <div class="form-group">
+              <label>Minister Title</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.minister_title"
+                name="minister_title"
+                class="form-control"
+                placeholder="Parish Priest, Bishop, etc.">
+            </div>
+          </div>
+        </div>
+
+        <!-- Parents Information (for Baptism) -->
+        <div class="form-section" *ngIf="requiresParents()">
+          <h3 class="section-title">👨‍👩‍👧 Parents Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Father's Name</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.father_name"
+                name="father_name"
+                class="form-control"
+                placeholder="Enter father's full name">
+            </div>
+
+            <div class="form-group">
+              <label>Mother's Name</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.mother_name"
+                name="mother_name"
+                class="form-control"
+                placeholder="Enter mother's full name">
+            </div>
+          </div>
+        </div>
+
+        <!-- Godparents/Sponsors (for Baptism, Confirmation) -->
+        <div class="form-section" *ngIf="requiresGodparents()">
+          <h3 class="section-title">🤝 Godparents / Sponsors</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Godparent / Sponsor 1</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.godparent1_name"
+                name="godparent1_name"
+                class="form-control"
+                placeholder="Enter first godparent's name">
+            </div>
+
+            <div class="form-group">
+              <label>Godparent / Sponsor 2</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.godparent2_name"
+                name="godparent2_name"
+                class="form-control"
+                placeholder="Enter second godparent's name">
+            </div>
+          </div>
+        </div>
+
+        <!-- Witnesses -->
+        <div class="form-section">
+          <h3 class="section-title">👥 Witnesses</h3>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>Witnesses</label>
+              <textarea
+                [(ngModel)]="formData.witnesses"
+                name="witnesses"
+                class="form-control"
+                rows="2"
+                placeholder="Enter witness names (separate with commas if multiple)"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Record Information -->
+        <div class="form-section">
+          <h3 class="section-title">📋 Record Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Certificate Number</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.certificate_number"
+                name="certificate_number"
+                class="form-control"
+                placeholder="e.g., CERT-2024-001">
+            </div>
+
+            <div class="form-group">
+              <label>Book Number</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.book_number"
+                name="book_number"
+                class="form-control"
+                placeholder="e.g., BOOK-5">
+            </div>
+
+            <div class="form-group">
+              <label>Page Number</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.page_number"
+                name="page_number"
+                class="form-control"
+                placeholder="e.g., 123">
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Notes -->
+        <div class="form-section">
+          <h3 class="section-title">📝 Additional Notes</h3>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>Notes</label>
+              <textarea
+                [(ngModel)]="formData.notes"
+                name="notes"
+                class="form-control"
+                rows="3"
+                placeholder="Any additional information or special notes about this sacrament"></textarea>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="saving">
+        Cancel
+      </button>
+      <button type="submit" class="btn btn-primary" (click)="onSave()" [disabled]="saving || loading">
+        <span *ngIf="!saving">{{ isEditMode ? 'Update' : 'Create' }} Record</span>
+        <span *ngIf="saving">Saving...</span>
+      </button>
+    </div>
+  </div>
+</div>
+

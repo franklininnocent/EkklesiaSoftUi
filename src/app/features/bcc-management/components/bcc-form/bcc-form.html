@@ -1,0 +1,194 @@
+<div class="modal-overlay" (click)="onCancel()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>{{ bcc ? 'Edit' : 'Add' }} BCC</h2>
+      <button class="close-btn" type="button" (click)="onCancel()">✕</button>
+    </div>
+
+    <div class="error-banner" *ngIf="error">
+      <span class="error-icon">⚠️</span>
+      {{ error }}
+    </div>
+
+    <form [formGroup]="bccForm" (ngSubmit)="onSubmit()">
+      <div class="form-content">
+        <div class="form-grid">
+          <!-- Basic Information -->
+          <div class="form-group full-width">
+            <label>BCC Name <span class="required">*</span></label>
+            <input 
+              type="text" 
+              formControlName="name" 
+              class="form-control"
+              [class.error]="hasError('name')"
+              placeholder="Enter BCC name"
+            />
+            <span class="error-text" *ngIf="hasError('name')">
+              BCC name is required
+            </span>
+          </div>
+
+          <div class="form-group full-width">
+            <label>Description</label>
+            <textarea 
+              formControlName="description" 
+              class="form-control" 
+              rows="2"
+              placeholder="Brief description of the BCC"
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Meeting Place</label>
+            <input 
+              type="text" 
+              formControlName="meeting_place" 
+              class="form-control"
+              placeholder="Meeting location"
+            />
+          </div>
+
+          <!-- Meeting Schedule -->
+          <div class="form-section-header full-width">
+            <h3>Meeting Schedule</h3>
+          </div>
+
+          <div class="form-group">
+            <label>Meeting Day</label>
+            <select formControlName="meeting_day" class="form-control">
+              <option value="">Select Day</option>
+              <option *ngFor="let day of weekDays" [value]="day.value">
+                {{ day.label }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Meeting Time</label>
+            <input 
+              type="time" 
+              formControlName="meeting_time" 
+              class="form-control"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Meeting Frequency</label>
+            <select formControlName="meeting_frequency" class="form-control">
+              <option value="">Select Frequency</option>
+              <option *ngFor="let freq of frequencies" [value]="freq">
+                {{ freq }}
+              </option>
+            </select>
+          </div>
+
+          <!-- Capacity -->
+          <div class="form-section-header full-width">
+            <h3>Capacity</h3>
+          </div>
+
+          <div class="form-group">
+            <label>Minimum Families <span class="required">*</span></label>
+            <input 
+              type="number" 
+              formControlName="min_families" 
+              class="form-control"
+              min="1"
+              [class.error]="hasError('min_families')"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Maximum Families <span class="required">*</span></label>
+            <input 
+              type="number" 
+              formControlName="max_families" 
+              class="form-control"
+              min="1"
+              [class.error]="hasError('max_families')"
+            />
+          </div>
+
+          <!-- Contact Information -->
+          <div class="form-section-header full-width">
+            <h3>Contact Information</h3>
+          </div>
+
+          <div class="form-group">
+            <label>Contact Phone</label>
+            <input 
+              type="tel" 
+              formControlName="contact_phone" 
+              class="form-control"
+              placeholder="+1234567890"
+            />
+          </div>
+
+          <div class="form-group">
+            <label>Contact Email</label>
+            <input 
+              type="email" 
+              formControlName="contact_email" 
+              class="form-control"
+              [class.error]="hasError('contact_email')"
+              placeholder="bcc@example.com"
+            />
+            <span class="error-text" *ngIf="hasError('contact_email')">
+              Please enter a valid email
+            </span>
+          </div>
+
+          <!-- Additional Information -->
+          <div class="form-group">
+            <label>Status</label>
+            <select formControlName="status" class="form-control">
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Established Date</label>
+            <input 
+              type="date" 
+              formControlName="established_date" 
+              class="form-control"
+            />
+          </div>
+
+          <div class="form-group full-width">
+            <label>Notes</label>
+            <textarea 
+              formControlName="notes" 
+              class="form-control" 
+              rows="3"
+              placeholder="Any additional notes..."
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button 
+          type="button" 
+          class="btn btn-secondary" 
+          (click)="onCancel()" 
+          [disabled]="loading"
+        >
+          Cancel
+        </button>
+        <button 
+          type="submit" 
+          class="btn btn-primary" 
+          [disabled]="!bccForm.valid || loading"
+        >
+          <span *ngIf="!loading">
+            <span class="icon">💾</span> Save BCC
+          </span>
+          <span *ngIf="loading">Saving...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
