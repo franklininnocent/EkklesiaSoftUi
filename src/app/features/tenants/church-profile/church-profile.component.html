@@ -71,9 +71,6 @@
         
         <!-- Church Identity Section -->
         <div class="section-card">
-          <div class="section-header">
-            <h2>⛪ Church Identity</h2>
-          </div>
           <div class="identity-overview">
             <div class="church-logo-section">
               <div class="logo-display">
@@ -95,181 +92,153 @@
           </div>
         </div>
 
-        <!-- General Information Section -->
-        <form [formGroup]="profileForm" class="section-card">
+        <!-- General + Contact Information (Read-only display) -->
+        <div class="section-card">
           <div class="section-header">
-            <h2>🏛️ General Information</h2>
+            <h2>General & Contact Information</h2>
             <div class="section-actions" *ngIf="canEdit">
               <button 
-                *ngIf="!editingSections.general" 
                 class="btn-3d-action btn-3d-edit" 
                 type="button" 
                 title="Edit"
-                (click)="startEditSection('general')">
+                (click)="openGeneralModal()">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
                 </svg>
               </button>
-              <div *ngIf="editingSections.general" class="button-group">
-                <button 
-                  class="btn-3d-action btn-3d-success" 
-                  type="button" 
-                  (click)="saveSection('general')"
-                  [disabled]="saving">
-                  <span>{{ saving ? '⏳' : '✓' }}</span>
-                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-                </button>
-                <button 
-                  class="btn-3d-action btn-3d-secondary" 
-                  type="button" 
-                  (click)="cancelEditSection('general')">
-                  <span>✗</span>
-                  <span>Cancel</span>
-                </button>
-              </div>
             </div>
           </div>
 
-          <div class="form-grid">
-            
-            <!-- Denomination -->
-            <div class="form-group">
-              <label for="denomination_id">Denomination</label>
-              <ng-select
-                id="denomination_id"
-                formControlName="denomination_id"
-                [items]="denominations"
-                bindLabel="name"
-                bindValue="id"
-                placeholder="Select Denomination"
-                [clearable]="true"
-                [searchable]="true"
-                (change)="onDenominationChange($event?.id)">
-              </ng-select>
+          <ng-container [ngSwitch]="designVariant">
+          
+          <!-- Variant: Summary (default) -->
+          <div *ngSwitchCase="'summary'" class="info-panels">
+            <div class="panel summary-panel">
+              <div class="summary-header">
+                <div class="summary-title">{{ getDenominationName() }}</div>
+                <div class="summary-subtitle">{{ getArchdioceseName() }}</div>
+              </div>
+              <div class="summary-badges">
+                <span class="pill">📅 Founded: {{ extendedProfile?.founded_year || 'Not Set' }}</span>
+                <span class="pill">🌍 {{ getTenantCountry() }}</span>
+                <span class="pill">📦 {{ (churchProfile?.plan || 'Unknown') | titlecase }}</span>
+                <span class="pill" [class.pill-success]="churchProfile?.active === 1" [class.pill-danger]="churchProfile?.active === 0">
+                  {{ getStatusText() }}
+                </span>
+              </div>
             </div>
 
-            <!-- Archdiocese -->
-            <div class="form-group">
-              <label for="archdiocese_id">Archdiocese / Diocese</label>
-              <ng-select
-                id="archdiocese_id"
-                formControlName="archdiocese_id"
-                [items]="filteredArchdioceses"
-                bindLabel="name"
-                bindValue="id"
-                placeholder="Select Archdiocese"
-                [clearable]="true"
-                [searchable]="true">
-                <ng-template ng-label-tmp let-item="item">
-                  {{ item.name }}
-                </ng-template>
-                <ng-template ng-option-tmp let-item="item">
-                  <div class="ng-option-custom">
-                    <strong>{{ item.name }}</strong>
-                    <small class="text-muted">{{ item.country }}</small>
+            <div class="panel details-panel">
+              <ul class="details-list">
+                <li class="detail-item">
+                  <span class="detail-icon">📞</span>
+                  <div class="detail-content">
+                    <span class="detail-label">Phone</span>
+                    <span class="detail-value">{{ (extendedProfile?.phone || churchProfile?.primary_contact?.contact_number || 'Not Set') }}</span>
                   </div>
-                </ng-template>
-              </ng-select>
-            </div>
-
-            <!-- Founded Year -->
-            <div class="form-group">
-              <label for="founded_year">Founded Year</label>
-              <input 
-                type="number" 
-                id="founded_year" 
-                formControlName="founded_year"
-                class="form-control"
-                placeholder="e.g., 1985">
-            </div>
-
-            <!-- Country -->
-            <div class="form-group">
-              <label for="country">Country</label>
-              <div class="form-control-static">
-                {{ getTenantCountry() }}
-              </div>
+                </li>
+                <li class="detail-item">
+                  <span class="detail-icon">✉️</span>
+                  <div class="detail-content">
+                    <span class="detail-label">Email</span>
+                    <span class="detail-value">{{ (extendedProfile?.email || churchProfile?.primary_contact?.email || 'Not Set') }}</span>
+                  </div>
+                </li>
+                <li class="detail-item">
+                  <span class="detail-icon">🔗</span>
+                  <div class="detail-content">
+                    <span class="detail-label">Website</span>
+                    <span class="detail-value">
+                      <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ extendedProfile?.website }}</a>
+                      <span *ngIf="!extendedProfile?.website">Not Set</span>
+                    </span>
+                  </div>
+                </li>
+              </ul>
             </div>
           </div>
-        </form>
 
-        <!-- Contact Information Section -->
-        <form [formGroup]="profileForm" class="section-card">
-          <div class="section-header">
-            <h2>📞 Contact Information</h2>
-            <div class="section-actions" *ngIf="canEdit">
-              <button 
-                *ngIf="!editingSections.contact" 
-                class="btn-3d-action btn-3d-edit" 
-                type="button" 
-                title="Edit"
-                (click)="startEditSection('contact')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </button>
-              <div *ngIf="editingSections.contact" class="button-group">
-                <button 
-                  class="btn-3d-action btn-3d-success" 
-                  type="button" 
-                  (click)="saveSection('contact')"
-                  [disabled]="saving">
-                  <span>{{ saving ? '⏳' : '✓' }}</span>
-                  <span>{{ saving ? 'Saving...' : 'Save' }}</span>
-                </button>
-                <button 
-                  class="btn-3d-action btn-3d-secondary" 
-                  type="button" 
-                  (click)="cancelEditSection('contact')">
-                  <span>✗</span>
-                  <span>Cancel</span>
-                </button>
+          <!-- Variant: Tiles -->
+          <div *ngSwitchCase="'tiles'" class="tiles-layout">
+            <div class="tile">
+              <div class="tile-label">Denomination</div>
+              <div class="tile-value">{{ getDenominationName() }}</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Archdiocese / Diocese</div>
+              <div class="tile-value">{{ getArchdioceseName() }}</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Founded</div>
+              <div class="tile-value">{{ extendedProfile?.founded_year || 'Not Set' }}</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Country</div>
+              <div class="tile-value">{{ getTenantCountry() }}</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Phone</div>
+              <div class="tile-value">{{ (extendedProfile?.phone || churchProfile?.primary_contact?.contact_number || 'Not Set') }}</div>
+            </div>
+            <div class="tile">
+              <div class="tile-label">Email</div>
+              <div class="tile-value">{{ (extendedProfile?.email || churchProfile?.primary_contact?.email || 'Not Set') }}</div>
+            </div>
+            <div class="tile full">
+              <div class="tile-label">Website</div>
+              <div class="tile-value">
+                <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ extendedProfile?.website }}</a>
+                <span *ngIf="!extendedProfile?.website">Not Set</span>
               </div>
             </div>
           </div>
 
-          <div class="form-grid">
-            <!-- Phone -->
-            <div class="form-group">
-              <label for="phone">Phone</label>
-              <input 
-                type="tel" 
-                id="phone" 
-                formControlName="phone"
-                class="form-control"
-                placeholder="+1 (555) 123-4567">
-            </div>
-
-            <!-- Email -->
-            <div class="form-group">
-              <label for="email">Email</label>
-              <input 
-                type="email" 
-                id="email" 
-                formControlName="email"
-                class="form-control"
-                placeholder="info@church.org">
-            </div>
-
-            <!-- Website -->
-            <div class="form-group full-width">
-              <label for="website">Website</label>
-              <input 
-                type="url" 
-                id="website" 
-                formControlName="website"
-                class="form-control"
-                placeholder="https://www.church.org">
-            </div>
+          <!-- Variant: Definition List -->
+          <div *ngSwitchCase="'definition'" class="definitions-layout">
+            <dl>
+              <div class="row">
+                <dt>Denomination</dt>
+                <dd>{{ getDenominationName() }}</dd>
+              </div>
+              <div class="row">
+                <dt>Archdiocese / Diocese</dt>
+                <dd>{{ getArchdioceseName() }}</dd>
+              </div>
+              <div class="row">
+                <dt>Founded Year</dt>
+                <dd>{{ extendedProfile?.founded_year || 'Not Set' }}</dd>
+              </div>
+              <div class="row">
+                <dt>Country</dt>
+                <dd>{{ getTenantCountry() }}</dd>
+              </div>
+              <div class="row">
+                <dt>Phone</dt>
+                <dd>{{ (extendedProfile?.phone || churchProfile?.primary_contact?.contact_number || 'Not Set') }}</dd>
+              </div>
+              <div class="row">
+                <dt>Email</dt>
+                <dd>{{ (extendedProfile?.email || churchProfile?.primary_contact?.email || 'Not Set') }}</dd>
+              </div>
+              <div class="row">
+                <dt>Website</dt>
+                <dd>
+                  <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ extendedProfile?.website }}</a>
+                  <span *ngIf="!extendedProfile?.website">Not Set</span>
+                </dd>
+              </div>
+            </dl>
           </div>
-        </form>
+
+          </ng-container>
+        </div>
+
+        <!-- Contact Information section removed; combined into General & Contact above -->
 
         <!-- Church Identity Section -->
         <form [formGroup]="profileForm" class="section-card">
           <div class="section-header">
-            <h2>✨ Church Identity</h2>
             <div class="section-actions" *ngIf="canEdit">
               <button 
                 *ngIf="!editingSections.identity" 
@@ -630,7 +599,10 @@
           </div>
           <div class="form-group">
             <label for="leader_phone">Phone</label>
-            <input type="tel" id="leader_phone" formControlName="phone" class="form-control">
+            <div class="phone-input-group">
+              <span class="phone-prefix">{{ callingCode }}</span>
+              <input type="tel" id="leader_phone" formControlName="phone" class="form-control" placeholder="{{ callingCode }} 1234567890">
+            </div>
           </div>
           <div class="form-group">
             <label for="leader_appointed_date">Appointed Date</label>
@@ -795,6 +767,116 @@
         <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeSocialModal()">Cancel</button>
         <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving || socialForm.invalid">
           {{ saving ? '⏳ Saving...' : (selectedSocialMedia ? '✓ Update' : '✓ Create') }}
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- General Information Modal -->
+<div *ngIf="showGeneralModal" class="modal-overlay" (click)="closeGeneralModal()">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>✏️ Edit General Information</h2>
+      <button class="modal-close" (click)="closeGeneralModal()">✕</button>
+    </div>
+    <form [formGroup]="profileForm" (ngSubmit)="saveGeneralAndContact()">
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label for="modal_denomination_id">Denomination</label>
+            <ng-select
+              id="modal_denomination_id"
+              formControlName="denomination_id"
+              [items]="denominations"
+              bindLabel="name"
+              bindValue="id"
+              placeholder="Select Denomination"
+              [clearable]="true"
+              [searchable]="true"
+              (change)="onDenominationChange($event?.id)">
+            </ng-select>
+          </div>
+
+          <div class="form-group">
+            <label for="modal_archdiocese_id">Archdiocese / Diocese</label>
+            <ng-select
+              id="modal_archdiocese_id"
+              formControlName="archdiocese_id"
+              [items]="filteredArchdioceses"
+              bindLabel="name"
+              bindValue="id"
+              placeholder="Select Archdiocese"
+              [clearable]="true"
+              [searchable]="true">
+              <ng-template ng-label-tmp let-item="item">
+                {{ item.name }}
+              </ng-template>
+              <ng-template ng-option-tmp let-item="item">
+                <div class="ng-option-custom">
+                  <strong>{{ item.name }}</strong>
+                  <small class="text-muted">{{ item.country }}</small>
+                </div>
+              </ng-template>
+            </ng-select>
+          </div>
+
+          <div class="form-group">
+            <label for="modal_founded_year">Founded Year</label>
+            <input 
+              type="number" 
+              id="modal_founded_year" 
+              formControlName="founded_year"
+              class="form-control"
+              placeholder="e.g., 1985">
+          </div>
+
+          <div class="form-group">
+            <label>Country</label>
+            <div class="form-control-static">
+              {{ getTenantCountry() }}
+            </div>
+          </div>
+
+          <!-- Contact fields in combined modal -->
+          <div class="form-group">
+            <label for="modal_phone">Phone</label>
+            <div class="phone-input-group">
+              <span class="phone-prefix">{{ callingCode }}</span>
+              <input 
+                type="tel" 
+                id="modal_phone" 
+                formControlName="phone"
+                class="form-control"
+                placeholder="{{ callingCode }} 1234567890">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="modal_email">Email</label>
+            <input 
+              type="email" 
+              id="modal_email" 
+              formControlName="email"
+              class="form-control"
+              placeholder="info@church.org">
+          </div>
+
+          <div class="form-group full-width">
+            <label for="modal_website">Website</label>
+            <input 
+              type="url" 
+              id="modal_website" 
+              formControlName="website"
+              class="form-control"
+              placeholder="https://www.church.org">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeGeneralModal()">Cancel</button>
+        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving">
+          {{ saving ? '⏳ Saving...' : '✓ Save' }}
         </button>
       </div>
     </form>

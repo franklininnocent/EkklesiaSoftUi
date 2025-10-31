@@ -464,9 +464,9 @@ export class BCCListComponent implements OnInit, OnDestroy {
    * Get capacity percentage for a BCC
    */
   getCapacityPercentage(bcc: BCC): number {
-    if (!bcc.max_families || bcc.max_families === 0) return 0;
     const count = bcc.current_family_count || 0;
-    return (count / bcc.max_families) * 100;
+    // Capacity removed; return 0 or based on a default to avoid division
+    return 0;
   }
 
   /**

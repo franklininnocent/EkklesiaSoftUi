@@ -4,6 +4,7 @@ export interface Family {
   family_code: string;
   family_name: string;
   head_of_family?: string;
+  head_avatar_url?: string;
   
   // Address Information
   address_line_1?: string;
@@ -116,14 +117,6 @@ export interface BCC {
   meeting_day?: 'monday' | 'tuesday' | 'wednesday' | 'thursday' | 'friday' | 'saturday' | 'sunday';
   meeting_time?: string;
   meeting_frequency?: string;
-  
-  // Capacity
-  min_families: number;
-  max_families: number;
-  
-  // Contact Information
-  contact_phone?: string;
-  contact_email?: string;
   
   // Status and Dates
   status: 'active' | 'inactive' | 'suspended';

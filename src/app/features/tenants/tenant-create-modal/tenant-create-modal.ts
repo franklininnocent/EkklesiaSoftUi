@@ -11,6 +11,7 @@ import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { CreateTenantRequest, TenantAddress } from '@core/models/tenant.model';
 import { GeographyService, Country, State } from '@core/services/geography.service';
+import { getTenantCallingCode } from '@core/validators/phone.validators';
 
 interface FormErrors {
   [key: string]: string;
@@ -158,6 +159,7 @@ export class TenantCreateModalComponent implements OnInit {
   formErrors: FormErrors = {};
   serverError: string = '';
   successMessage: string = '';
+  callingCode: string = getTenantCallingCode();
 
   // Validation flags
   touched: { [key: string]: boolean } = {};

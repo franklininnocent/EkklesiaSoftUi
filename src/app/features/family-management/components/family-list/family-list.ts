@@ -66,6 +66,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       status: [''],
       bcc_id: [''],
       city: [''],
+      // Backend order remains consistent; active-first handled client-side
       sort_by: ['created_at'],
       sort_order: ['desc']
     });
@@ -190,6 +191,13 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.familyService.getFamilies(filters).subscribe({
       next: (response) => {
         this.families = response.data;
+        // Ensure Active records appear first on the list (client-side safeguard)
+        this.families.sort((a, b) => {
+          const aActive = a.status === 'active' ? 1 : 0;
+          const bActive = b.status === 'active' ? 1 : 0;
+          if (bActive !== aActive) return bActive - aActive;
+          return 0;
+        });
         this.currentPage = response.current_page;
         this.totalPages = response.last_page;
         this.totalRecords = response.total;
@@ -488,6 +496,46 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       case 'migrated': return 'badge-info';
       default: return 'badge-secondary';
     }
+  }
+
+  /**
+   * Generate initials from a full name (e.g., "John Doe" -> "JD")
+   */
+  getInitials(name: string): string {
+    if (!name) return '';
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 1) {
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    const first = parts[0].charAt(0);
+    const last = parts[parts.length - 1].charAt(0);
+    return (first + last).toUpperCase();
+  }
+
+  // Track avatars that failed to load so we can fallback to initials
+  private brokenAvatarIds = new Set<string>();
+
+  isAvatarBroken(family: Family): boolean {
+    return this.brokenAvatarIds.has(family.id);
+  }
+
+  onAvatarError(family: Family): void {
+    this.brokenAvatarIds.add(family.id);
+  }
+
+  /**
+   * Deterministically choose a color class for the initials avatar
+   */
+  getAvatarColorClass(seed: string | undefined): string {
+    const text = (seed || '').trim();
+    if (!text) return 'avatar-color-1';
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    const idx = Math.abs(hash) % 8; // 8 palette options
+    return `avatar-color-${idx + 1}`;
   }
 
   /**

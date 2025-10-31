@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
@@ -16,6 +17,7 @@ import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 })
 export class SettingsComponent implements OnInit {
   currentUser$: Observable<User | null>;
+  visibleSections$: Observable<any[]>;
   
   settingsSections = [
     { title: 'Profile Settings', description: 'Manage your personal information', icon: '👤', route: null },
@@ -24,6 +26,13 @@ export class SettingsComponent implements OnInit {
     { title: 'Billing', description: 'Manage subscription and payment methods', icon: '💳', route: null },
     { title: 'Teams', description: 'Manage team members and roles', icon: '👥', route: null },
     { title: 'Integrations', description: 'Connect third-party services', icon: '🔗', route: null },
+    { 
+      title: 'Tenants', 
+      description: 'Manage tenant organizations and subscriptions', 
+      icon: '🏢', 
+      route: '/tenants',
+      requiresSuperAdmin: true
+    },
     { 
       title: 'Roles & Permissions', 
       description: 'Manage user roles and permissions', 
@@ -59,6 +68,9 @@ export class SettingsComponent implements OnInit {
     private store: Store<AppState>
   ) {
     this.currentUser$ = this.store.select(selectCurrentUser);
+    this.visibleSections$ = this.currentUser$.pipe(
+      map(user => this.getVisibleSections(user))
+    );
   }
 
   ngOnInit(): void {}
@@ -89,6 +101,36 @@ export class SettingsComponent implements OnInit {
     
     // Tenant Administrators can also manage roles for their tenant
     if (user.role_name === 'Administrator' && user.tenant_id) {
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check if the current user is a SuperAdmin.
+   * Only SuperAdmin and EkklesiaAdmin can access tenant management.
+   */
+  isSuperAdmin(user: User | null): boolean {
+    if (!user) return false;
+    
+    // Primary check: Use the backend-provided flag (this is the most reliable)
+    if (user.is_admin === true) {
+      return true;
+    }
+    
+    // Also check specifically for SuperAdmin flag
+    if (user.is_super_admin === true) {
+      return true;
+    }
+    
+    // Fallback: Check if user is SuperAdmin or EkklesiaAdmin by role name
+    if (user.role_name === 'SuperAdmin' || user.role_name === 'EkklesiaAdmin') {
+      return true;
+    }
+    
+    // Fallback: Check by role object
+    if (user.role?.name === 'SuperAdmin' || user.role?.name === 'EkklesiaAdmin') {
       return true;
     }
     
@@ -139,6 +181,9 @@ export class SettingsComponent implements OnInit {
    * Check if a section should be displayed based on user permissions.
    */
   shouldDisplaySection(section: any, user: User | null): boolean {
+    if (section.requiresSuperAdmin) {
+      return this.isSuperAdmin(user);
+    }
     if (section.requiresEkklesiaRole) {
       return this.hasEkklesiaRole(user);
     }

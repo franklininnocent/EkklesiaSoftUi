@@ -554,3 +554,27 @@ textarea {
   }
 }
 
+/* Shared phone input group styles */
+.phone-input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  .phone-prefix {
+    background: #f8fafc;
+    border: 1px solid #cbd5e0;
+    border-radius: 8px;
+    padding: 10px 12px;
+    color: #334155;
+    font-weight: 600;
+    font-size: 13px;
+    white-space: nowrap;
+    line-height: 1;
+  }
+
+  .form-control,
+  .form-input {
+    flex: 1 1 auto;
+  }
+}
+

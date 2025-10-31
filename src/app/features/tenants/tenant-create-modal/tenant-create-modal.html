@@ -329,18 +329,21 @@
             <label for="primaryContactNumber" class="form-label">
               Contact Number <span class="required">*</span>
             </label>
-            <input
-              type="tel"
-              id="primaryContactNumber"
-              name="primaryContactNumber"
-              class="form-input"
-              [class.input-error]="isFieldInvalid('primary_contact_number')"
-              [(ngModel)]="formData.primary_contact_number"
-              (blur)="markAsTouched('primary_contact_number')"
-              placeholder="Enter contact number"
-              required
-              [disabled]="isSubmitting"
-            />
+            <div class="phone-input-group">
+              <span class="phone-prefix">{{ callingCode }}</span>
+              <input
+                type="tel"
+                id="primaryContactNumber"
+                name="primaryContactNumber"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('primary_contact_number')"
+                [(ngModel)]="formData.primary_contact_number"
+                (blur)="markAsTouched('primary_contact_number')"
+                placeholder="{{ callingCode }} 1234567890"
+                required
+                [disabled]="isSubmitting"
+              />
+            </div>
             <span class="form-error" *ngIf="isFieldInvalid('primary_contact_number')">
               {{ getFieldError('primary_contact_number') }}
             </span>

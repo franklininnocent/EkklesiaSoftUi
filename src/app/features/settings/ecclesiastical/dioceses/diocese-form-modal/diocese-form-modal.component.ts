@@ -6,6 +6,7 @@ import { GeographyService, DenominationService } from '@core/services';
 import { Diocese, DioceseCreateRequest, DioceseUpdateRequest } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
+import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 
 @Component({
   selector: 'app-diocese-form-modal',
@@ -31,6 +32,7 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
   countries: any[] = [];
   denominations: any[] = [];
   filteredStates: any[] = [];
+  callingCode: string = getTenantCallingCode();
 
   constructor(
     private fb: FormBuilder,
@@ -90,7 +92,7 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
       address_line1: ['', [Validators.maxLength(255)]],
       city: ['', [Validators.maxLength(100)]],
       postal_code: ['', [Validators.maxLength(20)]],
-      phone: ['', [Validators.maxLength(50)]],
+      phone: ['', [tenantPhoneValidator()]],
       email: ['', [Validators.email, Validators.maxLength(255)]],
       established_date: [''],
       active: [true]

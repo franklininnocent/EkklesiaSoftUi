@@ -11,10 +11,28 @@
     </div>
 
     <form [formGroup]="bccForm" (ngSubmit)="onSubmit()">
-      <div class="form-content">
+      <div class="form-content" #formContent>
         <div class="form-grid">
-          <!-- Basic Information -->
-          <div class="form-group full-width">
+          <!-- Basic Information Section -->
+          <div class="form-section-header full-width">
+            <h3>Basic & Status</h3>
+          </div>
+
+          <!-- BCC Code (Read-only, shown in edit mode only) -->
+          <div class="form-group" *ngIf="bcc">
+            <label>BCC Code</label>
+            <input 
+              type="text" 
+              formControlName="bcc_code" 
+              class="form-control"
+              readonly
+              [style.background-color]="'#f7fafc'"
+              [style.cursor]="'not-allowed'"
+            />
+            <small class="form-hint">Auto-generated unique code</small>
+          </div>
+
+          <div class="form-group" [class.full-width]="!bcc">
             <label>BCC Name <span class="required">*</span></label>
             <input 
               type="text" 
@@ -33,9 +51,15 @@
             <textarea 
               formControlName="description" 
               class="form-control" 
-              rows="2"
+              rows="3"
               placeholder="Brief description of the BCC"
             ></textarea>
+            <small class="form-hint">Provide a brief overview of this BCC</small>
+          </div>
+
+          <!-- Location & Schedule -->
+          <div class="form-section-header full-width">
+            <h3>Location & Schedule</h3>
           </div>
 
           <div class="form-group">
@@ -44,13 +68,9 @@
               type="text" 
               formControlName="meeting_place" 
               class="form-control"
-              placeholder="Meeting location"
+              placeholder="e.g., Church Hall, Community Center, Member's Home"
             />
-          </div>
-
-          <!-- Meeting Schedule -->
-          <div class="form-section-header full-width">
-            <h3>Meeting Schedule</h3>
+            <small class="form-hint">Regular meeting location for this BCC</small>
           </div>
 
           <div class="form-group">
@@ -61,6 +81,7 @@
                 {{ day.label }}
               </option>
             </select>
+            <small class="form-hint">Day of the week when BCC meets</small>
           </div>
 
           <div class="form-group">
@@ -70,6 +91,7 @@
               formControlName="meeting_time" 
               class="form-control"
             />
+            <small class="form-hint">Regular meeting time</small>
           </div>
 
           <div class="form-group">
@@ -80,91 +102,7 @@
                 {{ freq }}
               </option>
             </select>
-          </div>
-
-          <!-- Capacity -->
-          <div class="form-section-header full-width">
-            <h3>Capacity</h3>
-          </div>
-
-          <div class="form-group">
-            <label>Minimum Families <span class="required">*</span></label>
-            <input 
-              type="number" 
-              formControlName="min_families" 
-              class="form-control"
-              min="1"
-              [class.error]="hasError('min_families')"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Maximum Families <span class="required">*</span></label>
-            <input 
-              type="number" 
-              formControlName="max_families" 
-              class="form-control"
-              min="1"
-              [class.error]="hasError('max_families')"
-            />
-          </div>
-
-          <!-- Contact Information -->
-          <div class="form-section-header full-width">
-            <h3>Contact Information</h3>
-          </div>
-
-          <div class="form-group">
-            <label>Contact Phone</label>
-            <input 
-              type="tel" 
-              formControlName="contact_phone" 
-              class="form-control"
-              placeholder="+1234567890"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Contact Email</label>
-            <input 
-              type="email" 
-              formControlName="contact_email" 
-              class="form-control"
-              [class.error]="hasError('contact_email')"
-              placeholder="bcc@example.com"
-            />
-            <span class="error-text" *ngIf="hasError('contact_email')">
-              Please enter a valid email
-            </span>
-          </div>
-
-          <!-- Additional Information -->
-          <div class="form-group">
-            <label>Status</label>
-            <select formControlName="status" class="form-control">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label>Established Date</label>
-            <input 
-              type="date" 
-              formControlName="established_date" 
-              class="form-control"
-            />
-          </div>
-
-          <div class="form-group full-width">
-            <label>Notes</label>
-            <textarea 
-              formControlName="notes" 
-              class="form-control" 
-              rows="3"
-              placeholder="Any additional notes..."
-            ></textarea>
+            <small class="form-hint">How often the BCC meets</small>
           </div>
         </div>
       </div>

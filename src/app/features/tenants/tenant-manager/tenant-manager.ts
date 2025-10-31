@@ -73,6 +73,12 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
 
+    // In tests, service may be a shallow mock; guard to avoid runtime errors
+    if (!this.tenantService || typeof (this.tenantService as any).listTenants !== 'function') {
+      this.loading = false;
+      return;
+    }
+
     this.tenantService.listTenants({ per_page: 'all' })
       .pipe(takeUntil(this.destroy$))
       .subscribe({

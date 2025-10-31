@@ -22,6 +22,26 @@
     </div>
   </section>
 
+  <!-- Family Head Card -->
+  <section class="family-head-section" aria-label="Family head" *ngIf="getFamilyHead() as head">
+    <article class="head-card">
+      <header class="head-card-header">
+        <h2>👤 Family Head</h2>
+      </header>
+      <div class="head-card-body">
+        <div class="head-avatar">{{ (head.first_name || 'U').charAt(0) }}</div>
+          <div class="head-info">
+            <div class="head-name">{{ getDisplayName(head) }}</div>
+          <div class="head-meta">
+            <span class="meta-item">{{ head.phone || '-' }}</span>
+            <span class="dot">•</span>
+            <span class="meta-item">{{ head.email || '-' }}</span>
+          </div>
+        </div>
+      </div>
+    </article>
+  </section>
+
   <!-- Info Grid -->
   <section class="info-grid" aria-label="Family information">
     <article class="card">
@@ -55,27 +75,42 @@
       <h2>Members</h2>
       <div class="count" aria-label="Total members">{{ family.members?.length || 0 }}</div>
     </header>
-    <div class="table-responsive" *ngIf="(family.members?.length || 0) > 0; else emptyMembers">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Name</th>
-            <th>Relationship</th>
-            <th>Status</th>
-            <th>Phone</th>
-            <th>Email</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let m of family.members">
-            <td>{{ m.full_name || (m.first_name + ' ' + m.last_name) }}</td>
-            <td>{{ m.relationship_to_head }}</td>
-            <td>{{ m.status }}</td>
-            <td>{{ m.phone || '-' }}</td>
-            <td>{{ m.email || '-' }}</td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="members-card-grid" *ngIf="(family.members?.length || 0) > 0; else emptyMembers">
+      <div class="member-card-view" *ngFor="let m of family.members; let i = index" [class.expanded]="isMemberExpanded(i)">
+        <div class="card-top">
+          <div class="avatar" aria-hidden="true">{{ (m.first_name || m.full_name || 'U').charAt(0) }}</div>
+          <div class="top-info" (click)="toggleMember(i)" (keydown.enter)="toggleMember(i)" (keydown.space)="toggleMember(i)" [attr.aria-expanded]="isMemberExpanded(i)" role="button" tabindex="0" title="Toggle details">
+            <div class="name-row">
+              <span class="name">{{ getDisplayName(m) }}</span>
+              <span class="status" [attr.data-status]="m.status || 'active'">{{ m.status || 'active' }}</span>
+            </div>
+            <div class="chip-group">
+              <span class="chip chip-soft">{{ m.relationship_to_head || 'other' }}</span>
+              <span class="chip chip-outline" *ngIf="m.phone">☎ {{ m.phone }}</span>
+              <span class="chip chip-outline" *ngIf="m.email">✉ {{ m.email }}</span>
+            </div>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn-icon" title="Edit member" (click)="openEditMember(i); $event.stopPropagation()">✎</button>
+            <button type="button" class="btn-icon" title="Toggle details" (click)="toggleMember(i); $event.stopPropagation()">
+              <span class="chevron" [class.rotated]="isMemberExpanded(i)">▾</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="card-details" *ngIf="isMemberExpanded(i)">
+          <div class="details-grid">
+            <div class="kv"><span class="k">DOB</span><span class="v">{{ m.date_of_birth ? (m.date_of_birth | date:'mediumDate') : '—' }}</span></div>
+            <div class="kv"><span class="k">Gender</span><span class="v">{{ m.gender ? (m.gender | titlecase) : '—' }}</span></div>
+            <div class="kv"><span class="k">Marital</span><span class="v">{{ m.marital_status ? (m.marital_status | titlecase) : '—' }}</span></div>
+            <div class="kv"><span class="k">Occupation</span><span class="v">{{ m.occupation || '—' }}</span></div>
+            <div class="kv"><span class="k">Education</span><span class="v">{{ m.education || '—' }}</span></div>
+            <div class="kv"><span class="k">Baptism</span><span class="v">{{ m.baptism_date ? (m.baptism_date | date:'mediumDate') : '—' }}</span></div>
+            <div class="kv"><span class="k">1st Communion</span><span class="v">{{ m.first_communion_date ? (m.first_communion_date | date:'mediumDate') : '—' }}</span></div>
+            <div class="kv"><span class="k">Confirmation</span><span class="v">{{ m.confirmation_date ? (m.confirmation_date | date:'mediumDate') : '—' }}</span></div>
+          </div>
+        </div>
+      </div>
     </div>
     <ng-template #emptyMembers>
       <div class="empty-state">
@@ -92,6 +127,14 @@
     (save)="onEditSave($event)"
     (cancel)="onEditCancel()"
   ></app-family-form>
+
+  <!-- Edit Member Modal -->
+  <app-family-member-form-modal
+    *ngIf="showMemberModal"
+    [member]="memberToEditIndex !== null ? getMemberFormValue(memberToEditIndex) : null"
+    (save)="onMemberModalSave($event)"
+    (cancel)="onMemberModalCancel()">
+  </app-family-member-form-modal>
 </div>
 
 <!-- Loading -->

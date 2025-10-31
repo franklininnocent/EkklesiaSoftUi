@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { tenantPhoneValidator, getTenantCallingCode } from '../../../../core/validators/phone.validators';
 
 export interface FamilyMemberFormValue {
   id?: number | null;
@@ -36,6 +37,7 @@ export class FamilyMemberFormModalComponent {
   form: FormGroup;
   saving = false;
   isEditMode = false;
+  callingCode: string = getTenantCallingCode();
 
   constructor(private fb: FormBuilder) {
     this.form = this.fb.group({
@@ -47,7 +49,7 @@ export class FamilyMemberFormModalComponent {
       gender: [''],
       relationship_to_head: ['other', Validators.required],
       marital_status: ['single'],
-      phone: [''],
+      phone: ['', tenantPhoneValidator()],
       email: ['', Validators.email],
       occupation: [''],
       education: [''],

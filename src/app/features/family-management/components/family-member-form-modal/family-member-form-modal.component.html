@@ -7,7 +7,8 @@
 
     <div class="modal-body">
       <form [formGroup]="form" (ngSubmit)="onSave()" class="member-form">
-        <div class="form-grid">
+        <h4 class="section-title">Basic Information</h4>
+        <div class="form-grid form-section">
           <div class="form-group">
             <label class="required">First Name</label>
             <input type="text" formControlName="first_name" class="form-control" />
@@ -24,7 +25,6 @@
             <label>Date of Birth</label>
             <input type="date" formControlName="date_of_birth" class="form-control" />
           </div>
-
           <div class="form-group">
             <label>Gender</label>
             <select formControlName="gender" class="form-control">
@@ -48,7 +48,6 @@
               <option value="other">Other</option>
             </select>
           </div>
-
           <div class="form-group">
             <label>Marital Status</label>
             <select formControlName="marital_status" class="form-control">
@@ -59,11 +58,17 @@
               <option value="divorced">Divorced</option>
             </select>
           </div>
+        </div>
+
+        <h4 class="section-title">Contact & Profile</h4>
+        <div class="form-grid form-section">
           <div class="form-group">
             <label>Phone</label>
-            <input type="tel" formControlName="phone" class="form-control" />
+            <div class="phone-input-group">
+              <span class="phone-prefix">{{ callingCode }}</span>
+              <input type="tel" formControlName="phone" class="form-control" placeholder="{{ callingCode }} 1234567890" />
+            </div>
           </div>
-
           <div class="form-group">
             <label>Email</label>
             <input type="email" formControlName="email" class="form-control" />
@@ -72,7 +77,6 @@
             <label>Occupation</label>
             <input type="text" formControlName="occupation" class="form-control" />
           </div>
-
           <div class="form-group">
             <label>Education</label>
             <input type="text" formControlName="education" class="form-control" />
@@ -86,7 +90,10 @@
               <option value="migrated">Migrated</option>
             </select>
           </div>
+        </div>
 
+        <h4 class="section-title">Sacraments</h4>
+        <div class="form-grid form-section">
           <div class="form-group">
             <label>Baptism Date</label>
             <input type="date" formControlName="baptism_date" class="form-control" />

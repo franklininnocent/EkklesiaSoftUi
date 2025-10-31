@@ -5,6 +5,7 @@ import { User, Role, Permission, UserRequest } from '@core/models';
 import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
+import { getTenantCallingCode } from '../../../core/validators/phone.validators';
 
 /**
  * UserFormModalComponent - Create/Edit User with Multi-Role Selection
@@ -71,6 +72,7 @@ export class UserFormModalComponent implements OnInit, OnChanges {
   // Configuration
   passwordMinLength = 8;
   passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+  callingCode: string = getTenantCallingCode();
 
   ngOnInit(): void {
     this.loadRoles();

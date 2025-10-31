@@ -182,12 +182,15 @@
           <!-- Phone -->
           <div class="form-group">
             <label for="phone" class="form-label">Phone</label>
-            <input
-              type="tel"
-              id="phone"
-              formControlName="phone"
-              class="form-input"
-              placeholder="+1 (555) 000-0000">
+            <div class="phone-input-group">
+              <span class="phone-prefix">{{ callingCode }}</span>
+              <input
+                type="tel"
+                id="phone"
+                formControlName="phone"
+                class="form-input"
+                placeholder="{{ callingCode }} 1234567890">
+            </div>
           </div>
 
           <!-- Email -->

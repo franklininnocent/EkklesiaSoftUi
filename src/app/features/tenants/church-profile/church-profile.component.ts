@@ -19,6 +19,7 @@ import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { Tenant, TenantResponse } from '@core/models';
 import { finalize } from 'rxjs/operators';
+import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 
 // Import all church management services
 import {
@@ -91,6 +92,7 @@ export class ChurchProfileComponent implements OnInit {
   showLeaderModal = false;
   showStatisticModal = false;
   showSocialModal = false;
+  showGeneralModal = false;
   
   // Country list
   countries: string[] = [];
@@ -116,6 +118,7 @@ export class ChurchProfileComponent implements OnInit {
   private socialMediaService = inject(ChurchSocialMediaService);
 
   canEdit = false;
+  designVariant: 'summary' | 'tiles' | 'definition' = 'summary';
   
   // Social Media Platform Options
   socialPlatforms = [
@@ -158,6 +161,8 @@ export class ChurchProfileComponent implements OnInit {
     { value: 12, label: 'December' }
   ];
 
+  callingCode: string = getTenantCallingCode();
+
   constructor() {}
 
   /**
@@ -189,6 +194,106 @@ export class ChurchProfileComponent implements OnInit {
       default:
         return 'secondary';
     }
+  }
+
+  /**
+   * Resolve denomination name for display
+   */
+  getDenominationName(): string {
+    if (!this.extendedProfile?.denomination_id) return 'Not Set';
+    const denom = this.denominations.find(d => d.id === this.extendedProfile?.denomination_id);
+    return denom?.name || 'Not Set';
+  }
+
+  /**
+   * Resolve archdiocese/diocese name for display
+   */
+  getArchdioceseName(): string {
+    if (!this.extendedProfile?.archdiocese_id) return 'Not Set';
+    const arch = this.archdioceses.find(a => a.id === this.extendedProfile?.archdiocese_id);
+    return arch?.name || 'Not Set';
+  }
+
+  /**
+   * Switch design variant (kept for future use/UI toggle)
+   */
+  setDesignVariant(variant: 'summary' | 'tiles' | 'definition'): void {
+    this.designVariant = variant;
+  }
+
+  /**
+   * Open General Information modal
+   */
+  openGeneralModal(): void {
+    if (!this.canEdit) {
+      this.toastService.warning('You do not have permission to edit.', 'Permission Denied');
+      return;
+    }
+    // Enable both general and contact fields for combined editing
+    this.startEditSection('general');
+    this.editingSections.contact = true;
+    this.profileForm.get('phone')?.enable();
+    this.profileForm.get('email')?.enable();
+    this.profileForm.get('website')?.enable();
+    this.showGeneralModal = true;
+  }
+
+  /**
+   * Close General Information modal
+   */
+  closeGeneralModal(): void {
+    this.showGeneralModal = false;
+    if (this.editingSections.general || this.editingSections.contact) {
+      // Cancel both sections to restore and disable fields
+      this.cancelEditSection('general');
+      this.cancelEditSection('contact');
+    }
+  }
+
+  /**
+   * Save both General and Contact sections together
+   */
+  saveGeneralAndContact(): void {
+    // Validate fields from both sections
+    const sectionFields = [
+      'denomination_id', 'archdiocese_id', 'bishop_id', 'founded_year',
+      'phone', 'email', 'website'
+    ];
+
+    const sectionInvalid = sectionFields.some(field => this.profileForm.get(field)?.invalid);
+    if (sectionInvalid) {
+      this.toastService.warning('Please fill in all required fields correctly.', 'Validation Error');
+      return;
+    }
+
+    this.saving = true;
+    const formData = this.profileForm.getRawValue();
+
+    this.churchProfileService.updateProfile(formData)
+      .pipe(finalize(() => this.saving = false))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.extendedProfile = response.data;
+            this.editingSections.general = false;
+            this.editingSections.contact = false;
+
+            // Disable the fields for both sections
+            sectionFields.forEach(field => {
+              this.profileForm.get(field)?.disable();
+            });
+
+            this.toastService.success('General & Contact Information updated successfully!', 'Success');
+
+            if (this.showGeneralModal) {
+              this.showGeneralModal = false;
+            }
+          }
+        },
+        error: (err: Error) => {
+          this.toastService.error(err.message, 'Error');
+        }
+      });
   }
 
   /**
@@ -353,7 +458,7 @@ export class ChurchProfileComponent implements OnInit {
       role: ['', [Validators.required, Validators.maxLength(100)]],
       title: ['', Validators.maxLength(100)],
       email: ['', [Validators.email, Validators.maxLength(255)]],
-      phone: ['', Validators.maxLength(20)],
+      phone: ['', tenantPhoneValidator()],
       appointed_date: [''],
       start_date: [''],
       end_date: [''],
@@ -721,6 +826,11 @@ export class ChurchProfileComponent implements OnInit {
             });
             
             this.toastService.success(`${this.getSectionTitle(section)} updated successfully!`, 'Success');
+
+            // Close modal if open for this section
+            if (section === 'general' && this.showGeneralModal) {
+              this.showGeneralModal = false;
+            }
           }
         },
         error: (err: Error) => {

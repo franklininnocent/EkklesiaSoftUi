@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { filter, distinctUntilChanged } from 'rxjs/operators';
 
-interface Breadcrumb {
+export interface Breadcrumb {
   label: string;
   url: string;
   icon?: string;
@@ -37,6 +37,9 @@ export class BreadcrumbComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // Build once on init in case NavigationEnd already fired before component mounts
+    this.breadcrumbs = this.buildBreadcrumbs(this.activatedRoute.root);
+
     this.router.events
       .pipe(
         filter((event) => event instanceof NavigationEnd),

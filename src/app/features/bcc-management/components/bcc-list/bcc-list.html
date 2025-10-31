@@ -167,7 +167,7 @@
                 ></div>
               </div>
               <span class="capacity-text">
-                {{ bcc.current_family_count || 0 }}/{{ bcc.max_families }}
+                {{ bcc.current_family_count || 0 }}
                 <span class="capacity-percentage">({{ getCapacityPercentage(bcc) | number:'1.0-0' }}%)</span>
               </span>
             </div>
@@ -186,9 +186,8 @@
           </td>
           <td>
             <div class="contact-info">
-              <div *ngIf="bcc.contact_phone">📞 {{ bcc.contact_phone }}</div>
-              <div *ngIf="bcc.contact_email">✉️ {{ bcc.contact_email }}</div>
-              <div *ngIf="!bcc.contact_phone && !bcc.contact_email">-</div>
+              <div>-</div>
+              <div>-</div>
             </div>
           </td>
           <td>

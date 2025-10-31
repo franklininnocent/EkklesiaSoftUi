@@ -1,9 +1,10 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { FamilyService } from '../../../../core/services/family.service';
 import { Family, BCC } from '../../../../core/models/family.model';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
+import { tenantPhoneValidator, getTenantCallingCode } from '../../../../core/validators/phone.validators';
 
 @Component({
   selector: 'app-family-form',
@@ -12,7 +13,7 @@ import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family
   templateUrl: './family-form.html',
   styleUrls: ['./family-form.scss']
 })
-export class FamilyFormComponent implements OnInit {
+export class FamilyFormComponent implements OnInit, AfterViewInit {
   @Input() family: Family | null = null;
   @Input() bccs: BCC[] = [];
   @Output() save = new EventEmitter<any>();
@@ -24,6 +25,11 @@ export class FamilyFormComponent implements OnInit {
   error: string | null = null;
   showMemberModal = false;
   memberToEditIndex: number | null = null;
+  callingCode: string = getTenantCallingCode();
+  expandedMemberIndexes: Set<number> = new Set();
+
+  @ViewChild('infoTabContent', { static: false }) infoTabContentRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('membersTabContent', { static: false }) membersTabContentRef!: ElementRef<HTMLDivElement>;
 
   // For Math methods in template
   Math = Math;
@@ -40,8 +46,8 @@ export class FamilyFormComponent implements OnInit {
       postal_code: [''],
       updated_at: [''],
       bcc_id: [''],
-      primary_phone: [''],
-      secondary_phone: [''],
+      primary_phone: ['', tenantPhoneValidator()],
+      secondary_phone: ['', tenantPhoneValidator()],
       email: ['', Validators.email],
       status: ['active'],
       notes: [''],
@@ -62,6 +68,10 @@ export class FamilyFormComponent implements OnInit {
     }
   }
 
+  ngAfterViewInit(): void {
+    this.scrollActiveTabToTop();
+  }
+
   get members(): FormArray {
     return this.familyForm.get('members') as FormArray;
   }
@@ -79,7 +89,7 @@ export class FamilyFormComponent implements OnInit {
       gender: [member?.gender || ''],
       relationship_to_head: [member?.relationship_to_head || 'other', Validators.required],
       marital_status: [member?.marital_status || 'single'],
-      phone: [member?.phone || ''],
+      phone: [member?.phone || '', tenantPhoneValidator()],
       email: [member?.email || '', Validators.email],
       occupation: [member?.occupation || ''],
       education: [member?.education || ''],
@@ -100,6 +110,18 @@ export class FamilyFormComponent implements OnInit {
   openEditMemberModal(index: number): void {
     this.memberToEditIndex = index;
     this.showMemberModal = true;
+  }
+
+  toggleMember(index: number): void {
+    if (this.expandedMemberIndexes.has(index)) {
+      this.expandedMemberIndexes.delete(index);
+    } else {
+      this.expandedMemberIndexes.add(index);
+    }
+  }
+
+  isMemberExpanded(index: number): boolean {
+    return this.expandedMemberIndexes.has(index);
   }
 
   onMemberModalSave(value: FamilyMemberFormValue): void {
@@ -132,6 +154,15 @@ export class FamilyFormComponent implements OnInit {
    */
   switchTab(tab: string): void {
     this.activeTab = tab;
+    // Ensure new tab content starts at the top
+    setTimeout(() => this.scrollActiveTabToTop(), 50);
+  }
+
+  private scrollActiveTabToTop(): void {
+    const ref = this.activeTab === 'info' ? this.infoTabContentRef : this.membersTabContentRef;
+    if (ref?.nativeElement) {
+      ref.nativeElement.scrollTop = 0;
+    }
   }
 
   /**

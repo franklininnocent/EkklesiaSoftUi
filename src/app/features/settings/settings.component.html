@@ -14,17 +14,16 @@
 
   <!-- Settings Grid -->
   <div class="settings-grid">
-    <ng-container *ngFor="let section of settingsSections; let i = index">
-      <div 
-        *ngIf="shouldDisplaySection(section, (currentUser$ | async))"
-        class="setting-card"
-        [style.animation-delay.ms]="i * 50"
-        (click)="onConfigure(section)"
-        [attr.aria-label]="'Configure ' + section.title"
-        role="button"
-        tabindex="0"
-        (keydown.enter)="onConfigure(section)"
-        (keydown.space)="onConfigure(section)">
+    <div 
+      *ngFor="let section of visibleSections$ | async; let i = index"
+      class="setting-card"
+      [style.animation-delay.ms]="i * 50"
+      (click)="onConfigure(section)"
+      [attr.aria-label]="'Configure ' + section.title"
+      role="button"
+      tabindex="0"
+      (keydown.enter)="onConfigure(section)"
+      (keydown.space)="onConfigure(section)">
       
       <!-- Card Content -->
       <div class="card-content">
@@ -54,13 +53,12 @@
       
       <!-- Top Accent Border -->
       <div class="card-accent"></div>
-      </div>
-    </ng-container>
+    </div>
   </div>
 
   <!-- Empty State (if no cards visible) -->
   <div 
-    *ngIf="getVisibleSections((currentUser$ | async)).length === 0" 
+    *ngIf="(visibleSections$ | async)?.length === 0" 
     class="empty-state">
     <div class="empty-icon">⚙️</div>
     <h3 class="empty-title">No Settings Available</h3>

@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { BCCService } from '../../../../core/services/bcc.service';
@@ -11,14 +11,16 @@ import { BCC } from '../../../../core/models/family.model';
   templateUrl: './bcc-form.html',
   styleUrls: ['./bcc-form.scss']
 })
-export class BCCFormComponent implements OnInit {
+export class BCCFormComponent implements OnInit, AfterViewInit {
   @Input() bcc: BCC | null = null;
   @Output() save = new EventEmitter<any>();
   @Output() cancel = new EventEmitter<void>();
+  @ViewChild('formContent', { static: false }) formContentRef!: ElementRef<HTMLDivElement>;
 
   bccForm: FormGroup;
   loading = false;
   error: string | null = null;
+  today: string;
 
   weekDays = [
     { value: 'monday', label: 'Monday' },
@@ -41,18 +43,18 @@ export class BCCFormComponent implements OnInit {
     private fb: FormBuilder,
     private bccService: BCCService
   ) {
+    // Set today's date for max date validation
+    const today = new Date();
+    this.today = today.toISOString().split('T')[0];
     this.bccForm = this.fb.group({
+      bcc_code: [''], // Auto-generated, read-only in edit mode
       name: ['', Validators.required],
       description: [''],
       meeting_place: [''],
       meeting_day: [''],
       meeting_time: [''],
       meeting_frequency: [''],
-      min_families: [10, [Validators.required, Validators.min(1)]],
-      max_families: [50, [Validators.required, Validators.min(1)]],
-      contact_phone: [''],
-      contact_email: ['', Validators.email],
-      status: ['active'],
+      status: ['active', Validators.required],
       established_date: [''],
       notes: ['']
     });
@@ -62,6 +64,19 @@ export class BCCFormComponent implements OnInit {
     if (this.bcc) {
       this.bccForm.patchValue(this.bcc);
     }
+  }
+
+  ngAfterViewInit(): void {
+    // Ensure form content scrolls to top when modal opens
+    this.scrollToTop();
+  }
+
+  private scrollToTop(): void {
+    setTimeout(() => {
+      if (this.formContentRef?.nativeElement) {
+        this.formContentRef.nativeElement.scrollTop = 0;
+      }
+    }, 150);
   }
 
   onSubmit(): void {
@@ -115,5 +130,21 @@ export class BCCFormComponent implements OnInit {
   hasError(controlName: string): boolean {
     const control = this.bccForm.get(controlName);
     return !!(control && control.invalid && control.touched);
+  }
+
+  getFieldError(controlName: string): string {
+    const control = this.bccForm.get(controlName);
+    if (!control || !control.errors || !control.touched) {
+      return '';
+    }
+
+    if (control.errors['required']) {
+      return `${controlName.replace('_', ' ')} is required`;
+    }
+    if (control.errors['email']) {
+      return 'Please enter a valid email address';
+    }
+
+    return 'Invalid value';
   }
 }

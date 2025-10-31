@@ -5,6 +5,7 @@ import { BishopService, DioceseService } from '@core/services/ecclesiastical';
 import { Bishop, BishopCreateRequest, BishopUpdateRequest } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
+import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 
 @Component({
   selector: 'app-bishop-form-modal',
@@ -37,6 +38,7 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
 
   // Photo preview
   photoPreviewUrl: string | null = null;
+  callingCode: string = getTenantCallingCode();
 
   constructor(
     private fb: FormBuilder,
@@ -77,7 +79,7 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
       ordained_bishop_date: [''],
       date_of_birth: [''],
       email: ['', [Validators.email, Validators.maxLength(255)]],
-      phone: ['', [Validators.maxLength(50)]],
+      phone: ['', [tenantPhoneValidator()]],
       photo_url: ['', [Validators.maxLength(500)]],
       education: [''],
       status: ['active', [Validators.required]],

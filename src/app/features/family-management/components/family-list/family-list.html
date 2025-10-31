@@ -162,7 +162,25 @@
           <td class="family-name">
             <strong>{{ family.family_name }}</strong>
           </td>
-          <td>{{ family.head_of_family || '-' }}</td>
+          <td>
+            <div class="head-cell" *ngIf="family.head_of_family; else noHead">
+              <ng-container *ngIf="family.head_avatar_url && !isAvatarBroken(family); else initialsAvatar">
+                <img 
+                  class="head-avatar head-photo"
+                  [src]="family.head_avatar_url"
+                  [alt]="family.head_of_family + ' avatar'"
+                  (error)="onAvatarError(family)"
+                />
+              </ng-container>
+              <ng-template #initialsAvatar>
+                <div class="head-avatar head-initials" [ngClass]="getAvatarColorClass(family.head_of_family)">
+                  {{ getInitials(family.head_of_family!) }}
+                </div>
+              </ng-template>
+              <span class="head-name">{{ family.head_of_family }}</span>
+            </div>
+            <ng-template #noHead>-</ng-template>
+          </td>
           
           <td>
             <span class="bcc-badge" *ngIf="family.bcc">
