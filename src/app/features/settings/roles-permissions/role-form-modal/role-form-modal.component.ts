@@ -5,6 +5,7 @@ import { Role, RoleCreateRequest, RoleUpdateRequest, Permission } from '@core/mo
 import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
 import { forkJoin } from 'rxjs';
+import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-role-form-modal',
@@ -170,12 +171,19 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
     return null;
   }
 
+  // Helper methods using validation helper
+  hasError(controlName: string): boolean {
+    return isFieldInvalid(controlName, this.roleForm);
+  }
+
+  getErrorMessage(controlName: string): string {
+    return getErrorMessage(controlName, this.roleForm);
+  }
+
   // Form submission
   onSubmit(): void {
-    // Mark all fields as touched to show validation errors
-    this.roleForm.markAllAsTouched();
-
-    if (this.roleForm.invalid) {
+    if (!this.roleForm.valid) {
+      markFormGroupTouched(this.roleForm);
       return;
     }
 

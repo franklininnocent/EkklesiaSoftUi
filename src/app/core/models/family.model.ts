@@ -5,6 +5,10 @@ export interface Family {
   family_name: string;
   head_of_family?: string;
   head_avatar_url?: string;
+  head_profile_image_url?: string;  // Family head profile image (database path)
+  head_profile_image_full_url?: string;  // Family head profile image (full URL)
+  profile_image_url?: string;  // Family profile image (database path)
+  profile_image_full_url?: string;  // Family profile image (full URL)
   
   // Address Information
   address_line_1?: string;

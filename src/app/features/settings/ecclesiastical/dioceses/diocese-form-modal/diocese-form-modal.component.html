@@ -21,12 +21,12 @@
               id="name"
               formControlName="name"
               class="form-input transition-colors focus-ring"
-              [class.invalid]="isFieldInvalid('name')"
+              [class.error]="hasError('name')"
               placeholder="e.g., Diocese of Madurai"
               aria-required="true"
               aria-describedby="name-error">
-            <span id="name-error" class="error-message" *ngIf="isFieldInvalid('name')" role="alert">
-              {{ getFieldError('name') }}
+            <span id="name-error" class="field-error" *ngIf="hasError('name')" role="alert">
+              {{ getErrorMessage('name') }}
             </span>
           </div>
 
@@ -38,10 +38,10 @@
               id="code"
               formControlName="code"
               class="form-input"
-              [class.invalid]="isFieldInvalid('code')"
+              [class.error]="hasError('code')"
               placeholder="e.g., MAD">
-            <span class="error-message" *ngIf="isFieldInvalid('code')">
-              {{ getFieldError('code') }}
+            <span class="field-error" *ngIf="hasError('code')">
+              {{ getErrorMessage('code') }}
             </span>
           </div>
 
@@ -63,14 +63,14 @@
               id="denomination_id"
               formControlName="denomination_id"
               class="form-select"
-              [class.invalid]="isFieldInvalid('denomination_id')">
+              [class.error]="hasError('denomination_id')">
               <option [value]="null">Select Denomination</option>
               <option *ngFor="let denom of denominations" [value]="denom.id">
                 {{ denom.name }}
               </option>
             </select>
-            <span class="error-message" *ngIf="isFieldInvalid('denomination_id')">
-              {{ getFieldError('denomination_id') }}
+            <span class="field-error" *ngIf="hasError('denomination_id')">
+              {{ getErrorMessage('denomination_id') }}
             </span>
           </div>
 
@@ -81,14 +81,14 @@
               id="country_id"
               formControlName="country_id"
               class="form-select"
-              [class.invalid]="isFieldInvalid('country_id')">
+              [class.error]="hasError('country_id')">
               <option [value]="null">Select Country</option>
               <option *ngFor="let country of countries" [value]="country.id">
                 {{ country.name }}
               </option>
             </select>
-            <span class="error-message" *ngIf="isFieldInvalid('country_id')">
-              {{ getFieldError('country_id') }}
+            <span class="field-error" *ngIf="hasError('country_id')">
+              {{ getErrorMessage('country_id') }}
             </span>
           </div>
 
@@ -139,10 +139,10 @@
               id="website"
               formControlName="website"
               class="form-input"
-              [class.invalid]="isFieldInvalid('website')"
+              [class.error]="hasError('website')"
               placeholder="https://example.com">
-            <span class="error-message" *ngIf="isFieldInvalid('website')">
-              {{ getFieldError('website') }}
+            <span class="field-error" *ngIf="hasError('website')">
+              {{ getErrorMessage('website') }}
             </span>
           </div>
 
@@ -182,15 +182,19 @@
           <!-- Phone -->
           <div class="form-group">
             <label for="phone" class="form-label">Phone</label>
-            <div class="phone-input-group">
+            <div class="phone-input-group" [class.error]="hasError('phone')">
               <span class="phone-prefix">{{ callingCode }}</span>
               <input
                 type="tel"
                 id="phone"
                 formControlName="phone"
                 class="form-input"
+                [class.error]="hasError('phone')"
                 placeholder="{{ callingCode }} 1234567890">
             </div>
+            <span class="field-error" *ngIf="hasError('phone')">
+              {{ getErrorMessage('phone') }}
+            </span>
           </div>
 
           <!-- Email -->
@@ -201,10 +205,10 @@
               id="email"
               formControlName="email"
               class="form-input"
-              [class.invalid]="isFieldInvalid('email')"
+              [class.error]="hasError('email')"
               placeholder="contact@diocese.org">
-            <span class="error-message" *ngIf="isFieldInvalid('email')">
-              {{ getFieldError('email') }}
+            <span class="field-error" *ngIf="hasError('email')">
+              {{ getErrorMessage('email') }}
             </span>
           </div>
         </div>

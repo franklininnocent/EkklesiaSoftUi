@@ -6,6 +6,7 @@ import { Bishop, BishopCreateRequest, BishopUpdateRequest } from '@core/models/e
 import { ToastService } from '@core/services';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
+import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-bishop-form-modal',
@@ -161,8 +162,8 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
   }
 
   onSubmit(): void {
-    if (this.bishopForm.invalid || this.isSubmitting) {
-      this.markFormGroupTouched(this.bishopForm);
+    if (!this.bishopForm.valid || this.isSubmitting) {
+      markFormGroupTouched(this.bishopForm);
       return;
     }
 
@@ -220,17 +221,6 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     }
   }
 
-  private markFormGroupTouched(formGroup: FormGroup): void {
-    Object.keys(formGroup.controls).forEach(key => {
-      const control = formGroup.get(key);
-      control?.markAsTouched();
-
-      if (control instanceof FormGroup) {
-        this.markFormGroupTouched(control);
-      }
-    });
-  }
-
   private formatDateForInput(date: string): string {
     if (!date) return '';
     // Convert to YYYY-MM-DD format for input type="date"
@@ -238,20 +228,22 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     return d.toISOString().split('T')[0];
   }
 
-  // Validation helpers
+  // Validation helpers using helper utility
   isFieldInvalid(fieldName: string): boolean {
-    const field = this.bishopForm.get(fieldName);
-    return !!(field && field.invalid && (field.dirty || field.touched));
+    return isFieldInvalid(fieldName, this.bishopForm);
   }
 
   getFieldError(fieldName: string): string {
-    const field = this.bishopForm.get(fieldName);
-    if (field?.errors) {
-      if (field.errors['required']) return `${this.getFieldLabel(fieldName)} is required`;
-      if (field.errors['maxlength']) return `${this.getFieldLabel(fieldName)} is too long`;
-      if (field.errors['email']) return 'Invalid email format';
-    }
-    return '';
+    return getErrorMessage(fieldName, this.bishopForm);
+  }
+
+  // Alias for template compatibility
+  hasError(fieldName: string): boolean {
+    return this.isFieldInvalid(fieldName);
+  }
+
+  getErrorMessage(fieldName: string): string {
+    return this.getFieldError(fieldName);
   }
 
   private getFieldLabel(fieldName: string): string {

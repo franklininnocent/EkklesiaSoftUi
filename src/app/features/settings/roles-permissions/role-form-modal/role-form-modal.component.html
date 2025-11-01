@@ -55,13 +55,12 @@
             class="form-control"
             formControlName="name"
             placeholder="e.g., Content Manager, Team Lead"
-            [class.is-invalid]="name?.invalid && name?.touched"
+            [class.error]="hasError('name')"
             [class.is-valid]="name?.valid && name?.touched"
           />
-          <div class="validation-message error" *ngIf="name?.invalid && name?.touched">
-            <span class="validation-icon">❌</span>
-            <span>{{ getNameError() }}</span>
-          </div>
+          <span class="field-error" *ngIf="hasError('name')">
+            {{ getErrorMessage('name') }}
+          </span>
           <div class="validation-message success" *ngIf="name?.valid && name?.touched">
             <span class="validation-icon">✅</span>
             <span>Role name is valid</span>
@@ -81,14 +80,13 @@
             formControlName="description"
             placeholder="Describe the role's purpose and responsibilities..."
             rows="4"
-            [class.is-invalid]="description?.invalid && description?.touched"
+            [class.error]="hasError('description')"
             [class.is-valid]="description?.valid && description?.touched && description?.value"
           ></textarea>
           <div class="field-footer">
-            <div class="validation-message error" *ngIf="description?.invalid && description?.touched">
-              <span class="validation-icon">❌</span>
-              <span>{{ getDescriptionError() }}</span>
-            </div>
+            <span class="field-error" *ngIf="hasError('description')">
+              {{ getErrorMessage('description') }}
+            </span>
             <div class="char-counter" [class.warning]="descriptionRemainingChars < 50" [class.danger]="descriptionRemainingChars < 10">
               <span class="counter-icon">📝</span>
               <span>{{ descriptionCharCount }} / {{ maxDescriptionLength }}</span>
@@ -123,10 +121,9 @@
             <span class="level-icon">ℹ️</span>
             <span>{{ getLevelDescription(level?.value) }}</span>
           </div>
-          <div class="validation-message error" *ngIf="level?.invalid && level?.touched">
-            <span class="validation-icon">❌</span>
-            <span>{{ getLevelError() }}</span>
-          </div>
+          <span class="field-error" *ngIf="hasError('level')">
+            {{ getErrorMessage('level') }}
+          </span>
           <p class="field-hint">Higher levels indicate greater administrative access ({{ minLevel }}-{{ maxLevel }} for custom roles)</p>
         </div>
 

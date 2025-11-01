@@ -115,6 +115,44 @@ export class FamilyService {
   deleteFamilyMember(familyId: string, memberId: string): Observable<ApiResponse<void>> {
     return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${familyId}/members/${memberId}`);
   }
+
+  // ==================== FAMILY PROFILE IMAGE OPERATIONS ====================
+
+  /**
+   * Upload or update family profile image
+   */
+  uploadProfileImage(familyId: string, file: File): Observable<ApiResponse<Family>> {
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    return this.http.post<ApiResponse<Family>>(`${this.apiUrl}/${familyId}/profile-image`, formData);
+  }
+
+  /**
+   * Delete family profile image
+   */
+  deleteProfileImage(familyId: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${familyId}/profile-image`);
+  }
+
+  // ==================== FAMILY HEAD PROFILE IMAGE OPERATIONS ====================
+
+  /**
+   * Upload or update family head profile image
+   */
+  uploadHeadProfileImage(familyId: string, file: File): Observable<ApiResponse<Family>> {
+    const formData = new FormData();
+    formData.append('head_profile_image', file);
+
+    return this.http.post<ApiResponse<Family>>(`${this.apiUrl}/${familyId}/head-profile-image`, formData);
+  }
+
+  /**
+   * Delete family head profile image
+   */
+  deleteHeadProfileImage(familyId: string): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${familyId}/head-profile-image`);
+  }
 }
 
 

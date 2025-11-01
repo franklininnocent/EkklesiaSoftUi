@@ -41,8 +41,8 @@
               [class.error]="hasError('name')"
               placeholder="Enter BCC name"
             />
-            <span class="error-text" *ngIf="hasError('name')">
-              BCC name is required
+            <span class="field-error" *ngIf="hasError('name')">
+              {{ getErrorMessage('name') }}
             </span>
           </div>
 

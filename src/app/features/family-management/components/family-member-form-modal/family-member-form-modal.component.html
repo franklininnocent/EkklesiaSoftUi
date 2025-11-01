@@ -11,15 +11,39 @@
         <div class="form-grid form-section">
           <div class="form-group">
             <label class="required">First Name</label>
-            <input type="text" formControlName="first_name" class="form-control" />
+            <input 
+              type="text" 
+              formControlName="first_name" 
+              class="form-control"
+              [class.error]="isFieldInvalid('first_name')"
+            />
+            <span class="field-error" *ngIf="isFieldInvalid('first_name')">
+              {{ getErrorMessage('first_name') }}
+            </span>
           </div>
           <div class="form-group">
             <label>Middle Name</label>
-            <input type="text" formControlName="middle_name" class="form-control" />
+            <input 
+              type="text" 
+              formControlName="middle_name" 
+              class="form-control"
+              [class.error]="isFieldInvalid('middle_name')"
+            />
+            <span class="field-error" *ngIf="isFieldInvalid('middle_name')">
+              {{ getErrorMessage('middle_name') }}
+            </span>
           </div>
           <div class="form-group">
             <label class="required">Last Name</label>
-            <input type="text" formControlName="last_name" class="form-control" />
+            <input 
+              type="text" 
+              formControlName="last_name" 
+              class="form-control"
+              [class.error]="isFieldInvalid('last_name')"
+            />
+            <span class="field-error" *ngIf="isFieldInvalid('last_name')">
+              {{ getErrorMessage('last_name') }}
+            </span>
           </div>
           <div class="form-group">
             <label>Date of Birth</label>
@@ -36,7 +60,11 @@
           </div>
           <div class="form-group">
             <label class="required">Relationship</label>
-            <select formControlName="relationship_to_head" class="form-control">
+            <select 
+              formControlName="relationship_to_head" 
+              class="form-control"
+              [class.error]="isFieldInvalid('relationship_to_head')"
+            >
               <option value="self">Self (Head)</option>
               <option value="spouse">Spouse</option>
               <option value="son">Son</option>
@@ -47,6 +75,9 @@
               <option value="sister">Sister</option>
               <option value="other">Other</option>
             </select>
+            <span class="field-error" *ngIf="isFieldInvalid('relationship_to_head')">
+              {{ getErrorMessage('relationship_to_head') }}
+            </span>
           </div>
           <div class="form-group">
             <label>Marital Status</label>
@@ -64,14 +95,31 @@
         <div class="form-grid form-section">
           <div class="form-group">
             <label>Phone</label>
-            <div class="phone-input-group">
+            <div class="phone-input-group" [class.error]="isFieldInvalid('phone')">
               <span class="phone-prefix">{{ callingCode }}</span>
-              <input type="tel" formControlName="phone" class="form-control" placeholder="{{ callingCode }} 1234567890" />
+              <input 
+                type="tel" 
+                formControlName="phone" 
+                class="form-control"
+                [class.error]="isFieldInvalid('phone')"
+                placeholder="{{ callingCode }} 1234567890" 
+              />
             </div>
+            <span class="field-error" *ngIf="isFieldInvalid('phone')">
+              {{ getErrorMessage('phone') }}
+            </span>
           </div>
           <div class="form-group">
             <label>Email</label>
-            <input type="email" formControlName="email" class="form-control" />
+            <input 
+              type="email" 
+              formControlName="email" 
+              class="form-control"
+              [class.error]="isFieldInvalid('email')"
+            />
+            <span class="field-error" *ngIf="isFieldInvalid('email')">
+              {{ getErrorMessage('email') }}
+            </span>
           </div>
           <div class="form-group">
             <label>Occupation</label>
@@ -106,6 +154,10 @@
             <label>Confirmation</label>
             <input type="date" formControlName="confirmation_date" class="form-control" />
           </div>
+        </div>
+        
+        <div *ngIf="errorMessage" class="error-message">
+          {{ errorMessage }}
         </div>
       </form>
     </div>

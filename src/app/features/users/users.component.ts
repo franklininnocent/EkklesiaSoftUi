@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { CardComponent, PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { UsersService } from '@core/services/users.service';
+import { ToastService } from '@core/services/toast.service';
 import { User } from '@core/models';
 import { UserFormModalComponent } from './user-form-modal/user-form-modal.component';
 
@@ -35,7 +36,10 @@ export class UsersComponent implements OnInit {
   sortColumn: string = '';
   sortDirection: 'asc' | 'desc' | null = null;
 
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private toastService: ToastService
+  ) {}
 
   ngOnInit(): void {
     this.loadUsers();
@@ -97,23 +101,24 @@ export class UsersComponent implements OnInit {
     
     // Prevent deactivation of primary admin
     if (user.is_primary_admin && newStatus === 0) {
-      alert('The primary admin account cannot be deactivated. This account is essential for maintaining tenant administrative continuity.');
+      this.toastService.error('The primary admin account cannot be deactivated. This account is essential for maintaining tenant administrative continuity.', 'Cannot Deactivate', 6000);
       return;
     }
     
     this.usersService.updateStatus(user.id, newStatus).subscribe({
       next: (response) => {
         if (response.success) {
-          user.active = newStatus;
-          this.loadStatistics(); // Refresh stats
-          this.applyFilters(); // Refresh displayed data
+          this.toastService.success(`User ${newStatus === 1 ? 'activated' : 'deactivated'} successfully`, 'Success', 4000);
+          // Reload users to get fresh data from server
+          this.loadUsers();
+          this.loadStatistics();
         } else {
-          alert(response.message || 'Failed to update user status');
+          this.toastService.error(response.message || 'Failed to update user status', 'Error', 5000);
         }
       },
       error: (err) => {
         console.error('Error updating user status:', err);
-        alert(err.error?.message || 'Failed to update user status');
+        this.toastService.error(err.error?.message || 'Failed to update user status', 'Error', 6000);
       }
     });
   }

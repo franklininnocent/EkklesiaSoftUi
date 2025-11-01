@@ -25,6 +25,14 @@
       <button 
         type="button"
         class="tab" 
+        [class.active]="activeTab === 'head'"
+        (click)="switchTab('head')"
+      >
+        👤 Family Head
+      </button>
+      <button 
+        type="button"
+        class="tab" 
         [class.active]="activeTab === 'members'"
         (click)="switchTab('members')"
       >
@@ -45,8 +53,8 @@
               [class.error]="hasError('family_name')"
               placeholder="Enter family name"
             />
-            <span class="error-text" *ngIf="hasError('family_name')">
-              Family name is required
+            <span class="field-error" *ngIf="hasError('family_name')">
+              {{ getErrorMessage('family_name') }}
             </span>
           </div>
 
@@ -102,28 +110,36 @@
 
           <div class="form-group">
             <label>Primary Phone</label>
-            <div class="phone-input-group">
+            <div class="phone-input-group" [class.error]="hasError('primary_phone')">
               <span class="phone-prefix">{{ callingCode }}</span>
               <input 
                 type="tel" 
                 formControlName="primary_phone" 
                 class="form-control"
+                [class.error]="hasError('primary_phone')"
                 placeholder="{{ callingCode }} 1234567890"
               />
             </div>
+            <span class="field-error" *ngIf="hasError('primary_phone')">
+              {{ getErrorMessage('primary_phone') }}
+            </span>
           </div>
 
           <div class="form-group">
             <label>Secondary Phone</label>
-            <div class="phone-input-group">
+            <div class="phone-input-group" [class.error]="hasError('secondary_phone')">
               <span class="phone-prefix">{{ callingCode }}</span>
               <input 
                 type="tel" 
                 formControlName="secondary_phone" 
                 class="form-control"
+                [class.error]="hasError('secondary_phone')"
                 placeholder="{{ callingCode }} 1234567890"
               />
             </div>
+            <span class="field-error" *ngIf="hasError('secondary_phone')">
+              {{ getErrorMessage('secondary_phone') }}
+            </span>
           </div>
 
           <div class="form-group">
@@ -135,8 +151,8 @@
               [class.error]="hasError('email')"
               placeholder="family@example.com"
             />
-            <span class="error-text" *ngIf="hasError('email')">
-              Please enter a valid email
+            <span class="field-error" *ngIf="hasError('email')">
+              {{ getErrorMessage('email') }}
             </span>
           </div>
 
@@ -157,6 +173,74 @@
               rows="3"
               placeholder="Any additional notes..."
             ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Family Head -->
+      <div class="tab-content family-head-tab" *ngIf="activeTab === 'head'" #headTabContent>
+        <div class="family-head-content">
+          <div *ngIf="getFamilyHead() as head" class="head-card-display">
+            <div class="head-avatar-large">
+              <img 
+                *ngIf="head.head_profile_image_full_url || family?.head_profile_image_full_url" 
+                [src]="head.head_profile_image_full_url || family?.head_profile_image_full_url" 
+                alt="Family Head Profile Image" 
+                class="head-profile-image-large"
+              />
+              <span *ngIf="!head.head_profile_image_full_url && !family?.head_profile_image_full_url">{{ (head.first_name || 'U').charAt(0) }}</span>
+            </div>
+            <div class="head-details">
+              <div class="head-name-display">{{ getDisplayName(head) }}</div>
+              <div class="head-note" *ngIf="head.is_from_db_name">
+                ℹ️ This information is from the family record. Add this person as a family member to enable full editing.
+              </div>
+              <div class="head-meta-display">
+                <div class="meta-line" *ngIf="head.phone">
+                  <span class="meta-label">Phone:</span>
+                  <span class="meta-value">{{ callingCode }} {{ head.phone }}</span>
+                </div>
+                <div class="meta-line" *ngIf="head.email">
+                  <span class="meta-label">Email:</span>
+                  <span class="meta-value">{{ head.email }}</span>
+                </div>
+                <div class="meta-line">
+                  <span class="meta-label">Relationship:</span>
+                  <span class="meta-value">{{ head.relationship_to_head || '—' }}</span>
+                </div>
+                <div class="meta-line" *ngIf="head.date_of_birth">
+                  <span class="meta-label">Date of Birth:</span>
+                  <span class="meta-value">{{ head.date_of_birth }}</span>
+                </div>
+                <div class="meta-line" *ngIf="head.gender">
+                  <span class="meta-label">Gender:</span>
+                  <span class="meta-value">{{ head.gender | titlecase }}</span>
+                </div>
+                <div class="meta-line" *ngIf="head.marital_status">
+                  <span class="meta-label">Marital Status:</span>
+                  <span class="meta-value">{{ head.marital_status | titlecase }}</span>
+                </div>
+                <div class="meta-line" *ngIf="head.occupation">
+                  <span class="meta-label">Occupation:</span>
+                  <span class="meta-value">{{ head.occupation }}</span>
+                </div>
+              </div>
+            </div>
+            <button 
+              type="button" 
+              class="btn btn-primary btn-large"
+              *ngIf="getFamilyHeadIndex() !== null && !head.is_from_db_name"
+              (click)="openEditMemberModal(getFamilyHeadIndex()!)"
+              title="Edit family head"
+            >
+              ✎ Edit Family Head
+            </button>
+          </div>
+          
+          <div *ngIf="!getFamilyHead()" class="no-head-message">
+            <div class="icon">👤</div>
+            <h3>No Family Head</h3>
+            <p>Add a member and set their relationship to "Self (Head)" to designate them as the family head.</p>
           </div>
         </div>
       </div>

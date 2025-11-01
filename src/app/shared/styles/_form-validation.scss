@@ -1,0 +1,113 @@
+// Shared form validation styles
+// Import this in component SCSS files or global styles
+
+.form-control {
+  &.error,
+  &.invalid,
+  &.ng-invalid.ng-touched {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+    
+    &:hover {
+      border-color: #dc2626 !important;
+      background-color: #fee2e2 !important;
+    }
+
+    &:focus {
+      border-color: #dc2626 !important;
+      background-color: #fff !important;
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15), 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+      animation: inputErrorPulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+  }
+}
+
+.form-input,
+input.form-control,
+select.form-control,
+textarea.form-control {
+  &.error,
+  &.invalid,
+  &.ng-invalid.ng-touched {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+    
+    &:hover {
+      border-color: #dc2626 !important;
+      background-color: #fee2e2 !important;
+    }
+
+    &:focus {
+      border-color: #dc2626 !important;
+      background-color: #fff !important;
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15), 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+    }
+  }
+}
+
+// Field error message styling
+.field-error {
+  display: block;
+  margin-top: 0.375rem;
+  font-size: 0.75rem;
+  color: #dc2626;
+  font-weight: 500;
+  line-height: 1.4;
+  animation: slideDown 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &::before {
+    content: '⚠ ';
+    margin-right: 0.25rem;
+  }
+}
+
+// Phone input group error styling
+.phone-input-group {
+  &.error {
+    border-color: #ef4444 !important;
+    background-color: #fef2f2 !important;
+    
+    .phone-prefix {
+      border-right-color: #fecaca !important;
+      background-color: #fee2e2 !important;
+      color: #991b1b !important;
+    }
+    
+    &:hover {
+      border-color: #dc2626 !important;
+      
+      .phone-prefix {
+        background-color: #fecaca !important;
+      }
+    }
+    
+    &:focus-within {
+      border-color: #dc2626 !important;
+      box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15), 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+    }
+  }
+}
+
+@keyframes inputErrorPulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 4px 16px rgba(239, 68, 68, 0.15), 0 0 0 3px rgba(239, 68, 68, 0.1);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+

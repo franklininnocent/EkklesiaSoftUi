@@ -7,6 +7,7 @@ import { Diocese, DioceseCreateRequest, DioceseUpdateRequest } from '@core/model
 import { ToastService } from '@core/services';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
+import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-diocese-form-modal',
@@ -177,10 +178,9 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
   }
 
   onSubmit(): void {
-    if (this.dioceseForm.invalid || this.isSubmitting) {
+    if (!this.dioceseForm.valid || this.isSubmitting) {
       this.showValidationErrors = true;
-      this.markFormGroupTouched(this.dioceseForm);
-      this.toastService.error('Please fill in all required fields correctly');
+      markFormGroupTouched(this.dioceseForm);
       return;
     }
 
@@ -237,17 +237,6 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
     }
   }
 
-  private markFormGroupTouched(formGroup: FormGroup): void {
-    Object.keys(formGroup.controls).forEach(key => {
-      const control = formGroup.get(key);
-      control?.markAsTouched();
-
-      if (control instanceof FormGroup) {
-        this.markFormGroupTouched(control);
-      }
-    });
-  }
-
   private formatDateForInput(date: string): string {
     if (!date) return '';
     // Convert to YYYY-MM-DD format for input type="date"
@@ -255,38 +244,22 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
     return d.toISOString().split('T')[0];
   }
 
-  // Validation helpers
+  // Validation helpers using standardized helper
   isFieldInvalid(fieldName: string): boolean {
-    const field = this.dioceseForm.get(fieldName);
-    return !!(field && field.invalid && (field.dirty || field.touched));
+    return isFieldInvalid(fieldName, this.dioceseForm);
   }
 
   getFieldError(fieldName: string): string {
-    const field = this.dioceseForm.get(fieldName);
-    if (field?.errors) {
-      if (field.errors['required']) return `${this.getFieldLabel(fieldName)} is required`;
-      if (field.errors['maxlength']) return `${this.getFieldLabel(fieldName)} is too long`;
-      if (field.errors['email']) return 'Invalid email format';
-    }
-    return '';
+    return getErrorMessage(fieldName, this.dioceseForm);
   }
 
-  private getFieldLabel(fieldName: string): string {
-    const labels: Record<string, string> = {
-      name: 'Name',
-      code: 'Code',
-      denomination_id: 'Denomination',
-      country_id: 'Country',
-      state_id: 'State/Province',
-      website: 'Website',
-      address_line1: 'Address',
-      city: 'City',
-      postal_code: 'Postal Code',
-      phone: 'Phone',
-      email: 'Email',
-      established_date: 'Established Date'
-    };
-    return labels[fieldName] || fieldName;
+  // Alias for template compatibility
+  hasError(fieldName: string): boolean {
+    return this.isFieldInvalid(fieldName);
+  }
+
+  getErrorMessage(fieldName: string): string {
+    return this.getFieldError(fieldName);
   }
 
   get modalTitle(): string {

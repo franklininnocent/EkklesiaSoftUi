@@ -16,12 +16,12 @@
             type="text"
             formControlName="name"
             class="form-control"
-            [class.is-invalid]="isFieldInvalid('name')"
+            [class.error]="isFieldInvalid('name')"
             placeholder="e.g., Baptism"
           />
-          <div class="invalid-feedback" *ngIf="isFieldInvalid('name')">
+          <span class="field-error" *ngIf="isFieldInvalid('name')">
             {{ getFieldError('name') }}
-          </div>
+          </span>
         </div>
 
         <!-- Code -->
@@ -31,12 +31,12 @@
             type="text"
             formControlName="code"
             class="form-control"
-            [class.is-invalid]="isFieldInvalid('code')"
+            [class.error]="isFieldInvalid('code')"
             placeholder="e.g., BAPT"
           />
-          <div class="invalid-feedback" *ngIf="isFieldInvalid('code')">
+          <span class="field-error" *ngIf="isFieldInvalid('code')">
             {{ getFieldError('code') }}
-          </div>
+          </span>
           <small class="form-text">Unique identifier for this sacrament type</small>
         </div>
 
@@ -46,16 +46,16 @@
           <select
             formControlName="category"
             class="form-control"
-            [class.is-invalid]="isFieldInvalid('category')"
+            [class.error]="isFieldInvalid('category')"
           >
             <option value="">Select a category</option>
             <option *ngFor="let cat of categories" [value]="cat.value">
               {{ cat.label }}
             </option>
           </select>
-          <div class="invalid-feedback" *ngIf="isFieldInvalid('category')">
+          <span class="field-error" *ngIf="isFieldInvalid('category')">
             {{ getFieldError('category') }}
-          </div>
+          </span>
         </div>
 
         <!-- Description -->
@@ -140,12 +140,12 @@
             type="number"
             formControlName="display_order"
             class="form-control"
-            [class.is-invalid]="isFieldInvalid('display_order')"
+            [class.error]="isFieldInvalid('display_order')"
             min="1"
           />
-          <div class="invalid-feedback" *ngIf="isFieldInvalid('display_order')">
+          <span class="field-error" *ngIf="isFieldInvalid('display_order')">
             {{ getFieldError('display_order') }}
-          </div>
+          </span>
           <small class="form-text">Order in which this type appears in lists</small>
         </div>
 

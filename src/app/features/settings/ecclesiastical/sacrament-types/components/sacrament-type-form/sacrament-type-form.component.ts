@@ -4,6 +4,7 @@ import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angula
 import { SacramentTypeService } from '../../services/sacrament-type.service';
 import { SacramentType, SACRAMENT_CATEGORIES, MINISTER_TYPES } from '../../models/sacrament-type.model';
 import { ToastService } from '@core/services/toast.service';
+import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-sacrament-type-form',
@@ -58,8 +59,7 @@ export class SacramentTypeFormComponent implements OnInit, OnChanges {
 
   onSubmit(): void {
     if (this.form.invalid) {
-      this.form.markAllAsTouched();
-      this.toastService.error('Please fill in all required fields');
+      markFormGroupTouched(this.form);
       return;
     }
 
@@ -94,18 +94,11 @@ export class SacramentTypeFormComponent implements OnInit, OnChanges {
   }
 
   isFieldInvalid(fieldName: string): boolean {
-    const field = this.form.get(fieldName);
-    return !!(field && field.invalid && (field.dirty || field.touched));
+    return isFieldInvalid(fieldName, this.form);
   }
 
   getFieldError(fieldName: string): string {
-    const field = this.form.get(fieldName);
-    if (field?.errors) {
-      if (field.errors['required']) return 'This field is required';
-      if (field.errors['maxlength']) return `Maximum ${field.errors['maxlength'].requiredLength} characters`;
-      if (field.errors['min']) return `Minimum value is ${field.errors['min'].min}`;
-    }
-    return '';
+    return getErrorMessage(fieldName, this.form);
   }
 }
 

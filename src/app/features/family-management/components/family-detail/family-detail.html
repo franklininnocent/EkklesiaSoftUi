@@ -22,52 +22,180 @@
     </div>
   </section>
 
-  <!-- Family Head Card -->
-  <section class="family-head-section" aria-label="Family head" *ngIf="getFamilyHead() as head">
+  <!-- Family Head Card (DB value first; fallback to derived) -->
+  <section class="family-head-section" aria-label="Family head" *ngIf="family?.head_of_family && !getFamilyHead(); else derivedHead">
     <article class="head-card">
       <header class="head-card-header">
         <h2>👤 Family Head</h2>
       </header>
       <div class="head-card-body">
-        <div class="head-avatar">{{ (head.first_name || 'U').charAt(0) }}</div>
-          <div class="head-info">
-            <div class="head-name">{{ getDisplayName(head) }}</div>
+        <!-- Hidden file input for head profile image -->
+        <input
+          #headProfileImageInput
+          type="file"
+          id="headProfileImageInput"
+          class="logo-input-hidden"
+          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+          (change)="onHeadProfileImageSelected($event)"
+        />
+        <!-- Profile image or avatar -->
+        <div class="head-avatar-container">
+          <div class="head-avatar-wrapper" [class.editing]="editingHeadImage" (click)="editingHeadImage && headProfileImageInput.click()" title="Click to upload family head profile image">
+            <img 
+              *ngIf="family?.head_profile_image_full_url" 
+              [src]="family.head_profile_image_full_url" 
+              alt="Family Head Profile Image" 
+              class="head-profile-image"
+            />
+            <div *ngIf="!family?.head_profile_image_full_url" class="head-avatar">{{ (family.head_of_family || 'U').charAt(0) }}</div>
+            
+            <!-- Camera overlay icon (only show when editing) -->
+            <div class="head-edit-overlay" *ngIf="editingHeadImage">
+              <span class="icon">📷</span>
+            </div>
+            
+            <!-- Delete button overlay (only show when editing and image exists) -->
+            <button 
+              *ngIf="editingHeadImage && family?.head_profile_image_full_url" 
+              type="button" 
+              class="head-delete-image-btn"
+              (click)="deleteHeadProfileImage(); $event.stopPropagation()"
+              title="Delete head profile image"
+              aria-label="Delete head profile image"
+            >
+              <span class="icon">×</span>
+            </button>
+          </div>
+          
+          <!-- Edit link below image -->
+          <button 
+            type="button" 
+            class="btn-edit-image-link"
+            (click)="editingHeadImage = !editingHeadImage"
+            title="Edit profile image"
+            aria-label="Edit profile image"
+          >
+            Edit
+          </button>
+        </div>
+        <div class="head-info">
+          <div class="head-name">{{ family.head_of_family }}</div>
           <div class="head-meta">
-            <span class="meta-item">{{ head.phone || '-' }}</span>
+            <span class="meta-item">{{ family.primary_phone || '-' }}</span>
             <span class="dot">•</span>
-            <span class="meta-item">{{ head.email || '-' }}</span>
+            <span class="meta-item">{{ family.email || '-' }}</span>
           </div>
         </div>
       </div>
-    </article>
-  </section>
+      
+      <!-- Family Contact & Assignments Info -->
+      <div class="family-info-cards">
+        <article class="card">
+          <header class="card-header">Contact</header>
+          <div class="card-body">
+            <div class="kv"><span class="k">Phone</span><span class="v">{{ family.primary_phone || '-' }}</span></div>
+            <div class="kv"><span class="k">Email</span><span class="v">{{ family.email || '-' }}</span></div>
+            <div class="kv"><span class="k">City</span><span class="v">{{ family.city || '-' }}</span></div>
+          </div>
+        </article>
 
-  <!-- Info Grid -->
-  <section class="info-grid" aria-label="Family information">
-    <article class="card">
-      <header class="card-header">Contact</header>
-      <div class="card-body">
-        <div class="kv"><span class="k">Phone</span><span class="v">{{ family.primary_phone || '-' }}</span></div>
-        <div class="kv"><span class="k">Email</span><span class="v">{{ family.email || '-' }}</span></div>
-        <div class="kv"><span class="k">City</span><span class="v">{{ family.city || '-' }}</span></div>
-      </div>
-    </article>
-
-    <article class="card">
-      <header class="card-header">Assignments</header>
-      <div class="card-body">
-        <div class="kv"><span class="k">BCC</span><span class="v">{{ family.bcc?.name || 'Not assigned' }}</span></div>
-      </div>
-    </article>
-
-    <article class="card">
-      <header class="card-header">Metadata</header>
-      <div class="card-body">
-        <div class="kv"><span class="k">Created</span><span class="v">{{ family.created_at | date:'medium' }}</span></div>
-        <div class="kv"><span class="k">Updated</span><span class="v">{{ family.updated_at | date:'medium' }}</span></div>
+        <article class="card">
+          <header class="card-header">Assignments</header>
+          <div class="card-body">
+            <div class="kv"><span class="k">BCC</span><span class="v">{{ family.bcc?.name || 'Not assigned' }}</span></div>
+          </div>
+        </article>
       </div>
     </article>
   </section>
+
+  <ng-template #derivedHead>
+    <section class="family-head-section" aria-label="Family head" *ngIf="getFamilyHead() as head">
+      <article class="head-card">
+        <header class="head-card-header">
+          <h2>👤 Family Head</h2>
+        </header>
+        <div class="head-card-body">
+          <!-- Hidden file input for head profile image -->
+          <input
+            #headProfileImageInputDerived
+            type="file"
+            id="headProfileImageInputDerived"
+            class="logo-input-hidden"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+            (change)="onHeadProfileImageSelected($event)"
+          />
+          <!-- Profile image or avatar -->
+          <div class="head-avatar-container">
+            <div class="head-avatar-wrapper" [class.editing]="editingHeadImage" (click)="editingHeadImage && headProfileImageInputDerived.click()" title="Click to upload family head profile image">
+              <img 
+                *ngIf="family?.head_profile_image_full_url" 
+                [src]="family.head_profile_image_full_url" 
+                alt="Family Head Profile Image" 
+                class="head-profile-image"
+              />
+              <div *ngIf="!family?.head_profile_image_full_url" class="head-avatar">{{ (head.full_name || head.first_name || 'U').charAt(0) }}</div>
+              
+              <!-- Camera overlay icon (only show when editing) -->
+              <div class="head-edit-overlay" *ngIf="editingHeadImage">
+                <span class="icon">📷</span>
+              </div>
+              
+              <!-- Delete button overlay (only show when editing and image exists) -->
+              <button 
+                *ngIf="editingHeadImage && family?.head_profile_image_full_url" 
+                type="button" 
+                class="head-delete-image-btn"
+                (click)="deleteHeadProfileImage(); $event.stopPropagation()"
+                title="Delete head profile image"
+                aria-label="Delete head profile image"
+              >
+                <span class="icon">×</span>
+              </button>
+            </div>
+            
+            <!-- Edit link below image -->
+            <button 
+              type="button" 
+              class="btn-edit-image-link"
+              (click)="editingHeadImage = !editingHeadImage"
+              title="Edit profile image"
+              aria-label="Edit profile image"
+            >
+              Edit
+            </button>
+          </div>
+          <div class="head-info">
+            <div class="head-name">{{ getDisplayName(head) }}</div>
+            <div class="head-meta">
+              <span class="meta-item">{{ head.phone || '-' }}</span>
+              <span class="dot">•</span>
+              <span class="meta-item">{{ head.email || '-' }}</span>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Family Contact & Assignments Info -->
+        <div class="family-info-cards">
+          <article class="card">
+            <header class="card-header">Contact</header>
+            <div class="card-body">
+              <div class="kv"><span class="k">Phone</span><span class="v">{{ family.primary_phone || '-' }}</span></div>
+              <div class="kv"><span class="k">Email</span><span class="v">{{ family.email || '-' }}</span></div>
+              <div class="kv"><span class="k">City</span><span class="v">{{ family.city || '-' }}</span></div>
+            </div>
+          </article>
+
+          <article class="card">
+            <header class="card-header">Assignments</header>
+            <div class="card-body">
+              <div class="kv"><span class="k">BCC</span><span class="v">{{ family.bcc?.name || 'Not assigned' }}</span></div>
+            </div>
+          </article>
+        </div>
+      </article>
+    </section>
+  </ng-template>
 
   <!-- Members -->
   <section class="members-section" aria-label="Family members">
@@ -76,12 +204,15 @@
       <div class="count" aria-label="Total members">{{ family.members?.length || 0 }}</div>
     </header>
     <div class="members-card-grid" *ngIf="(family.members?.length || 0) > 0; else emptyMembers">
-      <div class="member-card-view" *ngFor="let m of family.members; let i = index" [class.expanded]="isMemberExpanded(i)">
+      <div class="member-card-view" *ngFor="let m of family.members; let i = index" 
+           [class.expanded]="isMemberExpanded(i)"
+           [class.is-head]="isHeadMember(i)">
         <div class="card-top">
-          <div class="avatar" aria-hidden="true">{{ (m.first_name || m.full_name || 'U').charAt(0) }}</div>
+          <div class="avatar" aria-hidden="true">{{ (m.full_name || m.first_name || 'U').charAt(0) }}</div>
           <div class="top-info" (click)="toggleMember(i)" (keydown.enter)="toggleMember(i)" (keydown.space)="toggleMember(i)" [attr.aria-expanded]="isMemberExpanded(i)" role="button" tabindex="0" title="Toggle details">
             <div class="name-row">
               <span class="name">{{ getDisplayName(m) }}</span>
+              <span class="head-badge" *ngIf="isHeadMember(i)" title="Family Head">👤 Head</span>
               <span class="status" [attr.data-status]="m.status || 'active'">{{ m.status || 'active' }}</span>
             </div>
             <div class="chip-group">
@@ -131,7 +262,7 @@
   <!-- Edit Member Modal -->
   <app-family-member-form-modal
     *ngIf="showMemberModal"
-    [member]="memberToEditIndex !== null ? getMemberFormValue(memberToEditIndex) : null"
+    [member]="memberToEdit"
     (save)="onMemberModalSave($event)"
     (cancel)="onMemberModalCancel()">
   </app-family-member-form-modal>

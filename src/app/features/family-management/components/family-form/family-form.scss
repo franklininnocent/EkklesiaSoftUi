@@ -14,6 +14,8 @@
   animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+@import '../../../../shared/styles/form-validation';
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -385,6 +387,156 @@ form {
 @media (max-width: 768px) {
   .phone-input-group { gap: 8px; }
   .phone-input-group .phone-prefix { padding: 9px 10px; font-size: 12px; }
+}
+
+// Family Head Tab
+.family-head-tab {
+  .family-head-content {
+    padding: 1rem;
+  }
+
+  .head-card-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border: 2px solid #667eea;
+    border-radius: 16px;
+    padding: 2rem;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.1);
+    max-width: 600px;
+    margin: 0 auto;
+  }
+
+  .head-avatar-large {
+    width: 120px;
+    height: 120px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: 700;
+    color: white;
+    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+    overflow: hidden;
+    position: relative;
+
+    .head-profile-image-large {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
+  .head-details {
+    width: 100%;
+    text-align: center;
+
+    .head-name-display {
+      font-size: 1.75rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 0.75rem;
+    }
+
+    .head-note {
+      background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+      border: 1px solid #fbbf24;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.875rem;
+      color: #92400e;
+      line-height: 1.5;
+      text-align: left;
+    }
+
+    .head-meta-display {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      text-align: left;
+
+      .meta-line {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+
+        .meta-label {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #6b7280;
+        }
+
+        .meta-value {
+          font-size: 1rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+      }
+    }
+  }
+
+  .btn-large {
+    width: 100%;
+    max-width: 300px;
+    padding: 1rem;
+    font-size: 1rem;
+    font-weight: 700;
+  }
+
+  .no-head-message {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #fbbf24;
+    border-radius: 16px;
+    max-width: 500px;
+    margin: 0 auto;
+
+    .icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+
+    h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #1f2937;
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      font-size: 1rem;
+      color: #6b7280;
+      line-height: 1.6;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .family-head-tab {
+    .head-details .head-meta-display {
+      grid-template-columns: 1fr;
+    }
+
+    .head-card-display {
+      padding: 1.5rem;
+    }
+
+    .head-avatar-large {
+      width: 100px;
+      height: 100px;
+      font-size: 2.5rem;
+    }
+  }
 }
 
 // Members Section

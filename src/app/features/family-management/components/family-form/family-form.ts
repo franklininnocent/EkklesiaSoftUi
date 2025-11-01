@@ -5,6 +5,7 @@ import { FamilyService } from '../../../../core/services/family.service';
 import { Family, BCC } from '../../../../core/models/family.model';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
 import { tenantPhoneValidator, getTenantCallingCode } from '../../../../core/validators/phone.validators';
+import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-family-form',
@@ -20,7 +21,7 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
   @Output() cancel = new EventEmitter<void>();
 
   familyForm: FormGroup;
-  activeTab = 'info'; // 'info' | 'members'
+  activeTab = 'info'; // 'info' | 'head' | 'members'
   loading = false;
   error: string | null = null;
   showMemberModal = false;
@@ -29,6 +30,7 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
   expandedMemberIndexes: Set<number> = new Set();
 
   @ViewChild('infoTabContent', { static: false }) infoTabContentRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('headTabContent', { static: false }) headTabContentRef!: ElementRef<HTMLDivElement>;
   @ViewChild('membersTabContent', { static: false }) membersTabContentRef!: ElementRef<HTMLDivElement>;
 
   // For Math methods in template
@@ -85,6 +87,8 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
       first_name: [member?.first_name || '', Validators.required],
       middle_name: [member?.middle_name || ''],
       last_name: [member?.last_name || '', Validators.required],
+      full_name: [member?.full_name || ''],
+      full_name_display: [member?.full_name_display || ''],
       date_of_birth: [member?.date_of_birth || ''],
       gender: [member?.gender || ''],
       relationship_to_head: [member?.relationship_to_head || 'other', Validators.required],
@@ -96,7 +100,8 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
       baptism_date: [member?.baptism_date || ''],
       first_communion_date: [member?.first_communion_date || ''],
       confirmation_date: [member?.confirmation_date || ''],
-      status: [member?.status || 'active']
+      status: [member?.status || 'active'],
+      is_primary_contact: [member?.is_primary_contact || false]
     });
 
     this.members.push(memberForm);
@@ -122,6 +127,243 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
 
   isMemberExpanded(index: number): boolean {
     return this.expandedMemberIndexes.has(index);
+  }
+
+  /**
+   * Get display name from a member
+   */
+  getDisplayName(member: any | null | undefined): string {
+    if (!member) {
+      return '—';
+    }
+    // Check API-returned fields in priority order
+    const fullNameFields = [
+      member.full_name_display,
+      member.full_name,
+      member.fullName
+    ];
+    
+    for (const full of fullNameFields) {
+      if (typeof full === 'string' && full.trim().length > 0) {
+        return full.trim();
+      }
+    }
+    
+    // Build from parts
+    const parts = [member.first_name, member.middle_name, member.last_name]
+      .filter((p: string | undefined) => !!p && String(p).trim().length > 0)
+      .map((p: string) => p.trim());
+    const name = parts.join(' ').replace(/\s+/g, ' ').trim();
+    return name || '—';
+  }
+
+  /**
+   * Normalize name for comparison (remove extra spaces, lowercase)
+   */
+  private normalizeName(name: string): string {
+    return (name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+  }
+
+  /**
+   * Get all possible name variations from a member
+   */
+  private getMemberNameVariations(member: any): string[] {
+    const variations: string[] = [];
+    
+    // Check all possible full name fields from API
+    const fullNameFields = [
+      member.full_name,
+      member.full_name_display,
+      this.getDisplayName(member)
+    ];
+    
+    fullNameFields.forEach(name => {
+      if (name && typeof name === 'string' && name.trim()) {
+        variations.push(this.normalizeName(name));
+      }
+    });
+    
+    return [...new Set(variations)]; // Remove duplicates
+  }
+
+  /**
+   * Check if a member's name matches the target name
+   */
+  private nameMatches(member: any, targetName: string): boolean {
+    const normalizedTarget = this.normalizeName(targetName);
+    if (!normalizedTarget) return false;
+    
+    const memberVariations = this.getMemberNameVariations(member);
+    
+    // Exact match
+    if (memberVariations.includes(normalizedTarget)) {
+      return true;
+    }
+    
+    // Split target and member names into parts for better matching
+    const targetParts = normalizedTarget.split(/\s+/).filter(p => p.length > 0);
+    
+    for (const variation of memberVariations) {
+      const variationParts = variation.split(/\s+/).filter(p => p.length > 0);
+      
+      // If both have at least 2 parts, check last name match first (most reliable)
+      if (targetParts.length >= 2 && variationParts.length >= 2) {
+        const targetLastName = targetParts[targetParts.length - 1];
+        const variationLastName = variationParts[variationParts.length - 1];
+        
+        // Last names must match
+        if (targetLastName === variationLastName) {
+          // Check if first name matches (allows for middle names)
+          const targetFirstName = targetParts[0];
+          const variationFirstName = variationParts[0];
+          
+          if (targetFirstName === variationFirstName) {
+            return true;
+          }
+          
+          // Allow partial first name match (e.g., "Ann" matches "Annamae")
+          if (targetFirstName.length >= 3 && variationFirstName.startsWith(targetFirstName)) {
+            return true;
+          }
+          if (variationFirstName.length >= 3 && targetFirstName.startsWith(variationFirstName)) {
+            return true;
+          }
+        }
+      }
+      
+      // Check if target name is fully contained in variation or vice versa
+      if (variation.includes(normalizedTarget) || normalizedTarget.includes(variation)) {
+        // Additional check: ensure at least one meaningful word matches
+        const commonWords = targetParts.filter(word => 
+          word.length >= 2 && variationParts.includes(word)
+        );
+        if (commonWords.length >= 2 || (commonWords.length === 1 && targetParts.length === 1)) {
+          return true;
+        }
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Get the family head member from the form array
+   */
+  getFamilyHead(): any | null {
+    const membersArray = this.members.controls;
+    if (!membersArray || membersArray.length === 0) {
+      // No members in form, check if we have head_of_family from the original family
+      if (this.family?.head_of_family) {
+        return {
+          first_name: this.family.head_of_family,
+          last_name: '',
+          full_name: this.family.head_of_family,
+          relationship_to_head: 'self',
+          phone: this.family.primary_phone || '',
+          email: this.family.email || '',
+          date_of_birth: '',
+          gender: '',
+          marital_status: '',
+          occupation: '',
+          is_from_db_name: true,
+          head_profile_image_full_url: this.family.head_profile_image_full_url || null
+        };
+      }
+      return null;
+    }
+
+    const candidates = membersArray.map(m => m.value);
+
+    // 1) PRIORITY: If database specifies head_of_family on the family record, match it exactly
+    const headName = (this.family?.head_of_family || '').trim();
+    if (headName) {
+      // Try exact match first
+      let byName = candidates.find(m => this.nameMatches(m, headName));
+      
+      if (byName) {
+        return byName;
+      }
+      
+      // If no exact match, try fuzzy matching (last name priority)
+      const headParts = this.normalizeName(headName).split(/\s+/);
+      if (headParts.length >= 2) {
+        const headLastName = headParts[headParts.length - 1];
+        byName = candidates.find(m => {
+          const memberVariations = this.getMemberNameVariations(m);
+          const found = memberVariations.some(v => {
+            const parts = v.split(/\s+/);
+            const lastMatch = parts.length >= 2 && parts[parts.length - 1] === headLastName;
+            const firstMatch = parts.length >= 1 && parts[0] === headParts[0];
+            return lastMatch && (firstMatch || headParts.length === 1);
+          });
+          return found;
+        });
+        if (byName) {
+          return byName;
+        }
+      }
+      
+      // If head_of_family is specified but we can't match any member, return a mock object
+      return {
+        first_name: this.family.head_of_family,
+        last_name: '',
+        full_name: this.family.head_of_family,
+        relationship_to_head: 'self',
+        phone: this.family.primary_phone || '',
+        email: this.family.email || '',
+        date_of_birth: '',
+        gender: '',
+        marital_status: '',
+        occupation: '',
+        is_from_db_name: true,
+        head_profile_image_full_url: this.family.head_profile_image_full_url || null
+      };
+    }
+
+    // 2) Prefer explicit self/head relationships (prioritize active members)
+    const relPriority = ['self', 'head', 'head of family'];
+    const byRelationship = candidates.find(m => {
+      const rel = String(m.relationship_to_head || '').toLowerCase();
+      return relPriority.includes(rel) && m.status === 'active';
+    }) || candidates.find(m => {
+      const rel = String(m.relationship_to_head || '').toLowerCase();
+      return relPriority.includes(rel);
+    }) || candidates.find(m => {
+      const isPrimary = (m as any).is_primary_contact === true && m.status === 'active';
+      return isPrimary;
+    }) || candidates.find(m => {
+      const isPrimary = (m as any).is_primary_contact === true;
+      return isPrimary;
+    });
+    if (byRelationship) {
+      return byRelationship;
+    }
+
+    // 3) Fallback: first active member, else first member
+    return candidates.find(m => m.status === 'active') || candidates[0] || null;
+  }
+
+  /**
+   * Get the index of the family head in the members array
+   */
+  getFamilyHeadIndex(): number | null {
+    const members = this.members.controls;
+    for (let i = 0; i < members.length; i++) {
+      const rel = String(members[i].get('relationship_to_head')?.value || '').toLowerCase();
+      if (rel === 'self' || rel === 'head' || rel === 'head of family') {
+        return i;
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Check if a member at index is the family head
+   */
+  isHeadMember(index: number): boolean {
+    const member = this.members.at(index);
+    const rel = String(member.get('relationship_to_head')?.value || '').toLowerCase();
+    return rel === 'self' || rel === 'head' || rel === 'head of family';
   }
 
   onMemberModalSave(value: FamilyMemberFormValue): void {
@@ -159,7 +401,14 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
   }
 
   private scrollActiveTabToTop(): void {
-    const ref = this.activeTab === 'info' ? this.infoTabContentRef : this.membersTabContentRef;
+    let ref;
+    if (this.activeTab === 'info') {
+      ref = this.infoTabContentRef;
+    } else if (this.activeTab === 'head') {
+      ref = this.headTabContentRef;
+    } else {
+      ref = this.membersTabContentRef;
+    }
     if (ref?.nativeElement) {
       ref.nativeElement.scrollTop = 0;
     }
@@ -169,6 +418,15 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
    * Submit the form
    */
   onSubmit(): void {
+    if (!this.familyForm.valid) {
+      markFormGroupTouched(this.familyForm);
+      // Switch to info tab if validation fails and we're on members tab
+      if (this.activeTab === 'members') {
+        this.switchTab('info');
+      }
+      return;
+    }
+    
     if (this.familyForm.valid) {
       this.loading = true;
       this.error = null;
@@ -231,8 +489,14 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
    * Check if a form control has an error
    */
   hasError(controlName: string): boolean {
-    const control = this.familyForm.get(controlName);
-    return !!(control && control.invalid && control.touched);
+    return isFieldInvalid(controlName, this.familyForm);
+  }
+
+  /**
+   * Get user-friendly error message for a form control
+   */
+  getErrorMessage(controlName: string): string {
+    return getErrorMessage(controlName, this.familyForm);
   }
 
   /**

@@ -34,10 +34,10 @@
               id="full_name"
               formControlName="full_name"
               class="form-input"
-              [class.invalid]="isFieldInvalid('full_name')"
+              [class.error]="hasError('full_name')"
               placeholder="e.g., Most Rev. John Doe">
-            <span class="error-message" *ngIf="isFieldInvalid('full_name')">
-              {{ getFieldError('full_name') }}
+            <span class="field-error" *ngIf="hasError('full_name')">
+              {{ getErrorMessage('full_name') }}
             </span>
           </div>
 
@@ -81,14 +81,14 @@
               id="archdiocese_id"
               formControlName="archdiocese_id"
               class="form-select"
-              [class.invalid]="isFieldInvalid('archdiocese_id')">
+              [class.error]="hasError('archdiocese_id')">
               <option [value]="null">Select Diocese</option>
               <option *ngFor="let diocese of dioceses" [value]="diocese.id">
                 {{ diocese.name }}
               </option>
             </select>
-            <span class="error-message" *ngIf="isFieldInvalid('archdiocese_id')">
-              {{ getFieldError('archdiocese_id') }}
+            <span class="field-error" *ngIf="hasError('archdiocese_id')">
+              {{ getErrorMessage('archdiocese_id') }}
             </span>
           </div>
 
@@ -113,13 +113,13 @@
               id="status"
               formControlName="status"
               class="form-select"
-              [class.invalid]="isFieldInvalid('status')">
+              [class.error]="hasError('status')">
               <option *ngFor="let status of statusOptions" [value]="status.value">
                 {{ status.label }}
               </option>
             </select>
-            <span class="error-message" *ngIf="isFieldInvalid('status')">
-              {{ getFieldError('status') }}
+            <span class="field-error" *ngIf="hasError('status')">
+              {{ getErrorMessage('status') }}
             </span>
           </div>
 
@@ -182,25 +182,29 @@
               id="email"
               formControlName="email"
               class="form-input"
-              [class.invalid]="isFieldInvalid('email')"
+              [class.error]="hasError('email')"
               placeholder="bishop@diocese.org">
-            <span class="error-message" *ngIf="isFieldInvalid('email')">
-              {{ getFieldError('email') }}
+            <span class="field-error" *ngIf="hasError('email')">
+              {{ getErrorMessage('email') }}
             </span>
           </div>
 
           <!-- Phone -->
           <div class="form-group">
             <label for="phone" class="form-label">Phone</label>
-            <div class="phone-input-group">
+            <div class="phone-input-group" [class.error]="hasError('phone')">
               <span class="phone-prefix">{{ callingCode }}</span>
               <input
                 type="tel"
                 id="phone"
                 formControlName="phone"
                 class="form-input"
+                [class.error]="hasError('phone')"
                 placeholder="{{ callingCode }} 1234567890">
             </div>
+            <span class="field-error" *ngIf="hasError('phone')">
+              {{ getErrorMessage('phone') }}
+            </span>
           </div>
 
           <!-- Photo URL -->

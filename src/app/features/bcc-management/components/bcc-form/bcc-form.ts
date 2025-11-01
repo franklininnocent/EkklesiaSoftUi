@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { BCC } from '../../../../core/models/family.model';
+import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-bcc-form',
@@ -80,6 +81,12 @@ export class BCCFormComponent implements OnInit, AfterViewInit {
   }
 
   onSubmit(): void {
+    if (!this.bccForm.valid) {
+      markFormGroupTouched(this.bccForm);
+      this.error = null; // Individual field errors will show
+      return;
+    }
+    
     if (this.bccForm.valid) {
       this.loading = true;
       this.error = null;
@@ -104,17 +111,7 @@ export class BCCFormComponent implements OnInit, AfterViewInit {
           console.error('Error saving BCC:', error);
         }
       });
-    } else {
-      this.markFormGroupTouched(this.bccForm);
-      this.error = 'Please fill in all required fields correctly.';
     }
-  }
-
-  private markFormGroupTouched(formGroup: FormGroup): void {
-    Object.keys(formGroup.controls).forEach(key => {
-      const control = formGroup.get(key);
-      control?.markAsTouched();
-    });
   }
 
   onCancel(): void {
@@ -128,23 +125,10 @@ export class BCCFormComponent implements OnInit, AfterViewInit {
   }
 
   hasError(controlName: string): boolean {
-    const control = this.bccForm.get(controlName);
-    return !!(control && control.invalid && control.touched);
+    return isFieldInvalid(controlName, this.bccForm);
   }
 
-  getFieldError(controlName: string): string {
-    const control = this.bccForm.get(controlName);
-    if (!control || !control.errors || !control.touched) {
-      return '';
-    }
-
-    if (control.errors['required']) {
-      return `${controlName.replace('_', ' ')} is required`;
-    }
-    if (control.errors['email']) {
-      return 'Please enter a valid email address';
-    }
-
-    return 'Invalid value';
+  getErrorMessage(controlName: string): string {
+    return getErrorMessage(controlName, this.bccForm);
   }
 }
