@@ -3,7 +3,7 @@
  * Professional form with complete validation, API integration, and error handling
  */
 
-import { Component, EventEmitter, Output, inject, OnInit } from '@angular/core';
+import { Component, EventEmitter, Output, inject, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -11,7 +11,7 @@ import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { CreateTenantRequest, TenantAddress } from '@core/models/tenant.model';
 import { GeographyService, Country, State } from '@core/services/geography.service';
-import { getTenantCallingCode } from '@core/validators/phone.validators';
+import { PhoneCodeService } from '@core/services/phone-code.service';
 
 interface FormErrors {
   [key: string]: string;
@@ -28,6 +28,8 @@ export class TenantCreateModalComponent implements OnInit {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
   private geographyService = inject(GeographyService);
+  private phoneCodeService = inject(PhoneCodeService);
+  private cdr = inject(ChangeDetectorRef);
 
   @Output() close = new EventEmitter<void>();
   @Output() tenantCreated = new EventEmitter<void>();
@@ -51,8 +53,33 @@ export class TenantCreateModalComponent implements OnInit {
     this.geographyService.getCountries().subscribe({
       next: (response) => {
         if (response.success) {
-          this.countries = response.data;
-          console.log(`✅ Loaded ${response.count} countries`);
+          // Sort countries: India first, then rest alphabetically
+          const sortedCountries = [...response.data].sort((a, b) => {
+            // India should be first
+            const aIsIndia = a.name.toLowerCase().includes('india') || a.iso2 === 'IN';
+            const bIsIndia = b.name.toLowerCase().includes('india') || b.iso2 === 'IN';
+            
+            if (aIsIndia && !bIsIndia) return -1;
+            if (!aIsIndia && bIsIndia) return 1;
+            
+            // If both or neither are India, sort alphabetically by name
+            return a.name.localeCompare(b.name);
+          });
+          
+          this.countries = sortedCountries;
+          console.log(`✅ Loaded ${response.count} countries (India first)`);
+          
+          // Log India details for debugging
+          const india = this.countries.find(c => c.name.toLowerCase().includes('india') || c.iso2 === 'IN');
+          if (india) {
+            console.log(`🇮🇳 India is first: ID=${india.id}, ISO2=${india.iso2}, phone_code=${india.phone_code}`);
+          }
+          
+          // Check if we need to update calling code after countries load
+          if (this.formData.primary_user_address.country_id && this.formData.primary_user_address.country_id !== 0) {
+            console.log(`🔄 Updating calling code after countries loaded for country ID: ${this.formData.primary_user_address.country_id}`);
+            this.updateCallingCodeSafely(this.formData.primary_user_address.country_id);
+          }
         }
         this.loadingCountries = false;
       },
@@ -66,12 +93,25 @@ export class TenantCreateModalComponent implements OnInit {
 
   /**
    * Handle tenant country change - load states for selected country
+   * Also update phone code if no primary user country is selected or if "Same as Tenant Address" is checked
    */
   onTenantCountryChange(countryId: number | null): void {
     this.formData.tenant_official_address.state_id = 0;
     this.tenantStates = [];
     
     if (!countryId || countryId === 0) return;
+    
+    // Update phone code if:
+    // 1. No primary user country has been selected yet, OR
+    // 2. "Same as Tenant Address" is checked (so primary user will have same country)
+    const shouldUpdatePhoneCode = !this.formData.primary_user_address.country_id || 
+                                   this.formData.primary_user_address.country_id === 0 ||
+                                   this.sameAsTenantAddress;
+    
+    if (shouldUpdatePhoneCode) {
+      console.log(`📞 Updating phone code based on tenant country selection`);
+      this.updateCallingCodeSafely(countryId);
+    }
     
     this.loadingTenantStates = true;
     this.geographyService.getStatesByCountry(countryId).subscribe({
@@ -91,13 +131,25 @@ export class TenantCreateModalComponent implements OnInit {
   }
 
   /**
-   * Handle primary user country change - load states for selected country
+   * Handle primary user country change - load states for selected country and update calling code
    */
   onPrimaryCountryChange(countryId: number | null): void {
+    console.log(`📞 onPrimaryCountryChange called with countryId: ${countryId}`);
+    console.log(`📞 Countries array length: ${this.countries.length}`);
+    
     this.formData.primary_user_address.state_id = 0;
     this.primaryStates = [];
     
-    if (!countryId || countryId === 0) return;
+      if (!countryId || countryId === 0) {
+      // Reset to default calling code if no country selected
+      this.phoneCodeService.resetToDefault();
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
+      return;
+    }
+    
+    // Update calling code immediately - will retry if countries not loaded
+    this.updateCallingCodeSafely(countryId);
     
     this.loadingPrimaryStates = true;
     this.geographyService.getStatesByCountry(countryId).subscribe({
@@ -112,6 +164,26 @@ export class TenantCreateModalComponent implements OnInit {
         console.error('❌ Error loading states:', error);
         this.toastService.error('Failed to load states/provinces', 'Error');
         this.loadingPrimaryStates = false;
+      }
+    });
+  }
+
+  /**
+   * Update calling code using unified PhoneCodeService
+   * This replaces the old updateCallingCodeSafely and updateCallingCodeFromCountry methods
+   */
+  private updateCallingCodeSafely(countryId: number): void {
+    this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries).subscribe({
+      next: (result) => {
+        if (result.success) {
+          console.log(`✅ Phone code updated to ${result.phoneCode} for country: ${result.countryName}`);
+          // Trigger change detection to update UI
+          this.cdr.markForCheck();
+          this.cdr.detectChanges();
+        }
+      },
+      error: (error) => {
+        console.error('Error updating phone code:', error);
       }
     });
   }
@@ -159,7 +231,11 @@ export class TenantCreateModalComponent implements OnInit {
   formErrors: FormErrors = {};
   serverError: string = '';
   successMessage: string = '';
-  callingCode: string = getTenantCallingCode();
+  
+  // Phone code from unified service
+  get callingCode(): string {
+    return this.phoneCodeService.getPhoneCodeSync();
+  }
 
   // Validation flags
   touched: { [key: string]: boolean } = {};
@@ -189,6 +265,11 @@ export class TenantCreateModalComponent implements OnInit {
       };
       // Also copy the states array
       this.primaryStates = [...this.tenantStates];
+      // Update calling code based on the copied country
+      if (this.formData.tenant_official_address.country_id && this.formData.tenant_official_address.country_id !== 0) {
+        console.log(`📞 Updating phone code because "Same as Tenant Address" is checked`);
+        this.updateCallingCodeSafely(this.formData.tenant_official_address.country_id);
+      }
     } else {
       // Clear primary user address when unchecked
       this.formData.primary_user_address = {
@@ -200,6 +281,10 @@ export class TenantCreateModalComponent implements OnInit {
         pin_zip_code: ''
       };
       this.primaryStates = [];
+      // Reset to default calling code
+      this.phoneCodeService.resetToDefault();
+      this.cdr.markForCheck();
+      this.cdr.detectChanges();
     }
   }
 

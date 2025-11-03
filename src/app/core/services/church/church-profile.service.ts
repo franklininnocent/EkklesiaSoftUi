@@ -69,6 +69,52 @@ export class ChurchProfileService {
   }
 
   /**
+   * Upload patron image
+   */
+  uploadPatronImage(file: File): Observable<ChurchDataResponse<{ patron_image_path: string; patron_image_url: string }>> {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    return this.http.post<ChurchDataResponse<{ patron_image_path: string; patron_image_url: string }>>(
+      `${this.apiUrl}/upload-patron-image`,
+      formData
+    ).pipe(
+      tap(response => {
+        if (response.success && this.profileSubject.value) {
+          // Update profile with new image path
+          const currentProfile = this.profileSubject.value;
+          this.profileSubject.next({
+            ...currentProfile,
+            patron_image_path: response.data.patron_image_path,
+            patron_image_url: response.data.patron_image_url,
+          });
+        }
+      }),
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  /**
+   * Delete patron image
+   */
+  deletePatronImage(): Observable<ChurchDataResponse<void>> {
+    return this.http.delete<ChurchDataResponse<void>>(`${this.apiUrl}/patron-image`).pipe(
+      tap(response => {
+        if (response.success && this.profileSubject.value) {
+          // Update profile to remove image
+          const currentProfile = this.profileSubject.value;
+          this.profileSubject.next({
+            ...currentProfile,
+            patron_image_path: undefined,
+            patron_image_url: undefined,
+          });
+        }
+      }),
+      catchError(error => this.handleError(error))
+    );
+  }
+
+  /**
    * Clear profile cache
    */
   clearProfile(): void {

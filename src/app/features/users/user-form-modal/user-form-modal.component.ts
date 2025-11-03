@@ -5,7 +5,7 @@ import { User, Role, Permission, UserRequest } from '@core/models';
 import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
-import { getTenantCallingCode } from '../../../core/validators/phone.validators';
+import { PhoneCodeService } from '../../../core/services/phone-code.service';
 
 /**
  * UserFormModalComponent - Create/Edit User with Multi-Role Selection
@@ -39,6 +39,7 @@ export class UserFormModalComponent implements OnInit, OnChanges {
   private usersService = inject(UsersService);
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
+  private phoneCodeService = inject(PhoneCodeService);
 
   // Form state
   isSubmitting = false;
@@ -72,7 +73,10 @@ export class UserFormModalComponent implements OnInit, OnChanges {
   // Configuration
   passwordMinLength = 8;
   passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
-  callingCode: string = getTenantCallingCode();
+  // Phone code from unified service
+  get callingCode(): string {
+    return this.phoneCodeService.getPhoneCodeSync();
+  }
 
   ngOnInit(): void {
     this.loadRoles();

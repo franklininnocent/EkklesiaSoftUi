@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -7,6 +7,7 @@ import { map } from 'rxjs/operators';
 import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
+import { AuthService } from '@core/services';
 
 @Component({
   selector: 'app-settings',
@@ -16,6 +17,7 @@ import { selectCurrentUser } from '@core/store/auth/auth.selectors';
   styleUrl: './settings.component.scss'
 })
 export class SettingsComponent implements OnInit {
+  private authService = inject(AuthService);
   currentUser$: Observable<User | null>;
   visibleSections$: Observable<any[]>;
   
@@ -41,11 +43,18 @@ export class SettingsComponent implements OnInit {
       requiresRoleManagement: true
     },
     { 
-      title: 'Ecclesiastical Data', 
+      title: 'Ecclesiastical Data',
       description: 'Manage dioceses, bishops, and church hierarchy', 
       icon: '⛪', 
       route: '/settings/ecclesiastical',
       requiresEkklesiaRole: true
+    },
+    { 
+      title: 'Pope Details', 
+      description: 'Manage Pope image and details for General Information', 
+      icon: '👑', 
+      route: '/settings/pope',
+      requiresPermission: 'manage_pope_details'
     },
     { 
       title: 'Sacrament Types', 
@@ -194,6 +203,9 @@ export class SettingsComponent implements OnInit {
       // ONLY Tenant users (NOT Ekklesia users) can access Sacraments
       // Must have tenant_id AND must NOT have Ekklesia role
       return user !== null && user.tenant_id !== null && !this.hasEkklesiaRole(user);
+    }
+    if (section.requiresPermission) {
+      return this.authService.hasPermission(section.requiresPermission);
     }
     return true;
   }

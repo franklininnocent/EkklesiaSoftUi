@@ -102,7 +102,7 @@
             <label>BCC</label>
             <select formControlName="bcc_id" class="form-control">
               <option value="">Not Assigned</option>
-              <option *ngFor="let bcc of bccs" [value]="bcc.id">
+              <option *ngFor="let bcc of activeBCCs" [value]="bcc.id">
                 {{ bcc.name }}
               </option>
             </select>
@@ -212,17 +212,47 @@
                   <span class="meta-label">Date of Birth:</span>
                   <span class="meta-value">{{ head.date_of_birth }}</span>
                 </div>
-                <div class="meta-line" *ngIf="head.gender">
+                <div class="meta-line">
                   <span class="meta-label">Gender:</span>
-                  <span class="meta-value">{{ head.gender | titlecase }}</span>
+                  <span class="meta-value">{{ head.gender ? (head.gender | titlecase) : '—' }}</span>
                 </div>
-                <div class="meta-line" *ngIf="head.marital_status">
+                <div class="meta-line">
                   <span class="meta-label">Marital Status:</span>
-                  <span class="meta-value">{{ head.marital_status | titlecase }}</span>
+                  <span class="meta-value">{{ head.marital_status ? (head.marital_status | titlecase) : '—' }}</span>
                 </div>
-                <div class="meta-line" *ngIf="head.occupation">
+                <div class="meta-line">
                   <span class="meta-label">Occupation:</span>
-                  <span class="meta-value">{{ head.occupation }}</span>
+                  <span class="meta-value">{{ head.occupation || '—' }}</span>
+                </div>
+              </div>
+
+              <!-- Sacraments Section -->
+              <div class="head-sacraments-section" *ngIf="getCompletedSacraments(head).length > 0">
+                <div class="sacraments-header">
+                  <span class="sacraments-icon">✝️</span>
+                  <h3 class="sacraments-title">Sacraments Received</h3>
+                </div>
+                <div class="sacraments-list">
+                  <div 
+                    *ngFor="let sacrament of getCompletedSacraments(head)" 
+                    class="sacrament-item"
+                  >
+                    <div class="sacrament-name">{{ sacrament.name }}</div>
+                    <div class="sacrament-details">
+                      <span class="sacrament-date">
+                        <span class="date-icon">📅</span>
+                        {{ formatSacramentDate(sacrament.date) }}
+                      </span>
+                      <span class="sacrament-place" *ngIf="sacrament.place">
+                        <span class="place-icon">📍</span>
+                        {{ sacrament.place }}
+                      </span>
+                      <span class="sacrament-spouse" *ngIf="sacrament.spouse">
+                        <span class="spouse-icon">👤</span>
+                        With: {{ sacrament.spouse }}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -327,7 +357,7 @@
     <!-- Member Modal -->
     <app-family-member-form-modal
       *ngIf="showMemberModal"
-      [member]="memberToEditIndex !== null ? (members.at(memberToEditIndex)?.value) : null"
+      [member]="memberToEditIndex !== null ? (members.at(memberToEditIndex).value) : null"
       (save)="onMemberModalSave($event)"
       (cancel)="onMemberModalCancel()">
     </app-family-member-form-modal>

@@ -10,18 +10,21 @@ import { CardComponent, PaginationComponent, FilterPanelComponent, FilterPanelCo
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { RoleFormModalComponent } from './role-form-modal/role-form-modal.component';
 import { AssignPermissionsModalComponent } from './assign-permissions-modal/assign-permissions-modal.component';
+import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/pope-details-management.component';
+import { take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent],
+  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss'
 })
 export class RolesPermissionsComponent implements OnInit {
   @ViewChild('assignModal') assignModalRef!: AssignPermissionsModalComponent;
   
-  activeTab: 'roles' | 'permissions' | 'assign' = 'roles';
+  activeTab: 'roles' | 'permissions' | 'assign' | 'pope' = 'roles';
+  hasEkklesiaRole = false;
   
   // Filter Panel State
   showRolesFilterPanel = false;
@@ -108,14 +111,50 @@ export class RolesPermissionsComponent implements OnInit {
   ngOnInit(): void {
     this.loadRoles();
     this.loadPermissions();
+    this.checkEkklesiaRole();
+  }
+
+  /**
+   * Check if user has Ekklesia role to show Pope tab
+   */
+  private checkEkklesiaRole(): void {
+    // Check immediately first
+    this.updateEkklesiaRole(this.authService.currentUserValue);
+    
+    // Also subscribe to user changes
+    this.authService.currentUser$.pipe(take(1)).subscribe(user => {
+      this.updateEkklesiaRole(user);
+      this.cdr.detectChanges();
+    });
+  }
+
+  private updateEkklesiaRole(user: any): void {
+    if (!user) {
+      this.hasEkklesiaRole = false;
+      return;
+    }
+
+    // Check if user has Ekklesia role flag (primary check)
+    if (user.has_ekklesia_role === true) {
+      this.hasEkklesiaRole = true;
+      return;
+    }
+
+    // Fallback: Check for Ekklesia roles by name
+    const ekklesiaRoles = ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'];
+    this.hasEkklesiaRole = 
+      ekklesiaRoles.includes(user.role_name || '') ||
+      ekklesiaRoles.includes(user.role?.name || '') ||
+      this.authService.isEkklesiaAdmin() ||
+      this.authService.isSuperAdmin();
   }
 
   // Tab Management
-  selectTab(tab: 'roles' | 'permissions' | 'assign'): void {
+  selectTab(tab: 'roles' | 'permissions' | 'assign' | 'pope'): void {
     this.activeTab = tab;
   }
 
-  isActiveTab(tab: 'roles' | 'permissions' | 'assign'): boolean {
+  isActiveTab(tab: 'roles' | 'permissions' | 'assign' | 'pope'): boolean {
     return this.activeTab === tab;
   }
 

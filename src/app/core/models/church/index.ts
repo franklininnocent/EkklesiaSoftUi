@@ -86,6 +86,9 @@ export interface ChurchProfile {
   mission?: string;
   core_values?: string;
   service_times?: string;
+  patron_name?: string;
+  patron_image_path?: string;
+  patron_image_url?: string;
   created_at?: string;
   updated_at?: string;
   // Relationships
@@ -239,5 +242,25 @@ export interface UpdateChurchProfileRequest {
   mission?: string;
   core_values?: string;
   service_times?: string;
+  patron_name?: string;
+}
+
+/**
+ * Pope Details Model
+ * Represents global Pope information for display in General Information section.
+ * Pope data is global (not tenant-specific).
+ */
+export interface PopeDetails {
+  pope_name: string | null;
+  pope_image_path: string | null;
+  pope_image_url: string | null;
+  pope_title: string | null;
+  pope_effective_from: string | null;
+}
+
+export interface UpdatePopeDetailsRequest {
+  pope_name: string;
+  pope_title?: string;
+  pope_effective_from?: string;
 }
 

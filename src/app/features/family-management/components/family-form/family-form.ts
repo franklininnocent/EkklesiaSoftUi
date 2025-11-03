@@ -2,9 +2,11 @@ import { Component, Input, Output, EventEmitter, OnInit, ViewChild, ElementRef, 
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
 import { FamilyService } from '../../../../core/services/family.service';
+import { BCCService } from '../../../../core/services/bcc.service';
 import { Family, BCC } from '../../../../core/models/family.model';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
-import { tenantPhoneValidator, getTenantCallingCode } from '../../../../core/validators/phone.validators';
+import { tenantPhoneValidator } from '../../../../core/validators/phone.validators';
+import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
 
 @Component({
@@ -16,7 +18,7 @@ import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../
 })
 export class FamilyFormComponent implements OnInit, AfterViewInit {
   @Input() family: Family | null = null;
-  @Input() bccs: BCC[] = [];
+  @Input() bccs: BCC[] = []; // Optional: if parent provides BCCs, use them; otherwise load independently
   @Output() save = new EventEmitter<any>();
   @Output() cancel = new EventEmitter<void>();
 
@@ -26,8 +28,12 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
   error: string | null = null;
   showMemberModal = false;
   memberToEditIndex: number | null = null;
-  callingCode: string = getTenantCallingCode();
+  // Phone code from unified service
+  get callingCode(): string {
+    return this.phoneCodeService.getPhoneCodeSync();
+  }
   expandedMemberIndexes: Set<number> = new Set();
+  activeBCCs: BCC[] = []; // Store active BCCs for dropdown
 
   @ViewChild('infoTabContent', { static: false }) infoTabContentRef!: ElementRef<HTMLDivElement>;
   @ViewChild('headTabContent', { static: false }) headTabContentRef!: ElementRef<HTMLDivElement>;
@@ -38,7 +44,9 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
 
   constructor(
     private fb: FormBuilder,
-    private familyService: FamilyService
+    private familyService: FamilyService,
+    private bccService: BCCService,
+    private phoneCodeService: PhoneCodeService
   ) {
     this.familyForm = this.fb.group({
       family_name: ['', Validators.required],
@@ -58,11 +66,38 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
   }
 
   ngOnInit(): void {
+    // Load active BCCs first, then patch form (important for edit mode)
+    if (this.bccs && this.bccs.length > 0) {
+      // Filter to only active BCCs (status is string: 'active', 'inactive', or 'suspended')
+      this.activeBCCs = this.bccs.filter(bcc => bcc.status === 'active');
+      // Patch form after BCCs are ready
+      this.patchFormData();
+    } else {
+      // Load active BCCs independently, then patch form
+      this.loadActiveBCCs();
+    }
+  }
+
+  /**
+   * Patch form with family data after BCCs are loaded
+   */
+  private patchFormData(): void {
     if (this.family) {
-      this.familyForm.patchValue(this.family);
+      // Extract bcc_id - handle both bcc_id and nested bcc.id
+      const bccId = this.family.bcc_id || this.family.bcc?.id || null;
+      
+      // Patch form values
+      const formValue = {
+        ...this.family,
+        bcc_id: bccId
+      };
+      
+      this.familyForm.patchValue(formValue);
+      
       if (this.family.updated_at) {
         this.familyForm.get('updated_at')?.setValue(this.family.updated_at);
       }
+      
       // Load existing members
       if (this.family.members && this.family.members.length > 0) {
         this.family.members.forEach(member => this.addMember(member));
@@ -304,6 +339,9 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
       }
       
       // If head_of_family is specified but we can't match any member, return a mock object
+      if (!this.family) {
+        return null;
+      }
       return {
         first_name: this.family.head_of_family,
         last_name: '',
@@ -430,7 +468,12 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     if (this.familyForm.valid) {
       this.loading = true;
       this.error = null;
-      const formData = this.familyForm.value;
+      const formData = { ...this.familyForm.value };
+      
+      // Convert empty bcc_id string to null for proper backend handling
+      if (formData.bcc_id === '' || formData.bcc_id === null) {
+        formData.bcc_id = null;
+      }
 
       const apiCall = this.family
         ? this.familyService.updateFamily(this.family.id, formData)
@@ -505,5 +548,95 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
   hasMemberError(index: number, controlName: string): boolean {
     const control = this.members.at(index).get(controlName);
     return !!(control && control.invalid && control.touched);
+  }
+
+  /**
+   * Get all completed sacraments for a person with their dates
+   * Returns array of { name: string; date: string; place?: string; spouse?: string } objects
+   */
+  getCompletedSacraments(person: any): Array<{ name: string; date: string; place?: string; spouse?: string }> {
+    const sacraments: Array<{ name: string; date: string; place?: string; spouse?: string }> = [];
+
+    // Baptism
+    if (person.baptism_date) {
+      sacraments.push({
+        name: 'Baptism',
+        date: person.baptism_date,
+        place: person.baptism_place
+      });
+    }
+
+    // First Communion
+    if (person.first_communion_date) {
+      sacraments.push({
+        name: 'First Communion',
+        date: person.first_communion_date,
+        place: person.first_communion_place
+      });
+    }
+
+    // Confirmation
+    if (person.confirmation_date) {
+      sacraments.push({
+        name: 'Confirmation',
+        date: person.confirmation_date,
+        place: person.confirmation_place
+      });
+    }
+
+    // Marriage (if applicable)
+    if (person.marriage_date) {
+      sacraments.push({
+        name: 'Marriage',
+        date: person.marriage_date,
+        place: person.marriage_place,
+        spouse: person.marriage_spouse_name
+      });
+    }
+
+    // Sort by date (oldest first)
+    return sacraments.sort((a, b) => {
+      const dateA = new Date(a.date);
+      const dateB = new Date(b.date);
+      return dateA.getTime() - dateB.getTime();
+    });
+  }
+
+  /**
+   * Format date for display (converts YYYY-MM-DD to readable format)
+   */
+  formatSacramentDate(dateString: string): string {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch {
+      return dateString;
+    }
+  }
+
+  /**
+   * Load active BCCs for dropdown
+   */
+  private loadActiveBCCs(): void {
+    this.bccService.getBCCs({ status: 'active', per_page: 1000 }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.activeBCCs = response.data;
+          // Patch form after BCCs are loaded
+          this.patchFormData();
+        }
+      },
+      error: (error) => {
+        console.error('Failed to load active BCCs:', error);
+        this.activeBCCs = [];
+        // Still patch form even if BCCs fail to load
+        this.patchFormData();
+      }
+    });
   }
 }

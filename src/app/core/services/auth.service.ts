@@ -189,7 +189,15 @@ export class AuthService {
    * @returns True if user is Super Admin, false otherwise
    */
   isSuperAdmin(): boolean {
-    return this.hasRole('Super Admin');
+    const user = this.currentUserValue;
+    if (!user) return false;
+    
+    // Check both formats for compatibility
+    return this.hasRole('SuperAdmin') || 
+           this.hasRole('Super Admin') ||
+           user.role_name === 'SuperAdmin' ||
+           user.role?.name === 'SuperAdmin' ||
+           user.has_ekklesia_role === true;
   }
 
   /**
@@ -198,7 +206,15 @@ export class AuthService {
    * @returns True if user is Ekklesia Admin, false otherwise
    */
   isEkklesiaAdmin(): boolean {
-    return this.hasRole('Ekklesia Admin');
+    const user = this.currentUserValue;
+    if (!user) return false;
+    
+    // Check both formats for compatibility
+    return this.hasRole('EkklesiaAdmin') || 
+           this.hasRole('Ekklesia Admin') ||
+           user.role_name === 'EkklesiaAdmin' ||
+           user.role?.name === 'EkklesiaAdmin' ||
+           user.has_ekklesia_role === true;
   }
 
   /**

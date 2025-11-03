@@ -30,7 +30,9 @@ export class ArchdioceseService {
    * Get all active archdioceses with optional filters
    */
   getArchdioceses(filters?: {
-    country?: string;
+    country?: string; // Legacy support
+    country_id?: number;
+    state_id?: number;
     denomination_id?: number;
     search?: string;
   }): Observable<ChurchListResponse<Archdiocese>> {
@@ -39,6 +41,12 @@ export class ArchdioceseService {
     let params = new HttpParams();
     if (filters?.country) {
       params = params.set('country', filters.country);
+    }
+    if (filters?.country_id) {
+      params = params.set('country_id', filters.country_id.toString());
+    }
+    if (filters?.state_id) {
+      params = params.set('state_id', filters.state_id.toString());
     }
     if (filters?.denomination_id) {
       params = params.set('denomination_id', filters.denomination_id.toString());

@@ -31,6 +31,14 @@
         <span class="tab-icon">🔗</span>
         <span class="tab-text">Assign Permissions</span>
       </button>
+      <button 
+        *ngIf="hasEkklesiaRole"
+        class="tab-item" 
+        [class.active]="isActiveTab('pope')"
+        (click)="selectTab('pope')">
+        <span class="tab-icon">👑</span>
+        <span class="tab-text">Pope Details</span>
+      </button>
     </div>
   </div>
 
@@ -706,6 +714,11 @@
         </div>
       </div>
     </app-card>
+  </div>
+
+  <!-- Pope Details Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'pope' && hasEkklesiaRole">
+    <app-pope-details-management></app-pope-details-management>
   </div>
 </div>
 

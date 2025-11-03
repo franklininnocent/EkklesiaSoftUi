@@ -4,14 +4,13 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { BishopService, DioceseService } from '@core/services/ecclesiastical';
 import { Bishop, BishopCreateRequest, BishopUpdateRequest } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
-import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-bishop-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingSpinnerComponent],
+  imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './bishop-form-modal.component.html',
   styleUrl: './bishop-form-modal.component.scss'
 })

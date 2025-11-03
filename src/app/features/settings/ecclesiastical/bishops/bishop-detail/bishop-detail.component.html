@@ -42,7 +42,7 @@
     <div class="header-info">
       <h1 class="detail-title">{{ bishop.full_name }}</h1>
       <p class="bishop-title" *ngIf="bishop.ecclesiastical_title">
-        {{ bishop.ecclesiastical_title?.name }}
+        {{ bishop.ecclesiastical_title.name }}
       </p>
       <div class="header-badges">
         <span [class]="getStatusBadgeClass(bishop.status)">
@@ -52,7 +52,7 @@
           🌍 {{ bishop.nationality }}
         </span>
         <span class="info-badge" *ngIf="bishop.religious_order">
-          {{ bishop.religious_order?.abbreviation || bishop.religious_order?.name }}
+          {{ bishop.religious_order.abbreviation || bishop.religious_order.name }}
         </span>
       </div>
     </div>
@@ -126,9 +126,9 @@
         <div class="info-item" *ngIf="bishop.religious_order">
           <span class="info-label">Religious Order</span>
           <span class="info-value">
-            {{ bishop.religious_order?.name }}
-            <span *ngIf="bishop.religious_order?.abbreviation" class="order-abbrev">
-              ({{ bishop.religious_order?.abbreviation }})
+            {{ bishop.religious_order.name }}
+            <span *ngIf="bishop.religious_order.abbreviation" class="order-abbrev">
+              ({{ bishop.religious_order.abbreviation }})
             </span>
           </span>
         </div>
@@ -160,9 +160,9 @@
         <div class="diocese-header">
           <div class="diocese-icon">⛪</div>
           <div class="diocese-info">
-            <h3 class="diocese-name">{{ bishop.archdiocese?.name }}</h3>
+            <h3 class="diocese-name">{{ bishop.archdiocese.name }}</h3>
             <p class="diocese-type">
-              {{ bishop.archdiocese?.is_archdiocese ? 'Archdiocese' : 'Diocese' }}
+              {{ bishop.archdiocese.is_archdiocese ? 'Archdiocese' : 'Diocese' }}
             </p>
           </div>
         </div>

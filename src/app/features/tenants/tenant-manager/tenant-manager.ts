@@ -6,7 +6,6 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TenantCreateModalComponent } from '../tenant-create-modal/tenant-create-modal';
-import { ConfirmationModalComponent, ConfirmationResult, PaginationComponent } from '@shared/components';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
@@ -19,9 +18,7 @@ import { environment } from '@environments/environment';
   standalone: true,
   imports: [
     CommonModule,
-    TenantCreateModalComponent,
-    ConfirmationModalComponent,
-    PaginationComponent
+    TenantCreateModalComponent
   ],
   templateUrl: './tenant-manager.html',
   styleUrls: ['./tenant-manager.scss']
@@ -47,13 +44,6 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   // Sorting state
   sortColumn: string = '';
   sortDirection: 'asc' | 'desc' | null = null;
-
-  // Confirmation modal state
-  showConfirmationModal = false;
-  confirmationTitle = '';
-  confirmationMessage = '';
-  confirmButtonClass = '';
-  private pendingStatusChange: { tenant: Tenant; newStatus: 0 | 1; checkbox: HTMLInputElement } | null = null;
 
   constructor() {}
 
@@ -266,133 +256,6 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Toggle tenant active status - Shows confirmation modal first
-   */
-  toggleTenantStatus(tenant: Tenant, event: Event): void {
-    const checkbox = event.target as HTMLInputElement;
-    const newStatus = checkbox.checked ? 1 : 0;
-    
-    // Prevent multiple simultaneous toggles
-    if (tenant.isTogglingStatus) {
-      checkbox.checked = tenant.active === 1;
-      return;
-    }
-
-    // Store pending change
-    this.pendingStatusChange = { tenant, newStatus, checkbox };
-
-    // Configure confirmation modal based on action
-    if (newStatus === 1) {
-      this.confirmationTitle = 'Activate Tenant';
-      this.confirmationMessage = `Are you sure you want to activate "${tenant.name}"? This will enable all services for this tenant.`;
-      this.confirmButtonClass = 'btn-success';
-    } else {
-      this.confirmationTitle = 'Deactivate Tenant';
-      this.confirmationMessage = `Are you sure you want to deactivate "${tenant.name}"? This will disable all services for this tenant.`;
-      this.confirmButtonClass = 'btn-danger';
-    }
-
-    // Show confirmation modal
-    this.showConfirmationModal = true;
-  }
-
-  /**
-   * Handle confirmation modal result
-   */
-  onConfirmStatusChange(result: ConfirmationResult): void {
-    this.showConfirmationModal = false;
-
-    if (!result.confirmed || !this.pendingStatusChange) {
-      // User cancelled - revert checkbox
-      if (this.pendingStatusChange) {
-        this.pendingStatusChange.checkbox.checked = this.pendingStatusChange.tenant.active === 1;
-      }
-      this.pendingStatusChange = null;
-      return;
-    }
-
-    const { tenant, newStatus, checkbox } = this.pendingStatusChange;
-    const statusText = newStatus === 1 ? 'activated' : 'deactivated';
-    const description = result.description;
-
-    // Set loading state
-    tenant.isTogglingStatus = true;
-
-    this.tenantService.updateTenantStatus(tenant.id, newStatus, description)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            // Update local tenant object
-            tenant.active = newStatus;
-            
-            // Show success toast
-            this.toastService.success(
-              `${tenant.name} has been ${statusText} successfully`,
-              'Status Updated'
-            );
-            
-            console.log(`Tenant ${tenant.name} status updated to ${statusText}`, {
-              description: description || 'No description provided'
-            });
-          } else {
-            // Revert checkbox on failure
-            checkbox.checked = tenant.active === 1;
-            
-            // Show error toast
-            this.toastService.error(
-              response.message || 'Failed to update tenant status',
-              'Update Failed'
-            );
-            
-            this.error = response.message || 'Failed to update tenant status';
-          }
-          tenant.isTogglingStatus = false;
-          this.pendingStatusChange = null;
-        },
-        error: (err) => {
-          // Revert checkbox on error
-          checkbox.checked = tenant.active === 1;
-          
-          // Show error toast
-          const errorMessage = err.error?.message || 'Failed to update tenant status. Please try again.';
-          this.toastService.error(errorMessage, 'Error');
-          
-          this.error = errorMessage;
-          tenant.isTogglingStatus = false;
-          this.pendingStatusChange = null;
-          console.error('Error updating tenant status:', err);
-        }
-      });
-  }
-
-  /**
-   * Handle confirmation modal cancellation
-   */
-  onCancelStatusChange(): void {
-    this.showConfirmationModal = false;
-    
-    // Revert checkbox
-    if (this.pendingStatusChange) {
-      this.pendingStatusChange.checkbox.checked = this.pendingStatusChange.tenant.active === 1;
-      this.pendingStatusChange = null;
-    }
-  }
-
-  /**
-   * Pagination event handlers
-   */
-  onPageChange(page: number): void {
-    this.currentPage = page;
-    this.applyFilters();
-  }
-
-  onPageSizeChange(size: number): void {
-    this.pageSize = size;
-    this.currentPage = 1; // Reset to first page
-    this.applyFilters();
-  }
 
   /**
    * Helper methods for pagination

@@ -1,3 +1,5 @@
+@use '../../../../shared/styles/form-validation' as *;
+
 // Modal Overlay
 .modal-overlay {
   position: fixed;
@@ -14,8 +16,6 @@
   padding: var(--spacing-lg);
   animation: fadeIn 0.2s ease-out;
 }
-
-@import '../../../../shared/styles/form-validation';
 
 @keyframes fadeIn {
   from {

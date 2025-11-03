@@ -16,6 +16,10 @@ export const SETTINGS_ROUTES: Routes = [
   {
     path: 'sacraments',
     loadChildren: () => import('./sacraments/sacraments.routes').then(m => m.SACRAMENTS_ROUTES)
+  },
+  {
+    path: 'pope',
+    loadComponent: () => import('./pope-settings/pope-settings.component').then(m => m.PopeSettingsComponent)
   }
 ];
 

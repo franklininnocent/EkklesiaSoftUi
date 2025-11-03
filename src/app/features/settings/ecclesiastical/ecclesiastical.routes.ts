@@ -42,6 +42,11 @@ export const ECCLESIASTICAL_ROUTES: Routes = [
         path: 'sacrament-types',
         loadComponent: () => import('./sacrament-types/components/sacrament-type-list/sacrament-type-list.component')
           .then(m => m.SacramentTypeListComponent)
+      },
+      {
+        path: 'pope-details',
+        loadComponent: () => import('./pope-details/pope-details-management.component')
+          .then(m => m.PopeDetailsManagementComponent)
       }
     ]
   }

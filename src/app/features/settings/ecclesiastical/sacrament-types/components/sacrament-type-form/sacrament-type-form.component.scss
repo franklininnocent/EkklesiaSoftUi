@@ -1,4 +1,4 @@
-@import '../../../../../../shared/styles/form-validation';
+@use '../../../../../../shared/styles/form-validation' as *;
 
 .modal-overlay {
   position: fixed;

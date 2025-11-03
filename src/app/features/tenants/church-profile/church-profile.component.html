@@ -2,32 +2,16 @@
   <!-- Page Header -->
   <div class="page-header">
     <div class="header-content">
-      <h1 class="page-title">
-        <span class="title-icon">⛪</span>
-        Church Management
-      </h1>
-      <p class="page-subtitle">Manage your church profile, leadership, statistics, and social media</p>
-    </div>
-  </div>
-
-  <!-- Loading State -->
-  <div *ngIf="loading && !churchProfile" class="state-card loading-state">
-    <div class="spinner"></div>
-    <p>Loading church data...</p>
-  </div>
-
-  <!-- Error State -->
-  <div *ngIf="error && !loading" class="state-card error-state">
-    <span class="state-icon">⚠️</span>
-    <h3>Error Loading Data</h3>
-    <p>{{ error }}</p>
-  </div>
-
-  <!-- Main Content -->
-  <div *ngIf="!loading && churchProfile" class="content-wrapper">
-    
-    <!-- Tab Navigation -->
-    <div class="tab-navigation">
+      <div class="header-title-section">
+        <h1 class="page-title">
+          <span class="title-icon">⛪</span>
+          Church Management
+        </h1>
+        <p class="page-subtitle">Manage your church profile, leadership, statistics, and social media</p>
+      </div>
+      
+      <!-- Tab Navigation -->
+      <div class="tab-navigation" *ngIf="!loading && churchProfile">
       <button 
         class="tab-btn" 
         [class.active]="activeTab === 'profile'"
@@ -59,8 +43,26 @@
         <span class="tab-label">Social Media</span>
         <span class="tab-badge" *ngIf="socialMedia.length > 0">{{ socialMedia.length }}</span>
       </button>
+      </div>
     </div>
+  </div>
 
+  <!-- Loading State -->
+  <div *ngIf="loading && !churchProfile" class="state-card loading-state">
+    <div class="spinner"></div>
+    <p>Loading church data...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="state-card error-state">
+    <span class="state-icon">⚠️</span>
+    <h3>Error Loading Data</h3>
+    <p>{{ error }}</p>
+  </div>
+
+  <!-- Main Content -->
+  <div *ngIf="!loading && churchProfile" class="content-wrapper">
+    
     <!-- Tab Content -->
     <div class="tab-content">
       
@@ -72,30 +74,99 @@
         <!-- Church Identity Section -->
         <div class="section-card">
           <div class="identity-overview">
-            <div class="church-logo-section">
-              <div class="logo-display">
-                <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name">
-                <span *ngIf="!churchProfile.logo_full_url" class="logo-placeholder">⛪</span>
+            <div class="identity-main">
+              <div class="church-logo-section">
+                <div class="logo-display">
+                  <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name">
+                  <span *ngIf="!churchProfile.logo_full_url" class="logo-placeholder">⛪</span>
+                </div>
+              </div>
+              <div class="identity-info">
+                <h3 class="church-name">{{ churchProfile.name }}</h3>
+                <p class="church-slogan" *ngIf="churchProfile.slogan">{{ churchProfile.slogan }}</p>
+                <div class="church-badges">
+                  <span class="badge" [class.badge-success]="churchProfile.active === 1" [class.badge-danger]="churchProfile.active === 0">
+                    {{ churchProfile.active === 1 ? '✓ Active' : '✗ Inactive' }}
+                  </span>
+                  <span class="badge badge-info">{{ churchProfile.plan | uppercase }}</span>
+                  <span class="badge" *ngIf="extendedProfile && extendedProfile.founded_year">📅 Founded {{ extendedProfile.founded_year }}</span>
+                </div>
               </div>
             </div>
-            <div class="identity-info">
-              <h3 class="church-name">{{ churchProfile.name }}</h3>
-              <p class="church-slogan" *ngIf="churchProfile.slogan">{{ churchProfile.slogan }}</p>
-              <div class="church-badges">
-                <span class="badge" [class.badge-success]="churchProfile.active === 1" [class.badge-danger]="churchProfile.active === 0">
-                  {{ churchProfile.active === 1 ? '✓ Active' : '✗ Inactive' }}
-                </span>
-                <span class="badge badge-info">{{ churchProfile.plan | uppercase }}</span>
-                <span class="badge" *ngIf="extendedProfile && extendedProfile.founded_year">📅 Since {{ extendedProfile.founded_year }}</span>
+            
+            <!-- Patron Saint (Center/Middle) -->
+            <div class="identity-patron" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
+              <div class="patron-display">
+                <div class="patron-image-wrapper">
+                  <div class="patron-image-container">
+                    <img 
+                      *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path" 
+                      [src]="getPatronImageUrlWithFallback()" 
+                      [alt]="extendedProfile.patron_name || 'Patron Saint'"
+                      class="patron-image"
+                      loading="lazy"
+                      (error)="handlePatronImageError($event)"
+                    />
+                    <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" class="patron-image-placeholder">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+                <div class="patron-info">
+                  <div class="patron-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Contact Information (Right Side) -->
+            <div class="identity-contact">
+              <div class="contact-item" *ngIf="extendedProfile?.phone || churchProfile.primary_contact?.contact_number">
+                <div class="contact-icon">📞</div>
+                <div class="contact-details">
+                  <span class="contact-label">Phone</span>
+                  <a [href]="'tel:' + (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || '')" class="contact-value contact-link">
+                    {{ extendedProfile?.phone || churchProfile.primary_contact?.contact_number }}
+                  </a>
+                </div>
+              </div>
+              
+              <div class="contact-item" *ngIf="extendedProfile?.email || churchProfile.primary_contact?.email">
+                <div class="contact-icon">✉️</div>
+                <div class="contact-details">
+                  <span class="contact-label">Email</span>
+                  <a [href]="'mailto:' + (extendedProfile?.email || churchProfile.primary_contact?.email || '')" class="contact-value contact-link">
+                    {{ extendedProfile?.email || churchProfile.primary_contact?.email }}
+                  </a>
+                </div>
+              </div>
+              
+              <div class="contact-item" *ngIf="getWebsiteUrl()">
+                <div class="contact-icon">🔗</div>
+                <div class="contact-details">
+                  <span class="contact-label">Website</span>
+                  <a [href]="getWebsiteUrl()" target="_blank" rel="noopener" class="contact-value contact-link">
+                    {{ formatWebsiteUrl(getWebsiteUrl()) }}
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- General + Contact Information (Read-only display) -->
-        <div class="section-card">
+        <!-- General & Contact Information + Diocese Details (Merged Section) -->
+        <div class="section-card merged-section">
           <div class="section-header">
-            <h2>General & Contact Information</h2>
+            <div class="section-header-content">
+              <div class="section-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+              <h2>General & Contact Information</h2>
+            </div>
             <div class="section-actions" *ngIf="canEdit">
               <button 
                 class="btn-3d-action btn-3d-edit" 
@@ -116,51 +187,135 @@
           <div *ngSwitchCase="'summary'" class="info-panels">
             <div class="panel summary-panel">
               <div class="summary-header">
-                <div class="summary-title">{{ getDenominationName() }}</div>
-                <div class="summary-subtitle">{{ getArchdioceseName() }}</div>
+                <div class="summary-title">
+                  <span class="summary-label">Denomination:</span>
+                  {{ getDenominationName() }}
+                </div>
+                <div class="summary-subtitle">
+                  <span class="summary-label">Diocese:</span>
+                  <span class="summary-value">{{ getArchdioceseName() }}</span>
+                </div>
               </div>
               <div class="summary-badges">
                 <span class="pill">📅 Founded: {{ extendedProfile?.founded_year || 'Not Set' }}</span>
                 <span class="pill">🌍 {{ getTenantCountry() }}</span>
-                <span class="pill">📦 {{ (churchProfile?.plan || 'Unknown') | titlecase }}</span>
-                <span class="pill" [class.pill-success]="churchProfile?.active === 1" [class.pill-danger]="churchProfile?.active === 0">
+                <span class="pill">📦 {{ (churchProfile.plan || 'Unknown') | titlecase }}</span>
+                <span class="pill" [class.pill-success]="churchProfile.active === 1" [class.pill-danger]="churchProfile.active === 0">
                   {{ getStatusText() }}
                 </span>
               </div>
             </div>
 
-            <div class="panel details-panel">
-              <ul class="details-list">
-                <li class="detail-item">
-                  <span class="detail-icon">📞</span>
-                  <div class="detail-content">
-                    <span class="detail-label">Phone</span>
-                    <span class="detail-value">{{ (extendedProfile?.phone || churchProfile?.primary_contact?.contact_number || 'Not Set') }}</span>
+            <!-- Papal Image & Details Panel -->
+            <div class="panel pope-panel" *ngIf="popeDetails && (popeDetails.pope_name || popeDetails.pope_image_url || popeDetails.pope_image_path)">
+              <div class="pope-content">
+                <div class="pope-image-wrapper">
+                  <div class="pope-image-container">
+                    <img 
+                      *ngIf="getPopeImageUrl('300x300')" 
+                      [src]="getPopeImageUrl('300x300')" 
+                      [alt]="getPopeName()"
+                      class="pope-image"
+                      loading="lazy"
+                      (error)="handlePopeImageError($event)"
+                    />
+                    <div *ngIf="!getPopeImageUrl('300x300')" class="pope-image-placeholder">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                    </div>
                   </div>
-                </li>
-                <li class="detail-item">
-                  <span class="detail-icon">✉️</span>
-                  <div class="detail-content">
-                    <span class="detail-label">Email</span>
-                    <span class="detail-value">{{ (extendedProfile?.email || churchProfile?.primary_contact?.email || 'Not Set') }}</span>
+                </div>
+                <div class="pope-info">
+                  <div class="pope-name">{{ getPopeName() }}</div>
+                  <div class="pope-title" *ngIf="popeDetails?.pope_title">{{ popeDetails.pope_title }}</div>
+                  <div class="pope-date" *ngIf="popeDetails?.pope_effective_from">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    Since {{ formatDate(popeDetails.pope_effective_from) }}
                   </div>
-                </li>
-                <li class="detail-item">
-                  <span class="detail-icon">🔗</span>
-                  <div class="detail-content">
-                    <span class="detail-label">Website</span>
-                    <span class="detail-value">
-                      <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ extendedProfile?.website }}</a>
-                      <span *ngIf="!extendedProfile?.website">Not Set</span>
-                    </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Patron Image & Details Panel -->
+            <div class="panel patron-panel" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
+              <div class="patron-content">
+                <div class="patron-image-wrapper">
+                  <div class="patron-image-container">
+                    <img 
+                      *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path" 
+                      [src]="getPatronImageUrlWithFallback()" 
+                      [alt]="extendedProfile.patron_name || 'Patron Saint'"
+                      class="patron-image"
+                      loading="lazy"
+                      (error)="handlePatronImageError($event)"
+                    />
+                    <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" 
+                         class="patron-image-placeholder">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                      </svg>
+                    </div>
                   </div>
-                </li>
-              </ul>
+                </div>
+                <div class="patron-info">
+                  <div class="patron-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
+                </div>
+              </div>
             </div>
           </div>
 
           <!-- Variant: Tiles -->
           <div *ngSwitchCase="'tiles'" class="tiles-layout">
+            <!-- Papal Image Tile -->
+            <div class="tile pope-tile" *ngIf="popeDetails && (popeDetails.pope_name || popeDetails.pope_image_url)">
+              <div class="pope-tile-image">
+                <img 
+                  *ngIf="getPopeImageUrl('128x128')" 
+                  [src]="getPopeImageUrl('128x128')" 
+                  [alt]="getPopeName()"
+                  class="pope-thumbnail"
+                  loading="lazy"
+                />
+                <div *ngIf="!getPopeImageUrl('128x128')" class="pope-thumbnail-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+              </div>
+              <div class="tile-label">Pope</div>
+              <div class="tile-value">{{ getPopeName() }}</div>
+              <div class="tile-subvalue" *ngIf="popeDetails?.pope_title">{{ popeDetails.pope_title }}</div>
+            </div>
+            
+            <!-- Patron Image Tile -->
+            <div class="tile patron-tile" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
+              <div class="patron-tile-image">
+                <img 
+                  *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path" 
+                  [src]="getPatronImageUrl('128x128') || getPatronImageUrl('original') || extendedProfile.patron_image_url || getPatronImagePathUrl()" 
+                  [alt]="extendedProfile.patron_name || 'Patron Saint'"
+                  class="patron-thumbnail"
+                  loading="lazy"
+                  (error)="handlePatronImageError($event)"
+                />
+                <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" class="patron-thumbnail-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                  </svg>
+                </div>
+              </div>
+              <div class="tile-label">Patron</div>
+              <div class="tile-value">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
+            </div>
+            
             <div class="tile">
               <div class="tile-label">Denomination</div>
               <div class="tile-value">{{ getDenominationName() }}</div>
@@ -179,11 +334,11 @@
             </div>
             <div class="tile">
               <div class="tile-label">Phone</div>
-              <div class="tile-value">{{ (extendedProfile?.phone || churchProfile?.primary_contact?.contact_number || 'Not Set') }}</div>
+              <div class="tile-value">{{ (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || 'Not Set') }}</div>
             </div>
             <div class="tile">
               <div class="tile-label">Email</div>
-              <div class="tile-value">{{ (extendedProfile?.email || churchProfile?.primary_contact?.email || 'Not Set') }}</div>
+              <div class="tile-value">{{ (extendedProfile?.email || churchProfile.primary_contact?.email || 'Not Set') }}</div>
             </div>
             <div class="tile full">
               <div class="tile-label">Website</div>
@@ -197,6 +352,40 @@
           <!-- Variant: Definition List -->
           <div *ngSwitchCase="'definition'" class="definitions-layout">
             <dl>
+              <div class="row pope-row" *ngIf="popeDetails && (popeDetails.pope_name || popeDetails.pope_image_url)">
+                <dt>Pope</dt>
+                <dd>
+                  <div class="pope-definition-content">
+                    <div class="pope-definition-image" *ngIf="getPopeImageUrl('128x128')">
+                      <img [src]="getPopeImageUrl('128x128')" [alt]="getPopeName()" loading="lazy" />
+                    </div>
+                    <div class="pope-definition-info">
+                      <div class="pope-definition-name">{{ getPopeName() }}</div>
+                      <div class="pope-definition-title" *ngIf="popeDetails?.pope_title">{{ popeDetails.pope_title }}</div>
+                      <div class="pope-definition-date" *ngIf="popeDetails?.pope_effective_from">
+                        Since {{ formatDate(popeDetails.pope_effective_from) }}
+                      </div>
+                    </div>
+                  </div>
+                </dd>
+              </div>
+              <div class="row patron-row" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
+                <dt>Patron</dt>
+                <dd>
+                  <div class="patron-definition-content">
+                    <div class="patron-definition-image" *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path">
+                      <img 
+                        [src]="getPatronImageUrl('128x128') || getPatronImageUrl('original') || extendedProfile.patron_image_url || getPatronImagePathUrl()" 
+                        [alt]="extendedProfile.patron_name || 'Patron Saint'" 
+                        loading="lazy"
+                        (error)="handlePatronImageError($event)" />
+                    </div>
+                    <div class="patron-definition-info">
+                      <div class="patron-definition-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
+                    </div>
+                  </div>
+                </dd>
+              </div>
               <div class="row">
                 <dt>Denomination</dt>
                 <dd>{{ getDenominationName() }}</dd>
@@ -215,16 +404,16 @@
               </div>
               <div class="row">
                 <dt>Phone</dt>
-                <dd>{{ (extendedProfile?.phone || churchProfile?.primary_contact?.contact_number || 'Not Set') }}</dd>
+                <dd>{{ (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || 'Not Set') }}</dd>
               </div>
               <div class="row">
                 <dt>Email</dt>
-                <dd>{{ (extendedProfile?.email || churchProfile?.primary_contact?.email || 'Not Set') }}</dd>
+                <dd>{{ (extendedProfile?.email || churchProfile.primary_contact?.email || 'Not Set') }}</dd>
               </div>
               <div class="row">
                 <dt>Website</dt>
                 <dd>
-                  <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ extendedProfile?.website }}</a>
+                  <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ formatWebsiteUrl(extendedProfile?.website) }}</a>
                   <span *ngIf="!extendedProfile?.website">Not Set</span>
                 </dd>
               </div>
@@ -232,9 +421,138 @@
           </div>
 
           </ng-container>
-        </div>
 
-        <!-- Contact Information section removed; combined into General & Contact above -->
+          <!-- Diocese Details (within merged section) -->
+          <div class="diocese-details-divider" *ngIf="extendedProfile?.bishop">
+            <div class="divider-line"></div>
+            <div class="divider-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+              <span>Diocese Details</span>
+            </div>
+            <div class="divider-line"></div>
+          </div>
+
+          <div class="diocese-details-container" *ngIf="extendedProfile?.bishop">
+
+            <!-- Bishop Information - Enhanced Display -->
+            <div class="bishop-info-section" *ngIf="extendedProfile?.bishop">
+              <div class="bishop-section-header">
+                <div class="section-title-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                  <h3 class="bishop-section-title">Bishop Details</h3>
+                </div>
+              </div>
+
+              <div class="bishop-header">
+                <div class="bishop-avatar" [class.has-photo]="extendedProfile?.bishop?.photo_url">
+                  <img *ngIf="extendedProfile?.bishop?.photo_url" [src]="extendedProfile?.bishop?.photo_url" [alt]="extendedProfile?.bishop?.full_name">
+                  <svg *ngIf="!extendedProfile?.bishop?.photo_url" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+                <div class="bishop-title">
+                  <h4 class="bishop-name-title">{{ extendedProfile?.bishop?.full_name }}</h4>
+                  <p class="bishop-title-text" *ngIf="extendedProfile?.bishop?.title || extendedProfile?.bishop?.full_title">
+                    {{ extendedProfile?.bishop?.full_title || extendedProfile?.bishop?.title }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="bishop-details">
+                <div class="bishop-contact-info">
+                  <div class="contact-item contact-item-enhanced" *ngIf="extendedProfile?.bishop?.email">
+                    <div class="contact-icon-wrapper">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <polyline points="22,6 12,13 2,6"></polyline>
+                      </svg>
+                    </div>
+                    <div class="contact-content">
+                      <span class="contact-label">Email Address</span>
+                      <a [href]="'mailto:' + extendedProfile?.bishop?.email" class="contact-value contact-link">
+                        <span>{{ extendedProfile?.bishop?.email }}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                          <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="contact-item contact-item-enhanced" *ngIf="extendedProfile?.bishop?.phone">
+                    <div class="contact-icon-wrapper">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                      </svg>
+                    </div>
+                    <div class="contact-content">
+                      <span class="contact-label">Phone Number</span>
+                      <a [href]="'tel:' + extendedProfile?.bishop?.phone" class="contact-value contact-link">
+                        <span>{{ extendedProfile?.bishop?.phone }}</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+
+                  <div class="contact-item contact-item-enhanced" *ngIf="extendedProfile?.bishop?.appointed_date || extendedProfile?.bishop?.ordained_date">
+                    <div class="contact-icon-wrapper">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                      </svg>
+                    </div>
+                    <div class="contact-content">
+                      <span class="contact-label">Appointed Date</span>
+                      <span class="contact-value" *ngIf="extendedProfile?.bishop?.appointed_date">
+                        {{ formatDate(extendedProfile?.bishop?.appointed_date) }}
+                      </span>
+                      <span class="contact-value contact-secondary" *ngIf="extendedProfile?.bishop?.ordained_date">
+                        Ordained: {{ formatDate(extendedProfile?.bishop?.ordained_date) }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="bishop-biography" *ngIf="extendedProfile?.bishop?.biography">
+                  <div class="biography-header">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
+                    <span>Biography</span>
+                  </div>
+                  <p>{{ extendedProfile?.bishop?.biography }}</p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div class="diocese-empty-state" *ngIf="!extendedProfile?.archdiocese && !extendedProfile?.bishop">
+              <div class="empty-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+              </div>
+              <h3>No Diocese Information</h3>
+              <p>Diocese details will appear here once your church profile is linked to an archdiocese or diocese.</p>
+            </div>
+          </div>
+        </div>
 
         <!-- Church Identity Section -->
         <form [formGroup]="profileForm" class="section-card">
@@ -564,13 +882,29 @@
 <!-- ====================================================================== -->
 
 <!-- Leadership Modal -->
-<div *ngIf="showLeaderModal" class="modal-overlay" (click)="closeLeaderModal()">
-  <div class="modal-dialog" (click)="$event.stopPropagation()">
+<div *ngIf="showLeaderModal" 
+     class="modal-overlay" 
+     (click)="closeLeaderModal()"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="leader-modal-title">
+  <div class="modal-dialog" 
+       (click)="$event.stopPropagation()"
+       role="document"
+       tabindex="-1">
     <div class="modal-header">
-      <h2>{{ selectedLeader ? '✏️ Edit Leader' : '➕ Add New Leader' }}</h2>
-      <button class="modal-close" (click)="closeLeaderModal()">✕</button>
+      <h2 id="leader-modal-title">{{ selectedLeader ? '✏️ Edit Leader' : '➕ Add New Leader' }}</h2>
+      <button class="modal-close" 
+              (click)="closeLeaderModal()" 
+              aria-label="Close modal"
+              type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
-    <form [formGroup]="leaderForm" (ngSubmit)="saveLeader()">
+    <form [formGroup]="leaderForm" (ngSubmit)="saveLeader()" class="leader-modal-form">
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group full-width">
@@ -613,23 +947,55 @@
             <textarea id="leader_biography" formControlName="biography" class="form-control" rows="3"></textarea>
           </div>
           <div class="form-group">
-            <label>
-              <input type="checkbox" formControlName="is_primary" [value]="1">
-              Primary Pastor
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                formControlName="is_primary"
+                [checked]="leaderForm.get('is_primary')?.value === 1"
+                (change)="$event.target.checked ? leaderForm.get('is_primary')?.setValue(1) : leaderForm.get('is_primary')?.setValue(0)">
+              <span>Primary Pastor</span>
             </label>
           </div>
           <div class="form-group">
-            <label>
-              <input type="checkbox" formControlName="active" [value]="1">
-              Active
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                formControlName="active"
+                [checked]="leaderForm.get('active')?.value === 1"
+                (change)="$event.target.checked ? leaderForm.get('active')?.setValue(1) : leaderForm.get('active')?.setValue(0)">
+              <span>Active</span>
             </label>
           </div>
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeLeaderModal()">Cancel</button>
-        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving || leaderForm.invalid">
-          {{ saving ? '⏳ Saving...' : (selectedLeader ? '✓ Update' : '✓ Create') }}
+        <button 
+          type="button" 
+          class="btn-cancel" 
+          (click)="closeLeaderModal()"
+          [disabled]="saving"
+          title="Cancel and close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Cancel</span>
+        </button>
+        <button 
+          type="submit" 
+          class="btn-save" 
+          [disabled]="saving || leaderForm.invalid"
+          [title]="selectedLeader ? 'Update leader' : 'Create leader'">
+          <span *ngIf="!saving">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>{{ selectedLeader ? 'Update' : 'Create' }}</span>
+          </span>
+          <span *ngIf="saving" class="btn-loading">
+            <div class="spinner-small"></div>
+            <span>Saving...</span>
+          </span>
         </button>
       </div>
     </form>
@@ -641,9 +1007,14 @@
   <div class="modal-dialog" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>{{ selectedStatistic ? '✏️ Edit Statistic' : '➕ Add New Statistic' }}</h2>
-      <button class="modal-close" (click)="closeStatisticModal()">✕</button>
+      <button class="modal-close" (click)="closeStatisticModal()" aria-label="Close modal">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
-    <form [formGroup]="statisticForm" (ngSubmit)="saveStatistic()">
+    <form [formGroup]="statisticForm" (ngSubmit)="saveStatistic()" class="statistic-modal-form">
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group">
@@ -698,9 +1069,33 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeStatisticModal()">Cancel</button>
-        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving || statisticForm.invalid">
-          {{ saving ? '⏳ Saving...' : (selectedStatistic ? '✓ Update' : '✓ Create') }}
+        <button 
+          type="button" 
+          class="btn-cancel" 
+          (click)="closeStatisticModal()"
+          [disabled]="saving"
+          title="Cancel and close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Cancel</span>
+        </button>
+        <button 
+          type="submit" 
+          class="btn-save" 
+          [disabled]="saving || statisticForm.invalid"
+          [title]="selectedStatistic ? 'Update statistic' : 'Create statistic'">
+          <span *ngIf="!saving">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>{{ selectedStatistic ? 'Update' : 'Create' }}</span>
+          </span>
+          <span *ngIf="saving" class="btn-loading">
+            <div class="spinner-small"></div>
+            <span>Saving...</span>
+          </span>
         </button>
       </div>
     </form>
@@ -712,9 +1107,14 @@
   <div class="modal-dialog" (click)="$event.stopPropagation()">
     <div class="modal-header">
       <h2>{{ selectedSocialMedia ? '✏️ Edit Social Media' : '➕ Add Social Media Account' }}</h2>
-      <button class="modal-close" (click)="closeSocialModal()">✕</button>
+      <button class="modal-close" (click)="closeSocialModal()" aria-label="Close modal">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
-    <form [formGroup]="socialForm" (ngSubmit)="saveSocialMedia()">
+    <form [formGroup]="socialForm" (ngSubmit)="saveSocialMedia()" class="social-modal-form">
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group">
@@ -764,9 +1164,33 @@
         </div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeSocialModal()">Cancel</button>
-        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving || socialForm.invalid">
-          {{ saving ? '⏳ Saving...' : (selectedSocialMedia ? '✓ Update' : '✓ Create') }}
+        <button 
+          type="button" 
+          class="btn-cancel" 
+          (click)="closeSocialModal()"
+          [disabled]="saving"
+          title="Cancel and close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Cancel</span>
+        </button>
+        <button 
+          type="submit" 
+          class="btn-save" 
+          [disabled]="saving || socialForm.invalid"
+          [title]="selectedSocialMedia ? 'Update social media' : 'Create social media'">
+          <span *ngIf="!saving">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>{{ selectedSocialMedia ? 'Update' : 'Create' }}</span>
+          </span>
+          <span *ngIf="saving" class="btn-loading">
+            <div class="spinner-small"></div>
+            <span>Saving...</span>
+          </span>
         </button>
       </div>
     </form>
@@ -774,109 +1198,355 @@
 </div>
 
 <!-- General Information Modal -->
-<div *ngIf="showGeneralModal" class="modal-overlay" (click)="closeGeneralModal()">
-  <div class="modal-dialog" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>✏️ Edit General Information</h2>
-      <button class="modal-close" (click)="closeGeneralModal()">✕</button>
+<div *ngIf="showGeneralModal" 
+     class="modal-overlay general-modal-overlay" 
+     (click)="closeGeneralModal()"
+     role="dialog"
+     aria-modal="true"
+     aria-labelledby="general-modal-title">
+  <div class="modal-dialog general-modal-dialog" 
+       (click)="$event.stopPropagation()"
+       role="document"
+       tabindex="-1">
+    <div class="modal-header general-modal-header">
+      <div class="modal-header-content">
+        <div class="modal-icon-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+        </div>
+        <div class="modal-title-section">
+          <h2 id="general-modal-title">Edit General Information</h2>
+          <p class="modal-subtitle">Update church denomination, diocese, and contact details</p>
+        </div>
+      </div>
+      <button class="modal-close" 
+              (click)="closeGeneralModal()" 
+              aria-label="Close modal"
+              type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
     </div>
-    <form [formGroup]="profileForm" (ngSubmit)="saveGeneralAndContact()">
-      <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="modal_denomination_id">Denomination</label>
-            <ng-select
-              id="modal_denomination_id"
-              formControlName="denomination_id"
-              [items]="denominations"
-              bindLabel="name"
-              bindValue="id"
-              placeholder="Select Denomination"
-              [clearable]="true"
-              [searchable]="true"
-              (change)="onDenominationChange($event?.id)">
-            </ng-select>
+    <form [formGroup]="profileForm" (ngSubmit)="saveGeneralAndContact()" class="general-modal-form">
+      <div class="modal-body general-modal-body">
+        <!-- General Information Section -->
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="section-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <h3>Church Information</h3>
           </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="modal_denomination_id">
+                <span class="label-text">Denomination</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <ng-select
+                id="modal_denomination_id"
+                formControlName="denomination_id"
+                [items]="denominations"
+                bindLabel="name"
+                bindValue="id"
+                placeholder="Select Denomination"
+                [clearable]="true"
+                [searchable]="true"
+                class="form-select-enhanced"
+                (change)="onDenominationChange($event)">
+              </ng-select>
+            </div>
 
-          <div class="form-group">
-            <label for="modal_archdiocese_id">Archdiocese / Diocese</label>
-            <ng-select
-              id="modal_archdiocese_id"
-              formControlName="archdiocese_id"
-              [items]="filteredArchdioceses"
-              bindLabel="name"
-              bindValue="id"
-              placeholder="Select Archdiocese"
-              [clearable]="true"
-              [searchable]="true">
-              <ng-template ng-label-tmp let-item="item">
-                {{ item.name }}
-              </ng-template>
-              <ng-template ng-option-tmp let-item="item">
-                <div class="ng-option-custom">
-                  <strong>{{ item.name }}</strong>
-                  <small class="text-muted">{{ item.country }}</small>
+            <div class="form-group">
+              <label for="modal_country_id">
+                <span class="label-text">Country</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <ng-select
+                id="modal_country_id"
+                formControlName="country_id"
+                [items]="countries"
+                bindLabel="name"
+                bindValue="id"
+                placeholder="Select Country"
+                [clearable]="true"
+                [searchable]="true"
+                [loading]="loadingCountries"
+                class="form-select-enhanced"
+                (change)="onCountryChange($event)">
+                <ng-template ng-option-tmp let-item="item">
+                  <span class="country-option">
+                    <span class="country-emoji">{{ item.emoji }}</span>
+                    <span class="country-name">{{ item.name }}</span>
+                  </span>
+                </ng-template>
+                <ng-template ng-label-tmp let-item="item">
+                  <span class="country-option">
+                    <span class="country-emoji">{{ item.emoji }}</span>
+                    <span class="country-name">{{ item.name }}</span>
+                  </span>
+                </ng-template>
+              </ng-select>
+              <small class="form-hint">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 16v-4"></path>
+                  <path d="M12 8h.01"></path>
+                </svg>
+                Updates phone code and filters available dioceses
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="modal_archdiocese_id">
+                <span class="label-text">Archdiocese / Diocese</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <ng-select
+                id="modal_archdiocese_id"
+                formControlName="archdiocese_id"
+                [items]="filteredArchdioceses"
+                bindLabel="name"
+                bindValue="id"
+                placeholder="Select Archdiocese"
+                [clearable]="true"
+                [searchable]="true"
+                class="form-select-enhanced">
+                <ng-template ng-label-tmp let-item="item">
+                  {{ item.name }}
+                </ng-template>
+                <ng-template ng-option-tmp let-item="item">
+                  <div class="ng-option-custom">
+                    <strong>{{ item.name }}</strong>
+                    <small class="text-muted">{{ item.country }}</small>
+                  </div>
+                </ng-template>
+              </ng-select>
+              <small class="form-hint" *ngIf="!profileForm.get('denomination_id')?.value">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <path d="M12 16v-4"></path>
+                  <path d="M12 8h.01"></path>
+                </svg>
+                Select a denomination first to filter dioceses
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label for="modal_founded_year">
+                <span class="label-text">Founded Year</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <div class="input-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                <input 
+                  type="number" 
+                  id="modal_founded_year" 
+                  formControlName="founded_year"
+                  class="form-control form-control-enhanced"
+                  placeholder="e.g., 1985"
+                  min="1000"
+                  [max]="getMaxYear()">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Patron Information Section -->
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="section-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+              </svg>
+            </div>
+            <h3>Patron Saint</h3>
+          </div>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label for="modal_patron_name">
+                <span class="label-text">Patron Name</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <div class="input-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <input 
+                  type="text" 
+                  id="modal_patron_name" 
+                  formControlName="patron_name"
+                  class="form-control form-control-enhanced"
+                  placeholder="e.g., Saint Peter, Saint Mary">
+              </div>
+            </div>
+
+            <!-- Patron Image Upload -->
+            <div class="form-group full-width">
+              <label>
+                <span class="label-text">Patron Image</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <div class="patron-image-upload-section">
+                <!-- Current Image Preview -->
+                <div class="patron-image-preview" *ngIf="patronImagePreview || getPatronImageUrl()">
+                  <div class="patron-image-wrapper">
+                    <img 
+                      [src]="patronImagePreview || getPatronImageUrl()" 
+                      [alt]="extendedProfile?.patron_name || 'Patron Saint'"
+                      class="patron-preview-image"
+                      (error)="$event.target.style.display = 'none'">
+                    <button 
+                      type="button"
+                      class="btn-remove-image"
+                      (click)="removePatronImage()"
+                      *ngIf="getPatronImageUrl()"
+                      title="Remove patron image">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
-              </ng-template>
-            </ng-select>
-          </div>
 
-          <div class="form-group">
-            <label for="modal_founded_year">Founded Year</label>
-            <input 
-              type="number" 
-              id="modal_founded_year" 
-              formControlName="founded_year"
-              class="form-control"
-              placeholder="e.g., 1985">
-          </div>
-
-          <div class="form-group">
-            <label>Country</label>
-            <div class="form-control-static">
-              {{ getTenantCountry() }}
+                <!-- Upload Button -->
+                <div class="patron-upload-controls">
+                  <label for="patron_image_input" class="btn-upload-patron">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                      <polyline points="17 8 12 3 7 8"></polyline>
+                      <line x1="12" y1="3" x2="12" y2="15"></line>
+                    </svg>
+                    <span>{{ patronImagePreview || getPatronImageUrl() ? 'Change Image' : 'Upload Image' }}</span>
+                  </label>
+                  <input 
+                    type="file" 
+                    id="patron_image_input"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    (change)="onPatronImageSelected($event)"
+                    style="display: none;">
+                  <small class="form-hint">
+                    Allowed formats: JPG, PNG, WEBP. Max size: 3MB
+                  </small>
+                </div>
+              </div>
             </div>
           </div>
+        </div>
 
-          <!-- Contact fields in combined modal -->
-          <div class="form-group">
-            <label for="modal_phone">Phone</label>
-            <div class="phone-input-group">
-              <span class="phone-prefix">{{ callingCode }}</span>
-              <input 
-                type="tel" 
-                id="modal_phone" 
-                formControlName="phone"
-                class="form-control"
-                placeholder="{{ callingCode }} 1234567890">
+        <!-- Contact Information Section -->
+        <div class="form-section">
+          <div class="form-section-header">
+            <div class="section-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                <polyline points="22,6 12,13 2,6"></polyline>
+              </svg>
             </div>
+            <h3>Contact Information</h3>
           </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="modal_phone">
+                <span class="label-text">Phone Number</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <div class="phone-input-group phone-input-enhanced">
+                <div class="phone-prefix-wrapper">
+                  <span class="phone-prefix">{{ callingCode }}</span>
+                </div>
+                <input 
+                  type="tel" 
+                  id="modal_phone" 
+                  formControlName="phone"
+                  class="form-control form-control-enhanced"
+                  placeholder="1234567890">
+              </div>
+            </div>
 
-          <div class="form-group">
-            <label for="modal_email">Email</label>
-            <input 
-              type="email" 
-              id="modal_email" 
-              formControlName="email"
-              class="form-control"
-              placeholder="info@church.org">
-          </div>
+            <div class="form-group">
+              <label for="modal_email">
+                <span class="label-text">Email Address</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <div class="input-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                <input 
+                  type="email" 
+                  id="modal_email" 
+                  formControlName="email"
+                  class="form-control form-control-enhanced"
+                  placeholder="info@church.org">
+              </div>
+            </div>
 
-          <div class="form-group full-width">
-            <label for="modal_website">Website</label>
-            <input 
-              type="url" 
-              id="modal_website" 
-              formControlName="website"
-              class="form-control"
-              placeholder="https://www.church.org">
+            <div class="form-group full-width">
+              <label for="modal_website">
+                <span class="label-text">Website URL</span>
+                <span class="label-optional">Optional</span>
+              </label>
+              <div class="input-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
+                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                  <polyline points="15 3 21 3 21 9"></polyline>
+                  <line x1="10" y1="14" x2="21" y2="3"></line>
+                </svg>
+                <input 
+                  type="url" 
+                  id="modal_website" 
+                  formControlName="website"
+                  class="form-control form-control-enhanced"
+                  placeholder="https://www.church.org">
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button type="button" class="btn-3d-action btn-3d-secondary" (click)="closeGeneralModal()">Cancel</button>
-        <button type="submit" class="btn-3d-action btn-3d-success" [disabled]="saving">
-          {{ saving ? '⏳ Saving...' : '✓ Save' }}
+      <div class="modal-footer general-modal-footer">
+        <button 
+          type="button" 
+          class="btn-cancel btn-cancel-enhanced" 
+          (click)="closeGeneralModal()"
+          [disabled]="saving"
+          title="Cancel and close">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+          <span>Cancel</span>
+        </button>
+        <button 
+          type="submit" 
+          class="btn-save btn-save-enhanced" 
+          [disabled]="saving"
+          [title]="'Save changes'">
+          <span *ngIf="!saving">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span>Save Changes</span>
+          </span>
+          <span *ngIf="saving" class="btn-loading">
+            <div class="spinner-small"></div>
+            <span>Saving...</span>
+          </span>
         </button>
       </div>
     </form>
