@@ -1,0 +1,197 @@
+<div class="modal-overlay" (click)="cancel()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div class="header-titles">
+        <h3>{{ sacrament | titlecase }} Details</h3>
+        <p class="subtitle" *ngIf="isBaptism">
+          Update baptism record, godparents, and parish information.
+        </p>
+        <p class="subtitle" *ngIf="!isBaptism">
+          Update sacramental record for {{ member.first_name }} {{ member.last_name }}.
+        </p>
+      </div>
+      <button type="button" class="btn-icon" (click)="cancel()" aria-label="Close modal">✕</button>
+    </header>
+
+    <form [formGroup]="form" class="modal-body" (ngSubmit)="save()">
+      <div class="error-banner" *ngIf="error">
+        <span class="icon">⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+
+      <ng-container *ngIf="isBaptism; else generalSacrament">
+        <div class="form-grid">
+          <label class="form-field">
+            <span class="label">Baptism Date</span>
+            <input type="date" formControlName="baptism_date">
+          </label>
+
+          <div class="form-field">
+            <span class="label">Location</span>
+            <div class="radio-group">
+              <label>
+                <input type="radio" value="home_parish" formControlName="baptism_location_type">
+                Home Parish
+              </label>
+              <label>
+                <input type="radio" value="other" formControlName="baptism_location_type">
+                Another Church
+              </label>
+            </div>
+          </div>
+
+          <label class="form-field">
+            <span class="label">Church Name</span>
+            <input type="text" formControlName="baptism_church_name" placeholder="Enter church name">
+          </label>
+
+          <label class="form-field stretch">
+            <span class="label">Church Address</span>
+            <textarea formControlName="baptism_church_address" rows="2" placeholder="Enter church address"></textarea>
+          </label>
+
+          <label class="form-field">
+            <span class="label">Primary Godparent</span>
+            <input type="text" formControlName="baptism_godparent_primary" placeholder="Enter name">
+          </label>
+
+          <label class="form-field">
+            <span class="label">Secondary Godparent</span>
+            <input type="text" formControlName="baptism_godparent_secondary" placeholder="Enter name">
+          </label>
+
+          <div class="form-field">
+            <span class="label">Priest</span>
+            <label class="toggle">
+              <input type="checkbox" formControlName="baptism_priest_is_home">
+              <span>Ministered by home parish priest</span>
+            </label>
+            <input type="text" class="mt-2" formControlName="baptism_priest_name" placeholder="Enter priest name">
+          </div>
+
+          <label class="form-field stretch">
+            <span class="label">Baptism Place Summary</span>
+            <textarea formControlName="baptism_place" rows="2" placeholder="Displayed in family records"></textarea>
+          </label>
+        </div>
+      </ng-container>
+
+      <ng-template #generalSacrament>
+        <ng-container [ngSwitch]="sacrament">
+          <ng-container *ngSwitchCase="'marriage'">
+            <div class="form-grid">
+              <label class="form-field">
+                <span class="label">Marriage Date</span>
+                <input type="date" formControlName="marriage_date">
+              </label>
+
+              <label class="form-field">
+                <span class="label">Marriage Place</span>
+                <input type="text" formControlName="marriage_place" placeholder="Enter marriage place">
+              </label>
+
+              <label class="form-field">
+                <span class="label">Spouse Name</span>
+                <input type="text" formControlName="marriage_spouse_name" placeholder="Enter spouse name">
+              </label>
+            </div>
+
+            <div class="section-divider">Bride Details</div>
+
+            <div class="form-grid">
+              <label class="form-field">
+                <span class="label">Full Name</span>
+                <input type="text" formControlName="marriage_bride_full_name" placeholder="Enter bride's full name">
+              </label>
+              <label class="form-field stretch">
+                <span class="label">Address</span>
+                <textarea formControlName="marriage_bride_address" rows="2" placeholder="Enter bride's address"></textarea>
+              </label>
+              <div class="form-field">
+                <span class="label">Home Parish</span>
+                <div class="radio-group">
+                  <label>
+                    <input type="radio" value="home_parish" formControlName="marriage_bride_church_type">
+                    Home Parish
+                  </label>
+                  <label>
+                    <input type="radio" value="other" formControlName="marriage_bride_church_type">
+                    Other Church
+                  </label>
+                </div>
+              </div>
+              <label class="form-field">
+                <span class="label">Church Name</span>
+                <input type="text" formControlName="marriage_bride_church_name" placeholder="Enter church name">
+              </label>
+              <label class="form-field stretch">
+                <span class="label">Church Address</span>
+                <textarea formControlName="marriage_bride_church_address" rows="2" placeholder="Enter church address"></textarea>
+              </label>
+            </div>
+
+            <div class="section-divider">
+              Groom Details
+              <button type="button" class="link-button" (click)="copyBrideChurchToGroom()">Copy bride church to groom</button>
+            </div>
+
+            <div class="form-grid">
+              <label class="form-field">
+                <span class="label">Full Name</span>
+                <input type="text" formControlName="marriage_groom_full_name" placeholder="Enter groom's full name">
+              </label>
+              <label class="form-field stretch">
+                <span class="label">Address</span>
+                <textarea formControlName="marriage_groom_address" rows="2" placeholder="Enter groom's address"></textarea>
+              </label>
+              <div class="form-field">
+                <span class="label">Home Parish</span>
+                <div class="radio-group">
+                  <label>
+                    <input type="radio" value="home_parish" formControlName="marriage_groom_church_type">
+                    Home Parish
+                  </label>
+                  <label>
+                    <input type="radio" value="other" formControlName="marriage_groom_church_type">
+                    Other Church
+                  </label>
+                </div>
+              </div>
+              <label class="form-field">
+                <span class="label">Church Name</span>
+                <input type="text" formControlName="marriage_groom_church_name" placeholder="Enter church name">
+              </label>
+              <label class="form-field stretch">
+                <span class="label">Church Address</span>
+                <textarea formControlName="marriage_groom_church_address" rows="2" placeholder="Enter church address"></textarea>
+              </label>
+            </div>
+          </ng-container>
+
+          <ng-container *ngSwitchDefault>
+            <div class="form-grid small">
+              <label class="form-field">
+                <span class="label">{{ sacrament | titlecase }} Date</span>
+                <input type="date" [formControlName]="sacrament + '_date'">
+              </label>
+
+              <label class="form-field">
+                <span class="label">{{ sacrament === 'confirmation' ? 'Confirmation Place' : 'Communion Place' }}</span>
+                <input type="text" [formControlName]="sacrament + '_place'" placeholder="Enter place details">
+              </label>
+            </div>
+          </ng-container>
+        </ng-container>
+      </ng-template>
+
+      <footer class="modal-footer">
+        <button type="button" class="btn btn-outline" (click)="cancel()" [disabled]="loading">Cancel</button>
+        <button type="submit" class="btn btn-primary" [disabled]="loading || form.invalid">
+          <span *ngIf="!loading">Save Changes</span>
+          <span *ngIf="loading" class="spinner">Saving...</span>
+        </button>
+      </footer>
+    </form>
+  </div>
+</div>
+

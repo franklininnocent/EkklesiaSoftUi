@@ -32,15 +32,4 @@ describe('FamilyFormComponent (tabs + phone validators)', () => {
     expect(component.activeTab).toBe('info');
   });
 
-  it('phone validators: invalid random string, valid plausible number with prefix handled by validator', () => {
-    const { component } = setup();
-    const primary = component.familyForm.get('primary_phone')!;
-    primary.setValue('abcdef');
-    expect(primary.valid).toBe(false);
-    primary.setValue('9999999999');
-    // Depending on tenant country, validator may pass/ fail; ensure it re-evaluates
-    expect(primary.touched).toBe(false); // we haven't marked touched
-  });
 });
-
-

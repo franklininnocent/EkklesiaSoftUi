@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
@@ -19,6 +19,17 @@ export class FamilyService {
 
   constructor(private http: HttpClient) {}
 
+  /** Build headers carrying tenant country for server-side phone validation */
+  private buildTenantCountryHeaders(): { headers: HttpHeaders } | {} {
+    try {
+      const iso2 = localStorage.getItem('tenant_country_code');
+      if (iso2 && iso2.length >= 2) {
+        return { headers: new HttpHeaders({ 'X-Tenant-Country': iso2.toUpperCase() }) };
+      }
+    } catch {}
+    return {};
+  }
+
   /**
    * Get paginated list of families
    */
@@ -34,56 +45,56 @@ export class FamilyService {
     if (filters.per_page) params = params.set('per_page', filters.per_page.toString());
     if (filters.page) params = params.set('page', filters.page.toString());
 
-    return this.http.get<PaginatedResponse<Family>>(this.apiUrl, { params });
+    return this.http.get<PaginatedResponse<Family>>(this.apiUrl, { params, ...this.buildTenantCountryHeaders() });
   }
 
   /**
    * Get a single family by ID
    */
   getFamily(id: string): Observable<ApiResponse<Family>> {
-    return this.http.get<ApiResponse<Family>>(`${this.apiUrl}/${id}`);
+    return this.http.get<ApiResponse<Family>>(`${this.apiUrl}/${id}`, this.buildTenantCountryHeaders());
   }
 
   /**
    * Create a new family
    */
   createFamily(family: Partial<Family>): Observable<ApiResponse<Family>> {
-    return this.http.post<ApiResponse<Family>>(this.apiUrl, family);
+    return this.http.post<ApiResponse<Family>>(this.apiUrl, family, this.buildTenantCountryHeaders());
   }
 
   /**
    * Update a family
    */
   updateFamily(id: string, family: Partial<Family>): Observable<ApiResponse<Family>> {
-    return this.http.put<ApiResponse<Family>>(`${this.apiUrl}/${id}`, family);
+    return this.http.put<ApiResponse<Family>>(`${this.apiUrl}/${id}`, family, this.buildTenantCountryHeaders());
   }
 
   /**
    * Delete a family
    */
   deleteFamily(id: string): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`);
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${id}`, this.buildTenantCountryHeaders());
   }
 
   /**
    * Get family statistics
    */
   getStatistics(): Observable<ApiResponse<FamilyStatistics>> {
-    return this.http.get<ApiResponse<FamilyStatistics>>(`${this.apiUrl}/statistics`);
+    return this.http.get<ApiResponse<FamilyStatistics>>(`${this.apiUrl}/statistics`, this.buildTenantCountryHeaders());
   }
 
   /**
    * Get families without BCC assignment
    */
   getFamiliesWithoutBCC(): Observable<ApiResponse<Family[]>> {
-    return this.http.get<ApiResponse<Family[]>>(`${this.apiUrl}/without-bcc`);
+    return this.http.get<ApiResponse<Family[]>>(`${this.apiUrl}/without-bcc`, this.buildTenantCountryHeaders());
   }
 
   /**
    * Get families by BCC
    */
   getFamiliesByBCC(bccId: string): Observable<ApiResponse<Family[]>> {
-    return this.http.get<ApiResponse<Family[]>>(`${this.apiUrl}/bcc/${bccId}`);
+    return this.http.get<ApiResponse<Family[]>>(`${this.apiUrl}/bcc/${bccId}`, this.buildTenantCountryHeaders());
   }
 
   // ==================== FAMILY MEMBER OPERATIONS ====================
@@ -92,28 +103,28 @@ export class FamilyService {
    * Get all members of a family
    */
   getFamilyMembers(familyId: string): Observable<ApiResponse<FamilyMember[]>> {
-    return this.http.get<ApiResponse<FamilyMember[]>>(`${this.apiUrl}/${familyId}/members`);
+    return this.http.get<ApiResponse<FamilyMember[]>>(`${this.apiUrl}/${familyId}/members`, this.buildTenantCountryHeaders());
   }
 
   /**
    * Add a member to a family
    */
   addFamilyMember(familyId: string, member: Partial<FamilyMember>): Observable<ApiResponse<FamilyMember>> {
-    return this.http.post<ApiResponse<FamilyMember>>(`${this.apiUrl}/${familyId}/members`, member);
+    return this.http.post<ApiResponse<FamilyMember>>(`${this.apiUrl}/${familyId}/members`, member, this.buildTenantCountryHeaders());
   }
 
   /**
    * Update a family member
    */
   updateFamilyMember(familyId: string, memberId: string, member: Partial<FamilyMember>): Observable<ApiResponse<FamilyMember>> {
-    return this.http.put<ApiResponse<FamilyMember>>(`${this.apiUrl}/${familyId}/members/${memberId}`, member);
+    return this.http.put<ApiResponse<FamilyMember>>(`${this.apiUrl}/${familyId}/members/${memberId}`, member, this.buildTenantCountryHeaders());
   }
 
   /**
    * Delete a family member
    */
   deleteFamilyMember(familyId: string, memberId: string): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${familyId}/members/${memberId}`);
+    return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${familyId}/members/${memberId}`, this.buildTenantCountryHeaders());
   }
 
   // ==================== FAMILY PROFILE IMAGE OPERATIONS ====================

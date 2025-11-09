@@ -192,11 +192,13 @@
             <span class="member-count">{{ family.members?.length || 0 }}</span>
           </td>
           <td>
-            <div class="contact-info">
-              <div *ngIf="family.primary_phone">📞 {{ family.primary_phone }}</div>
-              <div *ngIf="family.email">✉️ {{ family.email }}</div>
-              <div *ngIf="!family.primary_phone && !family.email">-</div>
-            </div>
+            <ng-container *ngIf="getHeadContactInfo(family) as contact">
+              <div class="contact-info">
+                <div *ngIf="contact.phone">📞 {{ contact.phone }}</div>
+                <div *ngIf="contact.email">✉️ {{ contact.email }}</div>
+                <div *ngIf="!contact.phone && !contact.email">-</div>
+              </div>
+            </ng-container>
           </td>
           <td>
             <span class="badge" [ngClass]="getStatusClass(family.status)">

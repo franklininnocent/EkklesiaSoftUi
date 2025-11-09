@@ -4,6 +4,8 @@ import { Observable, BehaviorSubject, tap, map } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '@environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from '@core/models';
+import { PhoneCodeService } from '@core/services/phone-code.service';
+import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +13,7 @@ import { AuthResponse, LoginRequest, RegisterRequest, User } from '@core/models'
 export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
+  private phoneCodeService = inject(PhoneCodeService);
   
   private currentUserSubject = new BehaviorSubject<User | null>(this.getUserFromStorage());
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -100,6 +103,21 @@ export class AuthService {
   private setUser(user: User): void {
     localStorage.setItem(environment.userKey, JSON.stringify(user));
     this.currentUserSubject.next(user);
+
+    // Update tenant country code cache and phone code globally
+    try {
+      const iso2: string | undefined = (user as any)?.tenant?.country_code || (user as any)?.tenant?.country?.iso2;
+      if (iso2 && typeof iso2 === 'string' && iso2.length >= 2) {
+        const upper = iso2.toUpperCase();
+        try { localStorage.setItem('tenant_country_code', upper); } catch {}
+        try {
+          const code = getCountryCallingCode(upper as CountryCode);
+          if (code) {
+            this.phoneCodeService.setPhoneCode(`+${code}`);
+          }
+        } catch {}
+      }
+    } catch {}
   }
 
   private getUserFromStorage(): User | null {

@@ -9,7 +9,7 @@
     <!-- Error Message -->
     <div class="error-banner" *ngIf="error">
       <span class="error-icon">⚠️</span>
-      {{ error }}
+      <div class="error-content">{{ error }}</div>
     </div>
 
     <!-- Tabs -->
@@ -25,18 +25,10 @@
       <button 
         type="button"
         class="tab" 
-        [class.active]="activeTab === 'head'"
-        (click)="switchTab('head')"
-      >
-        👤 Family Head
-      </button>
-      <button 
-        type="button"
-        class="tab" 
         [class.active]="activeTab === 'members'"
         (click)="switchTab('members')"
       >
-        Members ({{ members.length }})
+        Members ({{ regularMembersCount }})
       </button>
     </div>
 
@@ -109,54 +101,6 @@
           </div>
 
           <div class="form-group">
-            <label>Primary Phone</label>
-            <div class="phone-input-group" [class.error]="hasError('primary_phone')">
-              <span class="phone-prefix">{{ callingCode }}</span>
-              <input 
-                type="tel" 
-                formControlName="primary_phone" 
-                class="form-control"
-                [class.error]="hasError('primary_phone')"
-                placeholder="{{ callingCode }} 1234567890"
-              />
-            </div>
-            <span class="field-error" *ngIf="hasError('primary_phone')">
-              {{ getErrorMessage('primary_phone') }}
-            </span>
-          </div>
-
-          <div class="form-group">
-            <label>Secondary Phone</label>
-            <div class="phone-input-group" [class.error]="hasError('secondary_phone')">
-              <span class="phone-prefix">{{ callingCode }}</span>
-              <input 
-                type="tel" 
-                formControlName="secondary_phone" 
-                class="form-control"
-                [class.error]="hasError('secondary_phone')"
-                placeholder="{{ callingCode }} 1234567890"
-              />
-            </div>
-            <span class="field-error" *ngIf="hasError('secondary_phone')">
-              {{ getErrorMessage('secondary_phone') }}
-            </span>
-          </div>
-
-          <div class="form-group">
-            <label>Email</label>
-            <input 
-              type="email" 
-              formControlName="email" 
-              class="form-control"
-              [class.error]="hasError('email')"
-              placeholder="family@example.com"
-            />
-            <span class="field-error" *ngIf="hasError('email')">
-              {{ getErrorMessage('email') }}
-            </span>
-          </div>
-
-          <div class="form-group">
             <label>Status</label>
             <select formControlName="status" class="form-control">
               <option value="active">Active</option>
@@ -177,104 +121,6 @@
         </div>
       </div>
 
-      <!-- Tab: Family Head -->
-      <div class="tab-content family-head-tab" *ngIf="activeTab === 'head'" #headTabContent>
-        <div class="family-head-content">
-          <div *ngIf="getFamilyHead() as head" class="head-card-display">
-            <div class="head-avatar-large">
-              <img 
-                *ngIf="head.head_profile_image_full_url || family?.head_profile_image_full_url" 
-                [src]="head.head_profile_image_full_url || family?.head_profile_image_full_url" 
-                alt="Family Head Profile Image" 
-                class="head-profile-image-large"
-              />
-              <span *ngIf="!head.head_profile_image_full_url && !family?.head_profile_image_full_url">{{ (head.first_name || 'U').charAt(0) }}</span>
-            </div>
-            <div class="head-details">
-              <div class="head-name-display">{{ getDisplayName(head) }}</div>
-              <div class="head-note" *ngIf="head.is_from_db_name">
-                ℹ️ This information is from the family record. Add this person as a family member to enable full editing.
-              </div>
-              <div class="head-meta-display">
-                <div class="meta-line" *ngIf="head.phone">
-                  <span class="meta-label">Phone:</span>
-                  <span class="meta-value">{{ callingCode }} {{ head.phone }}</span>
-                </div>
-                <div class="meta-line" *ngIf="head.email">
-                  <span class="meta-label">Email:</span>
-                  <span class="meta-value">{{ head.email }}</span>
-                </div>
-                <div class="meta-line">
-                  <span class="meta-label">Relationship:</span>
-                  <span class="meta-value">{{ head.relationship_to_head || '—' }}</span>
-                </div>
-                <div class="meta-line" *ngIf="head.date_of_birth">
-                  <span class="meta-label">Date of Birth:</span>
-                  <span class="meta-value">{{ head.date_of_birth }}</span>
-                </div>
-                <div class="meta-line">
-                  <span class="meta-label">Gender:</span>
-                  <span class="meta-value">{{ head.gender ? (head.gender | titlecase) : '—' }}</span>
-                </div>
-                <div class="meta-line">
-                  <span class="meta-label">Marital Status:</span>
-                  <span class="meta-value">{{ head.marital_status ? (head.marital_status | titlecase) : '—' }}</span>
-                </div>
-                <div class="meta-line">
-                  <span class="meta-label">Occupation:</span>
-                  <span class="meta-value">{{ head.occupation || '—' }}</span>
-                </div>
-              </div>
-
-              <!-- Sacraments Section -->
-              <div class="head-sacraments-section" *ngIf="getCompletedSacraments(head).length > 0">
-                <div class="sacraments-header">
-                  <span class="sacraments-icon">✝️</span>
-                  <h3 class="sacraments-title">Sacraments Received</h3>
-                </div>
-                <div class="sacraments-list">
-                  <div 
-                    *ngFor="let sacrament of getCompletedSacraments(head)" 
-                    class="sacrament-item"
-                  >
-                    <div class="sacrament-name">{{ sacrament.name }}</div>
-                    <div class="sacrament-details">
-                      <span class="sacrament-date">
-                        <span class="date-icon">📅</span>
-                        {{ formatSacramentDate(sacrament.date) }}
-                      </span>
-                      <span class="sacrament-place" *ngIf="sacrament.place">
-                        <span class="place-icon">📍</span>
-                        {{ sacrament.place }}
-                      </span>
-                      <span class="sacrament-spouse" *ngIf="sacrament.spouse">
-                        <span class="spouse-icon">👤</span>
-                        With: {{ sacrament.spouse }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <button 
-              type="button" 
-              class="btn btn-primary btn-large"
-              *ngIf="getFamilyHeadIndex() !== null && !head.is_from_db_name"
-              (click)="openEditMemberModal(getFamilyHeadIndex()!)"
-              title="Edit family head"
-            >
-              ✎ Edit Family Head
-            </button>
-          </div>
-          
-          <div *ngIf="!getFamilyHead()" class="no-head-message">
-            <div class="icon">👤</div>
-            <h3>No Family Head</h3>
-            <p>Add a member and set their relationship to "Self (Head)" to designate them as the family head.</p>
-          </div>
-        </div>
-      </div>
-
       <!-- Tab: Members -->
       <div class="tab-content members-tab" *ngIf="activeTab === 'members'" #membersTabContent>
         <div class="members-header">
@@ -284,46 +130,145 @@
         </div>
 
         <div formArrayName="members" class="members-list card-grid">
-          <div *ngFor="let member of members.controls; let i = index"
-               [formGroupName]="i"
+          <div *ngFor="let memberIndex of getRegularMemberIndices(); let i = index"
+               [formGroupName]="memberIndex"
                class="member-card-view"
-               [class.expanded]="isMemberExpanded(i)">
+               [class.expanded]="isMemberExpanded(memberIndex)">
             <div class="card-top">
-              <div class="avatar" aria-hidden="true">{{ (member.get('first_name')?.value || 'U').charAt(0) }}</div>
-              <div class="top-info" (click)="toggleMember(i)" role="button" tabindex="0" title="Toggle details">
+              <div class="avatar" aria-hidden="true">{{ (members.at(memberIndex).get('first_name')?.value || 'U').charAt(0) }}</div>
+              <div class="top-info" (click)="toggleMember(memberIndex)" role="button" tabindex="0" title="Toggle details">
                 <div class="name-row">
-                  <span class="name">{{ member.get('first_name')?.value || '—' }} {{ member.get('last_name')?.value || '' }}</span>
-                  <span class="status" [attr.data-status]="member.get('status')?.value || 'active'">{{ member.get('status')?.value || 'active' }}</span>
-                  <span class="chevron" [class.rotated]="isMemberExpanded(i)">▾</span>
+                  <span class="name">{{ members.at(memberIndex).get('first_name')?.value || '—' }} {{ members.at(memberIndex).get('last_name')?.value || '' }}</span>
+                  <span class="status" [attr.data-status]="members.at(memberIndex).get('status')?.value || 'active'">{{ members.at(memberIndex).get('status')?.value || 'active' }}</span>
+                  <span class="chevron" [class.rotated]="isMemberExpanded(memberIndex)">▾</span>
                 </div>
                 <div class="meta-row">
-                  <span class="meta">{{ member.get('relationship_to_head')?.value || 'other' }}</span>
+                  <span class="meta">{{ members.at(memberIndex).get('relationship_to_head')?.value || 'other' }}</span>
                   <span class="dot">•</span>
-                  <span class="meta">{{ callingCode }} {{ member.get('phone')?.value || '—' }}</span>
+                  <span class="meta">{{ callingCode }} {{ members.at(memberIndex).get('phone')?.value || '—' }}</span>
                 </div>
-                <div class="meta-row light" *ngIf="member.get('email')?.value">{{ member.get('email')?.value }}</div>
+                <div class="meta-row light" *ngIf="members.at(memberIndex).get('email')?.value">{{ members.at(memberIndex).get('email')?.value }}</div>
               </div>
               <div class="actions">
-                <button type="button" class="btn-icon" (click)="openEditMemberModal(i)" title="Edit member">✎</button>
-                <button type="button" class="btn-icon btn-danger" (click)="removeMember(i)" title="Remove member">🗑️</button>
+                <button type="button" class="btn-icon" (click)="openEditMemberModal(memberIndex)" title="Edit member">✎</button>
+                <button type="button" class="btn-icon btn-danger" (click)="removeMember(memberIndex)" title="Remove member">🗑️</button>
               </div>
             </div>
 
-            <div class="card-details" *ngIf="isMemberExpanded(i)">
+            <div class="card-details" *ngIf="isMemberExpanded(memberIndex)">
+              <!-- Member Field Validation Errors -->
+              <div class="member-errors" *ngIf="hasMemberError(memberIndex, 'phone') || hasMemberError(memberIndex, 'email') || hasMemberError(memberIndex, 'first_name') || hasMemberError(memberIndex, 'last_name')">
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'phone')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'phone') }}</span>
+                </div>
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'email')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'email') }}</span>
+                </div>
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'first_name')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'first_name') }}</span>
+                </div>
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'last_name')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'last_name') }}</span>
+                </div>
+              </div>
+              
               <div class="details-grid">
-                <div class="kv"><span class="k">DOB</span><span class="v">{{ member.get('date_of_birth')?.value || '—' }}</span></div>
-                <div class="kv"><span class="k">Gender</span><span class="v">{{ member.get('gender')?.value || '—' }}</span></div>
-                <div class="kv"><span class="k">Marital</span><span class="v">{{ member.get('marital_status')?.value || '—' }}</span></div>
-                <div class="kv"><span class="k">Occupation</span><span class="v">{{ member.get('occupation')?.value || '—' }}</span></div>
-                <div class="kv"><span class="k">Education</span><span class="v">{{ member.get('education')?.value || '—' }}</span></div>
-                <div class="kv"><span class="k">Baptism</span><span class="v">{{ member.get('baptism_date')?.value || '—' }}</span></div>
-                <div class="kv"><span class="k">1st Communion</span><span class="v">{{ member.get('first_communion_date')?.value || '—' }}</span></div>
-                <div class="kv"><span class="k">Confirmation</span><span class="v">{{ member.get('confirmation_date')?.value || '—' }}</span></div>
+                <div class="kv"><span class="k">DOB</span><span class="v">{{ members.at(memberIndex).get('date_of_birth')?.value || '—' }}</span></div>
+                <div class="kv"><span class="k">Gender</span><span class="v">{{ members.at(memberIndex).get('gender')?.value || '—' }}</span></div>
+                <div class="kv"><span class="k">Marital</span><span class="v">{{ members.at(memberIndex).get('marital_status')?.value || '—' }}</span></div>
+                <div class="kv"><span class="k">Occupation</span><span class="v">{{ members.at(memberIndex).get('occupation')?.value || '—' }}</span></div>
+                <div class="kv"><span class="k">Education</span><span class="v">{{ members.at(memberIndex).get('education')?.value || '—' }}</span></div>
+              </div>
+
+              <div class="member-sacraments">
+                <h4 class="section-title">Sacramental Details</h4>
+                <div class="details-grid sacraments-grid">
+                  <div class="kv">
+                    <span class="k">Baptism</span>
+                    <span class="v">{{ members.at(memberIndex).get('baptism_date')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Church</span>
+                    <span class="v">{{ members.at(memberIndex).get('baptism_church_name')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Church Address</span>
+                    <span class="v">{{ members.at(memberIndex).get('baptism_church_address')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Primary Godparent</span>
+                    <span class="v">{{ members.at(memberIndex).get('baptism_godparent_primary')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Secondary Godparent</span>
+                    <span class="v">{{ members.at(memberIndex).get('baptism_godparent_secondary')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Priest</span>
+                    <span class="v">{{ members.at(memberIndex).get('baptism_priest_name')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">First Communion</span>
+                    <span class="v">{{ members.at(memberIndex).get('first_communion_date')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Confirmation</span>
+                    <span class="v">{{ members.at(memberIndex).get('confirmation_date')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Marriage Date</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_date')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Marriage Place</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_place')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Spouse</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_spouse_name')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Bride</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_bride_full_name')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Bride Address</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_bride_address')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Bride Church</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_bride_church_name')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Bride Church Address</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_bride_church_address')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Groom</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_groom_full_name')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Groom Address</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_groom_address')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Groom Church</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_groom_church_name')?.value || '—' }}</span>
+                  </div>
+                  <div class="kv">
+                    <span class="k">Groom Church Address</span>
+                    <span class="v">{{ members.at(memberIndex).get('marriage_groom_church_address')?.value || '—' }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
 
-          <div *ngIf="members.length === 0" class="empty-members">
+          <div *ngIf="regularMembersCount === 0" class="empty-members">
             <div class="empty-icon">👥</div>
             <p>No members added yet</p>
             <p class="empty-hint">Click "Add Member" to add family members</p>
@@ -332,7 +277,7 @@
       </div>
 
       <!-- Modal Footer -->
-      <div class="modal-footer">
+      <div class="modal-footer" *ngIf="activeTab === 'info'">
         <button 
           type="button" 
           class="btn btn-secondary" 
@@ -344,11 +289,9 @@
         <button 
           type="submit" 
           class="btn btn-primary" 
-          [disabled]="!familyForm.valid || loading"
+          [disabled]="loading || familyForm.pristine || familyForm.invalid"
         >
-          <span *ngIf="!loading">
-            <span class="icon">💾</span> Save Family
-          </span>
+          <span *ngIf="!loading">Save</span>
           <span *ngIf="loading">Saving...</span>
         </button>
       </div>
@@ -357,7 +300,9 @@
     <!-- Member Modal -->
     <app-family-member-form-modal
       *ngIf="showMemberModal"
-      [member]="memberToEditIndex !== null ? (members.at(memberToEditIndex).value) : null"
+      [member]="memberToEditIndex !== null ? (members.at(memberToEditIndex).getRawValue()) : null"
+      [saving]="memberModalSaving"
+      [error]="memberModalError"
       (save)="onMemberModalSave($event)"
       (cancel)="onMemberModalCancel()">
     </app-family-member-form-modal>

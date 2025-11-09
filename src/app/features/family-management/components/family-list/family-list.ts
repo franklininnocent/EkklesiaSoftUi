@@ -3,9 +3,10 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
+import { ToastService } from '@core/services/toast.service';
 import { FamilyService } from '../../../../core/services/family.service';
 import { BCCService } from '../../../../core/services/bcc.service';
-import { Family, BCC, FamilyStatistics } from '../../../../core/models/family.model';
+import { Family, BCC, FamilyStatistics, FamilyMember } from '../../../../core/models/family.model';
 import { FamilyFormComponent } from '../family-form/family-form';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
@@ -59,7 +60,8 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     private familyService: FamilyService,
     private bccService: BCCService,
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private toastService: ToastService
   ) {
     this.filterForm = this.fb.group({
       search: [''],
@@ -70,6 +72,51 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       sort_by: ['created_at'],
       sort_order: ['desc']
     });
+  }
+
+  /**
+   * Determine the family head member for a given family
+   */
+  private resolveHeadMember(family: Family): FamilyMember | null {
+    const members = family.members || [];
+    if (!members.length) {
+      return null;
+    }
+
+    // Prefer explicit self/head relationships
+    const relPriority = ['self', 'head', 'head of family'];
+    const byRelationship = members.find(member => {
+      const rel = String(member.relationship_to_head || '').toLowerCase();
+      return relPriority.includes(rel) && member.status === 'active';
+    }) || members.find(member => {
+      const rel = String(member.relationship_to_head || '').toLowerCase();
+      return relPriority.includes(rel);
+    });
+
+    if (byRelationship) {
+      return byRelationship;
+    }
+
+    // Next, prefer primary contact
+    const primaryContact = members.find(member => (member as any).is_primary_contact === true && member.status === 'active')
+      || members.find(member => (member as any).is_primary_contact === true);
+    if (primaryContact) {
+      return primaryContact;
+    }
+
+    // Fallback: use first active member, then first member
+    const activeMember = members.find(member => member.status === 'active');
+    return activeMember || members[0];
+  }
+
+  /**
+   * Get contact details (phone/email) for the family head
+   */
+  getHeadContactInfo(family: Family): { phone: string | null; email: string | null } {
+    const head = this.resolveHeadMember(family);
+    const phone = head?.phone && String(head.phone).trim() ? String(head.phone).trim() : null;
+    const email = head?.email && String(head.email).trim() ? String(head.email).trim() : null;
+    return { phone, email };
   }
 
   ngOnInit(): void {
@@ -441,10 +488,10 @@ export class FamilyListComponent implements OnInit, OnDestroy {
         next: () => {
           this.loadFamilies();
           this.loadStatistics();
-          alert('Family deleted successfully');
+          this.toastService.success('Family deleted successfully', 'Success');
         },
         error: (error) => {
-          alert('Failed to delete family');
+          this.toastService.error('Failed to delete family', 'Error');
           console.error('Error deleting family:', error);
         }
       });
@@ -467,7 +514,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.selectedFamily = null;
     this.loadFamilies();
     this.loadStatistics();
-    alert('Family saved successfully!');
+    this.toastService.success('Family saved successfully!', 'Success');
   }
 
   /**

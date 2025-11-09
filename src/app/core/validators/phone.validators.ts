@@ -1,5 +1,6 @@
 import { AbstractControl, ValidationErrors, ValidatorFn } from '@angular/forms';
 import { parsePhoneNumberFromString, CountryCode, getCountryCallingCode } from 'libphonenumber-js';
+import { environment } from '@environments/environment';
 
 /**
  * Normalize a phone string: remove spaces, hyphens, parentheses and dots
@@ -53,6 +54,17 @@ export function getTenantCountryCode(): string {
     const codeFromAuth = anyWindow?.__CURRENT_TENANT__?.country_code || anyWindow?.__CURRENT_USER__?.tenant?.country_code;
     if (typeof codeFromAuth === 'string' && codeFromAuth.length >= 2) {
       return codeFromAuth.toUpperCase();
+    }
+  } catch {}
+  // Try user from localStorage (authoritative post-login)
+  try {
+    const userStr = localStorage.getItem(environment.userKey);
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      const lsCode: string | undefined = user?.tenant?.country_code || user?.tenant?.country?.iso2;
+      if (lsCode && typeof lsCode === 'string' && lsCode.length >= 2) {
+        return lsCode.toUpperCase();
+      }
     }
   } catch {}
   const ls = localStorage.getItem('tenant_country_code');

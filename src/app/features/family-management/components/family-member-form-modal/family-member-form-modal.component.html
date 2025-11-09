@@ -1,7 +1,7 @@
 <div class="modal-overlay" (click)="onCancel()">
   <div class="modal-dialog" (click)="$event.stopPropagation()">
     <div class="modal-header">
-      <h3 class="modal-title">{{ isEditMode ? 'Edit Member' : 'Add Member' }}</h3>
+      <h3 class="modal-title">{{ isHeadOnly ? (isEditMode ? 'Edit Family Head' : 'Add Family Head') : (isEditMode ? 'Edit Member' : 'Add Member') }}</h3>
       <button type="button" class="modal-close" (click)="onCancel()">✕</button>
     </div>
 
@@ -64,20 +64,25 @@
               formControlName="relationship_to_head" 
               class="form-control"
               [class.error]="isFieldInvalid('relationship_to_head')"
+              [disabled]="isHeadOnly"
+              [title]="isHeadOnly ? 'Relationship is locked to Family Head' : ''"
             >
-              <option value="self">Self (Head)</option>
-              <option value="spouse">Spouse</option>
-              <option value="son">Son</option>
-              <option value="daughter">Daughter</option>
-              <option value="father">Father</option>
-              <option value="mother">Mother</option>
-              <option value="brother">Brother</option>
-              <option value="sister">Sister</option>
-              <option value="other">Other</option>
+              <option value="self" *ngIf="isHeadOnly">Family Head</option>
+              <option value="spouse" *ngIf="!isHeadOnly">Spouse</option>
+              <option value="son" *ngIf="!isHeadOnly">Son</option>
+              <option value="daughter" *ngIf="!isHeadOnly">Daughter</option>
+              <option value="father" *ngIf="!isHeadOnly">Father</option>
+              <option value="mother" *ngIf="!isHeadOnly">Mother</option>
+              <option value="brother" *ngIf="!isHeadOnly">Brother</option>
+              <option value="sister" *ngIf="!isHeadOnly">Sister</option>
+              <option value="other" *ngIf="!isHeadOnly">Other</option>
             </select>
             <span class="field-error" *ngIf="isFieldInvalid('relationship_to_head')">
               {{ getErrorMessage('relationship_to_head') }}
             </span>
+            <small class="form-hint" *ngIf="isHeadOnly" style="display: block; margin-top: 4px; color: #666; font-size: 0.875rem;">
+              This member will be saved as the Family Head
+            </small>
           </div>
           <div class="form-group">
             <label>Marital Status</label>
@@ -165,7 +170,7 @@
     <div class="modal-footer">
       <button type="button" class="btn btn-secondary" (click)="onCancel()">Cancel</button>
       <button type="submit" class="btn btn-primary" (click)="onSave()" [disabled]="saving">
-        <span *ngIf="!saving">Save Member</span>
+        <span *ngIf="!saving">Save</span>
         <span *ngIf="saving">Saving...</span>
       </button>
     </div>

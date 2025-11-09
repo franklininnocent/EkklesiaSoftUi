@@ -10,11 +10,13 @@
  */
 
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { Observable, BehaviorSubject, of } from 'rxjs';
+import { Observable, BehaviorSubject, of, combineLatest } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
 import { GeographyService, Country } from './geography.service';
 import { getTenantCallingCode } from '@core/validators/phone.validators';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
+import { environment } from '@environments/environment';
+import { TenantService } from './tenant.service';
 
 /**
  * Phone code update result
@@ -33,6 +35,8 @@ export interface PhoneCodeUpdateResult {
 })
 export class PhoneCodeService {
   private geographyService = inject(GeographyService);
+  private tenantService = inject(TenantService);
+  private initializedFromApi = false;
 
   // Current phone code as a signal for reactive updates
   private _currentPhoneCode = signal<string>(getTenantCallingCode());
@@ -49,6 +53,86 @@ export class PhoneCodeService {
     const code = this._currentPhoneCode();
     return code;
   });
+
+  constructor() {
+    // Initialize from stored user if available to avoid defaulting to +1
+    try {
+      const userStr = localStorage.getItem(environment.userKey);
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        const iso2: string | undefined = user?.tenant?.country_code || user?.tenant?.country?.iso2;
+        if (iso2 && typeof iso2 === 'string' && iso2.length >= 2) {
+          const upper = iso2.toUpperCase();
+          try { localStorage.setItem('tenant_country_code', upper); } catch {}
+          try {
+            const code = getCountryCallingCode(upper as CountryCode);
+            this._currentPhoneCode.set(`+${code}`);
+          } catch {}
+        }
+      }
+    } catch {}
+
+    // Fallback: use cached tenant_country_code from localStorage
+    try {
+      const cachedIso2 = localStorage.getItem('tenant_country_code');
+      if (cachedIso2 && cachedIso2.length >= 2) {
+        const code = getCountryCallingCode(cachedIso2.toUpperCase() as CountryCode);
+        this._currentPhoneCode.set(`+${code}`);
+      }
+    } catch {}
+
+    // Fallback: window globals (if provided by backend layout)
+    try {
+      const anyWindow: any = window as any;
+      const winIso2: string | undefined = anyWindow?.__CURRENT_TENANT__?.country_code || anyWindow?.__CURRENT_USER__?.tenant?.country_code;
+      if (winIso2 && winIso2.length >= 2) {
+        const code = getCountryCallingCode(winIso2.toUpperCase() as CountryCode);
+        this._currentPhoneCode.set(`+${code}`);
+      }
+    } catch {}
+  }
+
+  /**
+   * Initialize phone code from API if still default (+1).
+   * Uses tenant church profile country_id -> countries lookup.
+   */
+  initializeFromApiOnce(): Observable<PhoneCodeUpdateResult> {
+    if (this.initializedFromApi) {
+      return of({ success: true, phoneCode: this._currentPhoneCode(), source: 'default' });
+    }
+
+    return combineLatest([
+      this.geographyService.getCountries(),
+      this.tenantService.getChurchProfile()
+    ]).pipe(
+      map(([countriesRes, tenantRes]) => {
+        this.initializedFromApi = true;
+
+        if (!countriesRes.success || !countriesRes.data || !tenantRes.success || !tenantRes.data) {
+          const fallback = getTenantCallingCode();
+          this._currentPhoneCode.set(fallback);
+          return { success: false, phoneCode: fallback, source: 'default', error: 'Failed to load data' } as PhoneCodeUpdateResult;
+        }
+
+        const countries = countriesRes.data as Country[];
+        const countryId: number | null = (tenantRes.data as any)?.addresses?.[0]?.country_id || (tenantRes.data as any)?.country_id || null;
+        if (!countryId) {
+          const fallback = getTenantCallingCode();
+          this._currentPhoneCode.set(fallback);
+          return { success: false, phoneCode: fallback, source: 'default', error: 'No country_id in tenant' } as PhoneCodeUpdateResult;
+        }
+
+        const result = this.findAndUpdatePhoneCode(countryId, countries);
+        return result;
+      }),
+      catchError(err => {
+        console.error('❌ initializeFromApiOnce error:', err);
+        const fallback = getTenantCallingCode();
+        this._currentPhoneCode.set(fallback);
+        return of({ success: false, phoneCode: fallback, source: 'default', error: 'Exception' } as PhoneCodeUpdateResult);
+      })
+    );
+  }
 
   /**
    * Update phone code based on country ID

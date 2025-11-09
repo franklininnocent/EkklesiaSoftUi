@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
+import { ToastService } from '@core/services/toast.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { BCC, BCCStatistics } from '../../../../core/models/family.model';
 import { BCCFormComponent } from '../bcc-form/bcc-form';
@@ -58,7 +59,8 @@ export class BCCListComponent implements OnInit, OnDestroy {
   constructor(
     private bccService: BCCService,
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private toastService: ToastService
   ) {
     this.filterForm = this.fb.group({
       search: [''],
@@ -416,10 +418,10 @@ export class BCCListComponent implements OnInit, OnDestroy {
         next: () => {
           this.loadBCCs();
           this.loadStatistics();
-          alert('BCC deleted successfully');
+          this.toastService.success('BCC deleted successfully', 'Success');
         },
         error: (error) => {
-          alert('Failed to delete BCC');
+          this.toastService.error('Failed to delete BCC', 'Error');
           console.error('Error deleting BCC:', error);
         }
       });
@@ -442,7 +444,7 @@ export class BCCListComponent implements OnInit, OnDestroy {
     this.selectedBCC = null;
     this.loadBCCs();
     this.loadStatistics();
-    alert('BCC saved successfully!');
+    this.toastService.success('BCC saved successfully!', 'Success');
   }
 
   /**

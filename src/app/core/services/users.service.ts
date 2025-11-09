@@ -31,7 +31,12 @@ import {
 })
 export class UsersService {
   private http = inject(HttpClient);
-  private apiUrl = `${environment.apiUrl}/tenant/users`;
+  /**
+   * Backend route group for tenant user management lives under /api/users
+   * (see Modules\Authentication\routes\api.php). The previous /tenant/users
+   * prefix no longer exists, so point to /users to avoid 404s.
+   */
+  private apiUrl = `${environment.apiUrl}/users`;
 
   /**
    * Get all users for the current tenant

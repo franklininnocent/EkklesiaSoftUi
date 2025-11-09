@@ -21,11 +21,6 @@ export interface Family {
   // Relations
   bcc_id?: string;
   
-  // Contact Information
-  primary_phone?: string;
-  secondary_phone?: string;
-  email?: string;
-  
   // Status
   status: 'active' | 'inactive' | 'migrated';
   notes?: string;
@@ -74,6 +69,13 @@ export interface FamilyMember {
   // Sacrament Information
   baptism_date?: string;
   baptism_place?: string;
+  baptism_godparent_primary?: string;
+  baptism_godparent_secondary?: string;
+  baptism_location_type?: 'home_parish' | 'other';
+  baptism_church_name?: string;
+  baptism_church_address?: string;
+  baptism_priest_name?: string;
+  baptism_priest_is_home?: boolean;
   first_communion_date?: string;
   first_communion_place?: string;
   confirmation_date?: string;
@@ -81,6 +83,16 @@ export interface FamilyMember {
   marriage_date?: string;
   marriage_place?: string;
   marriage_spouse_name?: string;
+  marriage_bride_full_name?: string;
+  marriage_bride_address?: string;
+  marriage_bride_church_type?: 'home_parish' | 'other';
+  marriage_bride_church_name?: string;
+  marriage_bride_church_address?: string;
+  marriage_groom_full_name?: string;
+  marriage_groom_address?: string;
+  marriage_groom_church_type?: 'home_parish' | 'other';
+  marriage_groom_church_name?: string;
+  marriage_groom_church_address?: string;
   
   // Additional Information
   occupation?: string;

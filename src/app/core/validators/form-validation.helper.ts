@@ -32,8 +32,6 @@ const FIELD_LABELS: { [key: string]: string } = {
   'state_id': 'State',
   'country_id': 'Country',
   'postal_code': 'Postal code',
-  'primary_phone': 'Primary phone',
-  'secondary_phone': 'Secondary phone',
   'bcc_id': 'BCC',
   'status': 'Status',
   
