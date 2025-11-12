@@ -106,18 +106,57 @@ export class AuthService {
 
     // Update tenant country code cache and phone code globally
     try {
-      const iso2: string | undefined = (user as any)?.tenant?.country_code || (user as any)?.tenant?.country?.iso2;
-      if (iso2 && typeof iso2 === 'string' && iso2.length >= 2) {
-        const upper = iso2.toUpperCase();
-        try { localStorage.setItem('tenant_country_code', upper); } catch {}
-        try {
-          const code = getCountryCallingCode(upper as CountryCode);
-          if (code) {
-            this.phoneCodeService.setPhoneCode(`+${code}`);
+      const tenant = (user as any)?.tenant;
+      if (tenant) {
+        // Priority 1: Use country object from backend (most reliable)
+        const tenantCountry = tenant.country;
+        if (tenantCountry) {
+          // Use phone_code from database if available
+          if (tenantCountry.phone_code) {
+            const phoneCode = tenantCountry.phone_code.startsWith('+') 
+              ? tenantCountry.phone_code 
+              : `+${tenantCountry.phone_code}`;
+            this.phoneCodeService.setPhoneCode(phoneCode);
+            try { localStorage.setItem('tenant_country_code', tenantCountry.iso2); } catch {}
+            try { localStorage.setItem('tenant_country_id', tenantCountry.id.toString()); } catch {}
+            return; // Successfully updated, exit early
           }
-        } catch {}
+          // Fallback to ISO2 code
+          else if (tenantCountry.iso2) {
+            const upper = tenantCountry.iso2.toUpperCase();
+            try { localStorage.setItem('tenant_country_code', upper); } catch {}
+            try { localStorage.setItem('tenant_country_id', tenantCountry.id.toString()); } catch {}
+            try {
+              const code = getCountryCallingCode(upper as CountryCode);
+              if (code) {
+                this.phoneCodeService.setPhoneCode(`+${code}`);
+              }
+            } catch {}
+            return; // Successfully updated, exit early
+          }
+        }
+        
+        // Priority 2: Try legacy country_code or country.iso2
+        const iso2: string | undefined = tenant.country_code || tenant.country?.iso2;
+        if (iso2 && typeof iso2 === 'string' && iso2.length >= 2) {
+          const upper = iso2.toUpperCase();
+          try { localStorage.setItem('tenant_country_code', upper); } catch {}
+          try {
+            const code = getCountryCallingCode(upper as CountryCode);
+            if (code) {
+              this.phoneCodeService.setPhoneCode(`+${code}`);
+            }
+          } catch {}
+        }
+        
+        // Store country_id if available
+        if (tenant.country_id) {
+          try { localStorage.setItem('tenant_country_id', tenant.country_id.toString()); } catch {}
+        }
       }
-    } catch {}
+    } catch (error) {
+      console.error('Error updating phone code from user:', error);
+    }
   }
 
   private getUserFromStorage(): User | null {

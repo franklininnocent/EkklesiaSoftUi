@@ -24,7 +24,8 @@ export class RolesPermissionsComponent implements OnInit {
   @ViewChild('assignModal') assignModalRef!: AssignPermissionsModalComponent;
   
   activeTab: 'roles' | 'permissions' | 'assign' | 'pope' = 'roles';
-  hasEkklesiaRole = false;
+  hasEkklesiaRole = false; // For backward compatibility
+  hasSuperAdminAccess = false; // For Pope tab - SuperAdmin only
   
   // Filter Panel State
   showRolesFilterPanel = false;
@@ -116,14 +117,17 @@ export class RolesPermissionsComponent implements OnInit {
 
   /**
    * Check if user has Ekklesia role to show Pope tab
+   * CRITICAL SECURITY: Pope tab is now SuperAdmin only (changed from Ekklesia roles)
    */
   private checkEkklesiaRole(): void {
     // Check immediately first
     this.updateEkklesiaRole(this.authService.currentUserValue);
+    this.updateSuperAdminAccess(this.authService.currentUserValue);
     
     // Also subscribe to user changes
     this.authService.currentUser$.pipe(take(1)).subscribe(user => {
       this.updateEkklesiaRole(user);
+      this.updateSuperAdminAccess(user);
       this.cdr.detectChanges();
     });
   }
@@ -147,6 +151,20 @@ export class RolesPermissionsComponent implements OnInit {
       ekklesiaRoles.includes(user.role?.name || '') ||
       this.authService.isEkklesiaAdmin() ||
       this.authService.isSuperAdmin();
+  }
+
+  /**
+   * Check if user has SuperAdmin access for Pope tab
+   * CRITICAL SECURITY: Pope section is SuperAdmin only
+   */
+  private updateSuperAdminAccess(user: any): void {
+    if (!user) {
+      this.hasSuperAdminAccess = false;
+      return;
+    }
+
+    // Only SuperAdmin can access Pope section
+    this.hasSuperAdminAccess = this.authService.isSuperAdmin();
   }
 
   // Tab Management
@@ -246,6 +264,93 @@ export class RolesPermissionsComponent implements OnInit {
         this.toastService.error(err.error?.message || 'Failed to delete role', 'Error');
       }
     });
+  }
+
+  /**
+   * Check if the current user can manage roles and permissions
+   * - SuperAdmin, EkklesiaAdmin, EkklesiaManager can manage all roles
+   * - Tenant Administrators can manage roles within their tenant
+   */
+  canManageRoles(): boolean {
+    const user = this.authService.currentUserValue;
+    if (!user) {
+      return false;
+    }
+
+    // SuperAdmins and EkklesiaAdmins/Managers can always manage roles
+    if (this.authService.isSuperAdmin() || this.authService.isEkklesiaAdmin()) {
+      return true;
+    }
+
+    // Check for EkklesiaManager
+    const ekklesiaManagerRoles = ['EkklesiaManager', 'Ekklesia Manager'];
+    if (ekklesiaManagerRoles.includes(user.role_name || '') || 
+        ekklesiaManagerRoles.includes(user.role?.name || '')) {
+      return true;
+    }
+
+    // Tenant Administrators can manage roles for their tenant
+    // Check multiple ways the Administrator role might be stored
+    const isAdministrator = 
+      this.authService.isTenantAdmin() || // Check via AuthService method
+      user.role_name === 'Administrator' || // Check legacy role_name
+      user.role?.name === 'Administrator' || // Check legacy role object
+      (user.roles && user.roles.some(r => r.name === 'Administrator')); // Check roles array
+    
+    if (isAdministrator && user.tenant_id) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Check if the current user can create roles
+   */
+  canCreateRole(): boolean {
+    return this.canManageRoles() || this.authService.hasPermission('roles.create');
+  }
+
+  /**
+   * Check if the current user can update roles
+   */
+  canUpdateRole(): boolean {
+    return this.canManageRoles() || this.authService.hasPermission('roles.update');
+  }
+
+  /**
+   * Check if the current user can delete roles
+   */
+  canDeleteRole(): boolean {
+    return this.canManageRoles() || this.authService.hasPermission('roles.delete');
+  }
+
+  /**
+   * Check if the current user can assign permissions
+   */
+  canAssignPermissions(): boolean {
+    return this.canManageRoles() || this.authService.hasPermission('permissions.assign');
+  }
+
+  /**
+   * Check if the current user can create permissions
+   */
+  canCreatePermission(): boolean {
+    return this.canManageRoles() || this.authService.hasPermission('permissions.create');
+  }
+
+  /**
+   * Check if the current user can update permissions
+   */
+  canUpdatePermission(): boolean {
+    return this.canManageRoles() || this.authService.hasPermission('permissions.update');
+  }
+
+  /**
+   * Check if the current user can delete permissions
+   */
+  canDeletePermission(): boolean {
+    return this.canManageRoles() || this.authService.hasPermission('permissions.delete');
   }
 
   /**

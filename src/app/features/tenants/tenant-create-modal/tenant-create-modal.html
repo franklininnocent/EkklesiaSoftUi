@@ -326,27 +326,18 @@
 
           <!-- Primary Contact Number -->
           <div class="form-group">
-            <label for="primaryContactNumber" class="form-label">
-              Contact Number <span class="required">*</span>
-            </label>
-            <div class="phone-input-group">
-              <span class="phone-prefix">{{ callingCode }}</span>
-              <input
-                type="tel"
-                id="primaryContactNumber"
-                name="primaryContactNumber"
-                class="form-input"
-                [class.input-error]="isFieldInvalid('primary_contact_number')"
-                [(ngModel)]="formData.primary_contact_number"
-                (blur)="markAsTouched('primary_contact_number')"
-                placeholder="{{ callingCode }} 1234567890"
-                required
-                [disabled]="isSubmitting"
-              />
-            </div>
-            <span class="form-error" *ngIf="isFieldInvalid('primary_contact_number')">
-              {{ getFieldError('primary_contact_number') }}
-            </span>
+            <app-phone-input
+              [label]="'Contact Number'"
+              [id]="'primaryContactNumber'"
+              [name]="'primaryContactNumber'"
+              [required]="true"
+              [disabled]="isSubmitting"
+              [maxLength]="15"
+              [minLength]="6"
+              [errorMessage]="isFieldInvalid('primary_contact_number') ? getFieldError('primary_contact_number') : ''"
+              [(ngModel)]="formData.primary_contact_number"
+              ngDefaultControl
+            ></app-phone-input>
           </div>
 
           <!-- Primary User Address (moved here from official address) -->

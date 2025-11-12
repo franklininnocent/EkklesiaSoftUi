@@ -78,6 +78,12 @@ export interface FamilyMember {
   baptism_priest_is_home?: boolean;
   first_communion_date?: string;
   first_communion_place?: string;
+  first_communion_location_type?: 'home_parish' | 'other';
+  first_communion_church_name?: string;
+  first_communion_church_address?: string;
+  first_communion_priest_name?: string;
+  first_communion_priest_is_home?: boolean;
+  first_communion_description?: string;
   confirmation_date?: string;
   confirmation_place?: string;
   marriage_date?: string;

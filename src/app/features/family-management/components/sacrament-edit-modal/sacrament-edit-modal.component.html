@@ -2,7 +2,7 @@
   <div class="modal-container" (click)="$event.stopPropagation()">
     <header class="modal-header">
       <div class="header-titles">
-        <h3>{{ sacrament | titlecase }} Details</h3>
+        <h3>{{ sacramentDisplayName }} Details</h3>
         <p class="subtitle" *ngIf="isBaptism">
           Update baptism record, godparents, and parish information.
         </p>
@@ -78,6 +78,53 @@
 
       <ng-template #generalSacrament>
         <ng-container [ngSwitch]="sacrament">
+          <ng-container *ngSwitchCase="'first_communion'">
+            <div class="form-grid">
+              <label class="form-field">
+                <span class="label">First Communion Date</span>
+                <input type="date" formControlName="first_communion_date">
+              </label>
+
+              <div class="form-field">
+                <span class="label">Location</span>
+                <div class="radio-group">
+                  <label>
+                    <input type="radio" value="home_parish" formControlName="first_communion_location_type">
+                    Home Parish
+                  </label>
+                  <label>
+                    <input type="radio" value="other" formControlName="first_communion_location_type">
+                    Another Church
+                  </label>
+                </div>
+              </div>
+
+              <label class="form-field">
+                <span class="label">Church Name</span>
+                <input type="text" formControlName="first_communion_church_name" placeholder="Enter church name">
+              </label>
+
+              <label class="form-field stretch">
+                <span class="label">Church Address</span>
+                <textarea formControlName="first_communion_church_address" rows="2" placeholder="Enter church address"></textarea>
+              </label>
+
+              <div class="form-field">
+                <span class="label">Priest</span>
+                <label class="toggle">
+                  <input type="checkbox" formControlName="first_communion_priest_is_home">
+                  <span>Ministered by home parish priest</span>
+                </label>
+                <input type="text" class="mt-2" formControlName="first_communion_priest_name" placeholder="Enter priest name">
+              </div>
+
+              <label class="form-field stretch">
+                <span class="label">Description</span>
+                <textarea formControlName="first_communion_description" rows="2" placeholder="Notes shown in family records"></textarea>
+              </label>
+            </div>
+          </ng-container>
+
           <ng-container *ngSwitchCase="'marriage'">
             <div class="form-grid">
               <label class="form-field">
@@ -171,7 +218,7 @@
           <ng-container *ngSwitchDefault>
             <div class="form-grid small">
               <label class="form-field">
-                <span class="label">{{ sacrament | titlecase }} Date</span>
+                <span class="label">{{ sacramentDisplayName }} Date</span>
                 <input type="date" [formControlName]="sacrament + '_date'">
               </label>
 

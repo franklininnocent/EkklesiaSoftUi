@@ -45,25 +45,31 @@ export class PopeDetailsManagementComponent implements OnInit {
 
   /**
    * Check if user has permission to manage pope details
+   * CRITICAL SECURITY: Pope Details is SuperAdmin only (changed from Ekklesia roles)
    */
   private checkPermissions(): void {
     const user = this.authService.currentUserValue;
     
-    // Check for permission (format: pope.manage_pope_details)
-    const hasPermission = this.authService.hasPermission('pope.manage_pope_details') || 
-                         this.authService.hasPermission('manage_pope_details');
-    
-    // Check for Ekklesia roles (check both formats for compatibility)
-    const isEkklesiaAdmin = this.authService.isEkklesiaAdmin() ||
-                           (user?.role_name === 'EkklesiaAdmin') ||
-                           (user?.role?.name === 'EkklesiaAdmin');
-    
+    // CRITICAL SECURITY: Only SuperAdmin can manage Pope Details
+    // Check for SuperAdmin explicitly
     const isSuperAdmin = this.authService.isSuperAdmin() ||
                         (user?.role_name === 'SuperAdmin') ||
                         (user?.role?.name === 'SuperAdmin') ||
-                        (user?.has_ekklesia_role === true); // Fallback check
+                        (user?.is_super_admin === true) ||
+                        (user?.is_admin === true);
     
-    this.canManage = hasPermission || isEkklesiaAdmin || isSuperAdmin;
+    // User can manage pope details ONLY if they are SuperAdmin
+    // Even if they have the permission, we enforce SuperAdmin check for security
+    this.canManage = isSuperAdmin;
+    
+    // If user is not SuperAdmin, log a warning for audit
+    if (!this.canManage && user) {
+      console.warn('Non-SuperAdmin user attempted to access Pope Details (SuperAdmin only)', {
+        user_id: user.id,
+        user_email: user.email,
+        role_name: user.role_name || user.role?.name,
+      });
+    }
     
     if (!this.canManage) {
       this.toastService.error('You do not have permission to manage pope details.');

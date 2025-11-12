@@ -32,7 +32,7 @@
         <span class="tab-text">Assign Permissions</span>
       </button>
       <button 
-        *ngIf="hasEkklesiaRole"
+        *ngIf="hasSuperAdminAccess"
         class="tab-item" 
         [class.active]="isActiveTab('pope')"
         (click)="selectTab('pope')">
@@ -103,7 +103,7 @@
             <span class="filter-badge" *ngIf="hasActiveFilters()">●</span>
           </button>
           <button 
-            *ngIf="authService.hasPermission('roles.create')"
+            *ngIf="canCreateRole()"
             class="btn-create-inline" 
             (click)="openCreateRoleModal()"
             type="button"
@@ -207,14 +207,14 @@
               <td>{{ role.tenant?.name || 'Global' }}</td>
               <td class="actions-cell">
                 <button 
-                  *ngIf="authService.hasPermission('roles.update') && authService.hasPermission('permissions.assign')"
+                  *ngIf="canAssignPermissions() && canUpdateRole()"
                   class="action-btn action-assign" 
                   (click)="openAssignPermissionsModal(role)" 
                   title="Assign Permissions">
                   🔗
                 </button>
                 <button 
-                  *ngIf="authService.hasPermission('roles.update') && canToggleRoleStatus(role)"
+                  *ngIf="canUpdateRole() && canToggleRoleStatus(role)"
                   class="action-btn action-toggle" 
                   (click)="toggleRoleStatus(role)" 
                   [title]="role.active === 1 ? 'Deactivate Role' : 'Activate Role'">
@@ -229,21 +229,21 @@
                   🔒
                 </button>
                 <button 
-                  *ngIf="authService.hasPermission('roles.update') && role.is_custom"
+                  *ngIf="canUpdateRole() && role.is_custom"
                   class="action-btn action-edit" 
                   (click)="openEditRoleModal(role)" 
                   title="Edit">
                   ✏️
                 </button>
                 <button 
-                  *ngIf="authService.hasPermission('roles.delete') && role.is_custom"
+                  *ngIf="canDeleteRole() && role.is_custom"
                   class="action-btn action-delete" 
                   (click)="deleteRole(role)" 
                   title="Delete">
                   🗑️
                 </button>
                 <span 
-                  *ngIf="!authService.hasAnyPermission(['roles.update', 'roles.delete', 'permissions.assign'])" 
+                  *ngIf="!canUpdateRole() && !canDeleteRole() && !canAssignPermissions()" 
                   class="no-actions">
                   No actions available
                 </span>
@@ -258,7 +258,7 @@
           <h3>No Roles Found</h3>
           <p>No roles match your current filters</p>
           <button 
-            *ngIf="authService.hasPermission('roles.create')"
+            *ngIf="canCreateRole()"
             class="btn-create" 
             (click)="openCreateRoleModal()" 
             type="button" 
@@ -373,7 +373,7 @@
             <span>Collapse All</span>
           </button>
           <button 
-            *ngIf="authService.hasPermission('permissions.create')"
+            *ngIf="canCreatePermission()"
             class="btn-create-inline" 
             (click)="openCreatePermissionModal()"
             type="button"
@@ -506,21 +506,21 @@
                     </td>
                     <td class="actions-cell">
                       <button 
-                        *ngIf="authService.hasPermission('permissions.update') && permission.is_custom"
+                        *ngIf="canUpdatePermission() && permission.is_custom"
                         class="action-btn action-edit" 
                         (click)="openEditPermissionModal(permission)" 
                         title="Edit">
                         ✏️
                       </button>
                       <button 
-                        *ngIf="authService.hasPermission('permissions.delete') && permission.is_custom"
+                        *ngIf="canDeletePermission() && permission.is_custom"
                         class="action-btn action-delete" 
                         (click)="deletePermission(permission)" 
                         title="Delete">
                         🗑️
                       </button>
                       <span 
-                        *ngIf="!authService.hasAnyPermission(['permissions.update', 'permissions.delete'])" 
+                        *ngIf="!canUpdatePermission() && !canDeletePermission()" 
                         class="no-actions">
                         No actions available
                       </span>
@@ -538,7 +538,7 @@
           <h3>No Permissions Found</h3>
           <p>No permissions match your current filters</p>
           <button 
-            *ngIf="authService.hasPermission('permissions.create')"
+            *ngIf="canCreatePermission()"
             class="btn-create" 
             (click)="openCreatePermissionModal()">
             <span>+ Create First Permission</span>
@@ -717,7 +717,8 @@
   </div>
 
   <!-- Pope Details Tab -->
-  <div class="tab-content" *ngIf="activeTab === 'pope' && hasEkklesiaRole">
+  <!-- CRITICAL SECURITY: Pope Details tab is SuperAdmin only -->
+  <div class="tab-content" *ngIf="activeTab === 'pope' && hasSuperAdminAccess">
     <app-pope-details-management></app-pope-details-management>
   </div>
 </div>

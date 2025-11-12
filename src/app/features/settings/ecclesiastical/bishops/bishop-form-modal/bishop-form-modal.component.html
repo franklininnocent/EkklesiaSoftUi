@@ -191,20 +191,18 @@
 
           <!-- Phone -->
           <div class="form-group">
-            <label for="phone" class="form-label">Phone</label>
-            <div class="phone-input-group" [class.error]="hasError('phone')">
-              <span class="phone-prefix">{{ callingCode }}</span>
-              <input
-                type="tel"
-                id="phone"
-                formControlName="phone"
-                class="form-input"
-                [class.error]="hasError('phone')"
-                placeholder="{{ callingCode }} 1234567890">
-            </div>
-            <span class="field-error" *ngIf="hasError('phone')">
-              {{ getErrorMessage('phone') }}
-            </span>
+            <app-phone-input
+              [label]="'Phone'"
+              [id]="'phone'"
+              [name]="'phone'"
+              [required]="false"
+              [disabled]="isSubmitting"
+              [maxLength]="15"
+              [minLength]="6"
+              [showError]="true"
+              [errorMessage]="hasError('phone') ? getErrorMessage('phone') : ''"
+              formControlName="phone"
+            ></app-phone-input>
           </div>
 
           <!-- Photo URL -->

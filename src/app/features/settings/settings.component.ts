@@ -54,7 +54,7 @@ export class SettingsComponent implements OnInit {
       description: 'Manage Pope image and details for General Information', 
       icon: '👑', 
       route: '/settings/pope',
-      requiresPermission: 'manage_pope_details'
+      requiresSuperAdmin: true // CRITICAL SECURITY: Pope Details is SuperAdmin only
     },
     { 
       title: 'Sacrament Types', 

@@ -60,6 +60,34 @@ export class PhoneCodeService {
       const userStr = localStorage.getItem(environment.userKey);
       if (userStr) {
         const user = JSON.parse(userStr);
+        
+        // Priority 1: Get country from tenant.country object (from backend)
+        const tenantCountry = user?.tenant?.country;
+        if (tenantCountry) {
+          // Use phone_code from database if available (most reliable)
+          if (tenantCountry.phone_code) {
+            const phoneCode = tenantCountry.phone_code.startsWith('+') 
+              ? tenantCountry.phone_code 
+              : `+${tenantCountry.phone_code}`;
+            this._currentPhoneCode.set(phoneCode);
+            this._currentCountryId.set(tenantCountry.id);
+            try { localStorage.setItem('tenant_country_code', tenantCountry.iso2); } catch {}
+            return; // Successfully initialized, exit early
+          }
+          // Fallback to ISO2 code
+          else if (tenantCountry.iso2) {
+            const upper = tenantCountry.iso2.toUpperCase();
+            try { localStorage.setItem('tenant_country_code', upper); } catch {}
+            try {
+              const code = getCountryCallingCode(upper as CountryCode);
+              this._currentPhoneCode.set(`+${code}`);
+              this._currentCountryId.set(tenantCountry.id);
+              return; // Successfully initialized, exit early
+            } catch {}
+          }
+        }
+        
+        // Priority 2: Try legacy country_code or country.iso2
         const iso2: string | undefined = user?.tenant?.country_code || user?.tenant?.country?.iso2;
         if (iso2 && typeof iso2 === 'string' && iso2.length >= 2) {
           const upper = iso2.toUpperCase();

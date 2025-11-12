@@ -99,20 +99,18 @@
         <h4 class="section-title">Contact & Profile</h4>
         <div class="form-grid form-section">
           <div class="form-group">
-            <label>Phone</label>
-            <div class="phone-input-group" [class.error]="isFieldInvalid('phone')">
-              <span class="phone-prefix">{{ callingCode }}</span>
-              <input 
-                type="tel" 
-                formControlName="phone" 
-                class="form-control"
-                [class.error]="isFieldInvalid('phone')"
-                placeholder="{{ callingCode }} 1234567890" 
-              />
-            </div>
-            <span class="field-error" *ngIf="isFieldInvalid('phone')">
-              {{ getErrorMessage('phone') }}
-            </span>
+            <app-phone-input
+              [label]="'Phone'"
+              [id]="'phone'"
+              [name]="'phone'"
+              [required]="false"
+              [disabled]="saving"
+              [maxLength]="15"
+              [minLength]="6"
+              [showError]="true"
+              [errorMessage]="isFieldInvalid('phone') ? getErrorMessage('phone') : ''"
+              formControlName="phone"
+            ></app-phone-input>
           </div>
           <div class="form-group">
             <label>Email</label>

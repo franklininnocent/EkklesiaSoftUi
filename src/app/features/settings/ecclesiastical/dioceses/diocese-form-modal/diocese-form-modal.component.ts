@@ -6,13 +6,13 @@ import { GeographyService, DenominationService } from '@core/services';
 import { Diocese, DioceseCreateRequest, DioceseUpdateRequest } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
-import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
+import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-diocese-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingSpinnerComponent],
+  imports: [CommonModule, ReactiveFormsModule, LoadingSpinnerComponent, PhoneInputComponent],
   templateUrl: './diocese-form-modal.component.html',
   styleUrl: './diocese-form-modal.component.scss'
 })
@@ -33,7 +33,6 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
   countries: any[] = [];
   denominations: any[] = [];
   filteredStates: any[] = [];
-  callingCode: string = getTenantCallingCode();
 
   constructor(
     private fb: FormBuilder,
@@ -93,7 +92,7 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
       address_line1: ['', [Validators.maxLength(255)]],
       city: ['', [Validators.maxLength(100)]],
       postal_code: ['', [Validators.maxLength(20)]],
-      phone: ['', [tenantPhoneValidator()]],
+      phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
       email: ['', [Validators.email, Validators.maxLength(255)]],
       established_date: [''],
       active: [true]

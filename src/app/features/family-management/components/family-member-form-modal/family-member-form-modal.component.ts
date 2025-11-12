@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges, OnIni
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
+import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { AuthService } from '@core/services';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
@@ -76,7 +77,7 @@ function createLocalPhoneValidator(getDialCode: () => string): ValidatorFn {
 @Component({
   selector: 'app-family-member-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent],
   templateUrl: './family-member-form-modal.component.html',
   styleUrls: ['./family-member-form-modal.component.scss']
 })
@@ -115,7 +116,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       gender: [''],
       relationship_to_head: ['other', Validators.required],
       marital_status: ['single'],
-      phone: ['', createLocalPhoneValidator(() => this.callingCode)],
+      phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
       email: ['', Validators.email],
       occupation: [''],
       education: [''],
@@ -442,19 +443,16 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       return 'Email address is not in the correct format (e.g., name@example.com)';
     }
     
-    if (errors['phoneInvalid']) {
-      return 'Phone number can only include digits, spaces, parentheses, or hyphens';
+    if (errors['pattern'] && controlName === 'phone') {
+      return 'Phone number must contain only digits';
     }
-    
-    if (errors['phoneDialCode']) {
-      return `Do not include the country code. It will be added automatically (${errors['phoneDialCode'].requiredDialCode}).`;
+    if (errors['maxlength'] && controlName === 'phone') {
+      return 'Phone number cannot exceed 15 digits';
     }
-    
-    if (errors['phoneDigits'] || errors['phoneLocal']) {
-      return 'Phone number must contain 6 to 12 digits';
+    if (errors['minlength'] && controlName === 'phone') {
+      return 'Phone number must be at least 6 digits';
     }
-    
-    if (errors['pattern']) {
+    if (errors['pattern'] && controlName !== 'phone') {
       return `${this.getFieldLabel(controlName)} contains invalid characters`;
     }
     
@@ -642,6 +640,8 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
 
   /**
    * Remove the selected country dial code from a phone number so users enter only the local part.
+   * The phone input component handles this automatically, but we keep this for backwards compatibility
+   * when loading existing phone numbers that might include the country code.
    */
   private stripCountryCode(phone: string | null | undefined): string {
     if (!phone) {
@@ -653,26 +653,31 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       return '';
     }
 
-    const dialCode = this.callingCode || '';
+    // Get phone code from service
+    const dialCode = this.phoneCodeService.getPhoneCodeSync() || '+1';
     const digitsOnlyDial = dialCode.replace(/\D/g, '');
     const digitsOnlyPhone = raw.replace(/\D/g, '');
 
     if (!digitsOnlyDial || !digitsOnlyPhone) {
-      return raw.replace(/^\+/, '');
+      // Remove any leading + and return
+      return raw.replace(/^\+/, '').replace(/\D/g, '');
     }
 
+    // If phone starts with dial code, remove it
     if (digitsOnlyPhone.startsWith(digitsOnlyDial)) {
       return digitsOnlyPhone.substring(digitsOnlyDial.length);
     }
 
+    // Otherwise, return digits only (phone input component handles this)
     return digitsOnlyPhone;
   }
 
   /**
    * Apply the current country dial code to the phone input before submitting to parent/API.
+   * The phone input component stores only digits, so we need to add the country code.
    */
   private formatPhoneForApi(raw: string | null | undefined): string | null {
-    if (raw === null || raw === undefined) {
+    if (raw === null || raw === undefined || !raw) {
       return null;
     }
 
@@ -681,24 +686,17 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       return null;
     }
 
+    // Phone input component already stores only digits
     const digits = trimmed.replace(/\D/g, '');
     if (!digits) {
       return null;
     }
 
-    const dialCodeRaw = this.callingCode || '';
-    const dialCode = dialCodeRaw.startsWith('+') ? dialCodeRaw : `+${dialCodeRaw}`;
-    const dialDigits = dialCode.replace(/\D/g, '');
-
-    if (!dialDigits) {
-      return `+${digits}`;
-    }
-
-    if (digits.startsWith(dialDigits)) {
-      return `+${digits}`;
-    }
-
-    return `${dialCode}${digits}`;
+    // Get phone code from service
+    const dialCode = this.phoneCodeService.getPhoneCodeSync() || '+1';
+    
+    // Combine dial code with digits
+    return dialCode + ' ' + digits;
   }
 }
 

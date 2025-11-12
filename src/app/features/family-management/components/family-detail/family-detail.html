@@ -26,84 +26,69 @@
     <section class="family-head-section" aria-label="Family head">
       <article class="head-card">
         <header class="head-card-header">
-        <h2>
-          👤 Family Head
-          <button 
-            type="button" 
-            class="icon-inline-button"
-            (click)="openAddOrEditHeadMember()"
-            [title]="getFamilyHead() ? 'Edit Family Head' : 'Add Family Head'"
-            [attr.aria-label]="getFamilyHead() ? 'Edit Family Head' : 'Add Family Head'"
-          >
-            <span class="icon">{{ getFamilyHead() ? '✏️' : '➕' }}</span>
-          </button>
-        </h2>
-      </header>
-      <div class="head-card-body">
-        <!-- Hidden file input for head profile image -->
-        <input
-          #headProfileImageInput
-          type="file"
-          id="headProfileImageInput"
-          class="logo-input-hidden"
-          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-          (change)="onHeadProfileImageSelected($event)"
-        />
-        <!-- Profile image or avatar -->
-        <div class="head-avatar-container">
-          <div class="head-avatar-wrapper" [class.editing]="editingHeadImage" (click)="editingHeadImage && headProfileImageInput.click()" title="Click to upload family head profile image">
-            <img 
-              *ngIf="family?.head_profile_image_full_url" 
-              [src]="family.head_profile_image_full_url" 
-              alt="Family Head Profile Image" 
-              class="head-profile-image"
-            />
-            <div *ngIf="!family?.head_profile_image_full_url" class="head-avatar">{{ (family.head_of_family || 'U').charAt(0) }}</div>
-            
-            <!-- Camera overlay icon (only show when editing) -->
-            <div class="head-edit-overlay" *ngIf="editingHeadImage">
-              <span class="icon">📷</span>
-            </div>
-            
-            <!-- Delete button overlay (only show when editing and image exists) -->
-            <button 
-              *ngIf="editingHeadImage && family?.head_profile_image_full_url" 
-              type="button" 
-              class="head-delete-image-btn"
-              (click)="deleteHeadProfileImage(); $event.stopPropagation()"
-              title="Delete head profile image"
-              aria-label="Delete head profile image"
+          <h2>
+            👤 Family Head
+            <button
+              type="button"
+              class="icon-inline-button"
+              (click)="openAddOrEditHeadMember()"
+              title="Edit Family Head"
+              aria-label="Edit Family Head"
             >
-              <span class="icon">×</span>
+              <span class="icon">✏️</span>
+            </button>
+          </h2>
+        </header>
+        <div class="head-card-body">
+          <input
+            #headProfileImageInput
+            type="file"
+            id="headProfileImageInput"
+            class="logo-input-hidden"
+            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+            (change)="onHeadProfileImageSelected($event)"
+          />
+          <div class="head-avatar-container">
+            <div
+              class="head-avatar-wrapper"
+              [class.editing]="editingHeadImage"
+              (click)="editingHeadImage && headProfileImageInput.click()"
+              title="Click to upload family head profile image"
+            >
+              <img
+                *ngIf="family?.head_profile_image_full_url"
+                [src]="family.head_profile_image_full_url"
+                alt="Family Head Profile Image"
+                class="head-profile-image"
+              />
+              <div *ngIf="!family?.head_profile_image_full_url" class="head-avatar">
+                {{ (family.head_of_family || 'U').charAt(0) }}
+              </div>
+              <div class="head-edit-overlay" *ngIf="editingHeadImage">
+                <span class="icon">📷</span>
+              </div>
+              <button
+                *ngIf="editingHeadImage && family?.head_profile_image_full_url"
+                type="button"
+                class="head-delete-image-btn"
+                (click)="deleteHeadProfileImage(); $event.stopPropagation()"
+                title="Delete head profile image"
+                aria-label="Delete head profile image"
+              >
+                <span class="icon">×</span>
+              </button>
+            </div>
+            <button
+              type="button"
+              class="edit-photo"
+              (click)="editingHeadImage = !editingHeadImage"
+              [attr.aria-pressed]="editingHeadImage"
+            >
+              <span class="edit-icon">📷</span>
+              <span>{{ editingHeadImage ? 'Cancel' : 'Change photo' }}</span>
             </button>
           </div>
-          
-          <!-- Edit link below image -->
-          <button 
-            type="button" 
-            class="btn-edit-image-link"
-            (click)="editingHeadImage = !editingHeadImage"
-            title="Edit profile image"
-            aria-label="Edit profile image"
-          >
-            Edit
-          </button>
-        </div>
-        <div class="head-info">
-          <div class="head-basic-info">
-            <div class="head-name">{{ family.head_of_family }}</div>
-            <div class="head-meta">
-              <span class="meta-item">{{ getHeadPhoneDisplay() }}</span>
-              <span class="dot">•</span>
-              <span class="meta-item">{{ getHeadEmailDisplay() }}</span>
-            </div>
-            <div class="head-address" *ngIf="getFamilyAddress()">
-              <span class="address-icon">📍</span>
-              <span class="address-text">{{ getFamilyAddress() }}</span>
-            </div>
-          </div>
-          
-          <!-- Personal Details Section -->
+
           <div class="head-personal-details" *ngIf="getFamilyHead() as head">
             <div class="personal-details-list">
               <div class="personal-detail-item">
@@ -129,11 +114,8 @@
             </div>
           </div>
         </div>
-      </div>
-      </article>
 
-      <!-- Family Contact & Assignments Info -->
-      <div class="family-info-cards">
+        <div class="family-info-cards">
           <article class="card personal-details-card">
             <div class="card-body" *ngIf="getFamilyHead() as head; else noHeadDetails">
               <div class="member-sacraments head-sacraments">
@@ -141,213 +123,212 @@
                   <div class="header-left">
                     <h4 class="section-title">Sacramental Details</h4>
                   </div>
-                <div class="header-actions">
-                  <div class="badge" [attr.data-count]="countCompletedSacraments(head)">
-                    {{ countCompletedSacraments(head) }} / 4 completed
+                  <div class="header-actions">
+                    <div class="badge" [attr.data-count]="countCompletedSacraments(head)">
+                      {{ countCompletedSacraments(head) }} / {{ sacramentTypesDisplay.length }} completed
+                    </div>
+                    <button
+                      type="button"
+                      class="toggle-button"
+                      [class.is-open]="headSacramentsExpanded"
+                      (click)="toggleHeadSacraments()"
+                      [attr.aria-expanded]="headSacramentsExpanded"
+                      aria-controls="head-sacraments"
+                      id="head-sacraments-toggle"
+                      [attr.aria-label]="headSacramentsExpanded ? 'Hide sacramental details' : 'Show sacramental details'"
+                      [title]="headSacramentsExpanded ? 'Hide sacramental details' : 'Show sacramental details'"
+                    >
+                      <span class="toggle-icon" aria-hidden="true">▾</span>
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    class="toggle-button"
-                    [class.is-open]="headSacramentsExpanded"
-                    (click)="toggleHeadSacraments()"
-                    [attr.aria-expanded]="headSacramentsExpanded"
-                    aria-controls="head-sacraments"
-                    id="head-sacraments-toggle"
-                    [attr.aria-label]="headSacramentsExpanded ? 'Hide sacramental details' : 'Show sacramental details'"
-                    [title]="headSacramentsExpanded ? 'Hide sacramental details' : 'Show sacramental details'"
-                  >
-                    <span class="toggle-icon" aria-hidden="true">▾</span>
-                  </button>
-                </div>
                 </div>
 
                 <div
                   class="sacrament-grid"
                   *ngIf="headSacramentsExpanded"
-                id="head-sacraments"
-                role="region"
-                aria-labelledby="head-sacraments-toggle"
+                  id="head-sacraments"
+                  role="region"
+                  aria-labelledby="head-sacraments-toggle"
                 >
-                  <div class="sacrament-card" [class.completed]="head.baptism_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Baptism</span>
+                  <ng-container *ngFor="let sacramentType of sacramentTypesDisplay; trackBy: trackSacramentType">
+                    <div class="sacrament-card" [class.completed]="isSacramentCompleted(head, sacramentType.code)">
+                      <div class="card-heading">
+                        <div class="title">
+                          <span class="status-dot"></span>
+                          <span>{{ sacramentType.name }}</span>
+                        </div>
+                        <button
+                          *ngIf="isSacramentEditable(sacramentType.code)"
+                          type="button"
+                          class="card-action"
+                          (click)="openHeadSacramentModal(sacramentType.code, $event)"
+                          [title]="'Edit ' + sacramentType.name + ' Details'"
+                          [attr.aria-label]="'Edit ' + sacramentType.name + ' Details'"
+                        >
+                          ✎
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('baptism', $event)"
-                        title="Edit Baptism Details"
-                        aria-label="Edit Baptism Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.baptism_date">{{ head.baptism_date ? 'Completed' : 'Pending' }}</span>
-                      <span class="chip muted" *ngIf="head.baptism_location_type === 'home_parish'">Home Parish</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.baptism_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_church_name">
-                        <span class="label">Church</span>
-                        <span class="value">{{ head.baptism_church_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_place && !head.baptism_church_name">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.baptism_place }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_church_address">
-                        <span class="label">Address</span>
-                        <span class="value">{{ head.baptism_church_address }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_godparent_primary">
-                        <span class="label">Primary Godparent</span>
-                        <span class="value">{{ head.baptism_godparent_primary }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_godparent_secondary">
-                        <span class="label">Secondary Godparent</span>
-                        <span class="value">{{ head.baptism_godparent_secondary }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_priest_name">
-                        <span class="label">Priest</span>
-                        <span class="value">{{ head.baptism_priest_name }}</span>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div class="sacrament-card" [class.completed]="head.first_communion_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>First Communion</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('first_communion', $event)"
-                        title="Edit First Communion Details"
-                        aria-label="Edit First Communion Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.first_communion_date">{{ head.first_communion_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.first_communion_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.first_communion_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.first_communion_place }}</span>
-                      </div>
-                    </div>
-                  </div>
+                      <ng-container [ngSwitch]="getCanonicalSacrament(sacramentType.code) ?? sacramentType.code">
+                        <ng-container *ngSwitchCase="'baptism'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.baptism_date">{{ head.baptism_date ? 'Completed' : 'Pending' }}</span>
+                            <span class="chip muted" *ngIf="head.baptism_location_type === 'home_parish'">Home Parish</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.baptism_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_church_name">
+                              <span class="label">Church</span>
+                              <span class="value">{{ head.baptism_church_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_place && !head.baptism_church_name">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.baptism_place }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_church_address">
+                              <span class="label">Address</span>
+                              <span class="value">{{ head.baptism_church_address }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_godparent_primary">
+                              <span class="label">Primary Godparent</span>
+                              <span class="value">{{ head.baptism_godparent_primary }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_godparent_secondary">
+                              <span class="label">Secondary Godparent</span>
+                              <span class="value">{{ head.baptism_godparent_secondary }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_priest_name">
+                              <span class="label">Priest</span>
+                              <span class="value">{{ head.baptism_priest_name }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
 
-                  <div class="sacrament-card" [class.completed]="head.confirmation_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Confirmation</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('confirmation', $event)"
-                        title="Edit Confirmation Details"
-                        aria-label="Edit Confirmation Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.confirmation_date">{{ head.confirmation_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.confirmation_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.confirmation_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.confirmation_place }}</span>
-                      </div>
-                    </div>
-                  </div>
+                        <ng-container *ngSwitchCase="'first_communion'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.first_communion_date">{{ head.first_communion_date ? 'Completed' : 'Pending' }}</span>
+                            <span class="chip muted" *ngIf="head.first_communion_location_type === 'home_parish'">Home Parish</span>
+                            <span class="chip chip-outline" *ngIf="head.first_communion_location_type === 'other'">Another Church</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.first_communion_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_place">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.first_communion_place }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_church_name">
+                              <span class="label">Church Name</span>
+                              <span class="value">{{ head.first_communion_church_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_church_address">
+                              <span class="label">Church Address</span>
+                              <span class="value">{{ head.first_communion_church_address }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_priest_name">
+                              <span class="label">Priest</span>
+                              <span class="value">{{ head.first_communion_priest_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_description">
+                              <span class="label">Description</span>
+                              <span class="value">{{ head.first_communion_description }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
 
-                  <div class="sacrament-card" [class.completed]="head.marriage_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Marriage</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('marriage', $event)"
-                        title="Edit Marriage Details"
-                        aria-label="Edit Marriage Details">
-                        ✎
-                      </button>
+                        <ng-container *ngSwitchCase="'confirmation'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.confirmation_date">{{ head.confirmation_date ? 'Completed' : 'Pending' }}</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.confirmation_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.confirmation_place">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.confirmation_place }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
+
+                        <ng-container *ngSwitchCase="'marriage'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.marriage_date">{{ head.marriage_date ? 'Completed' : 'Pending' }}</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.marriage_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_place">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.marriage_place }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_spouse_name">
+                              <span class="label">Spouse</span>
+                              <span class="value">{{ head.marriage_spouse_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_bride_full_name">
+                              <span class="label">Bride</span>
+                              <span class="value">{{ head.marriage_bride_full_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_bride_address">
+                              <span class="label">Bride Address</span>
+                              <span class="value">{{ head.marriage_bride_address }}</span>
+                            </div>
+                            <div class="row two-cols" *ngIf="head.marriage_bride_church_name || head.marriage_bride_church_address">
+                              <div>
+                                <span class="label">Bride Church</span>
+                                <span class="value">{{ head.marriage_bride_church_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Address</span>
+                                <span class="value">{{ head.marriage_bride_church_address || '—' }}</span>
+                              </div>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_groom_full_name">
+                              <span class="label">Groom</span>
+                              <span class="value">{{ head.marriage_groom_full_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_groom_address">
+                              <span class="label">Groom Address</span>
+                              <span class="value">{{ head.marriage_groom_address }}</span>
+                            </div>
+                            <div class="row two-cols" *ngIf="head.marriage_groom_church_name || head.marriage_groom_church_address">
+                              <div>
+                                <span class="label">Groom Church</span>
+                                <span class="value">{{ head.marriage_groom_church_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Address</span>
+                                <span class="value">{{ head.marriage_groom_church_address || '—' }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </ng-container>
+
+                        <ng-container *ngSwitchDefault>
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="isSacramentCompleted(head, sacramentType.code)">
+                              {{ isSacramentCompleted(head, sacramentType.code) ? 'Completed' : 'Pending' }}
+                            </span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Details</span>
+                              <span class="value">No sacramental details recorded</span>
+                            </div>
+                          </div>
+                        </ng-container>
+                      </ng-container>
                     </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.marriage_date">{{ head.marriage_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.marriage_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.marriage_place }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_spouse_name">
-                        <span class="label">Spouse</span>
-                        <span class="value">{{ head.marriage_spouse_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_bride_full_name">
-                        <span class="label">Bride</span>
-                        <span class="value">{{ head.marriage_bride_full_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_bride_address">
-                        <span class="label">Bride Address</span>
-                        <span class="value">{{ head.marriage_bride_address }}</span>
-                      </div>
-                      <div class="row two-cols" *ngIf="head.marriage_bride_church_name || head.marriage_bride_church_address">
-                        <div>
-                          <span class="label">Bride Church</span>
-                          <span class="value">{{ head.marriage_bride_church_name || '—' }}</span>
-                        </div>
-                        <div>
-                          <span class="label">Address</span>
-                          <span class="value">{{ head.marriage_bride_church_address || '—' }}</span>
-                        </div>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_groom_full_name">
-                        <span class="label">Groom</span>
-                        <span class="value">{{ head.marriage_groom_full_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_groom_address">
-                        <span class="label">Groom Address</span>
-                        <span class="value">{{ head.marriage_groom_address }}</span>
-                      </div>
-                      <div class="row two-cols" *ngIf="head.marriage_groom_church_name || head.marriage_groom_church_address">
-                        <div>
-                          <span class="label">Groom Church</span>
-                          <span class="value">{{ head.marriage_groom_church_name || '—' }}</span>
-                        </div>
-                        <div>
-                          <span class="label">Address</span>
-                          <span class="value">{{ head.marriage_groom_church_address || '—' }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  </ng-container>
                 </div>
               </div>
             </div>
@@ -361,10 +342,14 @@
           <article class="card">
             <header class="card-header">Assignments</header>
             <div class="card-body">
-              <div class="kv"><span class="k">BCC</span><span class="v">{{ family.bcc?.name || 'Not assigned' }}</span></div>
+              <div class="kv">
+                <span class="k">BCC</span>
+                <span class="v">{{ family.bcc?.name || 'Not assigned' }}</span>
+              </div>
             </div>
           </article>
         </div>
+      </article>
     </section>
   </ng-container>
 
@@ -386,7 +371,6 @@
           </h2>
         </header>
         <div class="head-card-body">
-          <!-- Hidden file input for head profile image -->
           <input
             #headProfileImageInputDerived
             type="file"
@@ -395,9 +379,13 @@
             accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
             (change)="onHeadProfileImageSelected($event)"
           />
-          <!-- Profile image or avatar -->
           <div class="head-avatar-container">
-            <div class="head-avatar-wrapper" [class.editing]="editingHeadImage" (click)="editingHeadImage && headProfileImageInputDerived.click()" title="Click to upload family head profile image">
+            <div
+              class="head-avatar-wrapper"
+              [class.editing]="editingHeadImage"
+              (click)="editingHeadImage && headProfileImageInputDerived.click()"
+              title="Click to upload family head profile image"
+            >
               <img 
                 *ngIf="family?.head_profile_image_full_url" 
                 [src]="family.head_profile_image_full_url" 
@@ -488,7 +476,7 @@
                   </div>
                   <div class="header-actions">
                     <div class="badge" [attr.data-count]="countCompletedSacraments(head)">
-                      {{ countCompletedSacraments(head) }} / 4 completed
+                      {{ countCompletedSacraments(head) }} / {{ sacramentTypesDisplay.length }} completed
                     </div>
                     <button
                       type="button"
@@ -513,186 +501,184 @@
                   role="region"
                   aria-labelledby="head-sacraments-toggle-fallback"
                 >
-                  <div class="sacrament-card" [class.completed]="head.baptism_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Baptism</span>
+                  <ng-container *ngFor="let sacramentType of sacramentTypesDisplay; trackBy: trackSacramentType">
+                    <div class="sacrament-card" [class.completed]="isSacramentCompleted(head, sacramentType.code)">
+                      <div class="card-heading">
+                        <div class="title">
+                          <span class="status-dot"></span>
+                          <span>{{ sacramentType.name }}</span>
+                        </div>
+                        <button
+                          *ngIf="isSacramentEditable(sacramentType.code)"
+                          type="button"
+                          class="card-action"
+                          (click)="openHeadSacramentModal(sacramentType.code, $event)"
+                          [title]="'Edit ' + sacramentType.name + ' Details'"
+                          [attr.aria-label]="'Edit ' + sacramentType.name + ' Details'">
+                          ✎
+                        </button>
                       </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('baptism', $event)"
-                        title="Edit Baptism Details"
-                        aria-label="Edit Baptism Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.baptism_date">{{ head.baptism_date ? 'Completed' : 'Pending' }}</span>
-                      <span class="chip muted" *ngIf="head.baptism_location_type === 'home_parish'">Home Parish</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.baptism_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_church_name">
-                        <span class="label">Church</span>
-                        <span class="value">{{ head.baptism_church_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_place && !head.baptism_church_name">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.baptism_place }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_church_address">
-                        <span class="label">Address</span>
-                        <span class="value">{{ head.baptism_church_address }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_godparent_primary">
-                        <span class="label">Primary Godparent</span>
-                        <span class="value">{{ head.baptism_godparent_primary }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_godparent_secondary">
-                        <span class="label">Secondary Godparent</span>
-                        <span class="value">{{ head.baptism_godparent_secondary }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.baptism_priest_name">
-                        <span class="label">Priest</span>
-                        <span class="value">{{ head.baptism_priest_name }}</span>
-                      </div>
-                    </div>
-                  </div>
 
-                  <div class="sacrament-card" [class.completed]="head.first_communion_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>First Communion</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('first_communion', $event)"
-                        title="Edit First Communion Details"
-                        aria-label="Edit First Communion Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.first_communion_date">{{ head.first_communion_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.first_communion_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.first_communion_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.first_communion_place }}</span>
-                      </div>
-                    </div>
-                  </div>
+                      <ng-container [ngSwitch]="getCanonicalSacrament(sacramentType.code) ?? sacramentType.code">
+                        <ng-container *ngSwitchCase="'baptism'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.baptism_date">{{ head.baptism_date ? 'Completed' : 'Pending' }}</span>
+                            <span class="chip muted" *ngIf="head.baptism_location_type === 'home_parish'">Home Parish</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.baptism_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_church_name">
+                              <span class="label">Church</span>
+                              <span class="value">{{ head.baptism_church_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_place && !head.baptism_church_name">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.baptism_place }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_church_address">
+                              <span class="label">Address</span>
+                              <span class="value">{{ head.baptism_church_address }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_godparent_primary">
+                              <span class="label">Primary Godparent</span>
+                              <span class="value">{{ head.baptism_godparent_primary }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_godparent_secondary">
+                              <span class="label">Secondary Godparent</span>
+                              <span class="value">{{ head.baptism_godparent_secondary }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.baptism_priest_name">
+                              <span class="label">Priest</span>
+                              <span class="value">{{ head.baptism_priest_name }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
 
-                  <div class="sacrament-card" [class.completed]="head.confirmation_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Confirmation</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('confirmation', $event)"
-                        title="Edit Confirmation Details"
-                        aria-label="Edit Confirmation Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.confirmation_date">{{ head.confirmation_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.confirmation_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.confirmation_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.confirmation_place }}</span>
-                      </div>
-                    </div>
-                  </div>
+                        <ng-container *ngSwitchCase="'first_communion'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.first_communion_date">{{ head.first_communion_date ? 'Completed' : 'Pending' }}</span>
+                            <span class="chip muted" *ngIf="head.first_communion_location_type === 'home_parish'">Home Parish</span>
+                            <span class="chip chip-outline" *ngIf="head.first_communion_location_type === 'other'">Another Church</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.first_communion_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_place">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.first_communion_place }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_church_name">
+                              <span class="label">Church Name</span>
+                              <span class="value">{{ head.first_communion_church_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_church_address">
+                              <span class="label">Church Address</span>
+                              <span class="value">{{ head.first_communion_church_address }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_priest_name">
+                              <span class="label">Priest</span>
+                              <span class="value">{{ head.first_communion_priest_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.first_communion_description">
+                              <span class="label">Description</span>
+                              <span class="value">{{ head.first_communion_description }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
 
-                  <div class="sacrament-card" [class.completed]="head.marriage_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Marriage</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openHeadSacramentModal('marriage', $event)"
-                        title="Edit Marriage Details"
-                        aria-label="Edit Marriage Details">
-                        ✎
-                      </button>
+                        <ng-container *ngSwitchCase="'confirmation'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.confirmation_date">{{ head.confirmation_date ? 'Completed' : 'Pending' }}</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.confirmation_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.confirmation_place">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.confirmation_place }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
+
+                        <ng-container *ngSwitchCase="'marriage'">
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="head.marriage_date">{{ head.marriage_date ? 'Completed' : 'Pending' }}</span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Date</span>
+                              <span class="value">{{ formatSacramentDate(head.marriage_date) || '—' }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_place">
+                              <span class="label">Location</span>
+                              <span class="value">{{ head.marriage_place }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_spouse_name">
+                              <span class="label">Spouse</span>
+                              <span class="value">{{ head.marriage_spouse_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_bride_full_name">
+                              <span class="label">Bride</span>
+                              <span class="value">{{ head.marriage_bride_full_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_bride_address">
+                              <span class="label">Bride Address</span>
+                              <span class="value">{{ head.marriage_bride_address }}</span>
+                            </div>
+                            <div class="row two-cols" *ngIf="head.marriage_bride_church_name || head.marriage_bride_church_address">
+                              <div>
+                                <span class="label">Bride Church</span>
+                                <span class="value">{{ head.marriage_bride_church_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Address</span>
+                                <span class="value">{{ head.marriage_bride_church_address || '—' }}</span>
+                              </div>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_groom_full_name">
+                              <span class="label">Groom</span>
+                              <span class="value">{{ head.marriage_groom_full_name }}</span>
+                            </div>
+                            <div class="row" *ngIf="head.marriage_groom_address">
+                              <span class="label">Groom Address</span>
+                              <span class="value">{{ head.marriage_groom_address }}</span>
+                            </div>
+                            <div class="row two-cols" *ngIf="head.marriage_groom_church_name || head.marriage_groom_church_address">
+                              <div>
+                                <span class="label">Groom Church</span>
+                                <span class="value">{{ head.marriage_groom_church_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Address</span>
+                                <span class="value">{{ head.marriage_groom_church_address || '—' }}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </ng-container>
+
+                        <ng-container *ngSwitchDefault>
+                          <div class="card-chips">
+                            <span class="chip" [class.completed]="isSacramentCompleted(head, sacramentType.code)">
+                              {{ isSacramentCompleted(head, sacramentType.code) ? 'Completed' : 'Pending' }}
+                            </span>
+                          </div>
+                          <div class="data">
+                            <div class="row">
+                              <span class="label">Details</span>
+                              <span class="value">No sacramental details recorded</span>
+                            </div>
+                          </div>
+                        </ng-container>
+                      </ng-container>
                     </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="head.marriage_date">{{ head.marriage_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(head.marriage_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ head.marriage_place }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_spouse_name">
-                        <span class="label">Spouse</span>
-                        <span class="value">{{ head.marriage_spouse_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_bride_full_name">
-                        <span class="label">Bride</span>
-                        <span class="value">{{ head.marriage_bride_full_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_bride_address">
-                        <span class="label">Bride Address</span>
-                        <span class="value">{{ head.marriage_bride_address }}</span>
-                      </div>
-                      <div class="row two-cols" *ngIf="head.marriage_bride_church_name || head.marriage_bride_church_address">
-                        <div>
-                          <span class="label">Bride Church</span>
-                          <span class="value">{{ head.marriage_bride_church_name || '—' }}</span>
-                        </div>
-                        <div>
-                          <span class="label">Address</span>
-                          <span class="value">{{ head.marriage_bride_church_address || '—' }}</span>
-                        </div>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_groom_full_name">
-                        <span class="label">Groom</span>
-                        <span class="value">{{ head.marriage_groom_full_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="head.marriage_groom_address">
-                        <span class="label">Groom Address</span>
-                        <span class="value">{{ head.marriage_groom_address }}</span>
-                      </div>
-                      <div class="row two-cols" *ngIf="head.marriage_groom_church_name || head.marriage_groom_church_address">
-                        <div>
-                          <span class="label">Groom Church</span>
-                          <span class="value">{{ head.marriage_groom_church_name || '—' }}</span>
-                        </div>
-                        <div>
-                          <span class="label">Address</span>
-                          <span class="value">{{ head.marriage_groom_church_address || '—' }}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  </ng-container>
                 </div>
               </div>
             </div>
@@ -749,12 +735,15 @@
         <div class="count" aria-label="Total members">{{ regularMembersCount }}</div>
       </div>
     </header>
+
     <div class="members-card-grid" *ngIf="regularMembersCount > 0; else emptyMembers">
       <ng-container *ngFor="let memberIndex of getRegularMemberIndices()">
         <ng-container *ngIf="family?.members?.[memberIndex] as m">
-          <div class="member-card-view"
-               [class.expanded]="isMemberExpanded(memberIndex)"
-               [class.is-head]="isHeadMember(memberIndex)">
+          <div
+            class="member-card-view"
+            [class.expanded]="isMemberExpanded(memberIndex)"
+            [class.is-head]="isHeadMember(memberIndex)"
+          >
             <div class="card-top">
               <div class="avatar" aria-hidden="true">{{ (m.full_name || m.first_name || 'U').charAt(0) }}</div>
               <button
@@ -781,7 +770,14 @@
                 <span class="toggle-icon" aria-hidden="true">▾</span>
               </button>
               <div class="actions">
-                <button type="button" class="btn-icon" title="Edit member" (click)="openEditMember(memberIndex); $event.stopPropagation()">✎</button>
+                <button
+                  type="button"
+                  class="btn-icon"
+                  title="Edit member"
+                  (click)="openEditMember(memberIndex); $event.stopPropagation()"
+                >
+                  ✎
+                </button>
               </div>
             </div>
 
@@ -807,218 +803,204 @@
                   </div>
                   <div class="header-actions">
                     <div class="badge" [attr.data-count]="countCompletedSacraments(m)">
-                      {{ countCompletedSacraments(m) }} / 4 completed
-                    </div>
-                    <button
-                      type="button"
-                      class="toggle-button"
-                      [class.is-open]="isMemberSacramentsExpanded(memberIndex)"
-                      (click)="toggleMemberSacraments(memberIndex)"
-                      [attr.aria-expanded]="isMemberSacramentsExpanded(memberIndex)"
-                      [attr.aria-controls]="'member-sacraments-' + memberIndex"
-                      [attr.id]="'member-sacraments-toggle-' + memberIndex"
-                      [attr.aria-label]="isMemberSacramentsExpanded(memberIndex) ? 'Hide sacramental details' : 'Show sacramental details'"
-                      [title]="isMemberSacramentsExpanded(memberIndex) ? 'Hide sacramental details' : 'Show sacramental details'"
-                    >
-                      <span class="toggle-icon" aria-hidden="true">▾</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  class="sacrament-grid"
-                  *ngIf="isMemberSacramentsExpanded(memberIndex)"
-                  [attr.id]="'member-sacraments-' + memberIndex"
-                  role="region"
-                  [attr.aria-labelledby]="'member-sacraments-toggle-' + memberIndex"
-                >
-                  <div class="sacrament-card" [class.completed]="m.baptism_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Baptism</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openSacramentModal(memberIndex, 'baptism', $event)"
-                        title="Edit Baptism Details"
-                        aria-label="Edit Baptism Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="m.baptism_date">{{ m.baptism_date ? 'Completed' : 'Pending' }}</span>
-                      <span class="chip muted" *ngIf="m.baptism_location_type === 'home_parish'">Home Parish</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(m.baptism_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.baptism_church_name">
-                        <span class="label">Church</span>
-                        <span class="value">{{ m.baptism_church_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.baptism_place && !m.baptism_church_name">
-                        <span class="label">Location</span>
-                        <span class="value">{{ m.baptism_place }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.baptism_church_address">
-                        <span class="label">Address</span>
-                        <span class="value">{{ m.baptism_church_address }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.baptism_godparent_primary">
-                        <span class="label">Primary Godparent</span>
-                        <span class="value">{{ m.baptism_godparent_primary }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.baptism_godparent_secondary">
-                        <span class="label">Secondary Godparent</span>
-                        <span class="value">{{ m.baptism_godparent_secondary }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.baptism_priest_name">
-                        <span class="label">Priest</span>
-                        <span class="value">{{ m.baptism_priest_name }}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="sacrament-card" [class.completed]="m.first_communion_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>First Communion</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openSacramentModal(memberIndex, 'first_communion', $event)"
-                        title="Edit First Communion Details"
-                        aria-label="Edit First Communion Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="m.first_communion_date">{{ m.first_communion_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(m.first_communion_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.first_communion_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ m.first_communion_place }}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="sacrament-card" [class.completed]="m.confirmation_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Confirmation</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openSacramentModal(memberIndex, 'confirmation', $event)"
-                        title="Edit Confirmation Details"
-                        aria-label="Edit Confirmation Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="m.confirmation_date">{{ m.confirmation_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(m.confirmation_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.confirmation_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ m.confirmation_place }}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="sacrament-card" [class.completed]="m.marriage_date">
-                    <div class="card-heading">
-                      <div class="title">
-                        <span class="status-dot"></span>
-                        <span>Marriage</span>
-                      </div>
-                      <button
-                        type="button"
-                        class="card-action"
-                        (click)="openSacramentModal(memberIndex, 'marriage', $event)"
-                        title="Edit Marriage Details"
-                        aria-label="Edit Marriage Details">
-                        ✎
-                      </button>
-                    </div>
-                    <div class="card-chips">
-                      <span class="chip" [class.completed]="m.marriage_date">{{ m.marriage_date ? 'Completed' : 'Pending' }}</span>
-                    </div>
-                    <div class="data">
-                      <div class="row">
-                        <span class="label">Date</span>
-                        <span class="value">{{ formatSacramentDate(m.marriage_date) || '—' }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.marriage_place">
-                        <span class="label">Location</span>
-                        <span class="value">{{ m.marriage_place }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.marriage_spouse_name">
-                        <span class="label">Spouse</span>
-                        <span class="value">{{ m.marriage_spouse_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.marriage_bride_full_name">
-                        <span class="label">Bride</span>
-                        <span class="value">{{ m.marriage_bride_full_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.marriage_bride_address">
-                        <span class="label">Bride Address</span>
-                        <span class="value">{{ m.marriage_bride_address }}</span>
-                      </div>
-                      <div class="row two-cols" *ngIf="m.marriage_bride_church_name || m.marriage_bride_church_address">
-                        <div>
-                          <span class="label">Bride Church</span>
-                          <span class="value">{{ m.marriage_bride_church_name || '—' }}</span>
-                        </div>
-                        <div>
-                          <span class="label">Address</span>
-                          <span class="value">{{ m.marriage_bride_church_address || '—' }}</span>
-                        </div>
-                      </div>
-                      <div class="row" *ngIf="m.marriage_groom_full_name">
-                        <span class="label">Groom</span>
-                        <span class="value">{{ m.marriage_groom_full_name }}</span>
-                      </div>
-                      <div class="row" *ngIf="m.marriage_groom_address">
-                        <span class="label">Groom Address</span>
-                        <span class="value">{{ m.marriage_groom_address }}</span>
-                      </div>
-                      <div class="row two-cols" *ngIf="m.marriage_groom_church_name || m.marriage_groom_church_address">
-                        <div>
-                          <span class="label">Groom Church</span>
-                          <span class="value">{{ m.marriage_groom_church_name || '—' }}</span>
-                        </div>
-                        <div>
-                          <span class="label">Address</span>
-                          <span class="value">{{ m.marriage_groom_church_address || '—' }}</span>
-                        </div>
-                      </div>
+                      {{ countCompletedSacraments(m) }} / {{ sacramentTypesDisplay.length }} completed
                     </div>
                   </div>
                 </div>
+              </div>
+
+              <div
+                class="sacrament-grid"
+                [attr.id]="'member-sacraments-' + memberIndex"
+                role="region"
+                [attr.aria-labelledby]="'member-toggle-' + memberIndex"
+              >
+                <ng-container *ngFor="let sacramentType of sacramentTypesDisplay; trackBy: trackSacramentType">
+                  <div class="sacrament-card" [class.completed]="isSacramentCompleted(m, sacramentType.code)">
+                    <div class="card-heading">
+                      <div class="title">
+                        <span class="status-dot"></span>
+                        <span>{{ sacramentType.name }}</span>
+                      </div>
+                      <button
+                        *ngIf="isSacramentEditable(sacramentType.code)"
+                        type="button"
+                        class="card-action"
+                        (click)="openSacramentModal(memberIndex, sacramentType.code, $event)"
+                        [title]="'Edit ' + sacramentType.name + ' Details'"
+                        [attr.aria-label]="'Edit ' + sacramentType.name + ' Details'"
+                      >
+                        ✎
+                      </button>
+                    </div>
+
+                    <ng-container [ngSwitch]="getCanonicalSacrament(sacramentType.code) ?? sacramentType.code">
+                      <ng-container *ngSwitchCase="'baptism'">
+                        <div class="card-chips">
+                          <span class="chip" [class.completed]="m.baptism_date">{{ m.baptism_date ? 'Completed' : 'Pending' }}</span>
+                          <span class="chip muted" *ngIf="m.baptism_location_type === 'home_parish'">Home Parish</span>
+                        </div>
+                        <div class="data">
+                          <div class="row">
+                            <span class="label">Date</span>
+                            <span class="value">{{ formatSacramentDate(m.baptism_date) || '—' }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.baptism_church_name">
+                            <span class="label">Church</span>
+                            <span class="value">{{ m.baptism_church_name }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.baptism_place && !m.baptism_church_name">
+                            <span class="label">Location</span>
+                            <span class="value">{{ m.baptism_place }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.baptism_church_address">
+                            <span class="label">Address</span>
+                            <span class="value">{{ m.baptism_church_address }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.baptism_godparent_primary">
+                            <span class="label">Primary Godparent</span>
+                            <span class="value">{{ m.baptism_godparent_primary }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.baptism_godparent_secondary">
+                            <span class="label">Secondary Godparent</span>
+                            <span class="value">{{ m.baptism_godparent_secondary }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.baptism_priest_name">
+                            <span class="label">Priest</span>
+                            <span class="value">{{ m.baptism_priest_name }}</span>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                      <ng-container *ngSwitchCase="'first_communion'">
+                        <div class="card-chips">
+                          <span class="chip" [class.completed]="m.first_communion_date">{{ m.first_communion_date ? 'Completed' : 'Pending' }}</span>
+                          <span class="chip muted" *ngIf="m.first_communion_location_type === 'home_parish'">Home Parish</span>
+                          <span class="chip chip-outline" *ngIf="m.first_communion_location_type === 'other'">Another Church</span>
+                        </div>
+                        <div class="data">
+                          <div class="row">
+                            <span class="label">Date</span>
+                            <span class="value">{{ formatSacramentDate(m.first_communion_date) || '—' }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.first_communion_place">
+                            <span class="label">Location</span>
+                            <span class="value">{{ m.first_communion_place }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.first_communion_church_name">
+                            <span class="label">Church Name</span>
+                            <span class="value">{{ m.first_communion_church_name }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.first_communion_church_address">
+                            <span class="label">Church Address</span>
+                            <span class="value">{{ m.first_communion_church_address }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.first_communion_priest_name">
+                            <span class="label">Priest</span>
+                            <span class="value">{{ m.first_communion_priest_name }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.first_communion_description">
+                            <span class="label">Description</span>
+                            <span class="value">{{ m.first_communion_description }}</span>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                      <ng-container *ngSwitchCase="'confirmation'">
+                        <div class="card-chips">
+                          <span class="chip" [class.completed]="m.confirmation_date">{{ m.confirmation_date ? 'Completed' : 'Pending' }}</span>
+                        </div>
+                        <div class="data">
+                          <div class="row">
+                            <span class="label">Date</span>
+                            <span class="value">{{ formatSacramentDate(m.confirmation_date) || '—' }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.confirmation_place">
+                            <span class="label">Location</span>
+                            <span class="value">{{ m.confirmation_place }}</span>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                      <ng-container *ngSwitchCase="'marriage'">
+                        <div class="card-chips">
+                          <span class="chip" [class.completed]="m.marriage_date">{{ m.marriage_date ? 'Completed' : 'Pending' }}</span>
+                        </div>
+                        <div class="data">
+                          <div class="row">
+                            <span class="label">Date</span>
+                            <span class="value">{{ formatSacramentDate(m.marriage_date) || '—' }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.marriage_place">
+                            <span class="label">Location</span>
+                            <span class="value">{{ m.marriage_place }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.marriage_spouse_name">
+                            <span class="label">Spouse</span>
+                            <span class="value">{{ m.marriage_spouse_name }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.marriage_bride_full_name">
+                            <span class="label">Bride</span>
+                            <span class="value">{{ m.marriage_bride_full_name }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.marriage_bride_address">
+                            <span class="label">Bride Address</span>
+                            <span class="value">{{ m.marriage_bride_address }}</span>
+                          </div>
+                          <div class="row two-cols" *ngIf="m.marriage_bride_church_name || m.marriage_bride_church_address">
+                            <div>
+                              <span class="label">Bride Church</span>
+                              <span class="value">{{ m.marriage_bride_church_name || '—' }}</span>
+                            </div>
+                            <div>
+                              <span class="label">Address</span>
+                              <span class="value">{{ m.marriage_bride_church_address || '—' }}</span>
+                            </div>
+                          </div>
+                          <div class="row" *ngIf="m.marriage_groom_full_name">
+                            <span class="label">Groom</span>
+                            <span class="value">{{ m.marriage_groom_full_name }}</span>
+                          </div>
+                          <div class="row" *ngIf="m.marriage_groom_address">
+                            <span class="label">Groom Address</span>
+                            <span class="value">{{ m.marriage_groom_address }}</span>
+                          </div>
+                          <div class="row two-cols" *ngIf="m.marriage_groom_church_name || m.marriage_groom_church_address">
+                            <div>
+                              <span class="label">Groom Church</span>
+                              <span class="value">{{ m.marriage_groom_church_name || '—' }}</span>
+                            </div>
+                            <div>
+                              <span class="label">Address</span>
+                              <span class="value">{{ m.marriage_groom_church_address || '—' }}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </ng-container>
+
+                      <ng-container *ngSwitchDefault>
+                        <div class="card-chips">
+                          <span class="chip" [class.completed]="isSacramentCompleted(m, sacramentType.code)">
+                            {{ isSacramentCompleted(m, sacramentType.code) ? 'Completed' : 'Pending' }}
+                          </span>
+                        </div>
+                        <div class="data">
+                          <div class="row">
+                            <span class="label">Details</span>
+                            <span class="value">No sacramental details recorded</span>
+                          </div>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                  </div>
+                </ng-container>
               </div>
             </div>
           </div>
         </ng-container>
       </ng-container>
     </div>
+
     <ng-template #emptyMembers>
       <div class="empty-state">
         <div class="empty-icon">👥</div>

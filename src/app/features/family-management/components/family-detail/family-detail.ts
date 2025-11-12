@@ -1,4 +1,4 @@
-import { Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FamilyService } from '../../../../core/services/family.service';
@@ -7,15 +7,21 @@ import { FamilyFormComponent } from '../family-form/family-form';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
 import { ToastService } from '../../../../core/services/toast.service';
 import { CountryCode, getCountryCallingCode, parsePhoneNumber } from 'libphonenumber-js';
-import { SacramentEditModalComponent } from '../sacrament-edit-modal/sacrament-edit-modal.component';
+import { SacramentEditModalComponent, SacramentFormType } from '../sacrament-edit-modal/sacrament-edit-modal.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { Tenant, Address } from '@core/models/tenant.model';
 import { Subject, takeUntil } from 'rxjs';
 import { ChurchProfileService } from '@core/services/church/church-profile.service';
 import { ChurchProfile } from '@core/models/church';
+import { SacramentTypeLookupService, SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
 
-type SacramentType = 'baptism' | 'first_communion' | 'confirmation' | 'marriage';
+const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
+  { id: -1, name: 'Baptism', code: 'baptism', display_order: 1, active: true },
+  { id: -2, name: 'First Communion', code: 'first_communion', display_order: 2, active: true },
+  { id: -3, name: 'Confirmation', code: 'confirmation', display_order: 3, active: true },
+  { id: -4, name: 'Marriage', code: 'marriage', display_order: 4, active: true }
+];
 
 @Component({
   selector: 'app-family-detail',
@@ -29,16 +35,16 @@ export class FamilyDetail implements OnInit, OnDestroy {
   loading = true;
   error: string | null = null;
   showEdit = false;
+  sacramentTypesDisplay: SacramentTypeDto[] = [...DEFAULT_SACRAMENT_TYPES];
   expandedMemberIndexes: Set<number> = new Set();
   showMemberModal = false;
   memberToEditIndex: number | null = null;
   memberToEdit: FamilyMemberFormValue | null = null;
   editingHeadImage = false;
   headSacramentsExpanded = false;
-  private readonly memberSacramentsExpanded = new Set<number>();
   isHeadMemberMode = false; // Flag to indicate if we're adding/editing family head
   showSacramentModal = false;
-  sacramentModalType: SacramentType = 'baptism';
+  sacramentModalType: SacramentFormType = 'baptism';
   sacramentModalMember: FamilyMember | null = null;
   sacramentModalMemberIndex: number | null = null;
   homeParishName: string | null = null;
@@ -54,11 +60,14 @@ export class FamilyDetail implements OnInit, OnDestroy {
     private familyService: FamilyService,
     private toastService: ToastService,
     private store: Store,
-    private churchProfileService: ChurchProfileService
+    private churchProfileService: ChurchProfileService,
+    private sacramentTypeLookup: SacramentTypeLookupService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.initializeHomeParishContext();
+    this.loadSacramentTypes();
 
     const id = this.route.snapshot.paramMap.get('id') as string;
     if (!id) {
@@ -107,6 +116,35 @@ export class FamilyDetail implements OnInit, OnDestroy {
         // Optional context; ignore failure
       }
     });
+  }
+
+  private loadSacramentTypes(): void {
+    this.sacramentTypeLookup
+      .getSacramentTypes()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const types = Array.isArray(response?.data) ? (response.data as SacramentTypeDto[]) : [];
+          if (response?.success && types.length > 0) {
+            const filtered = [...types]
+              .filter(type => type.active !== false)
+              .sort((a, b) => {
+                const orderA = a.display_order ?? Number.MAX_SAFE_INTEGER;
+                const orderB = b.display_order ?? Number.MAX_SAFE_INTEGER;
+                if (orderA !== orderB) {
+                  return orderA - orderB;
+                }
+                return (a.name || '').localeCompare(b.name || '');
+              });
+            this.sacramentTypesDisplay = filtered.length > 0 ? filtered : [...DEFAULT_SACRAMENT_TYPES];
+            return;
+          }
+          this.sacramentTypesDisplay = [...DEFAULT_SACRAMENT_TYPES];
+        },
+        error: () => {
+          this.sacramentTypesDisplay = [...DEFAULT_SACRAMENT_TYPES];
+        }
+      });
   }
 
   private applyChurchProfileContext(profile: ChurchProfile): void {
@@ -309,7 +347,6 @@ export class FamilyDetail implements OnInit, OnDestroy {
           this.loading = false;
           this.headSacramentsExpanded = false;
           this.expandedMemberIndexes.clear();
-          this.memberSacramentsExpanded.clear();
 
           if (!this.homeParishName) {
             this.homeParishName = this.currentTenant?.name || this.homeParishName;
@@ -353,12 +390,67 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   toggleMember(index: number): void {
-    if (this.expandedMemberIndexes.has(index)) {
+    const wasExpanded = this.expandedMemberIndexes.has(index);
+    
+    if (wasExpanded) {
+      // Collapsing: scroll to top of member card
       this.expandedMemberIndexes.delete(index);
-      this.memberSacramentsExpanded.delete(index);
+      // Use setTimeout to ensure DOM updates before scrolling
+      setTimeout(() => {
+        this.scrollToMemberCardTop(index);
+      }, 0);
     } else {
+      // Expanding: add to expanded set first
       this.expandedMemberIndexes.add(index);
+      // Use setTimeout to wait for Angular change detection and DOM rendering
+      setTimeout(() => {
+        this.scrollToMemberDetails(index);
+      }, 100);
     }
+  }
+
+  /**
+   * Scroll to the expanded member details section
+   */
+  private scrollToMemberDetails(index: number): void {
+    const detailsElement = document.getElementById(`member-details-${index}`);
+    if (detailsElement) {
+      detailsElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+    }
+  }
+
+  /**
+   * Scroll to the top of the member card
+   */
+  private scrollToMemberCardTop(index: number): void {
+    // Try to find the toggle button first
+    const toggleElement = document.getElementById(`member-toggle-${index}`);
+    if (toggleElement) {
+      toggleElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+      return;
+    }
+    
+    // Fallback: try to find the member card container by finding any element with the toggle ID pattern
+    // Since the details section is removed on collapse, we need to find the card container directly
+    const allMemberCards = document.querySelectorAll('.member-card-view');
+    allMemberCards.forEach((card) => {
+      const toggleBtn = card.querySelector(`[id="member-toggle-${index}"]`);
+      if (toggleBtn) {
+        (card as HTMLElement).scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'start',
+          inline: 'nearest'
+        });
+      }
+    });
   }
 
   isMemberExpanded(index: number): boolean {
@@ -366,19 +458,65 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   toggleHeadSacraments(): void {
-    this.headSacramentsExpanded = !this.headSacramentsExpanded;
-  }
-
-  toggleMemberSacraments(index: number): void {
-    if (this.memberSacramentsExpanded.has(index)) {
-      this.memberSacramentsExpanded.delete(index);
+    const wasExpanded = this.headSacramentsExpanded;
+    
+    if (wasExpanded) {
+      // Collapsing: scroll to toggle button
+      this.headSacramentsExpanded = false;
+      // Use setTimeout to ensure DOM updates before scrolling
+      setTimeout(() => {
+        this.scrollToHeadSacramentsToggle();
+      }, 0);
     } else {
-      this.memberSacramentsExpanded.add(index);
+      // Expanding: set expanded first
+      this.headSacramentsExpanded = true;
+      // Use setTimeout to wait for Angular change detection and DOM rendering
+      setTimeout(() => {
+        this.scrollToHeadSacramentsDetails();
+      }, 100);
     }
   }
 
-  isMemberSacramentsExpanded(index: number): boolean {
-    return this.memberSacramentsExpanded.has(index);
+  /**
+   * Scroll to the expanded head sacramental details section
+   */
+  private scrollToHeadSacramentsDetails(): void {
+    // Try to find the main head sacraments section first
+    let detailsElement = document.getElementById('head-sacraments');
+    
+    // If not found, try the fallback section
+    if (!detailsElement) {
+      detailsElement = document.getElementById('head-sacraments-fallback');
+    }
+    
+    if (detailsElement) {
+      detailsElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+    }
+  }
+
+  /**
+   * Scroll to the head sacraments toggle button
+   */
+  private scrollToHeadSacramentsToggle(): void {
+    // Try to find the main toggle button first
+    let toggleElement = document.getElementById('head-sacraments-toggle');
+    
+    // If not found, try the fallback toggle button
+    if (!toggleElement) {
+      toggleElement = document.getElementById('head-sacraments-toggle-fallback');
+    }
+    
+    if (toggleElement) {
+      toggleElement.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start',
+        inline: 'nearest'
+      });
+    }
   }
 
   /**
@@ -630,23 +768,78 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Count completed sacraments for a member
    */
   countCompletedSacraments(member: FamilyMember | null | undefined): number {
-    if (!member) {
+    if (!member || this.sacramentTypesDisplay.length === 0) {
       return 0;
     }
-    const keys: (keyof FamilyMember)[] = [
-      'baptism_date',
-      'first_communion_date',
-      'confirmation_date',
-      'marriage_date'
-    ];
-    return keys.reduce((count, key) => {
-      const value = member[key];
-      return value ? count + 1 : count;
+    return this.sacramentTypesDisplay.reduce((count, type) => {
+      return this.isSacramentCompleted(member, type.code) ? count + 1 : count;
     }, 0);
   }
 
-  openSacramentModal(memberIndex: number, sacrament: SacramentType, event?: Event): void {
+  trackSacramentType(index: number, type: SacramentTypeDto): number | string {
+    return type.id ?? type.code ?? index;
+  }
+
+  isSacramentEditable(code: string): boolean {
+    return this.resolveCanonicalSacrament(code) !== null;
+  }
+
+  getCanonicalSacrament(code: string): SacramentFormType | null {
+    return this.resolveCanonicalSacrament(code);
+  }
+
+  isSacramentCompleted(member: FamilyMember | null | undefined, code: string): boolean {
+    if (!member) {
+      return false;
+    }
+    const canonical = this.resolveCanonicalSacrament(code);
+    switch (canonical) {
+      case 'baptism':
+        return !!member.baptism_date;
+      case 'first_communion':
+        return !!member.first_communion_date;
+      case 'confirmation':
+        return !!member.confirmation_date;
+      case 'marriage':
+        return !!member.marriage_date;
+      default:
+        return false;
+    }
+  }
+
+  private resolveCanonicalSacrament(code: string): SacramentFormType | null {
+    if (!code) {
+      return null;
+    }
+    const normalized = code.trim().toLowerCase();
+    switch (normalized) {
+      case 'baptism':
+        return 'baptism';
+      case 'first_communion':
+      case 'first holy communion':
+      case 'eucharist':
+      case 'eucharist (first holy communion)':
+      case 'holy communion':
+      case 'eucharist (holy communion)':
+        return 'first_communion';
+      case 'confirmation':
+        return 'confirmation';
+      case 'marriage':
+      case 'matrimony':
+      case 'matrimony (marriage)':
+        return 'marriage';
+      default:
+        return null;
+    }
+  }
+
+  openSacramentModal(memberIndex: number, sacrament: string, event?: Event): void {
     event?.stopPropagation();
+
+    const modalSacrament = this.resolveCanonicalSacrament(sacrament);
+    if (!modalSacrament) {
+      return;
+    }
 
     if (!this.family?.members || !this.family.id) {
       this.toastService.error('Family data not ready. Please refresh and try again.', 'Error', 5000);
@@ -661,12 +854,17 @@ export class FamilyDetail implements OnInit, OnDestroy {
 
     this.sacramentModalMemberIndex = memberIndex;
     this.sacramentModalMember = member;
-    this.sacramentModalType = sacrament;
+    this.sacramentModalType = modalSacrament;
     this.showSacramentModal = true;
   }
 
-  openHeadSacramentModal(sacrament: SacramentType, event?: Event): void {
+  openHeadSacramentModal(sacrament: string, event?: Event): void {
     event?.stopPropagation();
+
+    const canonical = this.resolveCanonicalSacrament(sacrament);
+    if (!canonical) {
+      return;
+    }
 
     const headIndex = this.getFamilyHeadIndex();
     if (headIndex === null) {
@@ -674,7 +872,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
 
-    this.openSacramentModal(headIndex, sacrament);
+    this.openSacramentModal(headIndex, canonical);
   }
 
   closeSacramentModal(): void {
@@ -684,21 +882,56 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   onSacramentSaved(updatedMember: FamilyMember): void {
-    if (!this.family?.members) {
+    if (!this.family?.members || !updatedMember) {
       this.closeSacramentModal();
       return;
     }
 
-    const index = this.family.members.findIndex(m => m.id === updatedMember.id);
-    if (index >= 0) {
-      this.family.members[index] = {
+    const targetId = this.normalizeMemberId(updatedMember.id ?? this.sacramentModalMember?.id);
+    let index = targetId
+      ? this.family.members.findIndex(m => this.normalizeMemberId(m.id) === targetId)
+      : -1;
+
+    if (index < 0 && this.sacramentModalMemberIndex !== null && this.sacramentModalMemberIndex >= 0) {
+      index = this.sacramentModalMemberIndex;
+    }
+
+    if (index >= 0 && index < this.family.members.length) {
+      const mergedMember: FamilyMember = {
         ...this.family.members[index],
         ...updatedMember
       };
+
+      const updatedMembers = [...this.family.members];
+      updatedMembers[index] = mergedMember;
+
+      this.family = {
+        ...this.family,
+        members: updatedMembers
+      };
+
+      if (this.sacramentModalMemberIndex === index) {
+        this.sacramentModalMember = mergedMember;
+      }
+
+      this.cdr.markForCheck();
     }
 
     this.toastService.success('Sacramental details updated successfully.', 'Success', 4000);
     this.closeSacramentModal();
+
+    if (this.family?.id) {
+      this.loadFamily(String(this.family.id));
+    }
+  }
+
+  private normalizeMemberId(id: unknown): string | null {
+    if (id === null || id === undefined) {
+      return null;
+    }
+
+    const normalized = String(id).trim();
+    return normalized.length ? normalized : null;
   }
 
   /**

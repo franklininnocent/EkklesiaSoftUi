@@ -12,6 +12,7 @@ import { ToastService } from '@core/services/toast.service';
 import { CreateTenantRequest, TenantAddress } from '@core/models/tenant.model';
 import { GeographyService, Country, State } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
+import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 
 interface FormErrors {
   [key: string]: string;
@@ -20,7 +21,7 @@ interface FormErrors {
 @Component({
   selector: 'app-tenant-create-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgSelectModule],
+  imports: [CommonModule, FormsModule, NgSelectModule, PhoneInputComponent],
   templateUrl: './tenant-create-modal.html',
   styleUrls: ['./tenant-create-modal.scss']
 })
@@ -231,11 +232,6 @@ export class TenantCreateModalComponent implements OnInit {
   formErrors: FormErrors = {};
   serverError: string = '';
   successMessage: string = '';
-  
-  // Phone code from unified service
-  get callingCode(): string {
-    return this.phoneCodeService.getPhoneCodeSync();
-  }
 
   // Validation flags
   touched: { [key: string]: boolean } = {};

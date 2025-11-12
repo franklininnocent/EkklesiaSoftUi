@@ -4,13 +4,13 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { BishopService, DioceseService } from '@core/services/ecclesiastical';
 import { Bishop, BishopCreateRequest, BishopUpdateRequest } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
-import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
+import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 
 @Component({
   selector: 'app-bishop-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent],
   templateUrl: './bishop-form-modal.component.html',
   styleUrl: './bishop-form-modal.component.scss'
 })
@@ -38,7 +38,6 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
 
   // Photo preview
   photoPreviewUrl: string | null = null;
-  callingCode: string = getTenantCallingCode();
 
   constructor(
     private fb: FormBuilder,
@@ -79,7 +78,7 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
       ordained_bishop_date: [''],
       date_of_birth: [''],
       email: ['', [Validators.email, Validators.maxLength(255)]],
-      phone: ['', [tenantPhoneValidator()]],
+      phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
       photo_url: ['', [Validators.maxLength(500)]],
       education: [''],
       status: ['active', [Validators.required]],

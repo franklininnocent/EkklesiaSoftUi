@@ -1,8 +1,9 @@
 /**
  * Pope Settings Component
  * 
- * Allows users with manage_pope_details permission to manage
+ * CRITICAL SECURITY: Only SuperAdmin can manage
  * global Pope image and details (not tenant-specific).
+ * Changed from permission-based access to SuperAdmin-only access.
  */
 
 import { Component, OnInit, inject } from '@angular/core';
@@ -44,12 +45,31 @@ export class PopeSettingsComponent implements OnInit {
 
   /**
    * Check if user has permission to manage pope details
+   * CRITICAL SECURITY: Pope Details is SuperAdmin only (changed from permission-based access)
    */
   private checkPermissions(): void {
-    this.canManage = this.authService.hasPermission('manage_pope_details');
+    const user = this.authService.currentUserValue;
     
-    if (!this.canManage) {
-      this.toastService.error('You do not have permission to manage pope details.');
+    // CRITICAL SECURITY: Only SuperAdmin can manage Pope Details
+    // Check for SuperAdmin explicitly
+    const isSuperAdmin = this.authService.isSuperAdmin() ||
+                        (user?.role_name === 'SuperAdmin') ||
+                        (user?.role?.name === 'SuperAdmin') ||
+                        (user?.is_super_admin === true) ||
+                        (user?.is_admin === true);
+    
+    // User can manage pope details ONLY if they are SuperAdmin
+    // Even if they have the permission, we enforce SuperAdmin check for security
+    this.canManage = isSuperAdmin;
+    
+    // If user is not SuperAdmin, log a warning for audit
+    if (!this.canManage && user) {
+      console.warn('Non-SuperAdmin user attempted to access Pope Settings (SuperAdmin only)', {
+        user_id: user.id,
+        user_email: user.email,
+        role_name: user.role_name || user.role?.name,
+      });
+      this.toastService.error('You do not have permission to manage pope details. Only Super Administrators can access this feature.');
     }
   }
 

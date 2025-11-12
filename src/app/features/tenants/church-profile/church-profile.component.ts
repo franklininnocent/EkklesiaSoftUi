@@ -12,7 +12,7 @@
 
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
@@ -22,6 +22,7 @@ import { finalize } from 'rxjs/operators';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 import { GeographyService, Country } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
+import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
@@ -51,7 +52,7 @@ import {
 @Component({
   selector: 'app-church-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NgSelectModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule, PhoneInputComponent],
   templateUrl: './church-profile.component.html',
   styleUrl: './church-profile.component.scss'
 })
@@ -624,7 +625,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       role: ['', [Validators.required, Validators.maxLength(100)]],
       title: ['', Validators.maxLength(100)],
       email: ['', [Validators.email, Validators.maxLength(255)]],
-      phone: ['', tenantPhoneValidator()],
+      phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
       appointed_date: [''],
       start_date: [''],
       end_date: [''],

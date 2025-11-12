@@ -71,30 +71,62 @@
       <!-- ====================================================================== -->
       <div *ngIf="activeTab === 'profile'" class="tab-pane profile-pane">
         
-        <!-- Church Identity Section -->
-        <div class="section-card">
+        <!-- Church Identity Overview Section -->
+        <div class="section-card identity-overview-card">
           <div class="identity-overview">
+            <!-- Main Identity Section -->
             <div class="identity-main">
+              <!-- Church Logo -->
               <div class="church-logo-section">
                 <div class="logo-display">
-                  <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name">
-                  <span *ngIf="!churchProfile.logo_full_url" class="logo-placeholder">⛪</span>
+                  <img *ngIf="churchProfile.logo_full_url" 
+                       [src]="churchProfile.logo_full_url" 
+                       [alt]="churchProfile.name"
+                       loading="lazy">
+                  <div *ngIf="!churchProfile.logo_full_url" class="logo-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+                    </svg>
+                  </div>
                 </div>
               </div>
+              
+              <!-- Church Information -->
               <div class="identity-info">
-                <h3 class="church-name">{{ churchProfile.name }}</h3>
+                <h2 class="church-name">{{ churchProfile.name }}</h2>
                 <p class="church-slogan" *ngIf="churchProfile.slogan">{{ churchProfile.slogan }}</p>
                 <div class="church-badges">
-                  <span class="badge" [class.badge-success]="churchProfile.active === 1" [class.badge-danger]="churchProfile.active === 0">
-                    {{ churchProfile.active === 1 ? '✓ Active' : '✗ Inactive' }}
+                  <span class="badge badge-status" 
+                        [class.badge-success]="churchProfile.active === 1" 
+                        [class.badge-danger]="churchProfile.active === 0">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <circle cx="12" cy="12" r="10"></circle>
+                      <polyline points="12 6 12 12 16 14"></polyline>
+                    </svg>
+                    <span>{{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}</span>
                   </span>
-                  <span class="badge badge-info">{{ churchProfile.plan | uppercase }}</span>
-                  <span class="badge" *ngIf="extendedProfile && extendedProfile.founded_year">📅 Founded {{ extendedProfile.founded_year }}</span>
+                  <span class="badge badge-plan badge-info">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                    <span>{{ churchProfile.plan | uppercase }}</span>
+                  </span>
+                  <span class="badge badge-founded" *ngIf="extendedProfile && extendedProfile.founded_year">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                      <line x1="16" y1="2" x2="16" y2="6"></line>
+                      <line x1="8" y1="2" x2="8" y2="6"></line>
+                      <line x1="3" y1="10" x2="21" y2="10"></line>
+                    </svg>
+                    <span>Founded {{ extendedProfile.founded_year }}</span>
+                  </span>
                 </div>
               </div>
             </div>
             
-            <!-- Patron Saint (Center/Middle) -->
+            <!-- Patron Saint Section -->
             <div class="identity-patron" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
               <div class="patron-display">
                 <div class="patron-image-wrapper">
@@ -105,8 +137,7 @@
                       [alt]="extendedProfile.patron_name || 'Patron Saint'"
                       class="patron-image"
                       loading="lazy"
-                      (error)="handlePatronImageError($event)"
-                    />
+                      (error)="handlePatronImageError($event)">
                     <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" class="patron-image-placeholder">
                       <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
@@ -115,39 +146,68 @@
                   </div>
                 </div>
                 <div class="patron-info">
+                  <div class="patron-label">Patron Saint</div>
                   <div class="patron-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
                 </div>
               </div>
             </div>
             
-            <!-- Contact Information (Right Side) -->
+            <!-- Contact Information Section -->
             <div class="identity-contact">
               <div class="contact-item" *ngIf="extendedProfile?.phone || churchProfile.primary_contact?.contact_number">
-                <div class="contact-icon">📞</div>
+                <div class="contact-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                </div>
                 <div class="contact-details">
                   <span class="contact-label">Phone</span>
-                  <a [href]="'tel:' + (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || '')" class="contact-value contact-link">
+                  <a [href]="'tel:' + (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || '')" 
+                     class="contact-value contact-link"
+                     title="Call {{ extendedProfile?.phone || churchProfile.primary_contact?.contact_number }}">
                     {{ extendedProfile?.phone || churchProfile.primary_contact?.contact_number }}
                   </a>
                 </div>
               </div>
               
               <div class="contact-item" *ngIf="extendedProfile?.email || churchProfile.primary_contact?.email">
-                <div class="contact-icon">✉️</div>
+                <div class="contact-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                </div>
                 <div class="contact-details">
                   <span class="contact-label">Email</span>
-                  <a [href]="'mailto:' + (extendedProfile?.email || churchProfile.primary_contact?.email || '')" class="contact-value contact-link">
+                  <a [href]="'mailto:' + (extendedProfile?.email || churchProfile.primary_contact?.email || '')" 
+                     class="contact-value contact-link"
+                     title="Send email to {{ extendedProfile?.email || churchProfile.primary_contact?.email }}">
                     {{ extendedProfile?.email || churchProfile.primary_contact?.email }}
                   </a>
                 </div>
               </div>
               
               <div class="contact-item" *ngIf="getWebsiteUrl()">
-                <div class="contact-icon">🔗</div>
+                <div class="contact-icon-wrapper">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                    <polyline points="15 3 21 3 21 9"></polyline>
+                    <line x1="10" y1="14" x2="21" y2="3"></line>
+                  </svg>
+                </div>
                 <div class="contact-details">
                   <span class="contact-label">Website</span>
-                  <a [href]="getWebsiteUrl()" target="_blank" rel="noopener" class="contact-value contact-link">
+                  <a [href]="getWebsiteUrl()" 
+                     target="_blank" 
+                     rel="noopener noreferrer" 
+                     class="contact-value contact-link"
+                     title="Visit website">
                     {{ formatWebsiteUrl(getWebsiteUrl()) }}
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="external-link-icon">
+                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                      <polyline points="15 3 21 3 21 9"></polyline>
+                      <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
                   </a>
                 </div>
               </div>
@@ -242,33 +302,6 @@
                 </div>
               </div>
             </div>
-
-            <!-- Patron Image & Details Panel -->
-            <div class="panel patron-panel" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
-              <div class="patron-content">
-                <div class="patron-image-wrapper">
-                  <div class="patron-image-container">
-                    <img 
-                      *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path" 
-                      [src]="getPatronImageUrlWithFallback()" 
-                      [alt]="extendedProfile.patron_name || 'Patron Saint'"
-                      class="patron-image"
-                      loading="lazy"
-                      (error)="handlePatronImageError($event)"
-                    />
-                    <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" 
-                         class="patron-image-placeholder">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div class="patron-info">
-                  <div class="patron-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
-                </div>
-              </div>
-            </div>
           </div>
 
           <!-- Variant: Tiles -->
@@ -293,27 +326,6 @@
               <div class="tile-label">Pope</div>
               <div class="tile-value">{{ getPopeName() }}</div>
               <div class="tile-subvalue" *ngIf="popeDetails?.pope_title">{{ popeDetails.pope_title }}</div>
-            </div>
-            
-            <!-- Patron Image Tile -->
-            <div class="tile patron-tile" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
-              <div class="patron-tile-image">
-                <img 
-                  *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path" 
-                  [src]="getPatronImageUrl('128x128') || getPatronImageUrl('original') || extendedProfile.patron_image_url || getPatronImagePathUrl()" 
-                  [alt]="extendedProfile.patron_name || 'Patron Saint'"
-                  class="patron-thumbnail"
-                  loading="lazy"
-                  (error)="handlePatronImageError($event)"
-                />
-                <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" class="patron-thumbnail-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-                  </svg>
-                </div>
-              </div>
-              <div class="tile-label">Patron</div>
-              <div class="tile-value">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
             </div>
             
             <div class="tile">
@@ -369,22 +381,9 @@
                   </div>
                 </dd>
               </div>
-              <div class="row patron-row" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
+              <div class="row" *ngIf="extendedProfile && extendedProfile.patron_name">
                 <dt>Patron</dt>
-                <dd>
-                  <div class="patron-definition-content">
-                    <div class="patron-definition-image" *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path">
-                      <img 
-                        [src]="getPatronImageUrl('128x128') || getPatronImageUrl('original') || extendedProfile.patron_image_url || getPatronImagePathUrl()" 
-                        [alt]="extendedProfile.patron_name || 'Patron Saint'" 
-                        loading="lazy"
-                        (error)="handlePatronImageError($event)" />
-                    </div>
-                    <div class="patron-definition-info">
-                      <div class="patron-definition-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
-                    </div>
-                  </div>
-                </dd>
+                <dd>{{ extendedProfile.patron_name }}</dd>
               </div>
               <div class="row">
                 <dt>Denomination</dt>
@@ -660,9 +659,15 @@
             <h2>👥 Church Leadership</h2>
             <button 
               *ngIf="canEdit"
-              class="btn-3d-action btn-3d-create" 
-              (click)="openNewLeaderModal()">
-              <span>➕</span>
+              class="btn btn-primary" 
+              (click)="openNewLeaderModal()"
+              type="button"
+              title="Add new leader">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
               <span>Add Leader</span>
             </button>
           </div>
@@ -720,9 +725,15 @@
             <p>Add church leaders, pastors, and ministry heads.</p>
             <button 
               *ngIf="canEdit"
-              class="btn-3d-action btn-3d-create" 
-              (click)="openNewLeaderModal()">
-              <span>➕</span>
+              class="btn btn-primary" 
+              (click)="openNewLeaderModal()"
+              type="button"
+              title="Add first leader">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
               <span>Add First Leader</span>
             </button>
           </div>
@@ -932,11 +943,16 @@
             <input type="email" id="leader_email" formControlName="email" class="form-control">
           </div>
           <div class="form-group">
-            <label for="leader_phone">Phone</label>
-            <div class="phone-input-group">
-              <span class="phone-prefix">{{ callingCode }}</span>
-              <input type="tel" id="leader_phone" formControlName="phone" class="form-control" placeholder="{{ callingCode }} 1234567890">
-            </div>
+            <app-phone-input
+              [label]="'Phone'"
+              [id]="'leader_phone'"
+              [name]="'phone'"
+              [required]="false"
+              [disabled]="saving"
+              [maxLength]="15"
+              [minLength]="6"
+              formControlName="phone"
+            ></app-phone-input>
           </div>
           <div class="form-group">
             <label for="leader_appointed_date">Appointed Date</label>
@@ -1461,21 +1477,16 @@
           </div>
           <div class="form-grid">
             <div class="form-group">
-              <label for="modal_phone">
-                <span class="label-text">Phone Number</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <div class="phone-input-group phone-input-enhanced">
-                <div class="phone-prefix-wrapper">
-                  <span class="phone-prefix">{{ callingCode }}</span>
-                </div>
-                <input 
-                  type="tel" 
-                  id="modal_phone" 
-                  formControlName="phone"
-                  class="form-control form-control-enhanced"
-                  placeholder="1234567890">
-              </div>
+              <app-phone-input
+                [label]="'Phone Number'"
+                [id]="'modal_phone'"
+                [name]="'phone'"
+                [required]="false"
+                [disabled]="saving"
+                [maxLength]="15"
+                [minLength]="6"
+                formControlName="phone"
+              ></app-phone-input>
             </div>
 
             <div class="form-group">

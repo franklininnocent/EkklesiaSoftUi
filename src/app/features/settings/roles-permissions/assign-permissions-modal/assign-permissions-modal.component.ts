@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Role, Permission } from '@core/models';
 import { PermissionsService } from '@core/services/permissions.service';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components/filter-panel/filter-panel.component';
 
 interface PermissionGroup {
@@ -68,6 +69,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
   constructor(
     private permissionsService: PermissionsService,
     private toastService: ToastService,
+    private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -113,12 +115,23 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
   /**
    * Load all available permissions
+   * CRITICAL SECURITY: Filters out "Tenants" and "Pope" module permissions for non-SuperAdmin users
    */
   private loadAllPermissions(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.permissionsService.getPermissions({ per_page: 'all' }).subscribe({
         next: (response) => {
-          this.allPermissions = Array.isArray(response) ? response : response.data;
+          let permissions = Array.isArray(response) ? response : response.data;
+          
+          // CRITICAL SECURITY: Filter out "Tenants" and "Pope" module permissions for non-SuperAdmin users
+          // This is a defense-in-depth measure in addition to backend filtering
+          if (!this.authService.isSuperAdmin()) {
+            permissions = permissions.filter((permission: Permission) => {
+              return permission.module !== 'Tenants' && permission.module !== 'Pope';
+            });
+          }
+          
+          this.allPermissions = permissions;
           this.totalPermissions = this.allPermissions.length;
           resolve();
         },
@@ -132,6 +145,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
   /**
    * Load permissions currently assigned to the role
+   * CRITICAL SECURITY: Filters out "Tenants" and "Pope" module permissions for non-SuperAdmin users
    */
   private loadRolePermissions(): Promise<void> {
     if (!this.role) {
@@ -141,7 +155,16 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     return new Promise((resolve, reject) => {
       this.permissionsService.getPermissionsForRole(this.role!.id).subscribe({
         next: (response) => {
-          const rolePermissions = Array.isArray(response) ? response : (response.data || []);
+          let rolePermissions = Array.isArray(response) ? response : (response.data || []);
+          
+          // CRITICAL SECURITY: Filter out "Tenants" and "Pope" module permissions for non-SuperAdmin users
+          // This is a defense-in-depth measure in addition to backend filtering
+          if (!this.authService.isSuperAdmin()) {
+            rolePermissions = rolePermissions.filter((perm: Permission) => {
+              return perm.module !== 'Tenants' && perm.module !== 'Pope';
+            });
+          }
+          
           this.selectedPermissionIds.clear();
           this.originalPermissionIds.clear();
           
@@ -164,12 +187,19 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
   /**
    * Group permissions by their module
+   * CRITICAL SECURITY: Excludes "Tenants" and "Pope" modules for non-SuperAdmin users
    */
   private groupPermissionsByModule(): void {
     const grouped: { [module: string]: Permission[] } = {};
 
     // Group permissions by module
+    // CRITICAL SECURITY: Additional filter to ensure "Tenants" and "Pope" modules are excluded for non-SuperAdmin users
     this.allPermissions.forEach(permission => {
+      // Skip "Tenants" and "Pope" module permissions for non-SuperAdmin users (defense in depth)
+      if ((permission.module === 'Tenants' || permission.module === 'Pope') && !this.authService.isSuperAdmin()) {
+        return;
+      }
+      
       const module = permission.module || 'Uncategorized';
       if (!grouped[module]) {
         grouped[module] = [];
@@ -331,9 +361,15 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
   /**
    * Select all permissions
+   * CRITICAL SECURITY: Only selects permissions that are visible (Tenants and Pope modules excluded for non-SuperAdmin)
    */
   selectAll(): void {
+    // Only select permissions that are currently visible (already filtered to exclude Tenants and Pope for non-SuperAdmin)
     this.allPermissions.forEach(permission => {
+      // Additional safety check (defense in depth)
+      if ((permission.module === 'Tenants' || permission.module === 'Pope') && !this.authService.isSuperAdmin()) {
+        return;
+      }
       this.selectedPermissionIds.add(permission.id);
     });
     this.updateGroupStatistics();
@@ -386,6 +422,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
   /**
    * Save permission assignments
+   * CRITICAL SECURITY: Validates that non-SuperAdmin users cannot submit Tenants or Pope permission IDs
    */
   save(): void {
     if (!this.role) {
@@ -401,7 +438,27 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     this.isSaving = true;
     this.errorMessage = null;
 
-    const permissionIds = Array.from(this.selectedPermissionIds);
+    let permissionIds = Array.from(this.selectedPermissionIds);
+
+    // CRITICAL SECURITY: Filter out any Tenants and Pope permission IDs for non-SuperAdmin users (defense in depth)
+    if (!this.authService.isSuperAdmin()) {
+      const restrictedPermissionIds = this.allPermissions
+        .filter(p => p.module === 'Tenants' || p.module === 'Pope')
+        .map(p => p.id);
+      
+      const originalCount = permissionIds.length;
+      permissionIds = permissionIds.filter(id => !restrictedPermissionIds.includes(id));
+      
+      // If any restricted permissions were filtered out, log a warning
+      const filteredCount = originalCount - permissionIds.length;
+      if (filteredCount > 0) {
+        console.warn(`Filtered out ${filteredCount} restricted module permission(s) - SuperAdmin only`);
+        this.toastService.warning(
+          'Tenants and Pope module permissions cannot be assigned. Only Super Administrators can manage these permissions.',
+          'Security Restriction'
+        );
+      }
+    }
 
     this.permissionsService.bulkAssignToRole({
       role_id: this.role.id,
@@ -521,14 +578,21 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
   /**
    * Update filter panel configuration with module options
+   * CRITICAL SECURITY: Excludes "Tenants" and "Pope" modules from filter options for non-SuperAdmin users
    */
   private updateFilterPanelConfig(): void {
-    const modules = Array.from(new Set(this.allPermissions.map(p => p.module || 'Uncategorized')))
-      .sort((a, b) => {
-        if (a === 'Uncategorized') return 1;
-        if (b === 'Uncategorized') return -1;
-        return a.localeCompare(b);
-      });
+    let modules = Array.from(new Set(this.allPermissions.map(p => p.module || 'Uncategorized')));
+    
+    // CRITICAL SECURITY: Filter out "Tenants" and "Pope" modules from filter options for non-SuperAdmin users
+    if (!this.authService.isSuperAdmin()) {
+      modules = modules.filter(m => m !== 'Tenants' && m !== 'Pope');
+    }
+    
+    modules.sort((a, b) => {
+      if (a === 'Uncategorized') return 1;
+      if (b === 'Uncategorized') return -1;
+      return a.localeCompare(b);
+    });
 
     this.filterConfig = {
       ...this.filterConfig,
