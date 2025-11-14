@@ -26,6 +26,7 @@ import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
+import { environment } from '@environments/environment';
 
 // Import all church management services
 import {
@@ -500,6 +501,28 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get formatted address lines for structured display
+   */
+  getAddressLines(address: any): { line1?: string; line2?: string; cityState?: string; country?: string; postalCode?: string } {
+    if (!address) return {};
+
+    const lines: any = {};
+    if (address.line1) lines.line1 = address.line1;
+    if (address.line2) lines.line2 = address.line2;
+
+    // Combine city, district, and state
+    const cityParts: string[] = [];
+    if (address.district) cityParts.push(address.district);
+    if (address.state_province) cityParts.push(address.state_province);
+    if (cityParts.length > 0) lines.cityState = cityParts.join(', ');
+
+    if (address.country) lines.country = address.country;
+    if (address.pin_zip_code) lines.postalCode = address.pin_zip_code;
+
+    return lines;
+  }
+
+  /**
    * Get primary contact name
    */
   getPrimaryContactName(): string {
@@ -926,6 +949,17 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get backend storage base URL
+   * Constructs the correct backend URL for storage files
+   */
+  private getStorageBaseUrl(): string {
+    // Get backend base URL from environment (remove /api suffix if present)
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    // Ensure it ends with /storage/
+    return baseUrl.endsWith('/') ? `${baseUrl}storage/` : `${baseUrl}/storage/`;
+  }
+
+  /**
    * Get pope image URL (with thumbnail fallback)
    */
   getPopeImageUrl(size: '128x128' | '300x300' | 'original' = '300x300'): string | null {
@@ -949,14 +983,14 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
         const thumbnailPath = `${basePath}_${size}.${extension}`;
         
         // Construct full URL from storage path
-        const baseUrl = `${window.location.origin}/storage/`;
+        const baseUrl = this.getStorageBaseUrl();
         const thumbnailUrl = baseUrl + thumbnailPath;
         
         // Return thumbnail URL if available, otherwise fall back to original
         return thumbnailUrl;
       } else {
         // For original, construct URL from path
-        const baseUrl = `${window.location.origin}/storage/`;
+        const baseUrl = this.getStorageBaseUrl();
         return baseUrl + imagePath;
       }
     }
@@ -1018,7 +1052,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
         return imageUrl;
       }
       if (imagePath) {
-        const baseUrl = `${window.location.origin}/storage/`;
+        const baseUrl = this.getStorageBaseUrl();
         return baseUrl + imagePath;
       }
       return null;
@@ -1032,18 +1066,18 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
           const extension = pathParts.pop();
           const basePath = pathParts.join('.');
           const thumbnailPath = `${basePath}_${size}.${extension}`;
-          const baseUrl = `${window.location.origin}/storage/`;
+          const baseUrl = this.getStorageBaseUrl();
           return baseUrl + thumbnailPath;
         } else {
           // Path doesn't have extension, use as-is
-          const baseUrl = `${window.location.origin}/storage/`;
+          const baseUrl = this.getStorageBaseUrl();
           return baseUrl + imagePath;
         }
       } catch (e) {
         console.warn('Error constructing thumbnail URL:', e);
         // Fallback to original path
         if (imagePath) {
-          const baseUrl = `${window.location.origin}/storage/`;
+          const baseUrl = this.getStorageBaseUrl();
           return baseUrl + imagePath;
         }
       }
@@ -1165,7 +1199,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     if (!this.extendedProfile?.patron_image_path) {
       return '';
     }
-    const baseUrl = `${window.location.origin}/storage/`;
+    const baseUrl = this.getStorageBaseUrl();
     return baseUrl + this.extendedProfile.patron_image_path;
   }
 
@@ -1185,7 +1219,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     
     // Try original path URL
     if (this.extendedProfile?.patron_image_path) {
-      const baseUrl = `${window.location.origin}/storage/`;
+      const baseUrl = this.getStorageBaseUrl();
       const originalUrl = baseUrl + this.extendedProfile.patron_image_path;
       if (img.src !== originalUrl) {
         img.src = originalUrl;

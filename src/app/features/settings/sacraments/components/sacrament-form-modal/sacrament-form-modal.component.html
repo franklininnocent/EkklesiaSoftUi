@@ -4,7 +4,7 @@
     <div class="modal-header">
       <div class="modal-title-wrapper">
         <h2 class="modal-title">
-          {{ isEditMode ? 'Edit Sacrament' : 'Add New Sacrament' }}
+          {{ isEditMode ? 'Edit' : 'Add' }}
         </h2>
         <p class="modal-subtitle">
           {{ isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information' }}
@@ -31,7 +31,12 @@
           <div class="form-grid">
             <div class="form-group">
               <label class="required">Sacrament Type</label>
-              <select [(ngModel)]="formData.sacrament_type_id" name="sacrament_type_id" class="form-control" required>
+              <select 
+                [(ngModel)]="formData.sacrament_type_id" 
+                (ngModelChange)="onSacramentTypeChange()"
+                name="sacrament_type_id" 
+                class="form-control" 
+                required>
                 <option [ngValue]="undefined">Select a sacrament...</option>
                 <option *ngFor="let type of sacramentTypes" [ngValue]="type.id">
                   {{ type.name }}
@@ -103,6 +108,144 @@
                 class="form-control"
                 placeholder="City, State">
             </div>
+
+            <div class="form-group">
+              <label>Gender</label>
+              <select
+                [(ngModel)]="formData.recipient_gender"
+                name="recipient_gender"
+                class="form-control">
+                <option [ngValue]="undefined">Select gender...</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <!-- Family Selection -->
+            <div class="form-group full-width" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+              <label>Family Association</label>
+              <div class="family-selection-container">
+                <div class="family-type-selection">
+                  <label class="radio-label">
+                    <input 
+                      type="radio" 
+                      name="familySelectionType" 
+                      [value]="null"
+                      [checked]="familySelectionType === null"
+                      (change)="clearFamilySelection()">
+                    <span>No Family Association</span>
+                  </label>
+                  <label class="radio-label">
+                    <input 
+                      type="radio" 
+                      name="familySelectionType" 
+                      value="existing"
+                      [checked]="familySelectionType === 'existing'"
+                      (change)="onFamilySelectionTypeChange('existing')">
+                    <span>Existing Family</span>
+                  </label>
+                  <label class="radio-label">
+                    <input 
+                      type="radio" 
+                      name="familySelectionType" 
+                      value="new"
+                      [checked]="familySelectionType === 'new'"
+                      (change)="onFamilySelectionTypeChange('new')">
+                    <span>New Family</span>
+                  </label>
+                </div>
+
+                <!-- Existing Family Selection -->
+                <div *ngIf="familySelectionType === 'existing'" class="family-selection-fields">
+                  <div class="form-group">
+                    <label>BCC</label>
+                    <select 
+                      [(ngModel)]="selectedBccId" 
+                      (ngModelChange)="onBCCChange()"
+                      name="bcc_id" 
+                      class="form-control"
+                      [disabled]="loadingBCCs">
+                      <option [ngValue]="null">Select a BCC...</option>
+                      <option *ngFor="let bcc of bccs" [ngValue]="bcc.id">
+                        {{ bcc.bcc_code }} - {{ bcc.name }}
+                      </option>
+                    </select>
+                    <small *ngIf="loadingBCCs" class="text-muted">Loading BCCs...</small>
+                  </div>
+
+                  <div class="form-group" *ngIf="selectedBccId">
+                    <label>Family</label>
+                    <select 
+                      [(ngModel)]="selectedFamilyId" 
+                      (ngModelChange)="onFamilyChange()"
+                      name="family_id" 
+                      class="form-control"
+                      [disabled]="loadingFamilies">
+                      <option [ngValue]="null">Select a family...</option>
+                      <option *ngFor="let family of families" [ngValue]="family.id">
+                        {{ family.family_name }} ({{ family.family_code }})
+                      </option>
+                    </select>
+                    <small *ngIf="loadingFamilies" class="text-muted">Loading families...</small>
+                    <small *ngIf="!loadingFamilies && families.length === 0 && selectedBccId" class="text-warning">
+                      No families found for this BCC.
+                    </small>
+                  </div>
+                </div>
+
+                <!-- New Family Form -->
+                <div *ngIf="familySelectionType === 'new' && showFamilyForm" class="new-family-form-container">
+                  <app-family-form
+                    [family]="null"
+                    (save)="onFamilyCreated($event)"
+                    (cancel)="onFamilyFormCancel()">
+                  </app-family-form>
+                </div>
+
+                <!-- After New Family Created -->
+                <div *ngIf="familySelectionType === 'new' && newlyCreatedFamily && !showFamilyForm" class="newly-created-family-info">
+                  <div class="alert alert-success">
+                    <strong>Family Created:</strong> {{ newlyCreatedFamily.family_name }} ({{ newlyCreatedFamily.family_code }})
+                  </div>
+                  <div class="form-group" *ngIf="!newlyCreatedFamily.bcc_id">
+                    <label>BCC (Optional)</label>
+                    <select 
+                      [(ngModel)]="selectedBccId" 
+                      (ngModelChange)="onBCCChange()"
+                      name="bcc_id_new" 
+                      class="form-control"
+                      [disabled]="loadingBCCs">
+                      <option [ngValue]="null">Select a BCC (optional)...</option>
+                      <option *ngFor="let bcc of bccs" [ngValue]="bcc.id">
+                        {{ bcc.bcc_code }} - {{ bcc.name }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Godparent Fields (for Baptism only) -->
+            <div class="form-group" *ngIf="isBaptism()">
+              <label>Primary Godparent</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.godparent1_name"
+                name="godparent1_name"
+                class="form-control"
+                placeholder="Enter primary godparent's name">
+            </div>
+
+            <div class="form-group" *ngIf="isBaptism()">
+              <label>Secondary Godparent</label>
+              <input
+                type="text"
+                [(ngModel)]="formData.godparent2_name"
+                name="godparent2_name"
+                class="form-control"
+                placeholder="Enter secondary godparent's name">
+            </div>
           </div>
         </div>
 
@@ -158,8 +301,8 @@
           </div>
         </div>
 
-        <!-- Godparents/Sponsors (for Baptism, Confirmation) -->
-        <div class="form-section" *ngIf="requiresGodparents()">
+        <!-- Godparents/Sponsors (for Confirmation only - Baptism godparents shown in Recipient Information) -->
+        <div class="form-section" *ngIf="requiresGodparents() && !isBaptism()">
           <h3 class="section-title">🤝 Godparents / Sponsors</h3>
           <div class="form-grid">
             <div class="form-group">

@@ -24,6 +24,8 @@ export interface SacramentType {
 export interface Sacrament {
   id: number;
   tenant_id: number;
+  family_id?: string | null;
+  bcc_id?: string | null;
   sacrament_type_id: number;
   sacrament_type?: SacramentType;
   recipient_name: string;
@@ -36,6 +38,7 @@ export interface Sacrament {
   page_number?: string;
   recipient_birth_date?: string;
   recipient_birth_place?: string;
+  recipient_gender?: 'male' | 'female' | 'other';
   father_name?: string;
   mother_name?: string;
   godparent1_name?: string;
@@ -55,6 +58,8 @@ export interface Sacrament {
 
 export interface SacramentCreateRequest {
   tenant_id: number;
+  family_id?: string | null;
+  bcc_id?: string | null;
   sacrament_type_id: number;
   recipient_name: string;
   date_administered: string;
@@ -66,6 +71,7 @@ export interface SacramentCreateRequest {
   page_number?: string;
   recipient_birth_date?: string;
   recipient_birth_place?: string;
+  recipient_gender?: 'male' | 'female' | 'other';
   father_name?: string;
   mother_name?: string;
   godparent1_name?: string;

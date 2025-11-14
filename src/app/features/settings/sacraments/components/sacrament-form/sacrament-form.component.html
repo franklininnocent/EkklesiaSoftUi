@@ -6,7 +6,7 @@
     </button>
     <div class="header-content">
       <h2 class="form-title">
-        {{ isEditMode ? 'Edit Sacrament' : 'Add New Sacrament' }}
+        {{ isEditMode ? 'Edit' : 'Add' }}
       </h2>
       <p class="form-subtitle">
         {{ isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information' }}
@@ -99,6 +99,19 @@
             name="recipient_birth_place"
             class="form-control"
             placeholder="City, State/Province">
+        </div>
+
+        <div class="form-group">
+          <label>Gender</label>
+          <select
+            [(ngModel)]="formData.recipient_gender"
+            name="recipient_gender"
+            class="form-control">
+            <option [ngValue]="undefined">Select gender...</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
         </div>
       </div>
     </div>

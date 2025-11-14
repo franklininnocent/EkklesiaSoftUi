@@ -71,358 +71,170 @@
       <!-- ====================================================================== -->
       <div *ngIf="activeTab === 'profile'" class="tab-pane profile-pane">
         
-        <!-- Church Identity Overview Section -->
-        <div class="section-card identity-overview-card">
-          <div class="identity-overview">
-            <!-- Main Identity Section -->
-            <div class="identity-main">
-              <!-- Church Logo -->
-              <div class="church-logo-section">
-                <div class="logo-display">
+        <!-- Church Profile Section - Clean Professional Design -->
+        <div class="church-profile-card">
+          <!-- Header -->
+          <div class="card-header">
+          </div>
+
+          <!-- Content -->
+          <div class="card-body">
+            <!-- Church Identity - Three Column Layout (40% - 30% - 30%) -->
+            <div class="church-identity">
+              <!-- First Column: Church Name (40%) -->
+              <div class="identity-column-left">
+                <div class="church-logo">
                   <img *ngIf="churchProfile.logo_full_url" 
                        [src]="churchProfile.logo_full_url" 
                        [alt]="churchProfile.name"
                        loading="lazy">
                   <div *ngIf="!churchProfile.logo_full_url" class="logo-placeholder">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
                     </svg>
                   </div>
                 </div>
-              </div>
-              
-              <!-- Church Information -->
-              <div class="identity-info">
-                <h2 class="church-name">{{ churchProfile.name }}</h2>
-                <p class="church-slogan" *ngIf="churchProfile.slogan">{{ churchProfile.slogan }}</p>
-                <div class="church-badges">
-                  <span class="badge badge-status" 
-                        [class.badge-success]="churchProfile.active === 1" 
-                        [class.badge-danger]="churchProfile.active === 0">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <circle cx="12" cy="12" r="10"></circle>
-                      <polyline points="12 6 12 12 16 14"></polyline>
-                    </svg>
-                    <span>{{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}</span>
-                  </span>
-                  <span class="badge badge-plan badge-info">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-                      <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-                      <line x1="12" y1="22.08" x2="12" y2="12"></line>
-                    </svg>
-                    <span>{{ churchProfile.plan | uppercase }}</span>
-                  </span>
-                  <span class="badge badge-founded" *ngIf="extendedProfile && extendedProfile.founded_year">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    <span>Founded {{ extendedProfile.founded_year }}</span>
-                  </span>
+                <div class="church-details">
+                  <div class="church-name-wrapper">
+                    <h4 class="church-name">{{ churchProfile.name }}</h4>
+                    <button *ngIf="canEdit" 
+                            class="btn-edit-icon" 
+                            type="button" 
+                            title="Edit Profile"
+                            (click)="openGeneralModal()">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                      </svg>
+                    </button>
+                  </div>
+                  <p class="church-slogan" *ngIf="churchProfile.slogan">{{ churchProfile.slogan }}</p>
+                  <div class="badges">
+                    <span class="badge" [class.badge-success]="churchProfile.active === 1" [class.badge-danger]="churchProfile.active === 0">
+                      {{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}
+                    </span>
+                    <span class="badge badge-info">{{ churchProfile.plan | uppercase }}</span>
+                    <span class="badge" *ngIf="extendedProfile && extendedProfile.founded_year">Founded {{ extendedProfile.founded_year }}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-            
-            <!-- Patron Saint Section -->
-            <div class="identity-patron" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
-              <div class="patron-display">
-                <div class="patron-image-wrapper">
-                  <div class="patron-image-container">
-                    <img 
-                      *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path" 
-                      [src]="getPatronImageUrlWithFallback()" 
-                      [alt]="extendedProfile.patron_name || 'Patron Saint'"
-                      class="patron-image"
-                      loading="lazy"
-                      (error)="handlePatronImageError($event)">
-                    <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" class="patron-image-placeholder">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+              <!-- Second Column: Patron Saint (30%) -->
+              <div class="identity-column-patron" *ngIf="extendedProfile && (extendedProfile.patron_name || extendedProfile.patron_image_url || extendedProfile.patron_image_path)">
+                <div class="spiritual-leader">
+                  <div class="leader-avatar patron-avatar">
+                    <img *ngIf="extendedProfile.patron_image_url || extendedProfile.patron_image_path" 
+                         [src]="getPatronImageUrlWithFallback()" 
+                         [alt]="extendedProfile.patron_name || 'Patron Saint'"
+                         loading="lazy"
+                         (error)="handlePatronImageError($event)">
+                    <div *ngIf="!extendedProfile.patron_image_url && !extendedProfile.patron_image_path" class="avatar-placeholder">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
                       </svg>
                     </div>
                   </div>
+                  <div class="leader-details">
+                    <span class="leader-type">Patron Saint</span>
+                    <span class="leader-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</span>
+                  </div>
                 </div>
-                <div class="patron-info">
-                  <div class="patron-label">Patron Saint</div>
-                  <div class="patron-name">{{ extendedProfile.patron_name || 'Patron Saint' }}</div>
+              </div>
+
+              <!-- Third Column: Pope (30%) -->
+              <div class="identity-column-pope" *ngIf="popeDetails && (popeDetails.pope_name || popeDetails.pope_image_url || popeDetails.pope_image_path)">
+                <div class="spiritual-leader">
+                  <div class="leader-avatar pope-avatar">
+                    <img *ngIf="getPopeImageUrl('300x300')" 
+                         [src]="getPopeImageUrl('300x300')" 
+                         [alt]="getPopeName()"
+                         loading="lazy"
+                         (error)="handlePopeImageError($event)">
+                    <div *ngIf="!getPopeImageUrl('300x300')" class="avatar-placeholder">
+                      <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                    </div>
+                  </div>
+                  <div class="leader-details">
+                    <span class="leader-name">{{ getPopeName() }}</span>
+                    <span class="leader-date" *ngIf="popeDetails?.pope_effective_from">Since {{ formatDate(popeDetails.pope_effective_from) }}</span>
+                  </div>
                 </div>
               </div>
             </div>
-            
-            <!-- Contact Information Section -->
-            <div class="identity-contact">
-              <div class="contact-item" *ngIf="extendedProfile?.phone || churchProfile.primary_contact?.contact_number">
-                <div class="contact-icon-wrapper">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
-                  </svg>
-                </div>
-                <div class="contact-details">
-                  <span class="contact-label">Phone</span>
-                  <a [href]="'tel:' + (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || '')" 
-                     class="contact-value contact-link"
-                     title="Call {{ extendedProfile?.phone || churchProfile.primary_contact?.contact_number }}">
-                    {{ extendedProfile?.phone || churchProfile.primary_contact?.contact_number }}
-                  </a>
-                </div>
-              </div>
-              
-              <div class="contact-item" *ngIf="extendedProfile?.email || churchProfile.primary_contact?.email">
-                <div class="contact-icon-wrapper">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                    <polyline points="22,6 12,13 2,6"></polyline>
-                  </svg>
-                </div>
-                <div class="contact-details">
-                  <span class="contact-label">Email</span>
-                  <a [href]="'mailto:' + (extendedProfile?.email || churchProfile.primary_contact?.email || '')" 
-                     class="contact-value contact-link"
-                     title="Send email to {{ extendedProfile?.email || churchProfile.primary_contact?.email }}">
-                    {{ extendedProfile?.email || churchProfile.primary_contact?.email }}
-                  </a>
+
+            <!-- Information Grid -->
+            <div class="info-sections">
+              <!-- Contact Information -->
+              <div class="info-section">
+                <h4 class="section-title">Contact Information</h4>
+                <div class="info-items">
+                  <div class="info-item" *ngIf="extendedProfile?.phone || churchProfile.primary_contact?.contact_number">
+                    <span class="info-label">Phone</span>
+                    <a [href]="'tel:' + (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || '')" class="info-value link">
+                      {{ extendedProfile?.phone || churchProfile.primary_contact?.contact_number }}
+                    </a>
+                  </div>
+                  <div class="info-item" *ngIf="extendedProfile?.email || churchProfile.primary_contact?.email">
+                    <span class="info-label">Email</span>
+                    <a [href]="'mailto:' + (extendedProfile?.email || churchProfile.primary_contact?.email || '')" class="info-value link">
+                      {{ extendedProfile?.email || churchProfile.primary_contact?.email }}
+                    </a>
+                  </div>
+                  <div class="info-item" *ngIf="getWebsiteUrl()">
+                    <span class="info-label">Website</span>
+                    <a [href]="getWebsiteUrl()" target="_blank" rel="noopener noreferrer" class="info-value link">
+                      {{ formatWebsiteUrl(getWebsiteUrl()) }}
+                    </a>
+                  </div>
                 </div>
               </div>
-              
-              <div class="contact-item" *ngIf="getWebsiteUrl()">
-                <div class="contact-icon-wrapper">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
+
+            <!-- General Information -->
+            <div class="info-section">
+              <h4 class="section-title">General Information</h4>
+              <div class="info-items">
+                <div class="info-item">
+                  <span class="info-label">Denomination</span>
+                  <span class="info-value">{{ getDenominationName() }}</span>
                 </div>
-                <div class="contact-details">
-                  <span class="contact-label">Website</span>
-                  <a [href]="getWebsiteUrl()" 
-                     target="_blank" 
-                     rel="noopener noreferrer" 
-                     class="contact-value contact-link"
-                     title="Visit website">
-                    {{ formatWebsiteUrl(getWebsiteUrl()) }}
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="external-link-icon">
-                      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                      <polyline points="15 3 21 3 21 9"></polyline>
-                      <line x1="10" y1="14" x2="21" y2="3"></line>
-                    </svg>
-                  </a>
+                <div class="info-item">
+                  <span class="info-label">Diocese</span>
+                  <span class="info-value">{{ getArchdioceseName() }}</span>
+                </div>
+                <div class="info-item" *ngIf="getTenantCountry()">
+                  <span class="info-label">Country</span>
+                  <span class="info-value">{{ getTenantCountry() }}</span>
+                </div>
+              </div>
+            </div>
+
+              <!-- Address -->
+              <div class="info-section" *ngIf="getOfficialAddress()">
+                <h4 class="section-title">Address</h4>
+                <div class="address-info">
+                  <div *ngIf="getAddressLines(getOfficialAddress()).line1" class="address-line">
+                    {{ getAddressLines(getOfficialAddress()).line1 }}
+                  </div>
+                  <div *ngIf="getAddressLines(getOfficialAddress()).line2" class="address-line">
+                    {{ getAddressLines(getOfficialAddress()).line2 }}
+                  </div>
+                  <div class="address-line" *ngIf="getAddressLines(getOfficialAddress()).cityState || getAddressLines(getOfficialAddress()).country || getAddressLines(getOfficialAddress()).postalCode">
+                    <span *ngIf="getAddressLines(getOfficialAddress()).cityState">{{ getAddressLines(getOfficialAddress()).cityState }}</span>
+                    <span *ngIf="getAddressLines(getOfficialAddress()).country">{{ getAddressLines(getOfficialAddress()).country }}</span>
+                    <span *ngIf="getAddressLines(getOfficialAddress()).postalCode">{{ getAddressLines(getOfficialAddress()).postalCode }}</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- General & Contact Information + Diocese Details (Merged Section) -->
-        <div class="section-card merged-section">
-          <div class="section-header">
-            <div class="section-header-content">
-              <div class="section-icon-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-              </div>
-              <h2>General & Contact Information</h2>
-            </div>
-            <div class="section-actions" *ngIf="canEdit">
-              <button 
-                class="btn-3d-action btn-3d-edit" 
-                type="button" 
-                title="Edit"
-                (click)="openGeneralModal()">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <ng-container [ngSwitch]="designVariant">
-          
-          <!-- Variant: Summary (default) -->
-          <div *ngSwitchCase="'summary'" class="info-panels">
-            <div class="panel summary-panel">
-              <div class="summary-header">
-                <div class="summary-title">
-                  <span class="summary-label">Denomination:</span>
-                  {{ getDenominationName() }}
-                </div>
-                <div class="summary-subtitle">
-                  <span class="summary-label">Diocese:</span>
-                  <span class="summary-value">{{ getArchdioceseName() }}</span>
-                </div>
-              </div>
-              <div class="summary-badges">
-                <span class="pill">📅 Founded: {{ extendedProfile?.founded_year || 'Not Set' }}</span>
-                <span class="pill">🌍 {{ getTenantCountry() }}</span>
-                <span class="pill">📦 {{ (churchProfile.plan || 'Unknown') | titlecase }}</span>
-                <span class="pill" [class.pill-success]="churchProfile.active === 1" [class.pill-danger]="churchProfile.active === 0">
-                  {{ getStatusText() }}
-                </span>
-              </div>
-            </div>
-
-            <!-- Papal Image & Details Panel -->
-            <div class="panel pope-panel" *ngIf="popeDetails && (popeDetails.pope_name || popeDetails.pope_image_url || popeDetails.pope_image_path)">
-              <div class="pope-content">
-                <div class="pope-image-wrapper">
-                  <div class="pope-image-container">
-                    <img 
-                      *ngIf="getPopeImageUrl('300x300')" 
-                      [src]="getPopeImageUrl('300x300')" 
-                      [alt]="getPopeName()"
-                      class="pope-image"
-                      loading="lazy"
-                      (error)="handlePopeImageError($event)"
-                    />
-                    <div *ngIf="!getPopeImageUrl('300x300')" class="pope-image-placeholder">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                        <circle cx="12" cy="7" r="4"></circle>
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-                <div class="pope-info">
-                  <div class="pope-name">{{ getPopeName() }}</div>
-                  <div class="pope-title" *ngIf="popeDetails?.pope_title">{{ popeDetails.pope_title }}</div>
-                  <div class="pope-date" *ngIf="popeDetails?.pope_effective_from">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                      <line x1="16" y1="2" x2="16" y2="6"></line>
-                      <line x1="8" y1="2" x2="8" y2="6"></line>
-                      <line x1="3" y1="10" x2="21" y2="10"></line>
-                    </svg>
-                    Since {{ formatDate(popeDetails.pope_effective_from) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Variant: Tiles -->
-          <div *ngSwitchCase="'tiles'" class="tiles-layout">
-            <!-- Papal Image Tile -->
-            <div class="tile pope-tile" *ngIf="popeDetails && (popeDetails.pope_name || popeDetails.pope_image_url)">
-              <div class="pope-tile-image">
-                <img 
-                  *ngIf="getPopeImageUrl('128x128')" 
-                  [src]="getPopeImageUrl('128x128')" 
-                  [alt]="getPopeName()"
-                  class="pope-thumbnail"
-                  loading="lazy"
-                />
-                <div *ngIf="!getPopeImageUrl('128x128')" class="pope-thumbnail-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                    <circle cx="12" cy="7" r="4"></circle>
-                  </svg>
-                </div>
-              </div>
-              <div class="tile-label">Pope</div>
-              <div class="tile-value">{{ getPopeName() }}</div>
-              <div class="tile-subvalue" *ngIf="popeDetails?.pope_title">{{ popeDetails.pope_title }}</div>
-            </div>
-            
-            <div class="tile">
-              <div class="tile-label">Denomination</div>
-              <div class="tile-value">{{ getDenominationName() }}</div>
-            </div>
-            <div class="tile">
-              <div class="tile-label">Archdiocese / Diocese</div>
-              <div class="tile-value">{{ getArchdioceseName() }}</div>
-            </div>
-            <div class="tile">
-              <div class="tile-label">Founded</div>
-              <div class="tile-value">{{ extendedProfile?.founded_year || 'Not Set' }}</div>
-            </div>
-            <div class="tile">
-              <div class="tile-label">Country</div>
-              <div class="tile-value">{{ getTenantCountry() }}</div>
-            </div>
-            <div class="tile">
-              <div class="tile-label">Phone</div>
-              <div class="tile-value">{{ (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || 'Not Set') }}</div>
-            </div>
-            <div class="tile">
-              <div class="tile-label">Email</div>
-              <div class="tile-value">{{ (extendedProfile?.email || churchProfile.primary_contact?.email || 'Not Set') }}</div>
-            </div>
-            <div class="tile full">
-              <div class="tile-label">Website</div>
-              <div class="tile-value">
-                <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ extendedProfile?.website }}</a>
-                <span *ngIf="!extendedProfile?.website">Not Set</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Variant: Definition List -->
-          <div *ngSwitchCase="'definition'" class="definitions-layout">
-            <dl>
-              <div class="row pope-row" *ngIf="popeDetails && (popeDetails.pope_name || popeDetails.pope_image_url)">
-                <dt>Pope</dt>
-                <dd>
-                  <div class="pope-definition-content">
-                    <div class="pope-definition-image" *ngIf="getPopeImageUrl('128x128')">
-                      <img [src]="getPopeImageUrl('128x128')" [alt]="getPopeName()" loading="lazy" />
-                    </div>
-                    <div class="pope-definition-info">
-                      <div class="pope-definition-name">{{ getPopeName() }}</div>
-                      <div class="pope-definition-title" *ngIf="popeDetails?.pope_title">{{ popeDetails.pope_title }}</div>
-                      <div class="pope-definition-date" *ngIf="popeDetails?.pope_effective_from">
-                        Since {{ formatDate(popeDetails.pope_effective_from) }}
-                      </div>
-                    </div>
-                  </div>
-                </dd>
-              </div>
-              <div class="row" *ngIf="extendedProfile && extendedProfile.patron_name">
-                <dt>Patron</dt>
-                <dd>{{ extendedProfile.patron_name }}</dd>
-              </div>
-              <div class="row">
-                <dt>Denomination</dt>
-                <dd>{{ getDenominationName() }}</dd>
-              </div>
-              <div class="row">
-                <dt>Archdiocese / Diocese</dt>
-                <dd>{{ getArchdioceseName() }}</dd>
-              </div>
-              <div class="row">
-                <dt>Founded Year</dt>
-                <dd>{{ extendedProfile?.founded_year || 'Not Set' }}</dd>
-              </div>
-              <div class="row">
-                <dt>Country</dt>
-                <dd>{{ getTenantCountry() }}</dd>
-              </div>
-              <div class="row">
-                <dt>Phone</dt>
-                <dd>{{ (extendedProfile?.phone || churchProfile.primary_contact?.contact_number || 'Not Set') }}</dd>
-              </div>
-              <div class="row">
-                <dt>Email</dt>
-                <dd>{{ (extendedProfile?.email || churchProfile.primary_contact?.email || 'Not Set') }}</dd>
-              </div>
-              <div class="row">
-                <dt>Website</dt>
-                <dd>
-                  <a *ngIf="extendedProfile?.website" [href]="extendedProfile?.website" target="_blank" rel="noopener">{{ formatWebsiteUrl(extendedProfile?.website) }}</a>
-                  <span *ngIf="!extendedProfile?.website">Not Set</span>
-                </dd>
-              </div>
-            </dl>
-          </div>
-
-          </ng-container>
-
-          <!-- Diocese Details (within merged section) -->
-          <div class="diocese-details-divider" *ngIf="extendedProfile?.bishop">
+        <!-- Diocese Details Section (Keep Separate) -->
+        <div class="section-card merged-section" *ngIf="extendedProfile?.bishop">
+          <div class="diocese-details-divider">
             <div class="divider-line"></div>
             <div class="divider-label">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, Output, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SacramentService } from '../../services/sacrament.service';
@@ -8,11 +8,15 @@ import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { take } from 'rxjs';
+import { BCCService } from '@core/services/bcc.service';
+import { FamilyService } from '@core/services/family.service';
+import { BCC, Family } from '@core/models/family.model';
+import { FamilyFormComponent } from '@features/family-management/components/family-form/family-form';
 
 @Component({
   selector: 'app-sacrament-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, FamilyFormComponent],
   templateUrl: './sacrament-form-modal.component.html',
   styleUrl: './sacrament-form-modal.component.scss'
 })
@@ -27,9 +31,22 @@ export class SacramentFormModalComponent implements OnInit {
   isEditMode = false;
   currentTenantId: number | null = null;
 
+  // Family/BCC selection properties
+  familySelectionType: 'new' | 'existing' | null = 'existing';
+  bccs: BCC[] = [];
+  families: Family[] = [];
+  selectedBccId: string | null = null;
+  selectedFamilyId: string | null = null;
+  loadingBCCs = false;
+  loadingFamilies = false;
+  showFamilyForm = false;
+  newlyCreatedFamily: Family | null = null;
+
   // Form model
   formData: Partial<SacramentCreateRequest | SacramentUpdateRequest> = {
     sacrament_type_id: undefined,
+    family_id: null,
+    bcc_id: null,
     recipient_name: '',
     date_administered: '',
     place_administered: '',
@@ -40,6 +57,7 @@ export class SacramentFormModalComponent implements OnInit {
     page_number: '',
     recipient_birth_date: '',
     recipient_birth_place: '',
+    recipient_gender: undefined,
     father_name: '',
     mother_name: '',
     godparent1_name: '',
@@ -52,12 +70,16 @@ export class SacramentFormModalComponent implements OnInit {
   constructor(
     private sacramentService: SacramentService,
     private toastService: ToastService,
-    private store: Store<AppState>
+    private store: Store<AppState>,
+    private cdr: ChangeDetectorRef,
+    private bccService: BCCService,
+    private familyService: FamilyService
   ) {}
 
   ngOnInit(): void {
     this.loadCurrentUser();
     this.loadSacramentTypes();
+    this.loadBCCs();
     
     if (this.sacrament) {
       this.isEditMode = true;
@@ -106,6 +128,8 @@ export class SacramentFormModalComponent implements OnInit {
 
     this.formData = {
       sacrament_type_id: this.sacrament.sacrament_type_id,
+      family_id: this.sacrament.family_id || null,
+      bcc_id: this.sacrament.bcc_id || null,
       recipient_name: this.sacrament.recipient_name,
       date_administered: this.sacrament.date_administered,
       place_administered: this.sacrament.place_administered || '',
@@ -116,6 +140,7 @@ export class SacramentFormModalComponent implements OnInit {
       page_number: this.sacrament.page_number || '',
       recipient_birth_date: this.sacrament.recipient_birth_date || '',
       recipient_birth_place: this.sacrament.recipient_birth_place || '',
+      recipient_gender: this.sacrament.recipient_gender || undefined,
       father_name: this.sacrament.father_name || '',
       mother_name: this.sacrament.mother_name || '',
       godparent1_name: this.sacrament.godparent1_name || '',
@@ -124,6 +149,18 @@ export class SacramentFormModalComponent implements OnInit {
       notes: this.sacrament.notes || '',
       status: this.sacrament.status
     };
+
+    // Set family selection if family_id exists
+    if (this.sacrament.family_id) {
+      this.familySelectionType = 'existing';
+      this.selectedFamilyId = this.sacrament.family_id;
+      this.selectedBccId = this.sacrament.bcc_id || null;
+      
+      // Load families for the BCC if BCC is set
+      if (this.selectedBccId) {
+        this.loadFamiliesByBCC(this.selectedBccId);
+      }
+    }
   }
 
   /**
@@ -151,7 +188,9 @@ export class SacramentFormModalComponent implements OnInit {
 
     const data: SacramentCreateRequest = {
       ...this.formData as SacramentCreateRequest,
-      tenant_id: this.currentTenantId
+      tenant_id: this.currentTenantId,
+      family_id: this.formData.family_id || null,
+      bcc_id: this.formData.bcc_id || null
     };
 
     this.sacramentService.createSacrament(data).subscribe({
@@ -176,7 +215,14 @@ export class SacramentFormModalComponent implements OnInit {
   updateSacrament(): void {
     if (!this.sacrament) return;
 
-    this.sacramentService.updateSacrament(this.sacrament.id, this.formData as SacramentUpdateRequest).subscribe({
+    const updateData: SacramentUpdateRequest = {
+      ...this.formData as SacramentUpdateRequest,
+      id: this.sacrament.id,
+      family_id: this.formData.family_id || null,
+      bcc_id: this.formData.bcc_id || null
+    };
+
+    this.sacramentService.updateSacrament(this.sacrament.id, updateData).subscribe({
       next: (response) => {
         if (response.success) {
           this.toastService.success('Sacrament updated successfully.');
@@ -234,7 +280,9 @@ export class SacramentFormModalComponent implements OnInit {
    */
   requiresGodparents(): boolean {
     const type = this.getSelectedSacramentType();
-    return type ? ['BAPTISM', 'CONFIRMATION'].includes(type.code) : false;
+    if (!type) return false;
+    const code = type.code?.toUpperCase();
+    return ['BAPTISM', 'CONFIRMATION'].includes(code);
   }
 
   /**
@@ -242,7 +290,185 @@ export class SacramentFormModalComponent implements OnInit {
    */
   requiresParents(): boolean {
     const type = this.getSelectedSacramentType();
-    return type ? type.code === 'BAPTISM' : false;
+    if (!type) return false;
+    return type.code?.toUpperCase() === 'BAPTISM';
+  }
+
+  /**
+   * Check if selected sacrament type is Baptism (case-insensitive)
+   */
+  isBaptism(): boolean {
+    const type = this.getSelectedSacramentType();
+    if (!type || !type.code) return false;
+    const code = type.code.toUpperCase().trim();
+    // Handle both 'BAPTISM' and 'baptism' codes
+    return code === 'BAPTISM';
+  }
+
+  /**
+   * Handle sacrament type change to trigger UI updates
+   */
+  onSacramentTypeChange(): void {
+    // Force change detection to update conditional fields
+    const selectedType = this.getSelectedSacramentType();
+    if (selectedType) {
+      console.log('Selected sacrament type:', selectedType.name, 'Code:', selectedType.code);
+      console.log('Is Baptism?', this.isBaptism());
+    }
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Load all active BCCs
+   */
+  loadBCCs(): void {
+    this.loadingBCCs = true;
+    this.bccService.getBCCs({ status: 'active', per_page: 1000 }).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.bccs = response.data;
+        }
+        this.loadingBCCs = false;
+      },
+      error: (error) => {
+        console.error('Error loading BCCs:', error);
+        this.toastService.error('Failed to load BCCs.');
+        this.loadingBCCs = false;
+      }
+    });
+  }
+
+  /**
+   * Load families by selected BCC
+   */
+  loadFamiliesByBCC(bccId: string): void {
+    if (!bccId) {
+      this.families = [];
+      return;
+    }
+
+    this.loadingFamilies = true;
+    this.familyService.getFamiliesByBCC(bccId).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.families = response.data;
+        } else {
+          this.families = [];
+        }
+        this.loadingFamilies = false;
+      },
+      error: (error) => {
+        console.error('Error loading families:', error);
+        this.toastService.error('Failed to load families for selected BCC.');
+        this.families = [];
+        this.loadingFamilies = false;
+      }
+    });
+  }
+
+
+  /**
+   * Clear family selection (No Family Association)
+   */
+  clearFamilySelection(): void {
+    this.familySelectionType = null;
+    this.selectedBccId = null;
+    this.selectedFamilyId = null;
+    this.families = [];
+    this.showFamilyForm = false;
+    this.newlyCreatedFamily = null;
+    this.formData.family_id = null;
+    this.formData.bcc_id = null;
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Handle family selection type change
+   */
+  onFamilySelectionTypeChange(type: 'new' | 'existing' | null): void {
+    if (type === null) {
+      this.clearFamilySelection();
+      return;
+    }
+
+    this.familySelectionType = type;
+    this.selectedBccId = null;
+    this.selectedFamilyId = null;
+    this.families = [];
+    this.showFamilyForm = false;
+    this.newlyCreatedFamily = null;
+    
+    // Clear form data
+    this.formData.family_id = null;
+    this.formData.bcc_id = null;
+    
+    if (type === 'new') {
+      this.showFamilyForm = true;
+    }
+    
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Handle BCC selection change
+   */
+  onBCCChange(): void {
+    this.selectedFamilyId = null;
+    this.formData.family_id = null;
+    this.formData.bcc_id = this.selectedBccId || null;
+    
+    if (this.selectedBccId) {
+      this.loadFamiliesByBCC(this.selectedBccId);
+    } else {
+      this.families = [];
+    }
+    
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Handle family selection change
+   */
+  onFamilyChange(): void {
+    this.formData.family_id = this.selectedFamilyId || null;
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Handle new family creation completion
+   */
+  onFamilyCreated(response: any): void {
+    // Extract family from response (could be direct Family or ApiResponse<Family>)
+    const family: Family = response?.data || response;
+    
+    if (!family || !family.id) {
+      this.toastService.error('Failed to get created family information.');
+      return;
+    }
+    
+    this.newlyCreatedFamily = family;
+    this.showFamilyForm = false;
+    this.selectedFamilyId = family.id;
+    this.formData.family_id = family.id;
+    
+    // If family has BCC, set it
+    if (family.bcc_id) {
+      this.selectedBccId = family.bcc_id;
+      this.formData.bcc_id = family.bcc_id;
+      this.loadFamiliesByBCC(family.bcc_id);
+    }
+    
+    this.toastService.success('Family created successfully. You can now proceed with sacrament details.');
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Cancel family form
+   */
+  onFamilyFormCancel(): void {
+    this.showFamilyForm = false;
+    this.familySelectionType = null;
+    this.cdr.detectChanges();
   }
 
   /**
