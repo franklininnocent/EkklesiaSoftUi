@@ -1,6 +1,6 @@
 <!-- Confirmation Modal -->
 <div class="modal-backdrop" *ngIf="show" (click)="onBackdropClick($event)" [@fadeIn]>
-  <div class="modal-container" [@slideIn] role="dialog" 
+  <div #modalContainer class="modal-container" [@slideIn] role="dialog" 
        aria-labelledby="modal-title" 
        aria-describedby="modal-message"
        aria-modal="true">

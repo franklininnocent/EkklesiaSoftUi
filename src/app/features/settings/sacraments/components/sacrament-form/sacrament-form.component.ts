@@ -9,6 +9,7 @@ import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { take } from 'rxjs';
+import { SacramentStatus } from '../../constants/sacrament.constants';
 
 @Component({
   selector: 'app-sacrament-form',
@@ -43,9 +44,23 @@ export class SacramentFormComponent implements OnInit {
     mother_name: '',
     godparent1_name: '',
     godparent2_name: '',
+    marriage_bride_full_name: '',
+    marriage_bride_father_name: '',
+    marriage_bride_mother_name: '',
+    marriage_bride_address: '',
+    marriage_bride_church_type: 'home_parish',
+    marriage_bride_church_name: '',
+    marriage_bride_church_address: '',
+    marriage_groom_full_name: '',
+    marriage_groom_father_name: '',
+    marriage_groom_mother_name: '',
+    marriage_groom_address: '',
+    marriage_groom_church_type: 'home_parish',
+    marriage_groom_church_name: '',
+    marriage_groom_church_address: '',
     witnesses: '',
     notes: '',
-    status: 'active'
+    status: SacramentStatus.ACTIVE
   };
 
   constructor(
@@ -135,10 +150,27 @@ export class SacramentFormComponent implements OnInit {
             mother_name: sacrament.mother_name || '',
             godparent1_name: sacrament.godparent1_name || '',
             godparent2_name: sacrament.godparent2_name || '',
+            marriage_bride_full_name: sacrament.marriage_bride_full_name || '',
+            marriage_bride_father_name: sacrament.marriage_bride_father_name || '',
+            marriage_bride_mother_name: sacrament.marriage_bride_mother_name || '',
+            marriage_bride_address: sacrament.marriage_bride_address || '',
+            marriage_bride_church_type: sacrament.marriage_bride_church_type || 'home_parish',
+            marriage_bride_church_name: sacrament.marriage_bride_church_name || '',
+            marriage_bride_church_address: sacrament.marriage_bride_church_address || '',
+            marriage_groom_full_name: sacrament.marriage_groom_full_name || '',
+            marriage_groom_father_name: sacrament.marriage_groom_father_name || '',
+            marriage_groom_mother_name: sacrament.marriage_groom_mother_name || '',
+            marriage_groom_address: sacrament.marriage_groom_address || '',
+            marriage_groom_church_type: sacrament.marriage_groom_church_type || 'home_parish',
+            marriage_groom_church_name: sacrament.marriage_groom_church_name || '',
+            marriage_groom_church_address: sacrament.marriage_groom_church_address || '',
             witnesses: sacrament.witnesses || '',
             notes: sacrament.notes || '',
             status: sacrament.status
           };
+          if (this.isMarriageSacrament()) {
+            this.syncMarriageRecipientName();
+          }
         }
         this.loading = false;
       },
@@ -155,6 +187,9 @@ export class SacramentFormComponent implements OnInit {
    * Save sacrament (create or update)
    */
   onSave(): void {
+    if (this.isMarriageSacrament()) {
+      this.syncMarriageRecipientName();
+    }
     if (!this.validateForm()) {
       return;
     }
@@ -236,6 +271,18 @@ export class SacramentFormComponent implements OnInit {
       return false;
     }
 
+    if (this.isMarriageSacrament()) {
+      if (!this.formData.marriage_bride_full_name?.trim()) {
+        this.toastService.error('Please enter the bride\'s full name.');
+        return false;
+      }
+
+      if (!this.formData.marriage_groom_full_name?.trim()) {
+        this.toastService.error('Please enter the groom\'s full name.');
+        return false;
+      }
+    }
+
     return true;
   }
 
@@ -268,6 +315,52 @@ export class SacramentFormComponent implements OnInit {
   requiresParents(): boolean {
     const type = this.getSelectedSacramentType();
     return type ? type.code === 'BAPTISM' : false;
+  }
+
+  isMarriageSacrament(): boolean {
+    const type = this.getSelectedSacramentType();
+    return type ? type.code === 'MARRIAGE' : false;
+  }
+
+  onSacramentTypeChange(): void {
+    if (this.isMarriageSacrament()) {
+      this.ensureMarriageDefaults();
+      this.syncMarriageRecipientName();
+    }
+  }
+
+  onMarriageNameChange(): void {
+    if (this.isMarriageSacrament()) {
+      this.syncMarriageRecipientName();
+    }
+  }
+
+  copyBrideChurchToGroom(): void {
+    this.formData.marriage_groom_church_type = this.formData.marriage_bride_church_type || 'home_parish';
+    this.formData.marriage_groom_church_name = this.formData.marriage_bride_church_name || '';
+    this.formData.marriage_groom_church_address = this.formData.marriage_bride_church_address || '';
+  }
+
+  private ensureMarriageDefaults(): void {
+    if (!this.formData.marriage_bride_church_type) {
+      this.formData.marriage_bride_church_type = 'home_parish';
+    }
+    if (!this.formData.marriage_groom_church_type) {
+      this.formData.marriage_groom_church_type = 'home_parish';
+    }
+  }
+
+  private syncMarriageRecipientName(): void {
+    const bride = (this.formData.marriage_bride_full_name || '').trim();
+    const groom = (this.formData.marriage_groom_full_name || '').trim();
+
+    if (bride && groom) {
+      this.formData.recipient_name = `${bride} & ${groom}`;
+    } else if (bride || groom) {
+      this.formData.recipient_name = bride || groom || '';
+    } else {
+      this.formData.recipient_name = '';
+    }
   }
 }
 

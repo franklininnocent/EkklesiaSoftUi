@@ -7,7 +7,12 @@
     </div>
     <div class="header-right">
       <div class="search-box-header">
-        <span class="search-icon">🔍</span>
+        <span class="search-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+        </span>
         <input 
           type="text" 
           [(ngModel)]="searchTerm"
@@ -19,33 +24,51 @@
           *ngIf="searchTerm" 
           class="clear-search-btn"
           (click)="clearSearch()"
-          aria-label="Clear search">
-          ✕
+          aria-label="Clear search"
+          type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
         </button>
       </div>
-      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
-        <span class="btn-icon">🔍</span>
+      <button class="btn btn-filters" (click)="showAdvancedSearch = true" type="button" aria-label="Show filters">
+        <span class="btn-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+        </span>
         Filters
         <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
       </button>
-      <button class="btn btn-primary" (click)="createFamily()">
-        <span class="btn-icon">➕</span>
+      <button class="btn btn-primary" (click)="createFamily()" type="button" aria-label="Add new family">
+        <span class="btn-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </span>
         Add Family
       </button>
     </div>
   </div>
 
   <!-- Active Filter Chips - Inline Compact Design -->
-  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in animate-slide-in-down">
     <div class="chips-inline-wrapper">
       <span class="chips-label">
-        <span class="filter-icon">🔍</span>
+        <span class="filter-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+        </span>
         Active Filters ({{ getActiveFilters().length }}):
       </span>
       <div class="chips-list">
         <div 
           *ngFor="let filter of getActiveFilters()" 
-          class="filter-chip animate-scale-in"
+          class="filter-chip animate-scale-in animate-fade-in"
           [attr.aria-label]="filter.label + ': ' + filter.displayValue">
           <span class="chip-content">
             <span class="chip-label">{{ filter.label }}:</span>
@@ -56,7 +79,10 @@
             class="chip-remove"
             (click)="removeFilter(filter)"
             [attr.aria-label]="'Remove filter: ' + filter.label">
-            ✕
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
           </button>
         </div>
       </div>
@@ -72,29 +98,50 @@
 
   <!-- Statistics Cards -->
   <div class="statistics-grid" *ngIf="statistics">
-    <div class="stat-card">
-      <div class="stat-icon">👨‍👩‍👧‍👦</div>
+    <div class="stat-card" role="status" aria-label="Total Families: {{ statistics.total_families }}">
+      <div class="stat-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ statistics.total_families }}</div>
         <div class="stat-label">Total Families</div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon">✅</div>
+    <div class="stat-card" role="status" aria-label="Active Families: {{ statistics.active_families }}">
+      <div class="stat-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ statistics.active_families }}</div>
         <div class="stat-label">Active Families</div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon">👤</div>
+    <div class="stat-card" role="status" aria-label="Total Members: {{ statistics.total_members }}">
+      <div class="stat-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ statistics.total_members }}</div>
         <div class="stat-label">Total Members</div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon">🏘️</div>
+    <div class="stat-card" role="status" aria-label="Families in BCCs: {{ statistics.families_with_bcc }}">
+      <div class="stat-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+          <polyline points="9 22 9 12 15 12 15 22"></polyline>
+        </svg>
+      </div>
       <div class="stat-content">
         <div class="stat-value">{{ statistics.families_with_bcc }}</div>
         <div class="stat-label">In BCCs</div>
@@ -110,22 +157,36 @@
   </div>
 
   <!-- Error State -->
-  <div class="error-container" *ngIf="error && !loading">
+  <div class="error-container" *ngIf="error && !loading" role="alert" aria-live="polite">
     <div class="error-message">
-      <span class="error-icon">⚠️</span>
+      <span class="error-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </span>
       <p>{{ error }}</p>
-      <button class="btn btn-primary" (click)="loadFamilies()">Retry</button>
+      <button class="btn btn-primary" (click)="loadFamilies()" type="button" aria-label="Retry loading families">Retry</button>
     </div>
   </div>
 
   <!-- Data Table -->
   <div class="table-container" *ngIf="!loading && !error">
     <!-- Empty State -->
-    <div class="empty-state" *ngIf="families.length === 0">
-      <div class="empty-icon">📋</div>
+    <div class="empty-state" *ngIf="families.length === 0" role="status" aria-live="polite">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="64" height="64">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+          <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+      </div>
       <h3>No families found</h3>
       <p>Start by adding your first family</p>
-      <button class="btn btn-primary" (click)="createFamily()">Add Family</button>
+      <button class="btn btn-primary" (click)="createFamily()" type="button" aria-label="Add new family">Add Family</button>
     </div>
 
     <!-- Table -->
@@ -142,15 +203,20 @@
           <th>BCC</th>
           <th>Members</th>
           <th>Contact</th>
-          <th (click)="sortBy('status')" class="sortable">
-            Status {{ getSortIcon('status') }}
-          </th>
           <th class="actions-column">Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let family of families">
-          <td class="family-code">
+          <td class="family-code first-column-with-status">
+            <span 
+              class="status-indicator-dot"
+                  [class.status-indicator-dot-active]="family.status === 'active'"
+                  [class.status-indicator-dot-inactive]="family.status === 'inactive'"
+              [attr.aria-label]="family.status"
+              [title]="family.status">
+              <span class="status-indicator-sr-only">{{ family.status }}</span>
+            </span>
             <button 
               class="link-like"
               (click)="viewFamily(family)"
@@ -160,7 +226,32 @@
             </button>
           </td>
           <td class="family-name">
-            <strong>{{ family.family_name }}</strong>
+            <div class="family-name-with-avatar">
+              <ng-container *ngIf="family.head_of_family; else noHeadAvatar">
+                <ng-container *ngIf="getHeadImageUrl(family) && !isAvatarBroken(family); else initialsAvatar">
+                  <img 
+                    class="family-head-avatar family-head-photo"
+                    [src]="getHeadImageUrl(family)"
+                    [alt]="family.head_of_family + ' avatar'"
+                    (error)="onAvatarError(family)"
+                  />
+                </ng-container>
+                <ng-template #initialsAvatar>
+                  <div class="family-head-avatar family-head-initials" [ngClass]="getAvatarColorClass(family.head_of_family)">
+                    {{ getInitials(family.head_of_family!) }}
+                  </div>
+                </ng-template>
+              </ng-container>
+              <ng-template #noHeadAvatar>
+                <div class="family-head-avatar family-head-initials avatar-color-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                    <circle cx="12" cy="7" r="4"></circle>
+                  </svg>
+                </div>
+              </ng-template>
+              <strong class="family-name-text">{{ family.family_name }}</strong>
+            </div>
           </td>
           <td>
             <div class="head-cell" *ngIf="family.head_of_family; else noHead">
@@ -194,16 +285,22 @@
           <td>
             <ng-container *ngIf="getHeadContactInfo(family) as contact">
               <div class="contact-info">
-                <div *ngIf="contact.phone">📞 {{ contact.phone }}</div>
-                <div *ngIf="contact.email">✉️ {{ contact.email }}</div>
+                <div *ngIf="contact.phone" class="contact-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                  </svg>
+                  {{ contact.phone }}
+                </div>
+                <div *ngIf="contact.email" class="contact-item">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16" style="display: inline-block; vertical-align: middle; margin-right: 4px;">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                    <polyline points="22,6 12,13 2,6"></polyline>
+                  </svg>
+                  {{ contact.email }}
+                </div>
                 <div *ngIf="!contact.phone && !contact.email">-</div>
               </div>
             </ng-container>
-          </td>
-          <td>
-            <span class="badge" [ngClass]="getStatusClass(family.status)">
-              {{ family.status }}
-            </span>
           </td>
           <td class="actions-column">
             <div class="action-buttons">
@@ -211,9 +308,15 @@
               <button 
                 class="btn-icon btn-danger" 
                 (click)="deleteFamily(family)"
-                title="Delete"
-              >
-                🗑️
+                title="Delete family"
+                type="button"
+                aria-label="Delete family {{ family.family_name }}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
               </button>
             </div>
           </td>

@@ -484,8 +484,14 @@
             </button>
           </div>
 
+          <!-- Loading State -->
+          <div *ngIf="loadingLeaders" class="loading-state">
+            <div class="spinner"></div>
+            <p>Loading leaders...</p>
+          </div>
+
           <!-- Leaders Table -->
-          <div *ngIf="leaders.length > 0" class="table-responsive">
+          <div *ngIf="!loadingLeaders && leaders.length > 0" class="table-responsive">
             <table class="data-table">
               <thead>
                 <tr>
@@ -517,11 +523,16 @@
                   </td>
                   <td *ngIf="canEdit">
                     <div class="action-buttons">
-                      <button class="btn-3d-mini btn-3d-edit" (click)="openEditLeaderModal(leader)" title="Edit">
-                        ✏️
-                      </button>
-                      <button class="btn-3d-mini btn-3d-delete" (click)="deleteLeader(leader)" title="Delete">
-                        🗑️
+                      <button 
+                        class="btn-3d-mini btn-3d-edit" 
+                        (click)="openEditLeaderModal(leader)" 
+                        title="Edit Leader"
+                        type="button"
+                        aria-label="Edit {{ leader.full_name }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -531,7 +542,7 @@
           </div>
 
           <!-- Empty State -->
-          <div *ngIf="leaders.length === 0" class="empty-state">
+          <div *ngIf="!loadingLeaders && leaders.length === 0" class="empty-state">
             <span class="empty-icon">👥</span>
             <h3>No Leaders Added</h3>
             <p>Add church leaders, pastors, and ministry heads.</p>
@@ -769,6 +780,13 @@
           <div class="form-group">
             <label for="leader_appointed_date">Appointed Date</label>
             <input type="date" id="leader_appointed_date" formControlName="appointed_date" class="form-control">
+          </div>
+          <div class="form-group">
+            <label for="leader_relieved_date">Relieved Date</label>
+            <input type="date" id="leader_relieved_date" formControlName="relieved_date" class="form-control">
+            <small class="form-hint" *ngIf="leaderForm.get('relieved_date')?.value">
+              Setting a relieved date will automatically mark the leader as inactive.
+            </small>
           </div>
           <div class="form-group full-width">
             <label for="leader_biography">Biography</label>

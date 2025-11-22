@@ -3,7 +3,7 @@
  * Displays list of tenants with data from API
  */
 
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TenantCreateModalComponent } from '../tenant-create-modal/tenant-create-modal';
 import { TenantService } from '@core/services/tenant.service';
@@ -21,13 +21,15 @@ import { environment } from '@environments/environment';
     TenantCreateModalComponent
   ],
   templateUrl: './tenant-manager.html',
-  styleUrls: ['./tenant-manager.scss']
+  styleUrls: ['./tenant-manager.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class TenantManagerComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
   public authService = inject(AuthService);  // Made public for template access
   private destroy$ = new Subject<void>();
+  private cdr = inject(ChangeDetectorRef);
 
   showCreateModal = false;
   allTenants: Tenant[] = [];
@@ -79,10 +81,12 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
             this.applyFilters();
           }
           this.loading = false;
+          this.cdr.markForCheck();
         },
         error: (err) => {
           this.error = err.message || 'Failed to load tenants';
           this.loading = false;
+          this.cdr.markForCheck();
         }
       });
   }
@@ -250,7 +254,7 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
       if (!parent.querySelector('.tenant-icon-default')) {
         const defaultIcon = document.createElement('div');
         defaultIcon.className = 'tenant-icon-default';
-        defaultIcon.textContent = '🏢';
+        defaultIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>';
         parent.appendChild(defaultIcon);
       }
     }

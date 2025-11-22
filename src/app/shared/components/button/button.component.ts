@@ -15,6 +15,7 @@ export class ButtonComponent {
   @Input() disabled = false;
   @Input() loading = false;
   @Input() fullWidth = false;
+  @Input() ariaLabel?: string;
   @Output() clicked = new EventEmitter<void>();
 
   onClick(): void {

@@ -21,11 +21,17 @@
   </div>
 
   <!-- Error State -->
-  <div *ngIf="error && !loading" class="error-container">
-    <div class="error-icon">⚠️</div>
+  <div *ngIf="error && !loading" class="error-container" role="alert" aria-live="polite">
+    <div class="error-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
     <h3>Failed to Load Users</h3>
     <p>{{ error }}</p>
-    <button class="btn-refresh" (click)="loadUsers()" type="button" title="Retry loading users">
+    <button class="btn-refresh" (click)="loadUsers()" type="button" title="Retry loading users" aria-label="Retry loading users">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="23 4 23 10 17 10"></polyline>
         <polyline points="1 20 1 14 7 14"></polyline>
@@ -45,13 +51,22 @@
             <th [appSortable]="'email'" [direction]="sortColumn === 'email' ? sortDirection : null" (sort)="onSort($event)">Email</th>
             <th [appSortable]="'contact_number'" [direction]="sortColumn === 'contact_number' ? sortDirection : null" (sort)="onSort($event)">Contact</th>
             <th [appSortable]="'role'" [direction]="sortColumn === 'role' ? sortDirection : null" (sort)="onSort($event)">Role</th>
-            <th [appSortable]="'active'" [direction]="sortColumn === 'active' ? sortDirection : null" (sort)="onSort($event)">Status</th>
             <th>Actions</th>
           </tr>
         </thead>
         <tbody>
           <tr *ngFor="let user of users">
-            <td class="user-name">{{ user.name }}</td>
+            <td class="user-name first-column-with-status">
+              <span 
+                class="status-indicator-dot"
+                [class.status-indicator-dot-active]="user.active === 1"
+                [class.status-indicator-dot-inactive]="user.active === 0"
+                [attr.aria-label]="user.active === 1 ? 'Active' : 'Inactive'"
+                title="{{ user.active === 1 ? 'Active' : 'Inactive' }}">
+                <span class="status-indicator-sr-only">{{ user.active === 1 ? 'Active' : 'Inactive' }}</span>
+              </span>
+              {{ user.name }}
+            </td>
             <td class="user-email">{{ user.email }}</td>
             <td class="user-contact">{{ user.contact_number || 'N/A' }}</td>
             <td class="user-roles">
@@ -71,23 +86,6 @@
                   No Role
                 </span>
               </div>
-            </td>
-            <td>
-              <span 
-                class="status-badge" 
-                [class.status-active]="user.active === 1"
-                [class.status-inactive]="user.active === 0"
-              >
-                {{ getStatusText(user) }}
-              </span>
-              <!-- Primary Admin Indicator -->
-              <span 
-                *ngIf="user.is_primary_admin" 
-                class="badge-primary-admin"
-                title="Primary Admin - Cannot be deleted or deactivated"
-              >
-                🛡️ Primary
-              </span>
             </td>
             <td class="actions">
               <!-- Only show Edit button if user has permission -->
@@ -142,8 +140,15 @@
       ></app-pagination>
 
       <!-- Empty State -->
-      <div *ngIf="users.length === 0 && !loading" class="empty-state">
-        <div class="empty-icon">👥</div>
+      <div *ngIf="users.length === 0 && !loading" class="empty-state" role="status" aria-live="polite">
+        <div class="empty-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="64" height="64">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
         <h3>No Users Found</h3>
         <p>There are no users in your organization yet</p>
       </div>

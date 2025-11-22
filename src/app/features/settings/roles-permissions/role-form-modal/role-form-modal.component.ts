@@ -1,29 +1,49 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ViewChild, ElementRef, AfterViewChecked, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Role, RoleCreateRequest, RoleUpdateRequest, Permission } from '@core/models';
 import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
+import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 @Component({
   selector: 'app-role-form-modal',
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './role-form-modal.component.html',
-  styleUrl: './role-form-modal.component.scss'
+  styleUrl: './role-form-modal.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class RoleFormModalComponent implements OnInit, OnChanges {
+export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewChecked, OnDestroy {
   @Input() show = false;
   @Input() role: Role | null = null; // For edit mode
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<Role>();
 
+  @ViewChild('modalContainer', { static: false }) modalContainerRef?: ElementRef<HTMLElement>;
+
   roleForm!: FormGroup;
   isSubmitting = false;
   errorMessage: string | null = null;
   isEditMode = false;
+  
+  // Focus management
+  private previousActiveElement: HTMLElement | null = null;
+  private focusTrapCleanup: (() => void) | null = null;
+  private modalWasOpen = false;
+  
+  // Subscription management
+  private destroy$ = new Subject<void>();
+  
+  constructor(
+    private fb: FormBuilder,
+    private rolesService: RolesService,
+    private permissionsService: PermissionsService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   // Configuration
   minLevel = 5;
@@ -38,11 +58,6 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
   permissionsError: string | null = null;
   showPermissions = false; // Toggle for permissions section
 
-  constructor(
-    private fb: FormBuilder,
-    private rolesService: RolesService,
-    private permissionsService: PermissionsService
-  ) {}
 
   ngOnInit(): void {
     this.loadPermissions();
@@ -51,6 +66,9 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     // When the modal is shown or role changes, reinitialize
     if (changes['show'] && this.show) {
+      // Save current focus
+      this.previousActiveElement = saveActiveElement();
+      
       // Set edit mode based on whether role is provided
       this.isEditMode = !!this.role;
       
@@ -207,7 +225,9 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
       is_custom: true
     };
 
-    this.rolesService.createRole(request).subscribe({
+    this.rolesService.createRole(request).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: (response) => {
         if (response.data && response.data.role) {
           const createdRole = response.data.role;
@@ -218,6 +238,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
           } else {
             this.isSubmitting = false;
             this.saved.emit(createdRole);
+            this.cdr.markForCheck();
             this.close();
           }
         }
@@ -225,6 +246,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
       error: (err) => {
         this.isSubmitting = false;
         this.errorMessage = this.extractErrorMessage(err);
+        this.cdr.markForCheck();
       }
     });
   }
@@ -239,7 +261,9 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
       level: formValue.level
     };
 
-    this.rolesService.updateRole(this.role.id, request).subscribe({
+    this.rolesService.updateRole(this.role.id, request).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: (response) => {
         if (response.data && response.data.role) {
           const updatedRole = response.data.role;
@@ -251,6 +275,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
       error: (err) => {
         this.isSubmitting = false;
         this.errorMessage = this.extractErrorMessage(err);
+        this.cdr.markForCheck();
       }
     });
   }
@@ -262,10 +287,13 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
     this.permissionsService.bulkAssignToRole({ 
       role_id: role.id, 
       permission_ids: permissionIds 
-    }).subscribe({
+    }).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: () => {
         this.isSubmitting = false;
         this.saved.emit(role);
+        this.cdr.markForCheck();
         this.close();
       },
       error: (err: any) => {
@@ -275,6 +303,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
         this.errorMessage = `Role ${this.isEditMode ? 'updated' : 'created'} successfully, but there was an error assigning permissions: ${this.extractErrorMessage(err)}`;
         // Still emit the saved role even if permissions failed
         this.saved.emit(role);
+        this.cdr.markForCheck();
       }
     });
   }
@@ -294,8 +323,22 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
   // Modal actions
   close(): void {
     if (!this.isSubmitting) {
+      // Clean up focus trap
+      if (this.focusTrapCleanup) {
+        this.focusTrapCleanup();
+        this.focusTrapCleanup = null;
+      }
+      
       this.closed.emit();
       this.resetForm();
+      
+      // Restore previous focus
+      if (this.previousActiveElement) {
+        setTimeout(() => {
+          restoreActiveElement(this.previousActiveElement);
+          this.previousActiveElement = null;
+        }, 100);
+      }
     }
   }
 
@@ -360,14 +403,18 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
   loadRolePermissions(): void {
     if (!this.role) return;
 
-    this.permissionsService.getPermissionsForRole(this.role.id).subscribe({
+    this.permissionsService.getPermissionsForRole(this.role.id).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: (response) => {
         if (response.success && response.data) {
           this.selectedPermissionIds = new Set(response.data.map(p => p.id));
+          this.cdr.markForCheck();
         }
       },
       error: (err) => {
         console.error('Error loading role permissions:', err);
+        this.cdr.markForCheck();
       }
     });
   }
@@ -441,6 +488,33 @@ export class RoleFormModalComponent implements OnInit, OnChanges {
   // Toggle permissions panel
   togglePermissionsPanel(): void {
     this.showPermissions = !this.showPermissions;
+  }
+
+  ngAfterViewChecked(): void {
+    // Focus management: Trap focus when modal opens
+    if (this.show && !this.modalWasOpen && this.modalContainerRef) {
+      this.modalWasOpen = true;
+      this.previousActiveElement = saveActiveElement();
+      this.focusTrapCleanup = trapFocus(this.modalContainerRef.nativeElement);
+    } else if (!this.show && this.modalWasOpen) {
+      this.modalWasOpen = false;
+      if (this.focusTrapCleanup) {
+        this.focusTrapCleanup();
+        this.focusTrapCleanup = null;
+      }
+      restoreActiveElement(this.previousActiveElement);
+      this.previousActiveElement = null;
+    }
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+    
+    // Clean up focus trap if still active
+    if (this.focusTrapCleanup) {
+      this.focusTrapCleanup();
+    }
   }
 }
 

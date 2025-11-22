@@ -1,0 +1,595 @@
+<div class="members-list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <div class="header-left">
+      <h2 class="list-title">Members</h2>
+      <p class="list-subtitle">View and manage all family members and heads</p>
+    </div>
+    <div class="header-right">
+      <div class="search-box-header">
+        <span class="search-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+        </span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onQuickSearch()"
+          placeholder="Search by name, phone, email..."
+          class="search-input-header"
+          aria-label="Quick search members">
+        <button 
+          *ngIf="searchTerm" 
+          class="clear-search-btn"
+          (click)="clearSearch()"
+          aria-label="Clear search"
+          type="button">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+      <button class="btn btn-filters" (click)="toggleAdvancedSearch()" type="button" aria-label="Show filters">
+        <span class="btn-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+          </svg>
+        </span>
+        Filters
+        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Advanced Search Panel -->
+  <app-advanced-search-panel
+    *ngIf="showAdvancedSearch"
+    [fields]="searchFields"
+    [mode]="'sidepanel'"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (close)="showAdvancedSearch = false"
+    (clear)="onClearAdvancedSearch()">
+  </app-advanced-search-panel>
+
+  <!-- Active Filter Chips -->
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container">
+    <div class="chips-inline-wrapper">
+      <span class="chips-label">
+        <span class="filter-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+            <circle cx="11" cy="11" r="8"></circle>
+            <path d="m21 21-4.35-4.35"></path>
+          </svg>
+        </span>
+        Active Filters ({{ getActiveFilters().length }}):
+      </span>
+      <div class="chips-list">
+        <div 
+          *ngFor="let filter of getActiveFilters()" 
+          class="filter-chip"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
+          <span class="chip-content">
+            <span class="chip-label">{{ filter.label }}:</span>
+            <span class="chip-value">{{ filter.displayValue }}</span>
+          </span>
+          <button 
+            type="button"
+            class="chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <button 
+        type="button"
+        class="btn-clear-all-chips"
+        (click)="clearAllFilters()"
+        aria-label="Clear all filters">
+        Clear All
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading members...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container" role="alert" aria-live="polite">
+    <div class="error-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
+    <h3>Failed to Load Members</h3>
+    <p>{{ error }}</p>
+    <button class="btn-retry" (click)="loadMembers()" type="button" title="Retry loading members" aria-label="Retry loading members">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      <span>Retry</span>
+    </button>
+  </div>
+
+  <!-- Members Table -->
+  <div *ngIf="!loading && !error" class="table-container">
+    <table class="members-table" *ngIf="members.length > 0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Family</th>
+          <th>BCC</th>
+          <th>Contact</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let member of members">
+          <td class="name-cell first-column-with-status">
+            <span 
+              class="status-indicator-dot"
+              [class.status-indicator-dot-active]="member.status === 'active'"
+              [class.status-indicator-dot-inactive]="member.status !== 'active'"
+              [attr.aria-label]="member.status === 'active' ? 'Active' : 'Inactive'">
+            </span>
+            <a 
+              (click)="viewMember(member)"
+              class="member-name-link"
+              [attr.aria-label]="'View details for ' + getFullName(member)">
+              {{ getFullName(member) }}
+            </a>
+          </td>
+          <td>
+            <span class="family-code" *ngIf="member.family?.family_code">{{ member.family?.family_code }}</span>
+            <span *ngIf="!member.family?.family_code" class="text-muted">N/A</span>
+          </td>
+          <td>
+            <span class="bcc-name">{{ getBCCName(member) }}</span>
+          </td>
+          <td>
+            <div class="contact-info">
+              <div class="contact-item" *ngIf="member.phone">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path>
+                </svg>
+                {{ member.phone }}
+              </div>
+              <div class="contact-item" *ngIf="member.email">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                  <polyline points="22,6 12,13 2,6"></polyline>
+                </svg>
+                {{ member.email }}
+              </div>
+              <span *ngIf="!member.phone && !member.email" class="text-muted">No contact info</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- Empty State -->
+    <div *ngIf="members.length === 0" class="empty-state">
+      <div class="empty-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="64" height="64">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      </div>
+      <h3>No Members Found</h3>
+      <p *ngIf="getActiveFilters().length > 0">Try adjusting your filters to see more results.</p>
+      <p *ngIf="getActiveFilters().length === 0">No members have been added yet.</p>
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <app-pagination
+    *ngIf="!loading && !error && totalRecords > 0"
+    [currentPage]="currentPage"
+    [totalItems]="totalRecords"
+    [pageSize]="perPage"
+    [pageSizeOptions]="perPageOptions"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPerPageChange($event)">
+  </app-pagination>
+</div>
+
+<!-- Member Detail Modal -->
+<div
+  #detailModalRef
+  class="member-detail-modal-overlay"
+  *ngIf="showDetailModal"
+  (click)="closeDetailModal()"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="member-detail-title"
+  tabindex="-1">
+  <div class="member-detail-modal" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="header-content">
+        <h2 class="modal-title" id="member-detail-title">
+          {{ selectedMember ? getFullName(selectedMember) : 'Member Details' }}
+        </h2>
+        <div class="header-meta" *ngIf="selectedMember">
+          <span class="meta-item" *ngIf="selectedMember.family?.family_code">{{ selectedMember.family?.family_code }}</span>
+          <span class="meta-separator" *ngIf="selectedMember.family?.family_code && getBCCName(selectedMember)">•</span>
+          <span class="meta-item" *ngIf="getBCCName(selectedMember)">{{ getBCCName(selectedMember) }}</span>
+          <span class="meta-separator" *ngIf="(selectedMember.family?.family_code || getBCCName(selectedMember)) && selectedMember.status">•</span>
+          <span class="meta-item status-badge-inline" [ngClass]="'status-' + selectedMember.status" *ngIf="selectedMember.status">
+            {{ selectedMember.status | titlecase }}
+          </span>
+        </div>
+      </div>
+      <button
+        type="button"
+        class="modal-close-btn"
+        (click)="closeDetailModal()"
+        aria-label="Close member details modal">
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body" *ngIf="selectedMember">
+      <div class="document-layout">
+        <!-- Left Column -->
+        <div class="column-left">
+          <!-- Personal Information -->
+          <div class="info-section">
+            <h3 class="section-heading">Personal Information</h3>
+            <div class="info-grid">
+              <div class="info-row">
+                <span class="info-label">Full Name</span>
+                <span class="info-value">{{ getFullName(selectedMember) }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.date_of_birth">
+                <span class="info-label">Date of Birth</span>
+                <span class="info-value">{{ formatDate(selectedMember.date_of_birth) }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.gender">
+                <span class="info-label">Gender</span>
+                <span class="info-value">{{ selectedMember.gender | titlecase }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.relationship_to_head">
+                <span class="info-label">Relationship</span>
+                <span class="info-value">{{ selectedMember.relationship_to_head | titlecase }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.marital_status">
+                <span class="info-label">Marital Status</span>
+                <span class="info-value">{{ selectedMember.marital_status | titlecase }}</span>
+              </div>
+              <div class="info-row" *ngIf="isFamilyHead(selectedMember)">
+                <span class="info-label">Role</span>
+                <span class="info-value">Family Head</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Information -->
+          <div class="info-section" *ngIf="selectedMember.phone || selectedMember.email || selectedMember.is_primary_contact">
+            <h3 class="section-heading">Contact Information</h3>
+            <div class="info-grid">
+              <div class="info-row" *ngIf="selectedMember.phone">
+                <span class="info-label">Phone</span>
+                <span class="info-value">{{ selectedMember.phone }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.email">
+                <span class="info-label">Email</span>
+                <span class="info-value">{{ selectedMember.email }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.is_primary_contact">
+                <span class="info-label">Primary Contact</span>
+                <span class="info-value">Yes</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Family Information -->
+          <div class="info-section" *ngIf="selectedMember.family as family">
+            <h3 class="section-heading">Family Information</h3>
+            <div class="info-grid">
+              <div class="info-row" *ngIf="family.family_code">
+                <span class="info-label">Family Code</span>
+                <span class="info-value">{{ family.family_code }}</span>
+              </div>
+              <div class="info-row" *ngIf="family.family_name">
+                <span class="info-label">Family Name</span>
+                <span class="info-value">{{ family.family_name }}</span>
+              </div>
+              <div class="info-row" *ngIf="getBCCName(selectedMember)">
+                <span class="info-label">BCC</span>
+                <span class="info-value">{{ getBCCName(selectedMember) }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Address Information -->
+          <div class="info-section" *ngIf="getMemberAddress()">
+            <h3 class="section-heading">Address</h3>
+            <div class="info-grid">
+              <div class="info-row">
+                <span class="info-label">Full Address</span>
+                <span class="info-value address-text">{{ getMemberAddress() }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Education & Occupation -->
+          <div class="info-section" *ngIf="selectedMember.occupation || selectedMember.education || selectedMember.skills_talents">
+            <h3 class="section-heading">Education & Occupation</h3>
+            <div class="info-grid">
+              <div class="info-row" *ngIf="selectedMember.education">
+                <span class="info-label">Education</span>
+                <span class="info-value">{{ selectedMember.education }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.occupation">
+                <span class="info-label">Occupation</span>
+                <span class="info-value">{{ selectedMember.occupation }}</span>
+              </div>
+              <div class="info-row" *ngIf="selectedMember.skills_talents">
+                <span class="info-label">Skills/Talents</span>
+                <span class="info-value">{{ selectedMember.skills_talents }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parent Information -->
+          <div class="info-section" *ngIf="getParentInfo() as parentInfo">
+            <h3 class="section-heading">Parent Information</h3>
+            <div class="info-grid">
+              <div class="info-row" *ngIf="parentInfo.father">
+                <span class="info-label">Father's Name</span>
+                <span class="info-value">{{ parentInfo.father }}</span>
+              </div>
+              <div class="info-row" *ngIf="parentInfo.mother">
+                <span class="info-label">Mother's Name</span>
+                <span class="info-value">{{ parentInfo.mother }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="column-right">
+          <!-- Member Photo -->
+          <div class="photo-section" *ngIf="getMemberPhotoUrl()">
+            <img [src]="getMemberPhotoUrl()" [alt]="getFullName(selectedMember)" class="member-photo">
+          </div>
+
+          <!-- Sacraments Information -->
+          <div class="info-section sacraments-section" *ngIf="selectedMember.baptism_date || selectedMember.first_communion_date || selectedMember.confirmation_date || selectedMember.marriage_date">
+            <h3 class="section-heading">Sacraments</h3>
+            <div class="sacraments-list">
+              <!-- Baptism -->
+              <div class="sacrament-entry" *ngIf="selectedMember.baptism_date">
+                <div class="sacrament-title-row">
+                  <span class="sacrament-name">Baptism</span>
+                  <span class="sacrament-status-badge completed">Completed</span>
+                </div>
+                <div class="sacrament-details-compact">
+                  <div class="sacrament-detail-row" *ngIf="formatSacramentDate(selectedMember.baptism_date)">
+                    <span class="sacrament-label">Date:</span>
+                    <span class="sacrament-value">{{ formatSacramentDate(selectedMember.baptism_date) }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.baptism_church_name">
+                    <span class="sacrament-label">Church:</span>
+                    <span class="sacrament-value">{{ selectedMember.baptism_church_name }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.baptism_place && !selectedMember.baptism_church_name">
+                    <span class="sacrament-label">Location:</span>
+                    <span class="sacrament-value">{{ selectedMember.baptism_place }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.baptism_church_address">
+                    <span class="sacrament-label">Address:</span>
+                    <span class="sacrament-value">{{ selectedMember.baptism_church_address }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.baptism_godparent_primary">
+                    <span class="sacrament-label">Primary Godparent:</span>
+                    <span class="sacrament-value">{{ selectedMember.baptism_godparent_primary }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.baptism_godparent_secondary">
+                    <span class="sacrament-label">Secondary Godparent:</span>
+                    <span class="sacrament-value">{{ selectedMember.baptism_godparent_secondary }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.baptism_priest_name">
+                    <span class="sacrament-label">Priest:</span>
+                    <span class="sacrament-value">{{ selectedMember.baptism_priest_name }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- First Communion -->
+              <div class="sacrament-entry" *ngIf="selectedMember.first_communion_date">
+                <div class="sacrament-title-row">
+                  <span class="sacrament-name">First Communion</span>
+                  <span class="sacrament-status-badge completed">Completed</span>
+                </div>
+                <div class="sacrament-details-compact">
+                  <div class="sacrament-detail-row" *ngIf="formatSacramentDate(selectedMember.first_communion_date)">
+                    <span class="sacrament-label">Date:</span>
+                    <span class="sacrament-value">{{ formatSacramentDate(selectedMember.first_communion_date) }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.first_communion_place">
+                    <span class="sacrament-label">Location:</span>
+                    <span class="sacrament-value">{{ selectedMember.first_communion_place }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.first_communion_church_name">
+                    <span class="sacrament-label">Church:</span>
+                    <span class="sacrament-value">{{ selectedMember.first_communion_church_name }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.first_communion_church_address">
+                    <span class="sacrament-label">Address:</span>
+                    <span class="sacrament-value">{{ selectedMember.first_communion_church_address }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.first_communion_priest_name">
+                    <span class="sacrament-label">Priest:</span>
+                    <span class="sacrament-value">{{ selectedMember.first_communion_priest_name }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.first_communion_description">
+                    <span class="sacrament-label">Description:</span>
+                    <span class="sacrament-value">{{ selectedMember.first_communion_description }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Confirmation -->
+              <div class="sacrament-entry" *ngIf="selectedMember.confirmation_date">
+                <div class="sacrament-title-row">
+                  <span class="sacrament-name">Confirmation</span>
+                  <span class="sacrament-status-badge completed">Completed</span>
+                </div>
+                <div class="sacrament-details-compact">
+                  <div class="sacrament-detail-row" *ngIf="formatSacramentDate(selectedMember.confirmation_date)">
+                    <span class="sacrament-label">Date:</span>
+                    <span class="sacrament-value">{{ formatSacramentDate(selectedMember.confirmation_date) }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.confirmation_place">
+                    <span class="sacrament-label">Place:</span>
+                    <span class="sacrament-value">{{ selectedMember.confirmation_place }}</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Marriage -->
+              <div class="sacrament-entry" *ngIf="selectedMember.marriage_date">
+                <div class="sacrament-title-row">
+                  <span class="sacrament-name">Marriage</span>
+                  <span class="sacrament-status-badge completed">Completed</span>
+                </div>
+                <div class="sacrament-details-compact">
+                  <div class="sacrament-detail-row" *ngIf="formatSacramentDate(selectedMember.marriage_date)">
+                    <span class="sacrament-label">Date:</span>
+                    <span class="sacrament-value">{{ formatSacramentDate(selectedMember.marriage_date) }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_place">
+                    <span class="sacrament-label">Location:</span>
+                    <span class="sacrament-value">{{ selectedMember.marriage_place }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_spouse_name">
+                    <span class="sacrament-label">Spouse:</span>
+                    <span class="sacrament-value">{{ selectedMember.marriage_spouse_name }}</span>
+                  </div>
+                  
+                  <!-- Bride Information -->
+                  <div class="sacrament-subsection-compact" *ngIf="selectedMember.marriage_bride_full_name">
+                    <div class="subsection-header">Bride Information</div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_bride_full_name">
+                      <span class="sacrament-label">Name:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_bride_full_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_bride_father_name">
+                      <span class="sacrament-label">Father:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_bride_father_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_bride_mother_name">
+                      <span class="sacrament-label">Mother:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_bride_mother_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_bride_address">
+                      <span class="sacrament-label">Address:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_bride_address }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_bride_church_name">
+                      <span class="sacrament-label">Church:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_bride_church_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_bride_church_address">
+                      <span class="sacrament-label">Church Address:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_bride_church_address }}</span>
+                    </div>
+                  </div>
+
+                  <!-- Groom Information -->
+                  <div class="sacrament-subsection-compact" *ngIf="selectedMember.marriage_groom_full_name">
+                    <div class="subsection-header">Groom Information</div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_groom_full_name">
+                      <span class="sacrament-label">Name:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_groom_full_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_groom_father_name">
+                      <span class="sacrament-label">Father:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_groom_father_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_groom_mother_name">
+                      <span class="sacrament-label">Mother:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_groom_mother_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_groom_address">
+                      <span class="sacrament-label">Address:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_groom_address }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_groom_church_name">
+                      <span class="sacrament-label">Church:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_groom_church_name }}</span>
+                    </div>
+                    <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_groom_church_address">
+                      <span class="sacrament-label">Church Address:</span>
+                      <span class="sacrament-value">{{ selectedMember.marriage_groom_church_address }}</span>
+                    </div>
+                  </div>
+
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_minister_name">
+                    <span class="sacrament-label">Minister:</span>
+                    <span class="sacrament-value">{{ selectedMember.marriage_minister_name }}</span>
+                  </div>
+                  <div class="sacrament-detail-row" *ngIf="selectedMember.marriage_minister_title">
+                    <span class="sacrament-label">Minister Title:</span>
+                    <span class="sacrament-value">{{ selectedMember.marriage_minister_title }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <div class="info-section" *ngIf="selectedMember.notes">
+            <h3 class="section-heading">Notes</h3>
+            <div class="notes-text">{{ selectedMember.notes }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn btn-secondary"
+        (click)="closeDetailModal()"
+        aria-label="Close modal">
+        Close
+      </button>
+      <button
+        type="button"
+        class="btn btn-primary"
+        (click)="viewFamilyDetails()"
+        aria-label="View family details"
+        *ngIf="selectedMember && (selectedMember.family_id || selectedMember.family?.id)">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+          <circle cx="9" cy="7" r="4"></circle>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+        </svg>
+        View More
+      </button>
+    </div>
+  </div>
+</div>

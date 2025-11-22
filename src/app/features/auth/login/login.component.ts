@@ -1,9 +1,10 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
+import { Observable, Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 import { ButtonComponent, InputComponent, CardComponent } from '@shared/components';
 import { AppState } from '@core/store';
@@ -22,20 +23,25 @@ import { selectAuthLoading, selectAuthError } from '@core/store/auth/auth.select
     CardComponent
   ],
   templateUrl: './login.component.html',
-  styleUrl: './login.component.scss'
+  styleUrl: './login.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class LoginComponent implements OnInit {
+export class LoginComponent implements OnInit, OnDestroy {
   private fb = inject(FormBuilder);
   private store = inject(Store<AppState>);
   private router = inject(Router);
+  private cdr = inject(ChangeDetectorRef);
+  private destroy$ = new Subject<void>();
 
   loginForm!: FormGroup;
   loading$: Observable<boolean>;
   error$: Observable<string | null>;
 
   constructor() {
-    this.loading$ = this.store.select(selectAuthLoading);
-    this.error$ = this.store.select(selectAuthError);
+    this.loading$ = this.store.select(selectAuthLoading).pipe(takeUntil(this.destroy$));
+    this.error$ = this.store.select(selectAuthError).pipe(takeUntil(this.destroy$));
+    this.loading$.subscribe(() => this.cdr.markForCheck());
+    this.error$.subscribe(() => this.cdr.markForCheck());
   }
 
   ngOnInit(): void {
@@ -84,6 +90,11 @@ export class LoginComponent implements OnInit {
       const control = formGroup.get(key);
       control?.markAsTouched();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }
 

@@ -94,11 +94,17 @@ export interface FamilyMember {
   marriage_bride_church_type?: 'home_parish' | 'other';
   marriage_bride_church_name?: string;
   marriage_bride_church_address?: string;
+  marriage_bride_father_name?: string;
+  marriage_bride_mother_name?: string;
   marriage_groom_full_name?: string;
   marriage_groom_address?: string;
   marriage_groom_church_type?: 'home_parish' | 'other';
   marriage_groom_church_name?: string;
   marriage_groom_church_address?: string;
+  marriage_groom_father_name?: string;
+  marriage_groom_mother_name?: string;
+  marriage_minister_name?: string;
+  marriage_minister_title?: string;
   
   // Additional Information
   occupation?: string;
@@ -133,6 +139,7 @@ export interface BCC {
   description?: string;
   
   // Location
+  location?: string; // Location/Street address
   meeting_place?: string;
   
   // Meeting Schedule

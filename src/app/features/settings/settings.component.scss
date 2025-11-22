@@ -175,9 +175,14 @@
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
 
-      .setting-icon {
-        filter: brightness(0) invert(1);
-      }
+  .setting-icon {
+    filter: brightness(0) invert(1);
+    
+    svg {
+      width: 24px;
+      height: 24px;
+    }
+  }
     }
 
     .setting-arrow {
@@ -226,6 +231,15 @@
     font-size: 20px;
     line-height: 1;
     transition: filter 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary-color);
+    
+    svg {
+      width: 24px;
+      height: 24px;
+    }
   }
 }
 
@@ -295,6 +309,15 @@
     font-size: 3rem;
     margin-bottom: 1rem;
     opacity: 0.6;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    svg {
+      width: 48px;
+      height: 48px;
+    }
   }
 
   .empty-title {

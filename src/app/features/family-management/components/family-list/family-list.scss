@@ -1,3 +1,6 @@
+@use '../../../../shared/styles/loading-states' as *;
+@use '../../../../shared/styles/status-indicator' as *;
+
 .family-list-container {
   padding: 1.5rem;
   min-height: 100vh;
@@ -40,17 +43,17 @@
     min-width: 0;
 
     .stat-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: #1f2937;
-      line-height: 1.2;
+      font-size: var(--font-size-3xl);
+      font-weight: var(--font-weight-bold);
+      color: var(--text-primary);
+      line-height: var(--line-height-tight);
       margin-bottom: 0.25rem;
     }
 
     .stat-label {
-      font-size: 0.813rem;
-      color: #6b7280;
-      font-weight: 500;
+      font-size: var(--font-size-xs);
+      color: var(--text-secondary);
+      font-weight: var(--font-weight-medium);
       text-transform: uppercase;
       letter-spacing: 0.025em;
     }
@@ -116,6 +119,14 @@
 
       .filter-icon {
         font-size: 0.938rem;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        
+        svg {
+          width: 16px;
+          height: 16px;
+        }
       }
     }
 
@@ -207,6 +218,11 @@
       cursor: pointer;
       transition: all 0.2s;
 
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+
       &:hover {
         background: #ef4444;
         color: white;
@@ -240,6 +256,14 @@
     color: #9ca3af;
     margin-right: 0.5rem;
     flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+    }
   }
 
   .search-input-header {
@@ -272,6 +296,12 @@
     transition: all 0.2s;
     margin-left: 0.5rem;
     flex-shrink: 0;
+    padding: 0;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
 
     &:hover {
       background: #ef4444;
@@ -389,34 +419,19 @@
 .btn-icon {
   font-size: 0.938rem;
   line-height: 1;
-}
-
-// Loading
-.loading-container {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem;
-  gap: 1rem;
-
-  .spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid #f3f4f6;
-    border-top-color: #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-
-  p {
-    color: #6b7280;
-    font-size: 0.938rem;
+  
+  svg {
+    width: 18px;
+    height: 18px;
   }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+// Loading State - Using standardized mixin
+.loading-container {
+  @include loading-container(400px);
 }
 
 // Table
@@ -534,6 +549,55 @@
         }
       }
 
+      &.family-name {
+        .family-name-with-avatar {
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+
+        .family-head-avatar {
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          flex-shrink: 0;
+          object-fit: cover;
+          background: #e5e7eb;
+          border: 1px solid #e5e7eb;
+          box-shadow: 0 0 0 2px #fff, 0 1px 2px rgba(0, 0, 0, 0.06);
+        }
+
+        .family-head-photo {
+          background: #f3f4f6;
+          border-color: #e5e7eb;
+        }
+
+        .family-head-initials {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #111827;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+          background: #eef2ff;
+          border: 1px solid transparent;
+          box-shadow: 0 0 0 2px #fff, 0 1px 2px rgba(0, 0, 0, 0.06);
+          
+          svg {
+            width: 20px;
+            height: 20px;
+            color: currentColor;
+          }
+        }
+
+        .family-name-text {
+          color: #1f2937;
+          font-weight: 600;
+        }
+      }
+
       .link-like {
         appearance: none;
         background: none;
@@ -602,6 +666,14 @@
   cursor: pointer;
   border-radius: 6px;
   transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
 
   &.view:hover {
     background: #dbeafe;
@@ -649,17 +721,27 @@
   .empty-icon {
     font-size: 4rem;
     opacity: 0.5;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    svg {
+      width: 64px;
+      height: 64px;
+    }
   }
 
   h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
+    font-size: var(--font-size-xl);
+    font-weight: var(--font-weight-semibold);
+    color: var(--text-primary);
     margin: 0;
   }
 
   p {
-    color: #6b7280;
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
     margin: 0;
   }
 }

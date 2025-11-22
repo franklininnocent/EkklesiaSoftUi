@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -25,7 +25,7 @@ export interface ActiveFilter {
   templateUrl: './advanced-search-panel.component.html',
   styleUrl: './advanced-search-panel.component.scss'
 })
-export class AdvancedSearchPanelComponent {
+export class AdvancedSearchPanelComponent implements OnChanges {
   @Input() fields: SearchField[] = [];
   @Input() isExpanded = false;
   @Input() mode: 'inline' | 'sidepanel' = 'sidepanel'; // Default to side panel
@@ -35,6 +35,25 @@ export class AdvancedSearchPanelComponent {
   @Output() close = new EventEmitter<void>();
 
   searchValues: { [key: string]: any } = {};
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Initialize searchValues from field values when fields change or panel opens
+    if (changes['fields'] || (changes['isExpanded'] && this.isExpanded)) {
+      this.initializeSearchValues();
+    }
+  }
+
+  /**
+   * Initialize searchValues from field values
+   */
+  initializeSearchValues(): void {
+    this.searchValues = {};
+    this.fields.forEach(field => {
+      if (field.value !== undefined && field.value !== null && field.value !== '') {
+        this.searchValues[field.key] = field.value;
+      }
+    });
+  }
 
   onFieldChange(field: SearchField, value: any): void {
     if (value === '' || value === null || value === undefined) {

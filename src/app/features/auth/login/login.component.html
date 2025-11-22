@@ -15,6 +15,8 @@
             formControlName="email"
             [error]="getErrorMessage('email')"
             [required]="true"
+            aria-label="Email address"
+            aria-describedby="email-error"
           ></app-input>
         </div>
 
@@ -26,10 +28,12 @@
             formControlName="password"
             [error]="getErrorMessage('password')"
             [required]="true"
+            aria-label="Password"
+            aria-describedby="password-error"
           ></app-input>
         </div>
 
-        <div *ngIf="error$ | async as error" class="error-banner">
+        <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
           {{ error }}
         </div>
 
@@ -39,6 +43,7 @@
           size="lg"
           [fullWidth]="true"
           [loading]="(loading$ | async) ?? false"
+          aria-label="Sign in to your account"
         >
           Sign In
         </app-button>

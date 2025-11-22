@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -23,10 +23,12 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
     PaginationComponent
   ],
   templateUrl: './family-list.html',
-  styleUrls: ['./family-list.scss']
+  styleUrls: ['./family-list.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FamilyListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private cdr = inject(ChangeDetectorRef);
   
   // Data
   families: Family[] = [];
@@ -178,6 +180,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.currentPage = 1;
         this.loadFamilies();
+        this.cdr.markForCheck();
       });
   }
 
@@ -185,34 +188,46 @@ export class FamilyListComponent implements OnInit, OnDestroy {
    * Load reference data for filters
    */
   private loadReferenceData(): void {
-    this.bccService.getBCCs({ status: 'active' }).subscribe({
-      next: (response) => {
-        this.bccs = response.data;
-        // Update search field options
-        const bccField = this.searchFields.find(f => f.key === 'bcc_id');
-        if (bccField) {
-          bccField.options = this.bccs.map(bcc => ({
-            value: bcc.id,
-            label: bcc.name
-          }));
+    this.bccService.getBCCs({ status: 'active' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.bccs = response.data;
+          // Update search field options
+          const bccField = this.searchFields.find(f => f.key === 'bcc_id');
+          if (bccField) {
+            bccField.options = this.bccs.map(bcc => ({
+              value: bcc.id,
+              label: bcc.name
+            }));
+          }
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Failed to load BCCs', error);
+          this.cdr.markForCheck();
         }
-      },
-      error: (error) => console.error('Failed to load BCCs', error)
-    });
+      });
   }
 
   /**
    * Load statistics
    */
   private loadStatistics(): void {
-    this.familyService.getStatistics().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.statistics = response.data;
+    this.familyService.getStatistics()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.statistics = response.data;
+          }
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Failed to load statistics', error);
+          this.cdr.markForCheck();
         }
-      },
-      error: (error) => console.error('Failed to load statistics', error)
-    });
+      });
   }
 
   /**
@@ -235,27 +250,31 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.familyService.getFamilies(filters).subscribe({
-      next: (response) => {
-        this.families = response.data;
-        // Ensure Active records appear first on the list (client-side safeguard)
-        this.families.sort((a, b) => {
-          const aActive = a.status === 'active' ? 1 : 0;
-          const bActive = b.status === 'active' ? 1 : 0;
-          if (bActive !== aActive) return bActive - aActive;
-          return 0;
-        });
-        this.currentPage = response.current_page;
-        this.totalPages = response.last_page;
-        this.totalRecords = response.total;
-        this.loading = false;
-      },
-      error: (error) => {
-        this.error = 'Failed to load families. Please try again.';
-        this.loading = false;
-        console.error('Error loading families:', error);
-      }
-    });
+    this.familyService.getFamilies(filters)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.families = response.data;
+          // Ensure Active records appear first on the list (client-side safeguard)
+          this.families.sort((a, b) => {
+            const aActive = a.status === 'active' ? 1 : 0;
+            const bActive = b.status === 'active' ? 1 : 0;
+            if (bActive !== aActive) return bActive - aActive;
+            return 0;
+          });
+          this.currentPage = response.current_page;
+          this.totalPages = response.last_page;
+          this.totalRecords = response.total;
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          this.error = 'Failed to load families. Please try again.';
+          this.loading = false;
+          console.error('Error loading families:', error);
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   /**
@@ -484,17 +503,21 @@ export class FamilyListComponent implements OnInit, OnDestroy {
    */
   deleteFamily(family: Family): void {
     if (confirm(`Are you sure you want to delete "${family.family_name}"?`)) {
-      this.familyService.deleteFamily(family.id).subscribe({
-        next: () => {
-          this.loadFamilies();
-          this.loadStatistics();
-          this.toastService.success('Family deleted successfully', 'Success');
-        },
-        error: (error) => {
-          this.toastService.error('Failed to delete family', 'Error');
-          console.error('Error deleting family:', error);
-        }
-      });
+      this.familyService.deleteFamily(family.id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: () => {
+            this.loadFamilies();
+            this.loadStatistics();
+            this.toastService.success('Family deleted successfully', 'Success');
+            this.cdr.markForCheck();
+          },
+          error: (error) => {
+            this.toastService.error('Failed to delete family', 'Error');
+            console.error('Error deleting family:', error);
+            this.cdr.markForCheck();
+          }
+        });
     }
   }
 
@@ -604,5 +627,49 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     }
     
     return pages;
+  }
+
+  /**
+   * Get the head's profile image URL
+   * Checks multiple possible image URL properties in priority order
+   */
+  getHeadImageUrl(family: Family): string | null {
+    // Priority 1: head_profile_image_full_url (full URL from backend accessor)
+    if (family.head_profile_image_full_url && family.head_profile_image_full_url.trim()) {
+      return family.head_profile_image_full_url;
+    }
+    
+    // Priority 2: head_profile_image_url (database path - construct full URL if needed)
+    if (family.head_profile_image_url && family.head_profile_image_url.trim()) {
+      // If it already looks like a full URL, return it
+      if (family.head_profile_image_url.startsWith('http://') || family.head_profile_image_url.startsWith('https://')) {
+        return family.head_profile_image_url;
+      }
+      // Otherwise, it's a storage path - backend should provide full_url, but fallback
+      return family.head_profile_image_url;
+    }
+    
+    // Priority 3: head_avatar_url (legacy/alternative property)
+    if (family.head_avatar_url && family.head_avatar_url.trim()) {
+      return family.head_avatar_url;
+    }
+    
+    // Priority 4: Try to get from the head member's profile image
+    const headMember = this.resolveHeadMember(family);
+    if (headMember) {
+      const member = headMember as any;
+      // Check member's profile image properties
+      if (member.profile_image_full_url && member.profile_image_full_url.trim()) {
+        return member.profile_image_full_url;
+      }
+      if (member.profile_image_url && member.profile_image_url.trim()) {
+        return member.profile_image_url;
+      }
+      if (member.avatar_url && member.avatar_url.trim()) {
+        return member.avatar_url;
+      }
+    }
+    
+    return null;
   }
 }

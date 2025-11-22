@@ -1,9 +1,9 @@
-import { Component, inject, OnInit, OnDestroy, HostListener, ElementRef } from '@angular/core';
+import { Component, inject, OnInit, OnDestroy, HostListener, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable } from 'rxjs';
-import { filter, take } from 'rxjs/operators';
+import { Observable, Subject } from 'rxjs';
+import { filter, take, takeUntil } from 'rxjs/operators';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 import { AppState } from '@core/store';
@@ -21,6 +21,7 @@ import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb';
   imports: [CommonModule, RouterModule, BreadcrumbComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
     trigger('slideIn', [
       transition(':enter', [
@@ -42,12 +43,14 @@ import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb';
     ])
   ]
 })
-export class MainLayoutComponent implements OnInit {
+export class MainLayoutComponent implements OnInit, OnDestroy {
   private store = inject(Store<AppState>);
   private router = inject(Router);
   private authService = inject(AuthService);
   private elementRef = inject(ElementRef);
+  private cdr = inject(ChangeDetectorRef);
   public themeService = inject(ThemeService);
+  private destroy$ = new Subject<void>();
 
   currentUser$: Observable<User | null>;
   currentTenant$: Observable<Tenant | null>;
@@ -70,12 +73,18 @@ export class MainLayoutComponent implements OnInit {
 
   ngOnInit(): void {
     // Load user data if authenticated but user is not in store (e.g., after page refresh)
-    this.currentUser$.pipe(take(1)).subscribe(user => {
+    this.currentUser$.pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
       if (!user && this.authService.isAuthenticated()) {
         // User is authenticated but not loaded in store, dispatch loadUser action
         this.store.dispatch(AuthActions.loadUser());
       }
+      this.cdr.markForCheck();
     });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   @HostListener('document:click', ['$event'])

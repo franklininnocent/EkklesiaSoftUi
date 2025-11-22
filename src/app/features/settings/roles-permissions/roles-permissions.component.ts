@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Role, Permission } from '@core/models';
@@ -11,16 +11,19 @@ import { SortableDirective, SortEvent } from '@shared/directives/sortable.direct
 import { RoleFormModalComponent } from './role-form-modal/role-form-modal.component';
 import { AssignPermissionsModalComponent } from './assign-permissions-modal/assign-permissions-modal.component';
 import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/pope-details-management.component';
-import { take } from 'rxjs/operators';
+import { take, takeUntil } from 'rxjs/operators';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
   imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent],
   templateUrl: './roles-permissions.component.html',
-  styleUrl: './roles-permissions.component.scss'
+  styleUrl: './roles-permissions.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class RolesPermissionsComponent implements OnInit {
+export class RolesPermissionsComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
   @ViewChild('assignModal') assignModalRef!: AssignPermissionsModalComponent;
   
   activeTab: 'roles' | 'permissions' | 'assign' | 'pope' = 'roles';
@@ -106,7 +109,7 @@ export class RolesPermissionsComponent implements OnInit {
     private permissionsService: PermissionsService,
     private toastService: ToastService,
     public authService: AuthService,  // Made public for template access
-    public cdr: ChangeDetectorRef  // Changed to public for template access
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -125,7 +128,7 @@ export class RolesPermissionsComponent implements OnInit {
     this.updateSuperAdminAccess(this.authService.currentUserValue);
     
     // Also subscribe to user changes
-    this.authService.currentUser$.pipe(take(1)).subscribe(user => {
+    this.authService.currentUser$.pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
       this.updateEkklesiaRole(user);
       this.updateSuperAdminAccess(user);
       this.cdr.detectChanges();
@@ -183,16 +186,20 @@ export class RolesPermissionsComponent implements OnInit {
 
     const params: any = { per_page: 'all' };
 
-    this.rolesService.getRoles(params).subscribe({
+    this.rolesService.getRoles(params)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (response) => {
         this.allRoles = Array.isArray(response) ? response : response.data;
         this.applyFiltersAndPagination('roles');
         this.loadingRoles = false;
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error loading roles:', err);
         this.rolesError = err.error?.message || 'Failed to load roles';
         this.loadingRoles = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -253,11 +260,14 @@ export class RolesPermissionsComponent implements OnInit {
       return;
     }
 
-    this.rolesService.deleteRole(role.id).subscribe({
+    this.rolesService.deleteRole(role.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: () => {
         console.log(`✅ Role "${role.name}" deleted successfully`);
         this.toastService.success(`Role "${role.name}" deleted successfully!`, 'Role Deleted');
         this.loadRoles();
+        this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error deleting role:', err);
@@ -385,10 +395,13 @@ export class RolesPermissionsComponent implements OnInit {
     const newStatus = role.active === 1 ? 0 : 1;
     const statusText = newStatus === 1 ? 'activated' : 'deactivated';
     
-    this.rolesService.toggleRoleStatus(role.id, newStatus === 1).subscribe({
+    this.rolesService.toggleRoleStatus(role.id, newStatus === 1)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: () => {
         role.active = newStatus;
         console.log(`✅ Role "${role.name}" ${statusText} successfully`);
+        this.cdr.markForCheck();
         this.toastService.success(
           `Role "${role.name}" ${statusText} successfully!`,
           'Status Updated'
@@ -991,6 +1004,11 @@ export class RolesPermissionsComponent implements OnInit {
       return data.slice(startIndex, endIndex);
     }
     return data;
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }
 

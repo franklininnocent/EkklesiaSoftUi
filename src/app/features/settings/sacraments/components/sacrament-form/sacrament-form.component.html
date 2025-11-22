@@ -1,34 +1,33 @@
-<div class="sacrament-form-container">
-  <!-- Header -->
-  <div class="form-header">
-    <button class="back-btn" (click)="onCancel()">
-      ← Back
-    </button>
-    <div class="header-content">
-      <h2 class="form-title">
-        {{ isEditMode ? 'Edit' : 'Add' }}
-      </h2>
-      <p class="form-subtitle">
-        {{ isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information' }}
-      </p>
+<div class="modal-overlay" (click)="onCancel()">
+  <div class="modal-container" (click)="$event.stopPropagation()">
+    <header class="modal-header">
+      <div class="header-titles">
+        <h3>{{ isEditMode ? 'Edit Sacrament Record' : 'Add Sacrament Record' }}</h3>
+        <p class="subtitle">{{ isEditMode ? 'Update sacramental record details' : 'Enter the sacramental record information' }}</p>
+      </div>
+      <button type="button" class="btn-icon" (click)="onCancel()" aria-label="Close modal">✕</button>
+    </header>
+
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading...</p>
     </div>
-  </div>
 
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading...</p>
-  </div>
-
-  <!-- Form -->
-  <form *ngIf="!loading" class="sacrament-form" (ngSubmit)="onSave()">
+    <!-- Form -->
+    <form *ngIf="!loading" class="modal-body sacrament-form" (ngSubmit)="onSave()">
     <!-- Sacrament Information -->
     <div class="form-section">
       <h3 class="section-title">✝️ Sacrament Information</h3>
       <div class="form-grid">
         <div class="form-group full-width">
           <label class="required">Sacrament Type</label>
-          <select [(ngModel)]="formData.sacrament_type_id" name="sacrament_type_id" class="form-control" required>
+          <select
+            [(ngModel)]="formData.sacrament_type_id"
+            (ngModelChange)="onSacramentTypeChange()"
+            name="sacrament_type_id"
+            class="form-control"
+            required>
             <option [ngValue]="undefined">Select a sacrament...</option>
             <option *ngFor="let type of sacramentTypes" [ngValue]="type.id">
               {{ type.name }}
@@ -36,7 +35,7 @@
           </select>
         </div>
 
-        <div class="form-group full-width">
+        <div class="form-group full-width" *ngIf="!isMarriageSacrament()">
           <label class="required">Date Administered</label>
           <input
             type="date"
@@ -46,7 +45,7 @@
             required>
         </div>
 
-        <div class="form-group full-width">
+        <div class="form-group full-width" *ngIf="!isMarriageSacrament()">
           <label>Place Administered</label>
           <input
             type="text"
@@ -67,8 +66,225 @@
       </div>
     </div>
 
+    <!-- Marriage Details -->
+    <div *ngIf="isMarriageSacrament()" class="form-section marriage-section">
+      <h3 class="section-title">💍 Marriage Details</h3>
+
+      <div class="form-grid three-column">
+        <div class="form-group">
+          <label class="required">Marriage Date</label>
+          <input
+            type="date"
+            [(ngModel)]="formData.date_administered"
+            name="marriage_date_administered"
+            class="form-control"
+            required>
+        </div>
+
+        <div class="form-group">
+          <label class="required">Marriage Place</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.place_administered"
+            name="marriage_place_administered"
+            class="form-control"
+            placeholder="Enter marriage place"
+            required>
+        </div>
+
+        <div class="form-group">
+          <label>Minister Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.minister_name"
+            name="marriage_minister_name"
+            class="form-control"
+            placeholder="e.g., Rev. John Doe">
+        </div>
+
+        <div class="form-group">
+          <label>Minister Title</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.minister_title"
+            name="marriage_minister_title"
+            class="form-control"
+            placeholder="Parish Priest, Bishop, etc.">
+        </div>
+      </div>
+
+      <div class="section-divider">
+        <h4 class="section-title">Bride Details</h4>
+      </div>
+
+      <div class="form-grid three-column">
+        <div class="form-group">
+          <label class="required">Full Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_bride_full_name"
+            (ngModelChange)="onMarriageNameChange()"
+            name="marriage_bride_full_name"
+            class="form-control"
+            placeholder="Enter bride's full name">
+        </div>
+        <div class="form-group">
+          <label>Father's Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_bride_father_name"
+            name="marriage_bride_father_name"
+            class="form-control"
+            placeholder="Enter bride's father name">
+        </div>
+        <div class="form-group">
+          <label>Mother's Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_bride_mother_name"
+            name="marriage_bride_mother_name"
+            class="form-control"
+            placeholder="Enter bride's mother name">
+        </div>
+        <div class="form-group full-width">
+          <label>Address</label>
+          <textarea
+            rows="2"
+            [(ngModel)]="formData.marriage_bride_address"
+            name="marriage_bride_address"
+            class="form-control"
+            placeholder="Enter bride's address"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Home Parish</label>
+          <div class="radio-group">
+            <label>
+              <input
+                type="radio"
+                [(ngModel)]="formData.marriage_bride_church_type"
+                name="marriage_bride_church_type"
+                value="home_parish">
+              Home Parish
+            </label>
+            <label>
+              <input
+                type="radio"
+                [(ngModel)]="formData.marriage_bride_church_type"
+                name="marriage_bride_church_type"
+                value="other">
+              Other Church
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Church Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_bride_church_name"
+            name="marriage_bride_church_name"
+            class="form-control"
+            placeholder="Enter church name">
+        </div>
+        <div class="form-group full-width">
+          <label>Church Address</label>
+          <textarea
+            rows="2"
+            [(ngModel)]="formData.marriage_bride_church_address"
+            name="marriage_bride_church_address"
+            class="form-control"
+            placeholder="Enter church address"></textarea>
+        </div>
+      </div>
+
+      <div class="section-divider">
+        <h4 class="section-title">Groom Details</h4>
+        <button type="button" class="link-button" (click)="copyBrideChurchToGroom()">
+          Copy bride church to groom
+        </button>
+      </div>
+
+      <div class="form-grid three-column">
+        <div class="form-group">
+          <label class="required">Full Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_groom_full_name"
+            (ngModelChange)="onMarriageNameChange()"
+            name="marriage_groom_full_name"
+            class="form-control"
+            placeholder="Enter groom's full name">
+        </div>
+        <div class="form-group">
+          <label>Father's Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_groom_father_name"
+            name="marriage_groom_father_name"
+            class="form-control"
+            placeholder="Enter groom's father name">
+        </div>
+        <div class="form-group">
+          <label>Mother's Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_groom_mother_name"
+            name="marriage_groom_mother_name"
+            class="form-control"
+            placeholder="Enter groom's mother name">
+        </div>
+        <div class="form-group full-width">
+          <label>Address</label>
+          <textarea
+            rows="2"
+            [(ngModel)]="formData.marriage_groom_address"
+            name="marriage_groom_address"
+            class="form-control"
+            placeholder="Enter groom's address"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Home Parish</label>
+          <div class="radio-group">
+            <label>
+              <input
+                type="radio"
+                [(ngModel)]="formData.marriage_groom_church_type"
+                name="marriage_groom_church_type"
+                value="home_parish">
+              Home Parish
+            </label>
+            <label>
+              <input
+                type="radio"
+                [(ngModel)]="formData.marriage_groom_church_type"
+                name="marriage_groom_church_type"
+                value="other">
+              Other Church
+            </label>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Church Name</label>
+          <input
+            type="text"
+            [(ngModel)]="formData.marriage_groom_church_name"
+            name="marriage_groom_church_name"
+            class="form-control"
+            placeholder="Enter church name">
+        </div>
+        <div class="form-group full-width">
+          <label>Church Address</label>
+          <textarea
+            rows="2"
+            [(ngModel)]="formData.marriage_groom_church_address"
+            name="marriage_groom_church_address"
+            class="form-control"
+            placeholder="Enter church address"></textarea>
+        </div>
+      </div>
+    </div>
+
     <!-- Recipient Information -->
-    <div class="form-section">
+    <div class="form-section" *ngIf="!isMarriageSacrament()">
       <h3 class="section-title">👤 Recipient Information</h3>
       <div class="form-grid">
         <div class="form-group full-width">
@@ -169,7 +385,7 @@
     </div>
 
     <!-- Minister Information -->
-    <div class="form-section">
+    <div class="form-section" *ngIf="!isMarriageSacrament()">
       <h3 class="section-title">⛪ Minister Information</h3>
       <div class="form-grid">
         <div class="form-group">
@@ -262,8 +478,8 @@
     </div>
 
     <!-- Form Actions -->
-    <div class="form-actions">
-      <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="saving">
+    <footer class="modal-footer">
+      <button type="button" class="btn btn-outline" (click)="onCancel()" [disabled]="saving">
         Cancel
       </button>
       <button type="submit" class="btn btn-primary" [disabled]="saving">
@@ -273,8 +489,7 @@
           Saving...
         </span>
       </button>
-    </div>
-  </form>
+    </footer>
+    </form>
+  </div>
 </div>
-
-

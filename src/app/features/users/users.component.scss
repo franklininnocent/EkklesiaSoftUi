@@ -1,3 +1,7 @@
+@use '../../shared/styles/loading-states' as *;
+@use '../../shared/styles/animations' as *;
+@use '../../shared/styles/status-indicator' as *;
+
 .users {
   max-width: 1400px;
   margin: 0 auto;
@@ -11,14 +15,14 @@
   margin-bottom: var(--spacing-md);
 
   h1 {
-    font-size: 1.75rem; /* Standardized across all pages */
-    font-weight: 600;
+    font-size: var(--font-size-3xl);
+    font-weight: var(--font-weight-semibold);
     margin-bottom: var(--spacing-sm);
   }
 
   p {
     color: var(--text-secondary);
-    font-size: 1rem;
+    font-size: var(--font-size-base);
   }
 }
 
@@ -37,8 +41,8 @@
     th {
       padding: var(--spacing-md) var(--spacing-lg);
       text-align: left;
-      font-size: 0.875rem;
-      font-weight: 600;
+      font-size: var(--font-size-sm);
+      font-weight: var(--font-weight-semibold);
       color: var(--text-secondary);
       text-transform: uppercase;
       letter-spacing: 0.05em;
@@ -199,47 +203,25 @@
   font-size: 0.875rem;
 }
 
-.loading-container,
+// Loading State - Using standardized mixin
+.loading-container {
+  @include loading-container(400px);
+}
+
+// Error State - Using standardized mixin
 .error-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xxl);
-  text-align: center;
-}
-
-.loading-spinner {
-  width: 48px;
-  height: 48px;
-  border: 4px solid var(--gray-200);
-  border-top-color: var(--primary-color);
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: var(--spacing-md);
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.error-container {
-  .error-icon {
-    font-size: 3rem;
-    margin-bottom: var(--spacing-md);
-  }
-
+  @include error-container(400px);
+  
   h3 {
-    font-size: 1.5rem;
-    font-weight: 600;
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
     margin-bottom: var(--spacing-sm);
     color: var(--text-primary);
   }
 
   p {
     color: var(--text-secondary);
+    font-size: var(--font-size-base);
     margin-bottom: var(--spacing-lg);
   }
 
@@ -263,22 +245,12 @@
   }
 }
 
+// Empty State - Using standardized mixin
 .empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: var(--spacing-xxl);
-  text-align: center;
-
-  .empty-icon {
-    font-size: 4rem;
-    margin-bottom: var(--spacing-lg);
-    opacity: 0.5;
-  }
-
+  @include empty-state(400px);
+  
   h3 {
-    font-size: 1.5rem;
+    font-size: var(--font-size-2xl);
     font-weight: 600;
     margin-bottom: var(--spacing-sm);
     color: var(--text-primary);

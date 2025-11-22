@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CardComponent, PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
@@ -6,15 +6,18 @@ import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
 import { User } from '@core/models';
 import { UserFormModalComponent } from './user-form-modal/user-form-modal.component';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 
 @Component({
   selector: 'app-users',
   standalone: true,
   imports: [CommonModule, CardComponent, PaginationComponent, SortableDirective, UserFormModalComponent],
   templateUrl: './users.component.html',
-  styleUrl: './users.component.scss'
+  styleUrl: './users.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class UsersComponent implements OnInit {
+export class UsersComponent implements OnInit, OnDestroy {
   allUsers: User[] = [];
   users: User[] = [];
   loading = false;
@@ -36,6 +39,9 @@ export class UsersComponent implements OnInit {
   sortColumn: string = '';
   sortDirection: 'asc' | 'desc' | null = null;
 
+  private destroy$ = new Subject<void>();
+  private cdr = inject(ChangeDetectorRef);
+
   constructor(
     private usersService: UsersService,
     private toastService: ToastService
@@ -49,24 +55,29 @@ export class UsersComponent implements OnInit {
   loadUsers(): void {
     this.loading = true;
     this.error = null;
+    this.cdr.markForCheck();
 
-    this.usersService.getUsers({ per_page: 'all' }).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.allUsers = response.data;
-          this.totalUsers = response.pagination?.total || response.meta?.total || response.data.length;
-          this.applyFilters();
-        } else {
-          this.error = response.message || 'Failed to load users';
+    this.usersService.getUsers({ per_page: 'all' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.allUsers = response.data;
+            this.totalUsers = response.pagination?.total || response.meta?.total || response.data.length;
+            this.applyFilters();
+          } else {
+            this.error = response.message || 'Failed to load users';
+          }
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error loading users:', err);
+          this.error = err.error?.message || 'Failed to load users';
+          this.loading = false;
+          this.cdr.markForCheck();
         }
-        this.loading = false;
-      },
-      error: (err) => {
-        console.error('Error loading users:', err);
-        this.error = err.error?.message || 'Failed to load users';
-        this.loading = false;
-      }
-    });
+      });
   }
 
   applyFilters(): void {
@@ -82,18 +93,22 @@ export class UsersComponent implements OnInit {
   }
 
   loadStatistics(): void {
-    this.usersService.getStatistics().subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.totalUsers = response.data.total;
-          this.activeUsers = response.data.active;
-          this.inactiveUsers = response.data.inactive;
+    this.usersService.getStatistics()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.totalUsers = response.data.total;
+            this.activeUsers = response.data.active;
+            this.inactiveUsers = response.data.inactive;
+          }
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error loading statistics:', err);
+          this.cdr.markForCheck();
         }
-      },
-      error: (err) => {
-        console.error('Error loading statistics:', err);
-      }
-    });
+      });
   }
 
   toggleUserStatus(user: User): void {
@@ -105,22 +120,26 @@ export class UsersComponent implements OnInit {
       return;
     }
     
-    this.usersService.updateStatus(user.id, newStatus).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.toastService.success(`User ${newStatus === 1 ? 'activated' : 'deactivated'} successfully`, 'Success', 4000);
-          // Reload users to get fresh data from server
-          this.loadUsers();
-          this.loadStatistics();
-        } else {
-          this.toastService.error(response.message || 'Failed to update user status', 'Error', 5000);
+    this.usersService.updateStatus(user.id, newStatus)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.toastService.success(`User ${newStatus === 1 ? 'activated' : 'deactivated'} successfully`, 'Success', 4000);
+            // Reload users to get fresh data from server
+            this.loadUsers();
+            this.loadStatistics();
+          } else {
+            this.toastService.error(response.message || 'Failed to update user status', 'Error', 5000);
+          }
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error updating user status:', err);
+          this.toastService.error(err.error?.message || 'Failed to update user status', 'Error', 6000);
+          this.cdr.markForCheck();
         }
-      },
-      error: (err) => {
-        console.error('Error updating user status:', err);
-        this.toastService.error(err.error?.message || 'Failed to update user status', 'Error', 6000);
-      }
-    });
+      });
   }
 
   // Pagination event handlers
@@ -240,6 +259,11 @@ export class UsersComponent implements OnInit {
     this.loadUsers();
     this.loadStatistics();
     this.closeUserModal();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 }
 

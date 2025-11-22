@@ -7,6 +7,7 @@ import { FamilyListComponent } from './features/family-management/components/fam
 import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
 import { FamilyBreadcrumbResolver } from './features/family-management/resolvers/family-breadcrumb.resolver';
 import { BCCListComponent } from './features/bcc-management/components/bcc-list/bcc-list';
+import { BccDetail } from './features/bcc-management/components/bcc-detail/bcc-detail';
 
 export const routes: Routes = [
   {
@@ -61,6 +62,14 @@ export const routes: Routes = [
       {
         path: 'bccs',
         component: BCCListComponent
+      },
+      {
+        path: 'bccs/:id',
+        component: BccDetail
+      },
+      {
+        path: 'members',
+        loadChildren: () => import('./features/members/members.routes').then(m => m.MEMBERS_ROUTES)
       }
     ]
   },
@@ -107,6 +116,10 @@ export const routes: Routes = [
       {
         path: 'bccs',
         component: BCCListComponent
+      },
+      {
+        path: 'bccs/:id',
+        component: BccDetail
       }
     ]
   },

@@ -110,6 +110,7 @@ export interface ChurchLeadership {
   email?: string;
   phone?: string;
   appointed_date?: string;
+  relieved_date?: string;
   start_date?: string;
   end_date?: string;
   biography?: string;
@@ -190,6 +191,7 @@ export interface CreateChurchLeadershipRequest {
   email?: string;
   phone?: string;
   appointed_date?: string;
+  relieved_date?: string;
   start_date?: string;
   end_date?: string;
   biography?: string;

@@ -88,6 +88,19 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
       // Load active BCCs independently, then patch form
       this.loadActiveBCCs();
     }
+
+    // Watch for status changes to validate against active members
+    this.familyForm.get('status')?.valueChanges.subscribe((status) => {
+      this.validateStatusChange(status);
+    });
+
+    // Watch for member status changes (when members are added/edited)
+    this.members.valueChanges.subscribe(() => {
+      const currentStatus = this.familyForm.get('status')?.value;
+      if (currentStatus === 'inactive') {
+        this.validateStatusChange(currentStatus);
+      }
+    });
   }
 
   /**
@@ -1020,6 +1033,12 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
    * Submit the form
    */
   onSubmit(): void {
+    // Re-validate status before submission
+    const status = this.familyForm.get('status')?.value;
+    if (status === 'inactive') {
+      this.validateStatusChange(status);
+    }
+
     if (!this.familyForm.valid) {
       markFormGroupTouched(this.familyForm);
       // Switch to info tab if validation fails and we're on members tab
@@ -1606,6 +1625,10 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     if (this.validationErrors[controlName]) {
       return this.validationErrors[controlName];
     }
+    // Check for custom validation errors
+    if (controlName === 'status' && this.familyForm.get('status')?.errors?.['hasActiveMembers']) {
+      return 'Cannot set Family to inactive with active members';
+    }
     // Then check for frontend validation error
     return getErrorMessage(controlName, this.familyForm);
   }
@@ -1749,5 +1772,66 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
         this.patchFormData();
       }
     });
+  }
+
+  /**
+   * Validate status change - prevent inactive if there are active members or head
+   */
+  private validateStatusChange(status: string): void {
+    const statusControl = this.familyForm.get('status');
+    
+    if (!statusControl) {
+      return;
+    }
+
+    // Only validate when trying to set to inactive
+    if (status === 'inactive') {
+      const activeMemberCount = this.getActiveMemberCountInternal();
+      
+      if (activeMemberCount > 0) {
+        statusControl.setErrors({
+          hasActiveMembers: true
+        });
+        this.error = `Cannot set Family to inactive. There ${activeMemberCount === 1 ? 'is' : 'are'} ${activeMemberCount} active ${activeMemberCount === 1 ? 'member' : 'members'} (including family head) in this family. Please deactivate the members first.`;
+      } else {
+        statusControl.setErrors(null);
+        // Clear error only if it was related to active members
+        if (this.error && this.error.includes('active member')) {
+          this.error = null;
+        }
+      }
+    } else {
+      // Clear error when status is not inactive
+      statusControl.setErrors(null);
+      if (this.error && this.error.includes('active member')) {
+        this.error = null;
+      }
+    }
+  }
+
+  /**
+   * Get count of active members (including family head) in this family (private method)
+   */
+  private getActiveMemberCountInternal(): number {
+    let count = 0;
+
+    // Check all members in the form array
+    for (let i = 0; i < this.members.length; i++) {
+      const memberControl = this.members.at(i);
+      const memberStatus = memberControl.get('status')?.value;
+      
+      if (memberStatus === 'active') {
+        count++;
+      }
+    }
+
+    return count;
+  }
+
+  /**
+   * Get active member count (for template)
+   */
+  getActiveMemberCount(): number {
+    return this.getActiveMemberCountInternal();
   }
 }

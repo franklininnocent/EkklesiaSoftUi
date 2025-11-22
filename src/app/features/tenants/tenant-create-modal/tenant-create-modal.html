@@ -1,9 +1,9 @@
-<div class="modal-backdrop" (click)="onBackdropClick($event)">
-  <div class="modal-container">
+<div class="modal-backdrop" (click)="onBackdropClick($event)" role="dialog" aria-modal="true" aria-labelledby="create-tenant-title">
+  <div #modalContainer class="modal-container">
     <!-- Modal Header -->
     <div class="modal-header">
-      <h2 class="modal-title">Create New Tenant</h2>
-      <button class="modal-close" (click)="onClose()" [disabled]="isSubmitting" aria-label="Close">
+      <h2 class="modal-title" id="create-tenant-title">Create New Tenant</h2>
+      <button class="modal-close" (click)="onClose()" [disabled]="isSubmitting" aria-label="Close modal" type="button">
         <span class="close-icon">×</span>
       </button>
     </div>

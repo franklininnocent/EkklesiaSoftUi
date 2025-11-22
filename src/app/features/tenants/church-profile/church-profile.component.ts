@@ -10,15 +10,16 @@
  * Tenant = Church in this multi-tenant architecture
  */
 
-import { Component, OnInit, OnDestroy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { Tenant, TenantResponse } from '@core/models';
-import { finalize } from 'rxjs/operators';
+import { finalize, takeUntil } from 'rxjs/operators';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 import { GeographyService, Country } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
@@ -27,6 +28,7 @@ import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
 import { environment } from '@environments/environment';
+import { Subject } from 'rxjs';
 
 // Import all church management services
 import {
@@ -55,9 +57,12 @@ import {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule, PhoneInputComponent],
   templateUrl: './church-profile.component.html',
-  styleUrl: './church-profile.component.scss'
+  styleUrl: './church-profile.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChurchProfileComponent implements OnInit, OnDestroy {
+  private destroy$ = new Subject<void>();
+  private cdr = inject(ChangeDetectorRef);
   // Tab Management
   activeTab: 'profile' | 'leadership' | 'statistics' | 'social' = 'profile';
 
@@ -79,6 +84,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   // Leadership Data
   leaders: ChurchLeadership[] = [];
   selectedLeader: ChurchLeadership | null = null;
+  loadingLeaders = false;
   
   // Statistics Data
   statistics: ChurchStatistic[] = [];
@@ -148,6 +154,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private geographyService = inject(GeographyService);
   public phoneCodeService = inject(PhoneCodeService); // Made public for template access
   private store = inject(Store);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
 
   canEdit = false;
   designVariant: 'summary' | 'tiles' | 'definition' = 'summary';
@@ -409,7 +417,13 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     console.log('📤 Submitting form data:', formData);
 
     this.churchProfileService.updateProfile(formData)
-      .pipe(finalize(() => this.saving = false))
+      .pipe(
+        finalize(() => {
+          this.saving = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
       .subscribe({
         next: (response) => {
           if (response.success) {
@@ -420,6 +434,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
             
             this.editingSections.general = false;
             this.editingSections.contact = false;
+            this.cdr.markForCheck();
 
             // Upload patron image if selected (before disabling fields)
             if (this.patronImageFile) {
@@ -580,6 +595,16 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     this.checkPermissions();
     this.initializeForms();
     this.loadAllData();
+    
+    // Check for tab query parameter
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        if (params['tab'] && ['profile', 'leadership', 'statistics', 'social'].includes(params['tab'])) {
+          this.setActiveTab(params['tab'] as 'profile' | 'leadership' | 'statistics' | 'social');
+        }
+        this.cdr.markForCheck();
+      });
   }
 
   /**
@@ -650,12 +675,22 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       email: ['', [Validators.email, Validators.maxLength(255)]],
       phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
       appointed_date: [''],
+      relieved_date: [''],
       start_date: [''],
       end_date: [''],
       biography: ['', Validators.maxLength(2000)],
       is_primary: [0],
       active: [1],
       display_order: [0]
+    });
+
+    // Watch for relieved_date changes and automatically set active to 0
+    this.leaderForm.get('relieved_date')?.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(relievedDate => {
+        if (relievedDate && relievedDate.trim() !== '') {
+          this.leaderForm.patchValue({ active: 0 }, { emitEvent: false });
+        }
     });
 
     // Statistics Form
@@ -742,16 +777,24 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    */
   private loadChurchProfile(): void {
     this.tenantService.getChurchProfile()
-      .pipe(finalize(() => this.loading = false))
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
       .subscribe({
         next: (response: TenantResponse) => {
           if (response.success && response.data) {
             this.churchProfile = response.data;
           }
+          this.cdr.markForCheck();
         },
         error: (err: Error) => {
           this.error = err.message;
           this.toastService.error(this.error, 'Error');
+          this.cdr.markForCheck();
         }
       });
   }
@@ -760,7 +803,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Load denominations
    */
   private loadDenominations(): void {
-    this.denominationService.getDenominations().subscribe({
+    this.denominationService.getDenominations()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (response) => {
         if (response.success) {
           this.denominations = response.data;
@@ -776,7 +821,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Load archdioceses
    */
   private loadArchdioceses(): void {
-    this.archdioceseService.getArchdioceses().subscribe({
+    this.archdioceseService.getArchdioceses()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (response) => {
         if (response.success && response.data) {
           this.archdioceses = response.data;
@@ -809,7 +856,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    */
   private loadCountries(): void {
     this.loadingCountries = true;
-    this.geographyService.getCountries().subscribe({
+    this.geographyService.getCountries()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (response) => {
         if (response.success && response.data) {
           this.countries = response.data;
@@ -851,7 +900,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     
     // Update phone code using the centralized service
     // This automatically updates the callingCode getter which the template uses
-    this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries).subscribe({
+    this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (result) => {
         if (result.success) {
           console.log(`✅ Phone code updated to ${result.phoneCode} for country: ${result.countryName}`);
@@ -874,7 +925,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Load extended church profile
    */
   private loadExtendedProfile(): void {
-    this.churchProfileService.getProfile().subscribe({
+    this.churchProfileService.getProfile()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (response) => {
         if (response.success) {
           this.extendedProfile = response.data;
@@ -934,7 +987,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Load pope details
    */
   private loadPopeDetails(): void {
-    this.popeDetailsService.getPopeDetails().subscribe({
+    this.popeDetailsService.getPopeDetails()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
       next: (response) => {
         if (response.success) {
           this.popeDetails = response.data;
@@ -1275,19 +1330,48 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Load church leaders
+   * Load church leaders (both active and inactive)
    */
   private loadLeaders(): void {
-    this.leadershipService.getLeaders({ active: 1 }).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.leaders = response.data;
+    this.loadingLeaders = true;
+    this.cdr.markForCheck();
+    
+    // Load all leaders (active and inactive) - backend will sort active first
+    this.leadershipService.getLeaders({})
+      .pipe(
+        takeUntil(this.destroy$),
+        finalize(() => {
+          this.loadingLeaders = false;
+          this.cdr.markForCheck();
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            // Sort: active first, then inactive
+            this.leaders = response.data.sort((a, b) => {
+              // Active records first (active = 1 comes before active = 0)
+              if (b.active !== a.active) {
+                return b.active - a.active;
+              }
+              // Within same active status, maintain original order
+              return 0;
+            });
+            this.cdr.markForCheck();
+          } else {
+            console.error('Failed to load leaders:', response);
+            this.toastService.error('Failed to load leaders. Please try again.', 'Error');
+            this.leaders = [];
+            this.cdr.markForCheck();
+          }
+        },
+        error: (err: Error) => {
+          console.error('Error loading leaders:', err);
+          this.toastService.error(err.message || 'Failed to load leaders. Please try again.', 'Error');
+          this.leaders = [];
+          this.cdr.markForCheck();
         }
-      },
-      error: (err: Error) => {
-        this.toastService.error(err.message, 'Error');
-      }
-    });
+      });
   }
 
   /**
@@ -1480,7 +1564,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     // If archdioceses haven't been loaded yet, load them first, then filter
     if (this.archdioceses.length === 0) {
       console.log('📥 Loading archdioceses...');
-      this.archdioceseService.getArchdioceses().subscribe({
+      this.archdioceseService.getArchdioceses()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
         next: (response) => {
           console.log('✅ Archdioceses loaded, total:', response.data?.length || 0);
           if (response.success && response.data) {
@@ -1631,7 +1717,13 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     const formData = this.profileForm.getRawValue();
 
     this.churchProfileService.updateProfile(formData)
-      .pipe(finalize(() => this.saving = false))
+      .pipe(
+        finalize(() => {
+          this.saving = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
       .subscribe({
         next: (response) => {
           if (response.success) {
@@ -1707,6 +1799,23 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Format date for HTML date input (YYYY-MM-DD)
+   */
+  private formatDateForInput(dateString: string | null | undefined): string {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } catch {
+      return '';
+    }
+  }
+
+  /**
    * Open edit leader modal
    */
   openEditLeaderModal(leader: ChurchLeadership): void {
@@ -1715,7 +1824,17 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       return;
     }
     this.selectedLeader = leader;
-    this.leaderForm.patchValue(leader);
+    
+    // Format date fields for HTML date inputs (YYYY-MM-DD)
+    const formData = {
+      ...leader,
+      appointed_date: this.formatDateForInput(leader.appointed_date),
+      relieved_date: this.formatDateForInput(leader.relieved_date),
+      start_date: this.formatDateForInput(leader.start_date),
+      end_date: this.formatDateForInput(leader.end_date)
+    };
+    
+    this.leaderForm.patchValue(formData);
     this.showLeaderModal = true;
   }
 
@@ -1751,6 +1870,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
     // Cleanup is handled by Angular
   }
 

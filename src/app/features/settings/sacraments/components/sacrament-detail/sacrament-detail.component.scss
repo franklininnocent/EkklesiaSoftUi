@@ -2,6 +2,15 @@
   max-width: 900px;
   margin: 0 auto;
   padding: 1.5rem;
+
+  // Responsive padding
+  @media (max-width: 768px) {
+    padding: 1rem;
+  }
+
+  @media (max-width: 575.98px) {
+    padding: 0.75rem;
+  }
 }
 
 .detail-header {
@@ -67,37 +76,344 @@
   }
 }
 
+// Loading State - Standardized
 .loading-container {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 4rem;
-  gap: 1rem;
+  padding: 4rem 2rem;
+  gap: 1.25rem;
+  min-height: 300px;
 
   .spinner {
     width: 48px;
     height: 48px;
     border: 4px solid #f3f4f6;
     border-top-color: #667eea;
+    border-right-color: #667eea;
     border-radius: 50%;
-    animation: spin 1s linear infinite;
+    animation: spin 0.8s linear infinite;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
   }
 
   p {
     color: #6b7280;
     font-size: 0.938rem;
+    font-weight: 500;
+    margin: 0;
   }
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .detail-content {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+}
+
+// ================== SHARED CERTIFICATE STYLES ==================
+// Standardized font sizes and styles for consistency
+$font-main-title: 1.875rem;
+$font-subtitle: 0.938rem;
+$font-parish: 0.938rem;
+$font-address: 0.875rem;
+$font-field-label: 0.688rem;
+$font-field-value: 1.125rem;
+$font-field-value-parents: 1rem;
+$font-minister-name: 1.125rem;
+$font-minister-title: 0.938rem;
+$font-registry-label: 0.688rem;
+$font-registry-value: 1rem;
+$font-signature-name: 0.938rem;
+$font-signature-label: 0.688rem;
+$font-remarks: 0.938rem;
+$font-crest: 1.875rem;
+
+$font-family-serif: 'Cormorant Garamond', 'Times New Roman', serif;
+$font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+// ================== BAPTISM CERTIFICATE ==================
+.baptism-certificate {
+  padding: 2rem;
+  background: linear-gradient(180deg, #f9fafb 0%, #f1f5f9 100%);
+  border-radius: 18px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.15);
+}
+
+.baptism-frame {
+  background: #ffffff;
+  border: 2px solid #cbd5f5;
+  border-radius: 16px;
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.baptism-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+
+  .baptism-crest {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-crest;
+    color: #1d4ed8;
+    font-family: $font-family-serif;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.08), transparent);
+  }
+
+  .header-text {
+    flex: 1;
+    text-align: center;
+
+    .certificate-diocese {
+      text-transform: uppercase;
+      letter-spacing: 0.3rem;
+      font-size: 0.875rem;
+      color: #7c7f9a;
+      margin: 0 0 0.35rem 0;
+      font-family: $font-family-sans;
+    }
+
+    .certificate-main-title {
+      font-size: $font-main-title;
+      margin: 0;
+      color: #1f2937;
+      font-family: $font-family-serif;
+      letter-spacing: 0.1rem;
+      font-weight: 600;
+    }
+
+    .certificate-subtitle {
+      font-size: $font-subtitle;
+      margin: 0.15rem 0 0.4rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.35rem;
+      font-family: $font-family-sans;
+      font-weight: 500;
+    }
+
+    .certificate-parish {
+      margin: 0;
+      font-size: $font-parish;
+      color: #0f172a;
+      font-weight: 500;
+      font-family: $font-family-sans;
+    }
+
+    .certificate-address {
+      margin: 0.35rem 0 0;
+      font-size: $font-address;
+      color: #5b6478;
+      font-weight: 500;
+      font-family: $font-family-sans;
+    }
+  }
+
+  .certificate-status-pill {
+    padding: 0.5rem 1rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    font-family: $font-family-sans;
+    box-shadow: inset 0 0 0 1px rgba(148, 163, 184, 0.5);
+  }
+}
+
+.baptism-body {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.certificate-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+
+  .field-label {
+    text-transform: uppercase;
+    font-size: $font-field-label;
+    letter-spacing: 0.15rem;
+    color: #94a3b8;
+    font-weight: 600;
+    font-family: $font-family-sans;
+  }
+
+  .field-value {
+    font-size: $font-field-value;
+    color: #111827;
+    font-weight: 500;
+    font-family: $font-family-serif;
+    border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+    padding-bottom: 0.4rem;
+  }
+
+  &.minister-field .field-value {
+    font-size: $font-minister-title;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-bottom: none;
+    padding-bottom: 0;
+    
+    .minister-name {
+      font-weight: 600;
+      color: #1f2937;
+      font-family: $font-family-serif;
+      font-size: $font-minister-name;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.35);
+      padding-bottom: 0.4rem;
+    }
+    
+    .minister-title {
+      font-weight: 400;
+      color: #6b7280;
+      font-style: italic;
+      font-size: $font-minister-title;
+      text-transform: uppercase;
+      letter-spacing: 0.08rem;
+      font-family: $font-family-sans;
+      margin-top: 0.25rem;
+    }
+  }
+}
+
+.certificate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.5rem;
+
+  &.parents-section .field-value {
+    font-size: $font-field-value-parents;
+  }
+}
+
+.registry-panel {
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 1rem 1.5rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  justify-content: center;
+  align-items: center;
+
+  .registry-field {
+    min-width: 140px;
+    text-align: center;
+    flex: 1;
+    max-width: 200px;
+
+    .registry-label {
+      display: block;
+      font-size: $font-registry-label;
+      letter-spacing: 0.15rem;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+      font-family: $font-family-sans;
+    }
+
+    .registry-value {
+      font-size: $font-registry-value;
+      font-weight: 500;
+      color: #1f2937;
+      font-family: $font-family-serif;
+      line-height: 1.4;
+    }
+  }
+}
+
+.remarks-panel {
+  border-left: 4px solid #c084fc;
+  padding-left: 1rem;
+  background: rgba(236, 233, 254, 0.5);
+  border-radius: 8px;
+
+  .field-label {
+    font-size: $font-field-label;
+    letter-spacing: 0.18rem;
+    font-family: $font-family-sans;
+  }
+
+  .remarks-text {
+    margin: 0.25rem 0 0;
+    font-size: $font-remarks;
+    color: #374151;
+    line-height: 1.6;
+    white-space: pre-line;
+    font-family: $font-family-sans;
+  }
+}
+
+.signature-section {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  align-items: end;
+  margin-top: 1rem;
+
+  .signature-block {
+    text-align: center;
+
+    .signature-line {
+      border-top: 1px solid rgba(15, 23, 42, 0.4);
+      padding-top: 0.35rem;
+      margin-bottom: 0.35rem;
+      min-height: 32px;
+
+      .signature-name {
+        font-family: $font-family-serif;
+        font-size: $font-signature-name;
+        color: #111827;
+        font-weight: 500;
+      }
+    }
+
+    .signature-label {
+      font-size: $font-signature-label;
+      letter-spacing: 0.2rem;
+      text-transform: uppercase;
+      color: #94a3b8;
+      font-weight: 600;
+      font-family: $font-family-sans;
+    }
+  }
+
+  .parish-seal {
+    width: 140px;
+    height: 140px;
+    border: 2px dashed rgba(15, 23, 42, 0.4);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.2rem;
+    color: #94a3b8;
+    font-family: $font-family-sans;
+    font-weight: 600;
+  }
 }
 
 .certificate-header {
@@ -128,6 +444,12 @@
       font-size: 1.5rem;
       font-weight: 600;
     }
+  }
+
+  .certificate-address {
+    margin: 0;
+    font-size: 0.95rem;
+    color: rgba(255, 255, 255, 0.9);
   }
 }
 
@@ -181,6 +503,43 @@
       }
     }
   }
+
+  &.audit-trail {
+    background: #f9fafb;
+    border-left: 4px solid #6366f1;
+
+    .audit-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1rem;
+    }
+
+    .audit-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+
+      .audit-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .audit-value {
+        font-size: 0.938rem;
+        color: #1f2937;
+        font-weight: 500;
+      }
+
+      .audit-by {
+        font-size: 0.813rem;
+        color: #9ca3af;
+        font-style: italic;
+      }
+    }
+  }
 }
 
 .detail-grid {
@@ -217,18 +576,155 @@
   white-space: pre-wrap;
 }
 
-// Print styles
+// ============ MARRIAGE CERTIFICATE STYLES ============
+.marriage-certificate {
+  padding: 2rem;
+  border-radius: 18px;
+}
+
+.marriage-frame {
+  border: 2px solid #cbd5f5;
+  border-radius: 16px;
+  padding: 2.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.marriage-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.3);
+
+  .marriage-crest {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 2px solid rgba(59, 130, 246, 0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: $font-crest;
+    color: #1d4ed8;
+    font-family: $font-family-serif;
+  }
+
+  .header-text {
+    flex: 1;
+    text-align: center;
+
+    .certificate-main-title {
+      font-size: $font-main-title;
+      margin: 0;
+      color: #1f2937;
+      font-family: $font-family-serif;
+      letter-spacing: 0.1rem;
+      font-weight: 600;
+    }
+
+    .certificate-subtitle {
+      font-size: $font-subtitle;
+      margin: 0.15rem 0 0.4rem;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.35rem;
+      font-family: $font-family-sans;
+      font-weight: 500;
+    }
+
+    .certificate-parish {
+      margin: 0;
+      font-size: $font-parish;
+      color: #0f172a;
+      font-weight: 500;
+      font-family: $font-family-sans;
+    }
+
+    .certificate-address {
+      margin: 0.35rem 0 0;
+      font-size: $font-address;
+      color: #5b6478;
+      font-weight: 500;
+      font-family: $font-family-sans;
+    }
+  }
+}
+
+.marriage-body {
+  margin-top: 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+// Print styles - Optimized
 @media print {
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
   .detail-header {
-    display: none;
+    display: none !important;
   }
 
   .detail-content {
     page-break-inside: avoid;
+    margin: 0;
+    padding: 0;
   }
 
-  .btn {
-    display: none;
+  .btn,
+  .header-actions,
+  .back-btn {
+    display: none !important;
+  }
+  
+  .marriage-certificate,
+  .baptism-certificate {
+    background: white !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+    padding: 1.5rem !important;
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  .marriage-frame {
+    border: 6px double #000;
+    padding: 3rem 2.5rem;
+    box-shadow: none;
+    page-break-inside: avoid;
+    background: white;
+
+    &::before,
+    &::after {
+      border-color: #000;
+    }
+  }
+  
+  .baptism-frame {
+    border: 2px solid #000;
+    padding: 2rem;
+    box-shadow: none;
+    page-break-inside: avoid;
+  }
+  
+  .marriage-body,
+  .baptism-body {
+    page-break-inside: avoid;
+  }
+
+  .party-section {
+    page-break-inside: avoid;
+    border-color: #ccc;
+  }
+
+  .signature-section {
+    page-break-inside: avoid;
   }
 }
 

@@ -20,7 +20,8 @@
       </div>
 
       <ng-container *ngIf="isBaptism; else generalSacrament">
-        <div class="form-grid">
+        <h4 class="section-title">Baptism Details</h4>
+        <div class="form-grid form-section">
           <label class="form-field">
             <span class="label">Baptism Date</span>
             <input type="date" formControlName="baptism_date">
@@ -79,7 +80,8 @@
       <ng-template #generalSacrament>
         <ng-container [ngSwitch]="sacrament">
           <ng-container *ngSwitchCase="'first_communion'">
-            <div class="form-grid">
+            <h4 class="section-title">First Communion Details</h4>
+            <div class="form-grid form-section">
               <label class="form-field">
                 <span class="label">First Communion Date</span>
                 <input type="date" formControlName="first_communion_date">
@@ -126,7 +128,8 @@
           </ng-container>
 
           <ng-container *ngSwitchCase="'marriage'">
-            <div class="form-grid">
+            <h4 class="section-title">Marriage Details</h4>
+            <div class="form-grid form-section three-column">
               <label class="form-field">
                 <span class="label">Marriage Date</span>
                 <input type="date" formControlName="marriage_date">
@@ -138,17 +141,33 @@
               </label>
 
               <label class="form-field">
-                <span class="label">Spouse Name</span>
-                <input type="text" formControlName="marriage_spouse_name" placeholder="Enter spouse name">
+                <span class="label">Minister Name</span>
+                <input type="text" formControlName="marriage_minister_name" placeholder="e.g., Rev. John Doe">
               </label>
+
+              <label class="form-field">
+                <span class="label">Minister Title</span>
+                <input type="text" formControlName="marriage_minister_title" placeholder="Parish Priest, Bishop, etc.">
+              </label>
+
             </div>
 
-            <div class="section-divider">Bride Details</div>
+            <div class="section-divider">
+              <h4 class="section-title">Bride Details</h4>
+            </div>
 
-            <div class="form-grid">
+            <div class="form-grid form-section three-column">
               <label class="form-field">
                 <span class="label">Full Name</span>
                 <input type="text" formControlName="marriage_bride_full_name" placeholder="Enter bride's full name">
+              </label>
+              <label class="form-field">
+                <span class="label">Father's Name</span>
+                <input type="text" formControlName="marriage_bride_father_name" placeholder="Enter bride's father name">
+              </label>
+              <label class="form-field">
+                <span class="label">Mother's Name</span>
+                <input type="text" formControlName="marriage_bride_mother_name" placeholder="Enter bride's mother name">
               </label>
               <label class="form-field stretch">
                 <span class="label">Address</span>
@@ -178,14 +197,22 @@
             </div>
 
             <div class="section-divider">
-              Groom Details
+              <h4 class="section-title">Groom Details</h4>
               <button type="button" class="link-button" (click)="copyBrideChurchToGroom()">Copy bride church to groom</button>
             </div>
 
-            <div class="form-grid">
+            <div class="form-grid form-section three-column">
               <label class="form-field">
                 <span class="label">Full Name</span>
                 <input type="text" formControlName="marriage_groom_full_name" placeholder="Enter groom's full name">
+              </label>
+              <label class="form-field">
+                <span class="label">Father's Name</span>
+                <input type="text" formControlName="marriage_groom_father_name" placeholder="Enter groom's father name">
+              </label>
+              <label class="form-field">
+                <span class="label">Mother's Name</span>
+                <input type="text" formControlName="marriage_groom_mother_name" placeholder="Enter groom's mother name">
               </label>
               <label class="form-field stretch">
                 <span class="label">Address</span>
@@ -213,10 +240,12 @@
                 <textarea formControlName="marriage_groom_church_address" rows="2" placeholder="Enter church address"></textarea>
               </label>
             </div>
+
           </ng-container>
 
           <ng-container *ngSwitchDefault>
-            <div class="form-grid small">
+            <h4 class="section-title">{{ sacramentDisplayName }} Details</h4>
+            <div class="form-grid form-section small">
               <label class="form-field">
                 <span class="label">{{ sacramentDisplayName }} Date</span>
                 <input type="date" [formControlName]="sacrament + '_date'">

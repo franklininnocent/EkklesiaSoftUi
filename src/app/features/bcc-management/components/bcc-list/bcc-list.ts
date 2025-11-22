@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -9,6 +9,7 @@ import { BCC, BCCStatistics } from '../../../../core/models/family.model';
 import { BCCFormComponent } from '../bcc-form/bcc-form';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 @Component({
   selector: 'app-bcc-list',
@@ -22,10 +23,19 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
     PaginationComponent
   ],
   templateUrl: './bcc-list.html',
-  styleUrls: ['./bcc-list.scss']
+  styleUrls: ['./bcc-list.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class BCCListComponent implements OnInit, OnDestroy {
+export class BCCListComponent implements OnInit, OnDestroy, AfterViewChecked {
   private destroy$ = new Subject<void>();
+  private cdr = inject(ChangeDetectorRef);
+  
+  @ViewChild('detailModal', { static: false }) detailModalRef?: ElementRef<HTMLElement>;
+  
+  // Focus management
+  private previousActiveElement: HTMLElement | null = null;
+  private focusTrapCleanup: (() => void) | null = null;
+  private modalWasOpen = false;
   
   // Data
   bccs: BCC[] = [];
@@ -43,6 +53,9 @@ export class BCCListComponent implements OnInit, OnDestroy {
   error: string | null = null;
   showForm = false;
   selectedBCC: BCC | null = null;
+  showDetailModal = false;
+  detailBCC: BCC | null = null;
+  loadingDetail = false;
   
   // Search & Filter Form
   filterForm: FormGroup;
@@ -141,6 +154,7 @@ export class BCCListComponent implements OnInit, OnDestroy {
       .subscribe(() => {
         this.currentPage = 1;
         this.loadBCCs();
+        this.cdr.markForCheck();
       });
   }
 
@@ -153,14 +167,20 @@ export class BCCListComponent implements OnInit, OnDestroy {
    * Load statistics
    */
   private loadStatistics(): void {
-    this.bccService.getStatistics().subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.statistics = response.data;
+    this.bccService.getStatistics()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.statistics = response.data;
+          }
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Failed to load statistics', error);
+          this.cdr.markForCheck();
         }
-      },
-      error: (error) => console.error('Failed to load statistics', error)
-    });
+      });
   }
 
   /**
@@ -183,20 +203,24 @@ export class BCCListComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.bccService.getBCCs(filters).subscribe({
-      next: (response) => {
-        this.bccs = response.data;
-        this.currentPage = response.current_page;
-        this.totalPages = response.last_page;
-        this.totalRecords = response.total;
-        this.loading = false;
-      },
-      error: (error) => {
-        this.error = 'Failed to load BCCs. Please try again.';
-        this.loading = false;
-        console.error('Error loading BCCs:', error);
-      }
-    });
+    this.bccService.getBCCs(filters)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.bccs = response.data;
+          this.currentPage = response.current_page;
+          this.totalPages = response.last_page;
+          this.totalRecords = response.total;
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          this.error = 'Failed to load BCCs. Please try again.';
+          this.loading = false;
+          console.error('Error loading BCCs:', error);
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   /**
@@ -395,10 +419,80 @@ export class BCCListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * View BCC details
+   * View BCC details in modal
    */
   viewBCC(bcc: BCC): void {
-    this.router.navigate(['/bccs', bcc.id]);
+    // Save current focus
+    this.previousActiveElement = saveActiveElement();
+    this.detailBCC = bcc;
+    this.showDetailModal = true;
+    this.loadBCCDetail(bcc.id);
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Load full BCC details
+   */
+  loadBCCDetail(bccId: string): void {
+    this.loadingDetail = true;
+    this.cdr.markForCheck();
+    this.bccService.getBCC(bccId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.detailBCC = response.data;
+          }
+          this.loadingDetail = false;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Error loading BCC details:', error);
+          this.loadingDetail = false;
+          this.toastService.error('Failed to load BCC details', 'Error');
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  /**
+   * Close detail modal
+   */
+  closeDetailModal(): void {
+    // Clean up focus trap
+    if (this.focusTrapCleanup) {
+      this.focusTrapCleanup();
+      this.focusTrapCleanup = null;
+    }
+    
+    this.showDetailModal = false;
+    this.detailBCC = null;
+    
+    // Restore previous focus
+    if (this.previousActiveElement) {
+      setTimeout(() => {
+        restoreActiveElement(this.previousActiveElement);
+        this.previousActiveElement = null;
+      }, 100);
+    }
+    
+    this.cdr.markForCheck();
+  }
+  
+  /**
+   * Handle modal keyboard events
+   */
+  ngAfterViewChecked(): void {
+    // Set up focus trap when modal opens
+    if (this.showDetailModal && !this.modalWasOpen && this.detailModalRef?.nativeElement) {
+      const modalContainer = this.detailModalRef.nativeElement.querySelector('.bcc-detail-modal') as HTMLElement;
+      if (modalContainer) {
+        this.focusTrapCleanup = trapFocus(modalContainer);
+        this.modalWasOpen = true;
+      }
+    } else if (!this.showDetailModal && this.modalWasOpen) {
+      this.modalWasOpen = false;
+    }
   }
 
   /**
@@ -414,17 +508,21 @@ export class BCCListComponent implements OnInit, OnDestroy {
    */
   deleteBCC(bcc: BCC): void {
     if (confirm(`Are you sure you want to delete "${bcc.name}"?`)) {
-      this.bccService.deleteBCC(bcc.id).subscribe({
-        next: () => {
-          this.loadBCCs();
-          this.loadStatistics();
-          this.toastService.success('BCC deleted successfully', 'Success');
-        },
-        error: (error) => {
-          this.toastService.error('Failed to delete BCC', 'Error');
-          console.error('Error deleting BCC:', error);
-        }
-      });
+      this.bccService.deleteBCC(bcc.id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: () => {
+            this.loadBCCs();
+            this.loadStatistics();
+            this.toastService.success('BCC deleted successfully', 'Success');
+            this.cdr.markForCheck();
+          },
+          error: (error) => {
+            this.toastService.error('Failed to delete BCC', 'Error');
+            console.error('Error deleting BCC:', error);
+            this.cdr.markForCheck();
+          }
+        });
     }
   }
 

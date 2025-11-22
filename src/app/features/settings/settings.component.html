@@ -29,9 +29,7 @@
       <div class="card-content">
         <!-- Icon -->
         <div class="setting-icon-wrapper">
-          <span class="setting-icon" role="img" [attr.aria-label]="section.title + ' icon'">
-            {{ section.icon }}
-          </span>
+          <span class="setting-icon" role="img" [attr.aria-label]="section.title + ' icon'" [innerHTML]="getIconSvg(section.icon)"></span>
         </div>
 
         <!-- Text Content -->
@@ -59,8 +57,10 @@
   <!-- Empty State (if no cards visible) -->
   <div 
     *ngIf="(visibleSections$ | async)?.length === 0" 
-    class="empty-state">
-    <div class="empty-icon">⚙️</div>
+    class="empty-state"
+    role="status"
+    aria-live="polite">
+    <div class="empty-icon" [innerHTML]="getIconSvg('settings')"></div>
     <h3 class="empty-title">No Settings Available</h3>
     <p class="empty-message">You don't have access to any settings sections. Please contact your administrator.</p>
   </div>

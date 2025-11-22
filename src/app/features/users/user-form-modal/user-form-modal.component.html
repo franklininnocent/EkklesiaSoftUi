@@ -1,6 +1,6 @@
 <!-- Modal Overlay -->
-<div class="modal-overlay" *ngIf="show" (click)="closeModal()">
-  <div class="modal-container" (click)="$event.stopPropagation()">
+<div class="modal-overlay" *ngIf="show" (click)="closeModal()" role="dialog" aria-modal="true" [attr.aria-labelledby]="isEditMode ? 'edit-user-title' : 'create-user-title'">
+  <div #modalContainer class="modal-container" (click)="$event.stopPropagation()">
     
     <!-- Modal Header -->
     <div class="modal-header">
@@ -19,7 +19,7 @@
         </div>
         
         <div class="header-text">
-          <h2 class="modal-title">{{ isEditMode ? 'Edit User' : 'Create New User' }}</h2>
+          <h2 class="modal-title" [id]="isEditMode ? 'edit-user-title' : 'create-user-title'">{{ isEditMode ? 'Edit User' : 'Create New User' }}</h2>
           <p class="modal-subtitle">
             {{ isEditMode ? 'Update user details and role assignments' : 'Add a new user to your organization with multiple role assignments' }}
           </p>

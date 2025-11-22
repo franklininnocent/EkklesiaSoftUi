@@ -278,6 +278,16 @@
                               <span class="label">Bride</span>
                               <span class="value">{{ head.marriage_bride_full_name }}</span>
                             </div>
+                            <div class="row two-cols" *ngIf="head.marriage_bride_father_name || head.marriage_bride_mother_name">
+                              <div>
+                                <span class="label">Bride Father</span>
+                                <span class="value">{{ head.marriage_bride_father_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Bride Mother</span>
+                                <span class="value">{{ head.marriage_bride_mother_name || '—' }}</span>
+                              </div>
+                            </div>
                             <div class="row" *ngIf="head.marriage_bride_address">
                               <span class="label">Bride Address</span>
                               <span class="value">{{ head.marriage_bride_address }}</span>
@@ -296,6 +306,16 @@
                               <span class="label">Groom</span>
                               <span class="value">{{ head.marriage_groom_full_name }}</span>
                             </div>
+                            <div class="row two-cols" *ngIf="head.marriage_groom_father_name || head.marriage_groom_mother_name">
+                              <div>
+                                <span class="label">Groom Father</span>
+                                <span class="value">{{ head.marriage_groom_father_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Groom Mother</span>
+                                <span class="value">{{ head.marriage_groom_mother_name || '—' }}</span>
+                              </div>
+                            </div>
                             <div class="row" *ngIf="head.marriage_groom_address">
                               <span class="label">Groom Address</span>
                               <span class="value">{{ head.marriage_groom_address }}</span>
@@ -308,6 +328,16 @@
                               <div>
                                 <span class="label">Address</span>
                                 <span class="value">{{ head.marriage_groom_church_address || '—' }}</span>
+                              </div>
+                            </div>
+                            <div class="row two-cols" *ngIf="head.marriage_minister_name || head.marriage_minister_title">
+                              <div>
+                                <span class="label">Minister</span>
+                                <span class="value">{{ head.marriage_minister_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Title</span>
+                                <span class="value">{{ head.marriage_minister_title || '—' }}</span>
                               </div>
                             </div>
                           </div>
@@ -628,6 +658,16 @@
                               <span class="label">Bride</span>
                               <span class="value">{{ head.marriage_bride_full_name }}</span>
                             </div>
+                            <div class="row two-cols" *ngIf="head.marriage_bride_father_name || head.marriage_bride_mother_name">
+                              <div>
+                                <span class="label">Bride Father</span>
+                                <span class="value">{{ head.marriage_bride_father_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Bride Mother</span>
+                                <span class="value">{{ head.marriage_bride_mother_name || '—' }}</span>
+                              </div>
+                            </div>
                             <div class="row" *ngIf="head.marriage_bride_address">
                               <span class="label">Bride Address</span>
                               <span class="value">{{ head.marriage_bride_address }}</span>
@@ -646,6 +686,16 @@
                               <span class="label">Groom</span>
                               <span class="value">{{ head.marriage_groom_full_name }}</span>
                             </div>
+                            <div class="row two-cols" *ngIf="head.marriage_groom_father_name || head.marriage_groom_mother_name">
+                              <div>
+                                <span class="label">Groom Father</span>
+                                <span class="value">{{ head.marriage_groom_father_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Groom Mother</span>
+                                <span class="value">{{ head.marriage_groom_mother_name || '—' }}</span>
+                              </div>
+                            </div>
                             <div class="row" *ngIf="head.marriage_groom_address">
                               <span class="label">Groom Address</span>
                               <span class="value">{{ head.marriage_groom_address }}</span>
@@ -658,6 +708,16 @@
                               <div>
                                 <span class="label">Address</span>
                                 <span class="value">{{ head.marriage_groom_church_address || '—' }}</span>
+                              </div>
+                            </div>
+                            <div class="row two-cols" *ngIf="head.marriage_minister_name || head.marriage_minister_title">
+                              <div>
+                                <span class="label">Minister</span>
+                                <span class="value">{{ head.marriage_minister_name || '—' }}</span>
+                              </div>
+                              <div>
+                                <span class="label">Title</span>
+                                <span class="value">{{ head.marriage_minister_title || '—' }}</span>
                               </div>
                             </div>
                           </div>
@@ -943,6 +1003,16 @@
                             <span class="label">Bride</span>
                             <span class="value">{{ m.marriage_bride_full_name }}</span>
                           </div>
+                          <div class="row two-cols" *ngIf="m.marriage_bride_father_name || m.marriage_bride_mother_name">
+                            <div>
+                              <span class="label">Bride Father</span>
+                              <span class="value">{{ m.marriage_bride_father_name || '—' }}</span>
+                            </div>
+                            <div>
+                              <span class="label">Bride Mother</span>
+                              <span class="value">{{ m.marriage_bride_mother_name || '—' }}</span>
+                            </div>
+                          </div>
                           <div class="row" *ngIf="m.marriage_bride_address">
                             <span class="label">Bride Address</span>
                             <span class="value">{{ m.marriage_bride_address }}</span>
@@ -961,6 +1031,16 @@
                             <span class="label">Groom</span>
                             <span class="value">{{ m.marriage_groom_full_name }}</span>
                           </div>
+                          <div class="row two-cols" *ngIf="m.marriage_groom_father_name || m.marriage_groom_mother_name">
+                            <div>
+                              <span class="label">Groom Father</span>
+                              <span class="value">{{ m.marriage_groom_father_name || '—' }}</span>
+                            </div>
+                            <div>
+                              <span class="label">Groom Mother</span>
+                              <span class="value">{{ m.marriage_groom_mother_name || '—' }}</span>
+                            </div>
+                          </div>
                           <div class="row" *ngIf="m.marriage_groom_address">
                             <span class="label">Groom Address</span>
                             <span class="value">{{ m.marriage_groom_address }}</span>
@@ -973,6 +1053,16 @@
                             <div>
                               <span class="label">Address</span>
                               <span class="value">{{ m.marriage_groom_church_address || '—' }}</span>
+                            </div>
+                          </div>
+                          <div class="row two-cols" *ngIf="m.marriage_minister_name || m.marriage_minister_title">
+                            <div>
+                              <span class="label">Minister</span>
+                              <span class="value">{{ m.marriage_minister_name || '—' }}</span>
+                            </div>
+                            <div>
+                              <span class="label">Title</span>
+                              <span class="value">{{ m.marriage_minister_title || '—' }}</span>
                             </div>
                           </div>
                         </div>

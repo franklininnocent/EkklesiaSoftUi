@@ -3,7 +3,7 @@
  * Professional form with complete validation, API integration, and error handling
  */
 
-import { Component, EventEmitter, Output, inject, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, EventEmitter, Output, inject, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -13,6 +13,9 @@ import { CreateTenantRequest, TenantAddress } from '@core/models/tenant.model';
 import { GeographyService, Country, State } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 interface FormErrors {
   [key: string]: string;
@@ -23,17 +26,26 @@ interface FormErrors {
   standalone: true,
   imports: [CommonModule, FormsModule, NgSelectModule, PhoneInputComponent],
   templateUrl: './tenant-create-modal.html',
-  styleUrls: ['./tenant-create-modal.scss']
+  styleUrls: ['./tenant-create-modal.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TenantCreateModalComponent implements OnInit {
+export class TenantCreateModalComponent implements OnInit, OnDestroy, AfterViewChecked {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
   private geographyService = inject(GeographyService);
   private phoneCodeService = inject(PhoneCodeService);
   private cdr = inject(ChangeDetectorRef);
+  private destroy$ = new Subject<void>();
+
+  @ViewChild('modalContainer', { static: false }) modalContainerRef?: ElementRef<HTMLElement>;
 
   @Output() close = new EventEmitter<void>();
   @Output() tenantCreated = new EventEmitter<void>();
+  
+  // Focus management
+  private previousActiveElement: HTMLElement | null = null;
+  private focusTrapCleanup: (() => void) | null = null;
+  private modalWasOpen = false;
 
   constructor() {
     console.log('🎉 TenantCreateModalComponent initialized!');
@@ -51,45 +63,50 @@ export class TenantCreateModalComponent implements OnInit {
    */
   loadCountries(): void {
     this.loadingCountries = true;
-    this.geographyService.getCountries().subscribe({
-      next: (response) => {
-        if (response.success) {
-          // Sort countries: India first, then rest alphabetically
-          const sortedCountries = [...response.data].sort((a, b) => {
-            // India should be first
-            const aIsIndia = a.name.toLowerCase().includes('india') || a.iso2 === 'IN';
-            const bIsIndia = b.name.toLowerCase().includes('india') || b.iso2 === 'IN';
+    this.cdr.markForCheck();
+    this.geographyService.getCountries()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            // Sort countries: India first, then rest alphabetically
+            const sortedCountries = [...response.data].sort((a, b) => {
+              // India should be first
+              const aIsIndia = a.name.toLowerCase().includes('india') || a.iso2 === 'IN';
+              const bIsIndia = b.name.toLowerCase().includes('india') || b.iso2 === 'IN';
+              
+              if (aIsIndia && !bIsIndia) return -1;
+              if (!aIsIndia && bIsIndia) return 1;
+              
+              // If both or neither are India, sort alphabetically by name
+              return a.name.localeCompare(b.name);
+            });
             
-            if (aIsIndia && !bIsIndia) return -1;
-            if (!aIsIndia && bIsIndia) return 1;
+            this.countries = sortedCountries;
+            console.log(`✅ Loaded ${response.count} countries (India first)`);
             
-            // If both or neither are India, sort alphabetically by name
-            return a.name.localeCompare(b.name);
-          });
-          
-          this.countries = sortedCountries;
-          console.log(`✅ Loaded ${response.count} countries (India first)`);
-          
-          // Log India details for debugging
-          const india = this.countries.find(c => c.name.toLowerCase().includes('india') || c.iso2 === 'IN');
-          if (india) {
-            console.log(`🇮🇳 India is first: ID=${india.id}, ISO2=${india.iso2}, phone_code=${india.phone_code}`);
+            // Log India details for debugging
+            const india = this.countries.find(c => c.name.toLowerCase().includes('india') || c.iso2 === 'IN');
+            if (india) {
+              console.log(`🇮🇳 India is first: ID=${india.id}, ISO2=${india.iso2}, phone_code=${india.phone_code}`);
+            }
+            
+            // Check if we need to update calling code after countries load
+            if (this.formData.primary_user_address.country_id && this.formData.primary_user_address.country_id !== 0) {
+              console.log(`🔄 Updating calling code after countries loaded for country ID: ${this.formData.primary_user_address.country_id}`);
+              this.updateCallingCodeSafely(this.formData.primary_user_address.country_id);
+            }
           }
-          
-          // Check if we need to update calling code after countries load
-          if (this.formData.primary_user_address.country_id && this.formData.primary_user_address.country_id !== 0) {
-            console.log(`🔄 Updating calling code after countries loaded for country ID: ${this.formData.primary_user_address.country_id}`);
-            this.updateCallingCodeSafely(this.formData.primary_user_address.country_id);
-          }
+          this.loadingCountries = false;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('❌ Error loading countries:', error);
+          this.toastService.error('Failed to load countries', 'Error');
+          this.loadingCountries = false;
+          this.cdr.markForCheck();
         }
-        this.loadingCountries = false;
-      },
-      error: (error) => {
-        console.error('❌ Error loading countries:', error);
-        this.toastService.error('Failed to load countries', 'Error');
-        this.loadingCountries = false;
-      }
-    });
+      });
   }
 
   /**
@@ -115,20 +132,25 @@ export class TenantCreateModalComponent implements OnInit {
     }
     
     this.loadingTenantStates = true;
-    this.geographyService.getStatesByCountry(countryId).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.tenantStates = response.data;
-          console.log(`✅ Loaded ${response.count} states for tenant address`);
+    this.cdr.markForCheck();
+    this.geographyService.getStatesByCountry(countryId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.tenantStates = response.data;
+            console.log(`✅ Loaded ${response.count} states for tenant address`);
+          }
+          this.loadingTenantStates = false;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('❌ Error loading states:', error);
+          this.toastService.error('Failed to load states/provinces', 'Error');
+          this.loadingTenantStates = false;
+          this.cdr.markForCheck();
         }
-        this.loadingTenantStates = false;
-      },
-      error: (error) => {
-        console.error('❌ Error loading states:', error);
-        this.toastService.error('Failed to load states/provinces', 'Error');
-        this.loadingTenantStates = false;
-      }
-    });
+      });
   }
 
   /**
@@ -153,20 +175,25 @@ export class TenantCreateModalComponent implements OnInit {
     this.updateCallingCodeSafely(countryId);
     
     this.loadingPrimaryStates = true;
-    this.geographyService.getStatesByCountry(countryId).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.primaryStates = response.data;
-          console.log(`✅ Loaded ${response.count} states for primary user address`);
+    this.cdr.markForCheck();
+    this.geographyService.getStatesByCountry(countryId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.primaryStates = response.data;
+            console.log(`✅ Loaded ${response.count} states for primary user address`);
+          }
+          this.loadingPrimaryStates = false;
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('❌ Error loading states:', error);
+          this.toastService.error('Failed to load states/provinces', 'Error');
+          this.loadingPrimaryStates = false;
+          this.cdr.markForCheck();
         }
-        this.loadingPrimaryStates = false;
-      },
-      error: (error) => {
-        console.error('❌ Error loading states:', error);
-        this.toastService.error('Failed to load states/provinces', 'Error');
-        this.loadingPrimaryStates = false;
-      }
-    });
+      });
   }
 
   /**
@@ -174,19 +201,21 @@ export class TenantCreateModalComponent implements OnInit {
    * This replaces the old updateCallingCodeSafely and updateCallingCodeFromCountry methods
    */
   private updateCallingCodeSafely(countryId: number): void {
-    this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries).subscribe({
-      next: (result) => {
-        if (result.success) {
-          console.log(`✅ Phone code updated to ${result.phoneCode} for country: ${result.countryName}`);
-          // Trigger change detection to update UI
+    this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (result) => {
+          if (result.success) {
+            console.log(`✅ Phone code updated to ${result.phoneCode} for country: ${result.countryName}`);
+            // Trigger change detection to update UI
+            this.cdr.markForCheck();
+          }
+        },
+        error: (error) => {
+          console.error('Error updating phone code:', error);
           this.cdr.markForCheck();
-          this.cdr.detectChanges();
         }
-      },
-      error: (error) => {
-        console.error('Error updating phone code:', error);
-      }
-    });
+      });
   }
 
   // Geographic data for dropdowns
@@ -241,7 +270,21 @@ export class TenantCreateModalComponent implements OnInit {
    */
   onClose(): void {
     if (!this.isSubmitting) {
+      // Clean up focus trap
+      if (this.focusTrapCleanup) {
+        this.focusTrapCleanup();
+        this.focusTrapCleanup = null;
+      }
+      
       this.close.emit();
+      
+      // Restore previous focus
+      if (this.previousActiveElement) {
+        setTimeout(() => {
+          restoreActiveElement(this.previousActiveElement);
+          this.previousActiveElement = null;
+        }, 100);
+      }
     }
   }
 
@@ -452,33 +495,36 @@ export class TenantCreateModalComponent implements OnInit {
     }
 
     // Call API
-    this.tenantService.createTenant(requestData).subscribe({
-      next: (response) => {
-        console.log('Tenant creation response:', response);
-        this.isSubmitting = false;
-        
-        if (response.success) {
-          // Show success toast
-          console.log('Showing success toast');
-          this.toastService.success(
-            response.message || 'Tenant created successfully!',
-            'Success',
-            5000
-          );
+    this.tenantService.createTenant(requestData)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          console.log('Tenant creation response:', response);
+          this.isSubmitting = false;
           
-          // Close modal after a brief delay to see the toast
-          setTimeout(() => {
+          if (response.success) {
+            // Show success toast
+            console.log('Showing success toast');
+            this.toastService.success(
+              response.message || 'Tenant created successfully!',
+              'Success',
+              5000
+            );
+            
+            // Close modal after a brief delay to see the toast
+            setTimeout(() => {
             this.tenantCreated.emit();
             this.resetForm();
             this.close.emit();
           }, 500);
-        }
-      },
-      error: (error) => {
-        console.error('Tenant creation error:', error);
-        this.isSubmitting = false;
-        
-        // Show error toast
+          }
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          console.error('Tenant creation error:', error);
+          this.isSubmitting = false;
+          
+          // Show error toast
         this.toastService.error(
           error.message || 'Failed to create tenant. Please try again.',
           'Error',
@@ -607,6 +653,37 @@ export class TenantCreateModalComponent implements OnInit {
   onBackdropClick(event: MouseEvent): void {
     if (event.target === event.currentTarget && !this.isSubmitting) {
       this.onClose();
+    }
+  }
+
+  /**
+   * Lifecycle hook: After view checked
+   */
+  ngAfterViewChecked(): void {
+    // Handle focus trapping when modal is shown
+    if (this.modalContainerRef?.nativeElement && !this.modalWasOpen) {
+      this.previousActiveElement = saveActiveElement();
+      this.focusTrapCleanup = trapFocus(this.modalContainerRef.nativeElement);
+      this.modalWasOpen = true;
+    }
+  }
+
+  /**
+   * Lifecycle hook: On destroy
+   */
+  ngOnDestroy(): void {
+    // Clean up subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
+    
+    // Clean up focus trap
+    if (this.focusTrapCleanup) {
+      this.focusTrapCleanup();
+    }
+    
+    // Restore previous focus
+    if (this.previousActiveElement) {
+      restoreActiveElement(this.previousActiveElement);
     }
   }
 }

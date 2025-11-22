@@ -4,8 +4,10 @@
   [class.btn-full]="fullWidth"
   [disabled]="disabled || loading"
   (click)="onClick()"
+  [attr.aria-label]="ariaLabel"
+  [attr.aria-busy]="loading"
 >
-  <span *ngIf="loading" class="spinner"></span>
+  <span *ngIf="loading" class="spinner" aria-hidden="true"></span>
   <ng-content></ng-content>
 </button>
 

@@ -465,6 +465,14 @@
     gap: 0.75rem;
     position: relative;
     
+    // Reduce font size for h2 headings (15-20% reduction)
+    h2 {
+      font-size: 1.05rem; // Reduced by ~16% from ~1.25rem (1.25 * 0.84 = 1.05)
+      font-weight: 600;
+      line-height: 1.4;
+      margin: 0;
+    }
+    
     .section-header-content {
       display: flex;
       align-items: center;
@@ -3921,6 +3929,117 @@
         .action-buttons {
           display: flex;
           gap: 0.5rem;
+          align-items: center;
+          justify-content: center;
+        }
+
+        // Polished Enterprise-Level Edit Button
+        .btn-3d-mini {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 40px;
+          height: 40px;
+          padding: 0;
+          border: none;
+          border-radius: 10px;
+          font-size: 0.875rem;
+          font-weight: 500;
+          cursor: pointer;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          position: relative;
+          overflow: visible;
+          background: transparent;
+          
+          // SVG icon styling
+          svg {
+            width: 18px;
+            height: 18px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            stroke-width: 2.2;
+          }
+          
+          // Focus state for accessibility
+          &:focus-visible {
+            outline: 2px solid #3b82f6;
+            outline-offset: 3px;
+            border-radius: 10px;
+          }
+
+          // Edit button specific styles - Refined Design
+          &.btn-3d-edit {
+            // Default state - Clean white background with subtle border
+            background: #ffffff;
+            border: 1.5px solid #e2e8f0;
+            color: #64748b;
+            box-shadow: 
+              0 1px 2px rgba(0, 0, 0, 0.04),
+              0 1px 3px rgba(0, 0, 0, 0.06);
+
+            // Icon color
+            svg {
+              color: #64748b;
+            }
+
+            // Hover state - Elegant blue accent
+            &:hover:not(:disabled) {
+              background: #ffffff;
+              border-color: #3b82f6;
+              color: #3b82f6;
+              transform: translateY(-1px);
+              box-shadow: 
+                0 4px 12px rgba(59, 130, 246, 0.15),
+                0 2px 4px rgba(59, 130, 246, 0.1),
+                0 0 0 3px rgba(59, 130, 246, 0.05);
+
+              svg {
+                color: #3b82f6;
+                transform: scale(1.08) rotate(-2deg);
+              }
+            }
+
+            // Active state - Pressed effect
+            &:active:not(:disabled) {
+              transform: translateY(0);
+              box-shadow: 
+                0 1px 2px rgba(59, 130, 246, 0.2),
+                0 0 0 3px rgba(59, 130, 246, 0.1);
+
+              svg {
+                transform: scale(0.96);
+              }
+            }
+
+            // Disabled state
+            &:disabled {
+              opacity: 0.4;
+              cursor: not-allowed;
+              transform: none;
+              background: #f1f5f9;
+              border-color: #e2e8f0;
+            }
+
+            // Subtle pulse animation on hover
+            &::after {
+              content: '';
+              position: absolute;
+              top: 50%;
+              left: 50%;
+              width: 0;
+              height: 0;
+              border-radius: 50%;
+              background: rgba(59, 130, 246, 0.1);
+              transform: translate(-50%, -50%);
+              transition: width 0.4s ease, height 0.4s ease;
+              pointer-events: none;
+            }
+
+            &:hover:not(:disabled)::after {
+              width: 100%;
+              height: 100%;
+            }
+          }
         }
       }
     }
@@ -5177,7 +5296,9 @@
 @media (max-width: 768px) {
   .section-header {
     h2 {
-      font-size: 1.25rem;
+      font-size: 1.05rem; // Maintain reduced size on mobile (~16% reduction)
+      font-weight: 600;
+      line-height: 1.4;
     }
   }
   

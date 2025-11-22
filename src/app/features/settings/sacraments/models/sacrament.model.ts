@@ -3,6 +3,8 @@
  * Represents sacramental records and related entities
  */
 
+import { SacramentStatus, Gender, ChurchType } from '../constants/sacrament.constants';
+
 export interface SacramentType {
   id: number;
   name: string;
@@ -43,10 +45,24 @@ export interface Sacrament {
   mother_name?: string;
   godparent1_name?: string;
   godparent2_name?: string;
+  marriage_bride_full_name?: string;
+  marriage_bride_father_name?: string;
+  marriage_bride_mother_name?: string;
+  marriage_bride_address?: string;
+  marriage_bride_church_type?: 'home_parish' | 'other';
+  marriage_bride_church_name?: string;
+  marriage_bride_church_address?: string;
+  marriage_groom_full_name?: string;
+  marriage_groom_father_name?: string;
+  marriage_groom_mother_name?: string;
+  marriage_groom_address?: string;
+  marriage_groom_church_type?: 'home_parish' | 'other';
+  marriage_groom_church_name?: string;
+  marriage_groom_church_address?: string;
   witnesses?: string;
   notes?: string;
   document_path?: string;
-  status: 'active' | 'cancelled' | 'conditional';
+  status: SacramentStatus;
   conditional_date?: string;
   conditional_reason?: string;
   created_by?: number;
@@ -76,9 +92,23 @@ export interface SacramentCreateRequest {
   mother_name?: string;
   godparent1_name?: string;
   godparent2_name?: string;
+  marriage_bride_full_name?: string;
+  marriage_bride_father_name?: string;
+  marriage_bride_mother_name?: string;
+  marriage_bride_address?: string;
+  marriage_bride_church_type?: 'home_parish' | 'other';
+  marriage_bride_church_name?: string;
+  marriage_bride_church_address?: string;
+  marriage_groom_full_name?: string;
+  marriage_groom_father_name?: string;
+  marriage_groom_mother_name?: string;
+  marriage_groom_address?: string;
+  marriage_groom_church_type?: 'home_parish' | 'other';
+  marriage_groom_church_name?: string;
+  marriage_groom_church_address?: string;
   witnesses?: string;
   notes?: string;
-  status?: 'active' | 'cancelled' | 'conditional';
+  status?: SacramentStatus;
   conditional_date?: string;
   conditional_reason?: string;
 }
@@ -96,6 +126,11 @@ export interface SacramentListParams {
   search?: string;
   date_from?: string;
   date_to?: string;
+  minister_name?: string;
+  certificate_number?: string;
+  book_number?: string;
+  family_id?: string;
+  bcc_id?: string;
   sort_by?: string;
   sort_dir?: 'asc' | 'desc';
 }

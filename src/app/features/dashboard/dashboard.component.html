@@ -3,7 +3,7 @@
     <div class="header-content">
       <h1>Dashboard</h1>
       <p *ngIf="currentUser$ | async as user" class="welcome-text">
-        Welcome back, <strong>{{ user.name }}</strong>! 👋
+        Welcome back, <strong>{{ user.name }}</strong>!
       </p>
     </div>
     <div class="header-actions">
@@ -14,8 +14,12 @@
   <!-- Stats Grid -->
   <div class="stats-grid">
     <app-card *ngFor="let stat of stats" [padding]="'md'" [shadow]="true">
-      <div class="stat-card">
-        <div class="stat-icon">{{ stat.icon }}</div>
+        <div class="stat-card" 
+           [class.clickable]="stat.clickable"
+           (click)="onStatCardClick(stat)"
+           [title]="stat.clickable ? 'Click to view ' + stat.title.toLowerCase() : ''"
+           [attr.aria-label]="stat.title + ': ' + stat.value">
+        <div class="stat-icon" [innerHTML]="getStatIcon(stat.icon)"></div>
         <div class="stat-content">
           <h3 class="stat-title">{{ stat.title }}</h3>
           <div class="stat-value">{{ stat.value }}</div>
@@ -35,8 +39,8 @@
       <div class="content-col">
         <app-card title="Recent Activity" [shadow]="true">
           <div class="activity-list">
-            <div class="activity-item" *ngFor="let activity of recentActivities">
-              <div class="activity-icon" [class]="activity.type">{{ activity.icon }}</div>
+            <div class="activity-item" *ngFor="let activity of recentActivities" [attr.aria-label]="activity.title + ': ' + activity.description">
+              <div class="activity-icon" [class]="activity.type" [innerHTML]="getActivityIcon(activity.icon)"></div>
               <div class="activity-details">
                 <div class="activity-title">{{ activity.title }}</div>
                 <div class="activity-description">{{ activity.description }}</div>

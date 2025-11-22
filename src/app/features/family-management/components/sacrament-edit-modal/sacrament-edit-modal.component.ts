@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { FamilyMember } from '@core/models/family.model';
@@ -14,7 +14,7 @@ export type SacramentFormType = 'baptism' | 'first_communion' | 'confirmation' |
   templateUrl: './sacrament-edit-modal.component.html',
   styleUrls: ['./sacrament-edit-modal.component.scss']
 })
-export class SacramentEditModalComponent implements OnInit, OnDestroy {
+export class SacramentEditModalComponent implements OnInit, OnChanges, OnDestroy {
   @Input({ required: true }) familyId!: string;
   @Input({ required: true }) member!: FamilyMember;
   @Input({ required: true }) sacrament: SacramentFormType = 'baptism';
@@ -69,6 +69,7 @@ export class SacramentEditModalComponent implements OnInit, OnDestroy {
   form!: FormGroup;
   loading = false;
   error: string | null = null;
+  private reactionsInitialized = false;
 
   get isBaptism(): boolean {
     return this.sacrament === 'baptism';
@@ -88,19 +89,48 @@ export class SacramentEditModalComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.buildForm();
-    if (this.isBaptism) {
-      this.handleBaptismReactions();
+    this.initializeForm();
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    // Reset reactions if sacrament type changes (need to set up new reactions)
+    if (changes['sacrament'] && !changes['sacrament'].firstChange) {
+      this.reactionsInitialized = false;
     }
-    if (this.isMarriage) {
-      this.handleMarriageReactions();
+    
+    // Rebuild form when member or sacrament changes
+    if (changes['member'] || changes['sacrament']) {
+      this.initializeForm();
     }
-    this.applyHomeParishBindingUpdates();
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private initializeForm(): void {
+    if (!this.member) {
+      return;
+    }
+    
+    this.buildForm();
+    
+    // Only set up reactions once to avoid duplicate subscriptions
+    if (!this.reactionsInitialized) {
+      if (this.isBaptism) {
+        this.handleBaptismReactions();
+      }
+      if (this.isMarriage) {
+        this.handleMarriageReactions();
+      }
+      if (this.isFirstCommunion) {
+        this.handleFirstCommunionReactions();
+      }
+      this.reactionsInitialized = true;
+    }
+    
+    this.applyHomeParishBindingUpdates();
   }
 
   buildForm(): void {
@@ -154,7 +184,6 @@ export class SacramentEditModalComponent implements OnInit, OnDestroy {
           first_communion_description: [this.member.first_communion_description ?? null]
         });
         this.applyFirstCommunionHomeDefaults();
-        this.handleFirstCommunionReactions();
         break;
       }
       case 'confirmation':
@@ -167,17 +196,22 @@ export class SacramentEditModalComponent implements OnInit, OnDestroy {
         this.form = this.fb.group({
           marriage_date: [this.normalizeDate(this.member.marriage_date)],
           marriage_place: [this.member.marriage_place ?? null],
-          marriage_spouse_name: [this.member.marriage_spouse_name ?? null],
           marriage_bride_full_name: [this.member.marriage_bride_full_name ?? null],
+          marriage_bride_father_name: [this.member.marriage_bride_father_name ?? null],
+          marriage_bride_mother_name: [this.member.marriage_bride_mother_name ?? null],
           marriage_bride_address: [this.member.marriage_bride_address ?? null],
           marriage_bride_church_type: [this.member.marriage_bride_church_type ?? 'home_parish', Validators.required],
           marriage_bride_church_name: [this.member.marriage_bride_church_name ?? this.resolveHomeParishName(null) ?? null],
           marriage_bride_church_address: [this.member.marriage_bride_church_address ?? this.resolveHomeParishAddress(null) ?? null],
           marriage_groom_full_name: [this.member.marriage_groom_full_name ?? null],
+          marriage_groom_father_name: [this.member.marriage_groom_father_name ?? null],
+          marriage_groom_mother_name: [this.member.marriage_groom_mother_name ?? null],
           marriage_groom_address: [this.member.marriage_groom_address ?? null],
           marriage_groom_church_type: [this.member.marriage_groom_church_type ?? 'home_parish', Validators.required],
           marriage_groom_church_name: [this.member.marriage_groom_church_name ?? this.resolveHomeParishName(null) ?? null],
-          marriage_groom_church_address: [this.member.marriage_groom_church_address ?? this.resolveHomeParishAddress(null) ?? null]
+          marriage_groom_church_address: [this.member.marriage_groom_church_address ?? this.resolveHomeParishAddress(null) ?? null],
+          marriage_minister_name: [this.member.marriage_minister_name ?? null],
+          marriage_minister_title: [this.member.marriage_minister_title ?? null]
         });
         this.applyMarriageHomeDefaults('marriage_bride');
         this.applyMarriageHomeDefaults('marriage_groom');
@@ -667,8 +701,9 @@ export class SacramentEditModalComponent implements OnInit, OnDestroy {
         return {
           marriage_date: normalizeString(raw['marriage_date']),
           marriage_place: normalizeString(raw['marriage_place']),
-          marriage_spouse_name: normalizeString(raw['marriage_spouse_name']),
           marriage_bride_full_name: normalizeString(raw['marriage_bride_full_name']),
+          marriage_bride_father_name: normalizeString(raw['marriage_bride_father_name']),
+          marriage_bride_mother_name: normalizeString(raw['marriage_bride_mother_name']),
           marriage_bride_address: normalizeString(raw['marriage_bride_address']),
           marriage_bride_church_type: raw['marriage_bride_church_type'] ?? 'home_parish',
           marriage_bride_church_name: raw['marriage_bride_church_type'] === 'home_parish'
@@ -678,6 +713,8 @@ export class SacramentEditModalComponent implements OnInit, OnDestroy {
             ? (this.homeParishAddress ?? undefined)
             : normalizeString(raw['marriage_bride_church_address']),
           marriage_groom_full_name: normalizeString(raw['marriage_groom_full_name']),
+          marriage_groom_father_name: normalizeString(raw['marriage_groom_father_name']),
+          marriage_groom_mother_name: normalizeString(raw['marriage_groom_mother_name']),
           marriage_groom_address: normalizeString(raw['marriage_groom_address']),
           marriage_groom_church_type: raw['marriage_groom_church_type'] ?? 'home_parish',
           marriage_groom_church_name: raw['marriage_groom_church_type'] === 'home_parish'
@@ -685,7 +722,9 @@ export class SacramentEditModalComponent implements OnInit, OnDestroy {
             : normalizeString(raw['marriage_groom_church_name']),
           marriage_groom_church_address: raw['marriage_groom_church_type'] === 'home_parish'
             ? (this.homeParishAddress ?? undefined)
-            : normalizeString(raw['marriage_groom_church_address'])
+            : normalizeString(raw['marriage_groom_church_address']),
+          marriage_minister_name: normalizeString(raw['marriage_minister_name']),
+          marriage_minister_title: normalizeString(raw['marriage_minister_title'])
         };
     }
   }

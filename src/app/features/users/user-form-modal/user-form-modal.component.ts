@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, inject, ViewChild, ElementRef, AfterViewChecked, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { User, Role, Permission, UserRequest } from '@core/models';
@@ -6,6 +6,9 @@ import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 /**
  * UserFormModalComponent - Create/Edit User with Multi-Role Selection
@@ -28,17 +31,21 @@ import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.
   standalone: true,
   imports: [CommonModule, FormsModule, PhoneInputComponent],
   templateUrl: './user-form-modal.component.html',
-  styleUrl: './user-form-modal.component.scss'
+  styleUrl: './user-form-modal.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class UserFormModalComponent implements OnInit, OnChanges {
+export class UserFormModalComponent implements OnInit, OnChanges, AfterViewChecked, OnDestroy {
   @Input() show = false;
   @Input() user: User | null = null; // For edit mode
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<User>();
 
+  @ViewChild('modalContainer', { static: false }) modalContainerRef?: ElementRef<HTMLElement>;
+
   private usersService = inject(UsersService);
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   // Form state
   isSubmitting = false;
@@ -46,6 +53,14 @@ export class UserFormModalComponent implements OnInit, OnChanges {
   isEditMode = false;
   isEditingSelf = false;  // True when editing own account
   editRestrictionReason: string | null = null;  // Reason why editing is restricted
+  
+  // Focus management
+  private previousActiveElement: HTMLElement | null = null;
+  private focusTrapCleanup: (() => void) | null = null;
+  private modalWasOpen = false;
+  
+  // Subscription management
+  private destroy$ = new Subject<void>();
 
   // Form data
   formData = {
@@ -167,7 +182,9 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     this.loadingRoles = true;
     this.rolesError = null;
     
-    this.rolesService.getRoles({ per_page: 'all' }).subscribe({
+    this.rolesService.getRoles({ per_page: 'all' }).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe({
       next: (response) => {
         if (response.success) {
           // Filter to only show active, custom roles (tenant-specific)
@@ -176,11 +193,13 @@ export class UserFormModalComponent implements OnInit, OnChanges {
           );
         }
         this.loadingRoles = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
         console.error('Error loading roles:', error);
         this.rolesError = 'Failed to load roles. Please try again.';
         this.loadingRoles = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -337,7 +356,9 @@ export class UserFormModalComponent implements OnInit, OnChanges {
     
     if (this.isEditMode && this.user) {
       // Update existing user
-      this.usersService.updateUser(this.user.id, requestData).subscribe({
+      this.usersService.updateUser(this.user.id, requestData).pipe(
+        takeUntil(this.destroy$)
+      ).subscribe({
         next: (response) => {
           if (response.success) {
             this.toastService.success('User updated successfully');
@@ -350,6 +371,7 @@ export class UserFormModalComponent implements OnInit, OnChanges {
             }
           }
           this.isSubmitting = false;
+          this.cdr.markForCheck();
         },
         error: (error) => {
           console.error('Error updating user:', error);
@@ -358,11 +380,14 @@ export class UserFormModalComponent implements OnInit, OnChanges {
             this.toastService.error(this.errorMessage);
           }
           this.isSubmitting = false;
+          this.cdr.markForCheck();
         }
       });
     } else {
       // Create new user
-      this.usersService.createUser(requestData as UserRequest).subscribe({
+      this.usersService.createUser(requestData as UserRequest).pipe(
+        takeUntil(this.destroy$)
+      ).subscribe({
         next: (response) => {
           if (response.success) {
             this.toastService.success('User created successfully');
@@ -375,6 +400,7 @@ export class UserFormModalComponent implements OnInit, OnChanges {
             }
           }
           this.isSubmitting = false;
+          this.cdr.markForCheck();
         },
         error: (error) => {
           console.error('Error creating user:', error);
@@ -383,13 +409,58 @@ export class UserFormModalComponent implements OnInit, OnChanges {
             this.toastService.error(this.errorMessage);
           }
           this.isSubmitting = false;
+          this.cdr.markForCheck();
         }
       });
     }
   }
 
   closeModal(): void {
+    // Clean up focus trap
+    if (this.focusTrapCleanup) {
+      this.focusTrapCleanup();
+      this.focusTrapCleanup = null;
+    }
+    
     this.closed.emit();
+    
+    // Restore previous focus
+    if (this.previousActiveElement) {
+      setTimeout(() => {
+        restoreActiveElement(this.previousActiveElement);
+        this.previousActiveElement = null;
+      }, 100);
+    }
+  }
+  
+  ngAfterViewChecked(): void {
+    // Set up focus trap when modal opens
+    if (this.show && !this.modalWasOpen && this.modalContainerRef?.nativeElement) {
+      this.focusTrapCleanup = trapFocus(this.modalContainerRef.nativeElement);
+      this.modalWasOpen = true;
+    } else if (!this.show && this.modalWasOpen) {
+      if (this.focusTrapCleanup) {
+        this.focusTrapCleanup();
+        this.focusTrapCleanup = null;
+      }
+      this.modalWasOpen = false;
+    }
+  }
+  
+  ngOnDestroy(): void {
+    // Clean up subscriptions
+    this.destroy$.next();
+    this.destroy$.complete();
+    
+    // Clean up focus trap
+    if (this.focusTrapCleanup) {
+      this.focusTrapCleanup();
+    }
+    
+    // Restore previous focus
+    if (this.previousActiveElement) {
+      restoreActiveElement(this.previousActiveElement);
+    }
   }
 
   private resetForm(): void {

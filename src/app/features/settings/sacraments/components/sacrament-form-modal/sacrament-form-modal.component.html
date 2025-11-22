@@ -32,7 +32,7 @@
             <div class="form-group">
               <label class="required">Sacrament Type</label>
               <select 
-                [(ngModel)]="formData.sacrament_type_id" 
+                [(ngModel)]="formData['sacrament_type_id']" 
                 (ngModelChange)="onSacramentTypeChange()"
                 name="sacrament_type_id" 
                 class="form-control" 
@@ -48,7 +48,7 @@
               <label class="required">Date Administered</label>
               <input
                 type="date"
-                [(ngModel)]="formData.date_administered"
+                [(ngModel)]="formData['date_administered']"
                 name="date_administered"
                 class="form-control"
                 required>
@@ -58,7 +58,7 @@
               <label>Place Administered</label>
               <input
                 type="text"
-                [(ngModel)]="formData.place_administered"
+                [(ngModel)]="formData['place_administered']"
                 name="place_administered"
                 class="form-control"
                 placeholder="Church name or location">
@@ -66,7 +66,7 @@
 
             <div class="form-group">
               <label>Status</label>
-              <select [(ngModel)]="formData.status" name="status" class="form-control">
+              <select [(ngModel)]="formData['status']" name="status" class="form-control">
                 <option value="active">Active</option>
                 <option value="cancelled">Cancelled</option>
                 <option value="conditional">Conditional</option>
@@ -83,7 +83,7 @@
               <label class="required">Full Name</label>
               <input
                 type="text"
-                [(ngModel)]="formData.recipient_name"
+                [(ngModel)]="formData['recipient_name']"
                 name="recipient_name"
                 class="form-control"
                 placeholder="Enter full name"
@@ -94,7 +94,7 @@
               <label>Date of Birth</label>
               <input
                 type="date"
-                [(ngModel)]="formData.recipient_birth_date"
+                [(ngModel)]="formData['recipient_birth_date']"
                 name="recipient_birth_date"
                 class="form-control">
             </div>
@@ -103,7 +103,7 @@
               <label>Place of Birth</label>
               <input
                 type="text"
-                [(ngModel)]="formData.recipient_birth_place"
+                [(ngModel)]="formData['recipient_birth_place']"
                 name="recipient_birth_place"
                 class="form-control"
                 placeholder="City, State">
@@ -112,7 +112,7 @@
             <div class="form-group">
               <label>Gender</label>
               <select
-                [(ngModel)]="formData.recipient_gender"
+                [(ngModel)]="formData['recipient_gender']"
                 name="recipient_gender"
                 class="form-control">
                 <option [ngValue]="undefined">Select gender...</option>
@@ -231,7 +231,7 @@
               <label>Primary Godparent</label>
               <input
                 type="text"
-                [(ngModel)]="formData.godparent1_name"
+                [(ngModel)]="formData['godparent1_name']"
                 name="godparent1_name"
                 class="form-control"
                 placeholder="Enter primary godparent's name">
@@ -241,7 +241,7 @@
               <label>Secondary Godparent</label>
               <input
                 type="text"
-                [(ngModel)]="formData.godparent2_name"
+                [(ngModel)]="formData['godparent2_name']"
                 name="godparent2_name"
                 class="form-control"
                 placeholder="Enter secondary godparent's name">
@@ -257,7 +257,7 @@
               <label>Minister Name</label>
               <input
                 type="text"
-                [(ngModel)]="formData.minister_name"
+                [(ngModel)]="formData['minister_name']"
                 name="minister_name"
                 class="form-control"
                 placeholder="Rev. John Doe">
@@ -267,7 +267,7 @@
               <label>Minister Title</label>
               <input
                 type="text"
-                [(ngModel)]="formData.minister_title"
+                [(ngModel)]="formData['minister_title']"
                 name="minister_title"
                 class="form-control"
                 placeholder="Parish Priest, Bishop, etc.">
@@ -283,7 +283,7 @@
               <label>Father's Name</label>
               <input
                 type="text"
-                [(ngModel)]="formData.father_name"
+                [(ngModel)]="formData['father_name']"
                 name="father_name"
                 class="form-control"
                 placeholder="Enter father's full name">
@@ -293,7 +293,7 @@
               <label>Mother's Name</label>
               <input
                 type="text"
-                [(ngModel)]="formData.mother_name"
+                [(ngModel)]="formData['mother_name']"
                 name="mother_name"
                 class="form-control"
                 placeholder="Enter mother's full name">
@@ -309,7 +309,7 @@
               <label>Godparent / Sponsor 1</label>
               <input
                 type="text"
-                [(ngModel)]="formData.godparent1_name"
+                [(ngModel)]="formData['godparent1_name']"
                 name="godparent1_name"
                 class="form-control"
                 placeholder="Enter first godparent's name">
@@ -319,7 +319,7 @@
               <label>Godparent / Sponsor 2</label>
               <input
                 type="text"
-                [(ngModel)]="formData.godparent2_name"
+                [(ngModel)]="formData['godparent2_name']"
                 name="godparent2_name"
                 class="form-control"
                 placeholder="Enter second godparent's name">
@@ -334,7 +334,7 @@
             <div class="form-group full-width">
               <label>Witnesses</label>
               <textarea
-                [(ngModel)]="formData.witnesses"
+                [(ngModel)]="formData['witnesses']"
                 name="witnesses"
                 class="form-control"
                 rows="2"
@@ -351,7 +351,7 @@
               <label>Certificate Number</label>
               <input
                 type="text"
-                [(ngModel)]="formData.certificate_number"
+                [(ngModel)]="formData['certificate_number']"
                 name="certificate_number"
                 class="form-control"
                 placeholder="e.g., CERT-2024-001">
@@ -361,7 +361,7 @@
               <label>Book Number</label>
               <input
                 type="text"
-                [(ngModel)]="formData.book_number"
+                [(ngModel)]="formData['book_number']"
                 name="book_number"
                 class="form-control"
                 placeholder="e.g., BOOK-5">
@@ -371,7 +371,7 @@
               <label>Page Number</label>
               <input
                 type="text"
-                [(ngModel)]="formData.page_number"
+                [(ngModel)]="formData['page_number']"
                 name="page_number"
                 class="form-control"
                 placeholder="e.g., 123">
@@ -386,7 +386,7 @@
             <div class="form-group full-width">
               <label>Notes</label>
               <textarea
-                [(ngModel)]="formData.notes"
+                [(ngModel)]="formData['notes']"
                 name="notes"
                 class="form-control"
                 rows="3"

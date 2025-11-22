@@ -11,10 +11,11 @@
  * - Click outside to cancel
  */
 
-import { Component, EventEmitter, Input, Output, OnInit, OnDestroy } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 export interface ConfirmationResult {
   confirmed: boolean;
@@ -48,7 +49,7 @@ export interface ConfirmationResult {
     ])
   ]
 })
-export class ConfirmationModalComponent implements OnInit, OnDestroy {
+export class ConfirmationModalComponent implements OnInit, OnDestroy, AfterViewChecked {
   @Input() show = false;
   @Input() title = 'Confirm Action';
   @Input() message = 'Are you sure you want to proceed?';
@@ -64,19 +65,59 @@ export class ConfirmationModalComponent implements OnInit, OnDestroy {
   @Output() cancelled = new EventEmitter<void>();
   @Output() closed = new EventEmitter<void>();
 
+  @ViewChild('modalContainer', { static: false }) modalContainerRef?: ElementRef<HTMLElement>;
+
   description = '';
   isSubmitting = false;
+  
+  // Focus management
+  private previousActiveElement: HTMLElement | null = null;
+  private focusTrapCleanup: (() => void) | null = null;
+  private modalWasOpen = false;
 
   ngOnInit(): void {
     // Add keyboard event listeners when modal opens
     if (this.show) {
       document.addEventListener('keydown', this.handleKeyDown);
+      this.previousActiveElement = saveActiveElement();
     }
   }
 
   ngOnDestroy(): void {
     // Clean up event listeners
     document.removeEventListener('keydown', this.handleKeyDown);
+    
+    // Clean up focus trap
+    if (this.focusTrapCleanup) {
+      this.focusTrapCleanup();
+    }
+    
+    // Restore previous focus
+    if (this.previousActiveElement) {
+      restoreActiveElement(this.previousActiveElement);
+    }
+  }
+  
+  ngAfterViewChecked(): void {
+    // Set up focus trap when modal opens
+    if (this.show && !this.modalWasOpen && this.modalContainerRef?.nativeElement) {
+      this.focusTrapCleanup = trapFocus(this.modalContainerRef.nativeElement);
+      this.modalWasOpen = true;
+    } else if (!this.show && this.modalWasOpen) {
+      if (this.focusTrapCleanup) {
+        this.focusTrapCleanup();
+        this.focusTrapCleanup = null;
+      }
+      this.modalWasOpen = false;
+      
+      // Restore previous focus
+      if (this.previousActiveElement) {
+        setTimeout(() => {
+          restoreActiveElement(this.previousActiveElement);
+          this.previousActiveElement = null;
+        }, 100);
+      }
+    }
   }
 
   /**
@@ -120,6 +161,20 @@ export class ConfirmationModalComponent implements OnInit, OnDestroy {
 
     this.confirmed.emit(result);
     this.reset();
+    
+    // Clean up focus trap
+    if (this.focusTrapCleanup) {
+      this.focusTrapCleanup();
+      this.focusTrapCleanup = null;
+    }
+    
+    // Restore previous focus
+    if (this.previousActiveElement) {
+      setTimeout(() => {
+        restoreActiveElement(this.previousActiveElement);
+        this.previousActiveElement = null;
+      }, 100);
+    }
   }
 
   /**

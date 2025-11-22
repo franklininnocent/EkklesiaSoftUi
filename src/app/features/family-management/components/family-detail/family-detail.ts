@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FamilyService } from '../../../../core/services/family.service';
@@ -29,6 +29,7 @@ const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
   imports: [CommonModule, FamilyFormComponent, FamilyMemberFormModalComponent, SacramentEditModalComponent],
   templateUrl: './family-detail.html',
   styleUrls: ['./family-detail.scss'],
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FamilyDetail implements OnInit, OnDestroy {
   family: Family | null = null;
@@ -97,25 +98,32 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   private initializeHomeParishContext(): void {
-    this.store.select(selectCurrentTenant).pipe(takeUntil(this.destroy$)).subscribe((tenant) => {
-      this.currentTenant = tenant;
-      if (tenant) {
-        this.homeParishName = tenant.name || this.homeParishName;
-        this.homeParishAddress = this.composeTenantAddress(tenant) || this.homeParishAddress;
-        this.homeParishPriest = tenant.pastor_name || this.homeParishPriest;
-      }
-    });
-
-    this.churchProfileService.getProfile().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          this.applyChurchProfileContext(response.data);
+    this.store.select(selectCurrentTenant)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((tenant) => {
+        this.currentTenant = tenant;
+        if (tenant) {
+          this.homeParishName = tenant.name || this.homeParishName;
+          this.homeParishAddress = this.composeTenantAddress(tenant) || this.homeParishAddress;
+          this.homeParishPriest = tenant.pastor_name || this.homeParishPriest;
         }
-      },
-      error: () => {
-        // Optional context; ignore failure
-      }
-    });
+        this.cdr.markForCheck();
+      });
+
+    this.churchProfileService.getProfile()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.applyChurchProfileContext(response.data);
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          // Optional context; ignore failure
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   private loadSacramentTypes(): void {
@@ -137,12 +145,15 @@ export class FamilyDetail implements OnInit, OnDestroy {
                 return (a.name || '').localeCompare(b.name || '');
               });
             this.sacramentTypesDisplay = filtered.length > 0 ? filtered : [...DEFAULT_SACRAMENT_TYPES];
+            this.cdr.markForCheck();
             return;
           }
           this.sacramentTypesDisplay = [...DEFAULT_SACRAMENT_TYPES];
+          this.cdr.markForCheck();
         },
         error: () => {
           this.sacramentTypesDisplay = [...DEFAULT_SACRAMENT_TYPES];
+          this.cdr.markForCheck();
         }
       });
   }
@@ -339,41 +350,47 @@ export class FamilyDetail implements OnInit, OnDestroy {
 
   loadFamily(id: string): void {
     this.loading = true;
-    this.familyService.getFamily(id).subscribe({
-      next: (res) => {
-        if (res.success && res.data) {
-          this.error = null;
-          this.family = res.data;
+    this.error = null;
+    this.cdr.markForCheck();
+    
+    this.familyService.getFamily(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          if (res.success && res.data) {
+            this.error = null;
+            this.family = res.data;
+            this.headSacramentsExpanded = false;
+            this.expandedMemberIndexes.clear();
+
+            if (!this.homeParishName) {
+              this.homeParishName = this.currentTenant?.name || this.homeParishName;
+            }
+
+            if (!this.homeParishAddress) {
+              this.homeParishAddress = this.composeTenantAddress(this.currentTenant ?? ({} as Tenant)) || this.homeParishAddress;
+            }
+
+            if (!this.homeParishPriest) {
+              this.homeParishPriest = this.currentTenant?.pastor_name || this.homeParishPriest;
+            }
+          } else {
+            this.family = null;
+            this.error = (res.message && res.message.trim().length > 0) ? res.message : 'Failed to load family';
+          }
           this.loading = false;
-          this.headSacramentsExpanded = false;
-          this.expandedMemberIndexes.clear();
-
-          if (!this.homeParishName) {
-            this.homeParishName = this.currentTenant?.name || this.homeParishName;
-          }
-
-          if (!this.homeParishAddress) {
-            this.homeParishAddress = this.composeTenantAddress(this.currentTenant ?? ({} as Tenant)) || this.homeParishAddress;
-          }
-
-          if (!this.homeParishPriest) {
-            this.homeParishPriest = this.currentTenant?.pastor_name || this.homeParishPriest;
-          }
-        } else {
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
           this.family = null;
-          this.error = (res.message && res.message.trim().length > 0) ? res.message : 'Failed to load family';
+          const apiMessage = err?.error?.message;
+          this.error = (typeof apiMessage === 'string' && apiMessage.trim().length > 0)
+            ? apiMessage
+            : 'Failed to load family';
           this.loading = false;
+          this.cdr.markForCheck();
         }
-      },
-      error: (err) => {
-        this.family = null;
-        const apiMessage = err?.error?.message;
-        this.error = (typeof apiMessage === 'string' && apiMessage.trim().length > 0)
-          ? apiMessage
-          : 'Failed to load family';
-        this.loading = false;
-      }
-    });
+      });
   }
 
   openEdit(): void {
@@ -1194,39 +1211,43 @@ export class FamilyDetail implements OnInit, OnDestroy {
         payloadKeys: Object.keys(payload)
       });
       
-      this.familyService.addFamilyMember(familyId, payload).subscribe({
-        next: (res) => {
-          if (res.success) {
-            this.toastService.success('Member added successfully', 'Success', 4000);
-            this.showMemberModal = false;
-            this.memberToEditIndex = null;
-            this.memberToEdit = null;
-            this.isHeadMemberMode = false;
-            // Reload family to get updated data from server
-            if (this.family?.id) {
-              this.loadFamily(String(this.family.id));
+      this.familyService.addFamilyMember(familyId, payload)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (res) => {
+            if (res.success) {
+              this.toastService.success('Member added successfully', 'Success', 4000);
+              this.showMemberModal = false;
+              this.memberToEditIndex = null;
+              this.memberToEdit = null;
+              this.isHeadMemberMode = false;
+              // Reload family to get updated data from server
+              if (this.family?.id) {
+                this.loadFamily(String(this.family.id));
+              }
+            } else {
+              this.toastService.error(res.message || 'Failed to add member', 'Error', 5000);
             }
-          } else {
-            this.toastService.error(res.message || 'Failed to add member', 'Error', 5000);
-          }
-        },
-        error: (err) => {
-          console.error('Error adding family member:', err);
-          let errorMessage = 'Failed to add member';
-          
-          if (err?.error) {
-            if (err.error.errors) {
-              // Validation errors
-              const validationErrors = Object.values(err.error.errors).flat();
-              errorMessage = validationErrors.join(', ') || errorMessage;
-            } else if (err.error.message) {
-              errorMessage = err.error.message;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            console.error('Error adding family member:', err);
+            let errorMessage = 'Failed to add member';
+            
+            if (err?.error) {
+              if (err.error.errors) {
+                // Validation errors
+                const validationErrors = Object.values(err.error.errors).flat();
+                errorMessage = validationErrors.join(', ') || errorMessage;
+              } else if (err.error.message) {
+                errorMessage = err.error.message;
+              }
             }
+            
+            this.toastService.error(errorMessage, 'Error', 6000);
+            this.cdr.markForCheck();
           }
-          
-          this.toastService.error(errorMessage, 'Error', 6000);
-        }
-      });
+        });
       return;
     }
     
@@ -1284,7 +1305,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
       payloadStatus: payload.status
     });
     
-    this.familyService.updateFamilyMember(familyId, memberId, payload).subscribe({
+    this.familyService.updateFamilyMember(familyId, memberId, payload)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
         next: (res) => {
           if (res.success) {
             this.toastService.success('Member updated successfully', 'Success', 4000);
@@ -1299,24 +1322,26 @@ export class FamilyDetail implements OnInit, OnDestroy {
           } else {
             this.toastService.error(res.message || 'Failed to update member', 'Error', 5000);
           }
+          this.cdr.markForCheck();
         },
-      error: (err) => {
-        console.error('Error updating family member:', err);
-        let errorMessage = 'Failed to update member';
-        
-        if (err?.error) {
-          if (err.error.errors) {
-            // Validation errors
-            const validationErrors = Object.values(err.error.errors).flat();
-            errorMessage = validationErrors.join(', ') || errorMessage;
-          } else if (err.error.message) {
-            errorMessage = err.error.message;
+        error: (err) => {
+          console.error('Error updating family member:', err);
+          let errorMessage = 'Failed to update member';
+          
+          if (err?.error) {
+            if (err.error.errors) {
+              // Validation errors
+              const validationErrors = Object.values(err.error.errors).flat();
+              errorMessage = validationErrors.join(', ') || errorMessage;
+            } else if (err.error.message) {
+              errorMessage = err.error.message;
+            }
           }
+          
+          this.toastService.error(errorMessage, 'Error', 6000);
+          this.cdr.markForCheck();
         }
-        
-        this.toastService.error(errorMessage, 'Error', 6000);
-      }
-    });
+      });
   }
 
   onMemberModalCancel(): void {
@@ -1367,31 +1392,35 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
 
-    this.familyService.uploadProfileImage(this.family.id, file).subscribe({
-      next: (res) => {
-        if (res.success && res.data) {
-          this.family = res.data;
-          this.toastService.success('Profile image uploaded successfully', 'Success', 4000);
-        } else {
-          this.toastService.error(res.message || 'Failed to upload image', 'Error', 5000);
-        }
-      },
-      error: (err) => {
-        console.error('Error uploading profile image:', err);
-        let errorMessage = 'Failed to upload image';
-        
-        if (err?.error) {
-          if (err.error.errors) {
-            const validationErrors = Object.values(err.error.errors).flat();
-            errorMessage = validationErrors.join(', ') || errorMessage;
-          } else if (err.error.message) {
-            errorMessage = err.error.message;
+    this.familyService.uploadProfileImage(this.family.id, file)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          if (res.success && res.data) {
+            this.family = res.data;
+            this.toastService.success('Profile image uploaded successfully', 'Success', 4000);
+          } else {
+            this.toastService.error(res.message || 'Failed to upload image', 'Error', 5000);
           }
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error uploading profile image:', err);
+          let errorMessage = 'Failed to upload image';
+          
+          if (err?.error) {
+            if (err.error.errors) {
+              const validationErrors = Object.values(err.error.errors).flat();
+              errorMessage = validationErrors.join(', ') || errorMessage;
+            } else if (err.error.message) {
+              errorMessage = err.error.message;
+            }
+          }
+          
+          this.toastService.error(errorMessage, 'Error', 6000);
+          this.cdr.markForCheck();
         }
-        
-        this.toastService.error(errorMessage, 'Error', 6000);
-      }
-    });
+      });
   }
 
   /**
@@ -1407,24 +1436,28 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
 
-    this.familyService.deleteProfileImage(this.family.id).subscribe({
-      next: (res) => {
-        if (res.success) {
-          // Update family to remove profile image URL
-          if (this.family) {
-            this.family.profile_image_url = undefined;
-            this.family.profile_image_full_url = undefined;
+    this.familyService.deleteProfileImage(this.family.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            // Update family to remove profile image URL
+            if (this.family) {
+              this.family.profile_image_url = undefined;
+              this.family.profile_image_full_url = undefined;
+            }
+            this.toastService.success('Profile image deleted successfully', 'Success', 4000);
+          } else {
+            this.toastService.error(res.message || 'Failed to delete image', 'Error', 5000);
           }
-          this.toastService.success('Profile image deleted successfully', 'Success', 4000);
-        } else {
-          this.toastService.error(res.message || 'Failed to delete image', 'Error', 5000);
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error deleting profile image:', err);
+          this.toastService.error('Failed to delete image', 'Error', 6000);
+          this.cdr.markForCheck();
         }
-      },
-      error: (err) => {
-        console.error('Error deleting profile image:', err);
-        this.toastService.error('Failed to delete image', 'Error', 6000);
-      }
-    });
+      });
   }
 
   /**
@@ -1478,32 +1511,36 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
 
-    this.familyService.uploadHeadProfileImage(this.family.id, file).subscribe({
-      next: (res) => {
-        if (res.success && res.data) {
-          this.family = res.data;
-          this.editingHeadImage = false; // Close editing mode
-          this.toastService.success('Head profile image uploaded successfully', 'Success', 4000);
-        } else {
-          this.toastService.error(res.message || 'Failed to upload image', 'Error', 5000);
-        }
-      },
-      error: (err) => {
-        console.error('Error uploading head profile image:', err);
-        let errorMessage = 'Failed to upload image';
-        
-        if (err?.error) {
-          if (err.error.errors) {
-            const validationErrors = Object.values(err.error.errors).flat();
-            errorMessage = validationErrors.join(', ') || errorMessage;
-          } else if (err.error.message) {
-            errorMessage = err.error.message;
+    this.familyService.uploadHeadProfileImage(this.family.id, file)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          if (res.success && res.data) {
+            this.family = res.data;
+            this.editingHeadImage = false; // Close editing mode
+            this.toastService.success('Head profile image uploaded successfully', 'Success', 4000);
+          } else {
+            this.toastService.error(res.message || 'Failed to upload image', 'Error', 5000);
           }
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error uploading head profile image:', err);
+          let errorMessage = 'Failed to upload image';
+          
+          if (err?.error) {
+            if (err.error.errors) {
+              const validationErrors = Object.values(err.error.errors).flat();
+              errorMessage = validationErrors.join(', ') || errorMessage;
+            } else if (err.error.message) {
+              errorMessage = err.error.message;
+            }
+          }
+          
+          this.toastService.error(errorMessage, 'Error', 6000);
+          this.cdr.markForCheck();
         }
-        
-        this.toastService.error(errorMessage, 'Error', 6000);
-      }
-    });
+      });
   }
 
   /**
@@ -1519,25 +1556,29 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
 
-    this.familyService.deleteHeadProfileImage(this.family.id).subscribe({
-      next: (res) => {
-        if (res.success) {
-          // Update family to remove profile image URL
-          if (this.family) {
-            this.family.head_profile_image_url = undefined;
-            this.family.head_profile_image_full_url = undefined;
+    this.familyService.deleteHeadProfileImage(this.family.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (res) => {
+          if (res.success) {
+            // Update family to remove profile image URL
+            if (this.family) {
+              this.family.head_profile_image_url = undefined;
+              this.family.head_profile_image_full_url = undefined;
+            }
+            this.editingHeadImage = false; // Close editing mode
+            this.toastService.success('Head profile image deleted successfully', 'Success', 4000);
+          } else {
+            this.toastService.error(res.message || 'Failed to delete image', 'Error', 5000);
           }
-          this.editingHeadImage = false; // Close editing mode
-          this.toastService.success('Head profile image deleted successfully', 'Success', 4000);
-        } else {
-          this.toastService.error(res.message || 'Failed to delete image', 'Error', 5000);
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error deleting head profile image:', err);
+          this.toastService.error('Failed to delete image', 'Error', 6000);
+          this.cdr.markForCheck();
         }
-      },
-      error: (err) => {
-        console.error('Error deleting head profile image:', err);
-        this.toastService.error('Failed to delete image', 'Error', 6000);
-      }
-    });
+      });
   }
 
   /**
