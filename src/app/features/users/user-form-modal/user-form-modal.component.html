@@ -279,37 +279,30 @@
 
     <!-- Modal Footer -->
     <div class="modal-footer">
-      <button
-        type="button"
-        class="btn-cancel"
-        (click)="closeModal()"
+      <app-button
+        variant="cancel"
+        (clicked)="closeModal()"
         [disabled]="isSubmitting"
-        title="Cancel and close"
+        ariaLabel="Cancel and close"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
         </svg>
         <span>Cancel</span>
-      </button>
-      <button
+      </app-button>
+      <app-button
         type="submit"
-        class="btn-save"
-        (click)="onSubmit()"
-        [disabled]="isSubmitting"
-        [title]="isEditMode ? 'Update user' : 'Create user'"
+        variant="save"
+        (clicked)="onSubmit()"
+        [loading]="isSubmitting"
+        [ariaLabel]="isEditMode ? 'Update user' : 'Create user'"
       >
-        <span *ngIf="!isSubmitting">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          <span>Submit</span>
-        </span>
-        <span *ngIf="isSubmitting" class="btn-loading">
-          <div class="spinner-small"></div>
-          <span>Submitting...</span>
-        </span>
-      </button>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span>Submit</span>
+      </app-button>
     </div>
   </div>
 </div>

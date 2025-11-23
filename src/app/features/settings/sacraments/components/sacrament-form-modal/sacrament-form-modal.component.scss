@@ -455,6 +455,50 @@
   display: block;
 }
 
+// Parent selection mode toggle
+.parent-selection-mode-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem 1.5rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+
+  .toggle-label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    color: #0f172a;
+    font-weight: 600;
+
+    input[type="radio"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--primary-color, #4f46e5);
+      cursor: pointer;
+    }
+
+    &:hover {
+      color: var(--primary-color, #4f46e5);
+    }
+  }
+}
+
+.required-indicator {
+  color: #ef4444;
+  font-weight: 600;
+  margin-left: 0.25rem;
+}
+
+.input-error {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+}
+
 // Animations
 @keyframes fadeIn {
   from { opacity: 0; }

@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { SacramentService } from '../../services/sacrament.service';
 import { Sacrament, SacramentType, SacramentListParams, SacramentListResponse } from '../../models/sacrament.model';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
@@ -15,7 +16,7 @@ import { SacramentStatus, SACRAMENT_STATUS_OPTIONS, PAGINATION_DEFAULTS } from '
 import { handleApiError } from '../../utils/error-handler.util';
 import { SacramentFormModalComponent } from '../sacrament-form-modal/sacrament-form-modal.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
-import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PaginationComponent, ButtonComponent } from '@shared/components';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 @Component({
@@ -26,7 +27,8 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     FormsModule, 
     SacramentFormModalComponent,
     AdvancedSearchPanelComponent,
-    PaginationComponent
+    PaginationComponent,
+    ButtonComponent
   ],
   templateUrl: './sacrament-list.component.html',
   styleUrl: './sacrament-list.component.scss',
@@ -107,8 +109,16 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     private router: Router,
     private store: Store<AppState>,
     private datePipe: DatePipe,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private authService: AuthService
   ) {}
+  
+  /**
+   * Check if current user is Tenant Admin
+   */
+  get isTenantAdmin(): boolean {
+    return this.authService.isTenantAdmin();
+  }
 
   ngOnInit(): void {
     this.initializeSearchFields();
@@ -458,6 +468,12 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Show delete confirmation
    */
   onDeleteSacrament(sacrament: Sacrament): void {
+    // Check if user is Tenant Admin
+    if (!this.isTenantAdmin) {
+      this.toastService.error('Only Tenant Administrators can delete sacrament records.', 'Permission Denied', 5000);
+      return;
+    }
+    
     this.sacramentToDelete = sacrament;
     this.showDeleteModal = true;
   }

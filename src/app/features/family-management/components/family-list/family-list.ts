@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angul
 import { Router } from '@angular/router';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { FamilyService } from '../../../../core/services/family.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { Family, BCC, FamilyStatistics, FamilyMember } from '../../../../core/models/family.model';
@@ -63,7 +64,8 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     private bccService: BCCService,
     private fb: FormBuilder,
     private router: Router,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private authService: AuthService
   ) {
     this.filterForm = this.fb.group({
       search: [''],
@@ -237,15 +239,23 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.error = null;
 
-    const filters = {
-      ...this.filterForm.value,
+    const formValue = this.filterForm.value;
+    const filters: any = {
       page: this.currentPage,
       per_page: this.perPage
     };
 
+    // Extract form values properly (handle arrays from form controls)
+    if (formValue.search) filters.search = Array.isArray(formValue.search) ? formValue.search[0] : formValue.search;
+    if (formValue.status) filters.status = Array.isArray(formValue.status) ? formValue.status[0] : formValue.status;
+    if (formValue.bcc_id) filters.bcc_id = Array.isArray(formValue.bcc_id) ? formValue.bcc_id[0] : formValue.bcc_id;
+    if (formValue.city) filters.city = Array.isArray(formValue.city) ? formValue.city[0] : formValue.city;
+    if (formValue.sort_by) filters.sort_by = Array.isArray(formValue.sort_by) ? formValue.sort_by[0] : formValue.sort_by;
+    if (formValue.sort_order) filters.sort_order = Array.isArray(formValue.sort_order) ? formValue.sort_order[0] : formValue.sort_order;
+
     // Remove empty filters
     Object.keys(filters).forEach(key => {
-      if (filters[key] === '' || filters[key] === null) {
+      if (filters[key] === '' || filters[key] === null || filters[key] === undefined) {
         delete filters[key];
       }
     });
@@ -255,13 +265,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.families = response.data;
-          // Ensure Active records appear first on the list (client-side safeguard)
-          this.families.sort((a, b) => {
-            const aActive = a.status === 'active' ? 1 : 0;
-            const bActive = b.status === 'active' ? 1 : 0;
-            if (bActive !== aActive) return bActive - aActive;
-            return 0;
-          });
+          // Don't override backend sorting - backend handles sorting
           this.currentPage = response.current_page;
           this.totalPages = response.last_page;
           this.totalRecords = response.total;
@@ -453,8 +457,12 @@ export class FamilyListComponent implements OnInit, OnDestroy {
    * Sort by column
    */
   sortBy(column: string): void {
-    const currentSort = this.filterForm.get('sort_by')?.value;
-    const currentOrder = this.filterForm.get('sort_order')?.value;
+    const currentSortValue = this.filterForm.get('sort_by')?.value;
+    const currentOrderValue = this.filterForm.get('sort_order')?.value;
+    
+    // Handle array values from form controls
+    const currentSort = Array.isArray(currentSortValue) ? currentSortValue[0] : currentSortValue;
+    const currentOrder = Array.isArray(currentOrderValue) ? currentOrderValue[0] : currentOrderValue;
 
     if (currentSort === column) {
       // Toggle order
@@ -469,6 +477,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       });
     }
 
+    this.currentPage = 1; // Reset to first page when sorting
     this.loadFamilies();
   }
 
@@ -476,8 +485,12 @@ export class FamilyListComponent implements OnInit, OnDestroy {
    * Get sort icon for column
    */
   getSortIcon(column: string): string {
-    const currentSort = this.filterForm.get('sort_by')?.value;
-    const currentOrder = this.filterForm.get('sort_order')?.value;
+    const currentSortValue = this.filterForm.get('sort_by')?.value;
+    const currentOrderValue = this.filterForm.get('sort_order')?.value;
+    
+    // Handle array values from form controls
+    const currentSort = Array.isArray(currentSortValue) ? currentSortValue[0] : currentSortValue;
+    const currentOrder = Array.isArray(currentOrderValue) ? currentOrderValue[0] : currentOrderValue;
 
     if (currentSort !== column) return '↕';
     return currentOrder === 'asc' ? '↑' : '↓';
@@ -499,34 +512,64 @@ export class FamilyListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Delete family
-   */
-  deleteFamily(family: Family): void {
-    if (confirm(`Are you sure you want to delete "${family.family_name}"?`)) {
-      this.familyService.deleteFamily(family.id)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.loadFamilies();
-            this.loadStatistics();
-            this.toastService.success('Family deleted successfully', 'Success');
-            this.cdr.markForCheck();
-          },
-          error: (error) => {
-            this.toastService.error('Failed to delete family', 'Error');
-            console.error('Error deleting family:', error);
-            this.cdr.markForCheck();
-          }
-        });
-    }
-  }
-
-  /**
    * Create new family
    */
   createFamily(): void {
     this.selectedFamily = null;
     this.showForm = true;
+  }
+
+  /**
+   * Check if current user is Tenant Admin
+   */
+  get isTenantAdmin(): boolean {
+    return this.authService.isTenantAdmin();
+  }
+
+  /**
+   * Delete a family (only for Tenant Admins)
+   */
+  deleteFamily(family: Family): void {
+    // Check if user is Tenant Admin
+    if (!this.isTenantAdmin) {
+      this.toastService.error('Only Tenant Administrators can delete families.', 'Permission Denied', 5000);
+      return;
+    }
+
+    // Confirmation dialog
+    const familyName = family.family_name || family.family_code || 'this family';
+    const memberCount = family.members?.length || 0;
+    const warningMessage = memberCount > 0 
+      ? `Are you sure you want to delete ${familyName}? This will also delete ${memberCount} member(s) associated with this family. This action cannot be undone.`
+      : `Are you sure you want to delete ${familyName}? This action cannot be undone.`;
+
+    if (!confirm(warningMessage)) {
+      return;
+    }
+
+    this.loading = true;
+    this.cdr.markForCheck();
+
+    this.familyService.deleteFamily(family.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.toastService.success('Family deleted successfully', 'Success', 4000);
+            this.loadFamilies();
+          } else {
+            this.toastService.error(response.message || 'Failed to delete family', 'Error', 5000);
+          }
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error deleting family:', err);
+          this.toastService.error(err.error?.message || 'Failed to delete family', 'Error', 6000);
+          this.loading = false;
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   /**

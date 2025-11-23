@@ -23,12 +23,12 @@
           ✕
         </button>
       </div>
-      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+      <app-button variant="filter" (clicked)="showAdvancedSearch = true" [class.active]="showAdvancedSearch">
         <span class="btn-icon">🔍</span>
         Filters
         <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
-      </button>
-      <button class="btn btn-primary" (click)="onCreateSacrament()">
+      </app-button>
+      <button class="btn btn-primary" (click)="onCreateSacrament()" type="button" aria-label="Create new sacrament">
         <span class="btn-icon">➕</span>
       </button>
     </div>
@@ -89,24 +89,24 @@
       <span class="selected-count">{{ selectedSacraments.size }} selected</span>
     </div>
     <div class="bulk-actions-buttons">
-      <button class="btn btn-secondary btn-sm" (click)="onBulkStatusUpdate('active')" title="Set status to Active">
+      <app-button variant="secondary" size="sm" (clicked)="onBulkStatusUpdate('active')" ariaLabel="Set status to Active">
         Set Active
-      </button>
-      <button class="btn btn-secondary btn-sm" (click)="onBulkStatusUpdate('cancelled')" title="Set status to Cancelled">
+      </app-button>
+      <app-button variant="secondary" size="sm" (clicked)="onBulkStatusUpdate('cancelled')" ariaLabel="Set status to Cancelled">
         Set Cancelled
-      </button>
-      <button class="btn btn-secondary btn-sm" (click)="onBulkStatusUpdate('conditional')" title="Set status to Conditional">
+      </app-button>
+      <app-button variant="secondary" size="sm" (clicked)="onBulkStatusUpdate('conditional')" ariaLabel="Set status to Conditional">
         Set Conditional
-      </button>
-      <button class="btn btn-secondary btn-sm" (click)="onBulkExport()" title="Export selected">
+      </app-button>
+      <app-button variant="export" size="sm" (clicked)="onBulkExport()" ariaLabel="Export selected">
         Export Selected
-      </button>
-      <button class="btn btn-danger btn-sm" (click)="onBulkDelete()" title="Delete selected">
+      </app-button>
+      <app-button variant="delete" size="sm" (clicked)="onBulkDelete()" ariaLabel="Delete selected">
         Delete Selected
-      </button>
-      <button class="btn btn-outline btn-sm" (click)="clearSelection()" title="Clear selection">
+      </app-button>
+      <app-button variant="secondary" size="sm" (clicked)="clearSelection()" ariaLabel="Clear selection">
         Clear Selection
-      </button>
+      </app-button>
     </div>
   </div>
 
@@ -195,14 +195,6 @@
               title="Select this sacrament">
           </td>
           <td class="name-cell first-column-with-status">
-            <span 
-              class="status-indicator-dot"
-              [class.status-indicator-dot-active]="sacrament.status === 'active'"
-              [class.status-indicator-dot-inactive]="sacrament.status !== 'active'"
-              [attr.aria-label]="sacrament.status | titlecase"
-              [title]="sacrament.status | titlecase">
-              <span class="status-indicator-sr-only">{{ sacrament.status | titlecase }}</span>
-            </span>
             <button 
               type="button"
               class="recipient-name-link" 
@@ -211,6 +203,13 @@
               title="Click to view sacrament details">
               {{ sacrament.recipient_name }}
             </button>
+            <span 
+              *ngIf="sacrament.status !== 'active'"
+              class="status-indicator-dot status-indicator-dot-inactive"
+              [attr.aria-label]="'Inactive'"
+              [title]="'Inactive'">
+              <span class="status-indicator-sr-only">Inactive</span>
+            </span>
           </td>
           <td>{{ sacrament.sacrament_type?.name || getSacramentTypeName(sacrament.sacrament_type_id) }}</td>
           <td>{{ sacrament.date_administered | date: 'MMM d, y' }}</td>
@@ -221,18 +220,33 @@
           </td>
           <td>{{ sacrament.certificate_number || 'N/A' }}</td>
           <td class="actions-cell">
-            <button 
-              (click)="viewCertificate(sacrament)" 
-              class="action-btn action-view-certificate" 
-              title="View Certificate" 
-              aria-label="View certificate for {{ sacrament.recipient_name || 'sacrament' }}">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-              </svg>
-            </button>
+            <div class="action-buttons">
+              <button 
+                (click)="viewCertificate(sacrament)" 
+                class="action-btn action-view-certificate" 
+                title="View Certificate" 
+                aria-label="View certificate for {{ sacrament.recipient_name || 'sacrament' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                </svg>
+              </button>
+              <button 
+                *ngIf="isTenantAdmin"
+                (click)="onDeleteSacrament(sacrament)" 
+                class="btn-delete" 
+                title="Delete Sacrament" 
+                aria-label="Delete sacrament for {{ sacrament.recipient_name || 'sacrament' }}">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+              </button>
+            </div>
           </td>
         </tr>
         <tr *ngIf="sacraments.length === 0" class="empty-row">
@@ -314,14 +328,14 @@
         </div>
       </div>
       <div class="modal-footer delete-footer">
-        <button class="btn btn-secondary" (click)="cancelDelete()" type="button">Cancel</button>
-        <button class="btn btn-danger" (click)="confirmDelete()" type="button">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <app-button variant="cancel" (clicked)="cancelDelete()">Cancel</app-button>
+        <app-button variant="delete" (clicked)="confirmDelete()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
             <polyline points="3 6 5 6 21 6"></polyline>
             <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
           </svg>
           Delete Permanently
-        </button>
+        </app-button>
       </div>
     </div>
   </div>
@@ -593,36 +607,31 @@
 
       <!-- Modal Footer -->
       <div class="modal-footer">
-        <button 
-          type="button"
-          class="btn btn-secondary" 
-          (click)="closeDetailModal()">
+        <app-button variant="secondary" (clicked)="closeDetailModal()">
           Close
-        </button>
-        <button 
-          type="button"
-          class="btn btn-outline" 
-          (click)="viewCertificate(detailSacrament!); closeDetailModal()"
-          *ngIf="detailSacrament">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        </app-button>
+        <app-button 
+          *ngIf="detailSacrament"
+          variant="secondary"
+          (clicked)="viewCertificate(detailSacrament!); closeDetailModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
             <line x1="16" y1="13" x2="8" y2="13"></line>
             <line x1="16" y1="17" x2="8" y2="17"></line>
           </svg>
           View Certificate
-        </button>
-        <button 
-          type="button"
-          class="btn btn-primary" 
-          (click)="editSacrament(detailSacrament!); closeDetailModal()"
-          *ngIf="detailSacrament">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        </app-button>
+        <app-button 
+          *ngIf="detailSacrament"
+          variant="edit"
+          (clicked)="editSacrament(detailSacrament!); closeDetailModal()">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
             <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
           </svg>
           Edit
-        </button>
+        </app-button>
       </div>
     </div>
   </div>

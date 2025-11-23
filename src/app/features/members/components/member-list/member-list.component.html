@@ -32,7 +32,7 @@
           </svg>
         </button>
       </div>
-      <button class="btn btn-filters" (click)="toggleAdvancedSearch()" type="button" aria-label="Show filters">
+      <app-button variant="filter" (clicked)="toggleAdvancedSearch()" [class.active]="showAdvancedSearch" ariaLabel="Show filters">
         <span class="btn-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
             <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
@@ -40,7 +40,7 @@
         </span>
         Filters
         <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
-      </button>
+      </app-button>
     </div>
   </div>
 
@@ -115,14 +115,14 @@
     </div>
     <h3>Failed to Load Members</h3>
     <p>{{ error }}</p>
-    <button class="btn-retry" (click)="loadMembers()" type="button" title="Retry loading members" aria-label="Retry loading members">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <app-button variant="refresh" (clicked)="loadMembers()" ariaLabel="Retry loading members">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
         <polyline points="23 4 23 10 17 10"></polyline>
         <polyline points="1 20 1 14 7 14"></polyline>
         <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
       </svg>
       <span>Retry</span>
-    </button>
+    </app-button>
   </div>
 
   <!-- Members Table -->
@@ -130,31 +130,45 @@
     <table class="members-table" *ngIf="members.length > 0">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Family</th>
-          <th>BCC</th>
+          <th [appSortable]="'last_name'" [direction]="frontendSortColumn === 'last_name' ? sortDirection : null" (sort)="onSort($event)">Name</th>
+          <th [appSortable]="'father_name'" [direction]="frontendSortColumn === 'father_name' ? sortDirection : null" (sort)="onSort($event)">Father Name</th>
+          <th [appSortable]="'address'" [direction]="frontendSortColumn === 'address' ? sortDirection : null" (sort)="onSort($event)">Address</th>
+          <th [appSortable]="'bcc'" [direction]="frontendSortColumn === 'bcc' ? sortDirection : null" (sort)="onSort($event)">BCC</th>
           <th>Contact</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let member of members">
           <td class="name-cell first-column-with-status">
-            <span 
-              class="status-indicator-dot"
-              [class.status-indicator-dot-active]="member.status === 'active'"
-              [class.status-indicator-dot-inactive]="member.status !== 'active'"
-              [attr.aria-label]="member.status === 'active' ? 'Active' : 'Inactive'">
-            </span>
             <a 
               (click)="viewMember(member)"
               class="member-name-link"
               [attr.aria-label]="'View details for ' + getFullName(member)">
               {{ getFullName(member) }}
             </a>
+            <span 
+              *ngIf="member.status !== 'active'"
+              class="status-indicator-dot status-indicator-dot-inactive"
+              [attr.aria-label]="'Inactive'"
+              [title]="'Inactive'">
+              <span class="status-indicator-sr-only">Inactive</span>
+            </span>
           </td>
-          <td>
-            <span class="family-code" *ngIf="member.family?.family_code">{{ member.family?.family_code }}</span>
-            <span *ngIf="!member.family?.family_code" class="text-muted">N/A</span>
+          <td class="father-name-cell">
+            <span *ngIf="getFatherName(member); else noFatherName" class="father-name">
+              {{ getFatherName(member) }}
+            </span>
+            <ng-template #noFatherName>
+              <span class="text-muted">N/A</span>
+            </ng-template>
+          </td>
+          <td class="address-cell">
+            <div class="address-content" *ngIf="getMemberAddressForTable(member); else noAddress">
+              <div class="address-line">{{ getMemberAddressForTable(member) }}</div>
+            </div>
+            <ng-template #noAddress>
+              <span class="text-muted">N/A</span>
+            </ng-template>
           </td>
           <td>
             <span class="bcc-name">{{ getBCCName(member) }}</span>
@@ -569,27 +583,25 @@
 
     <!-- Modal Footer -->
     <div class="modal-footer">
-      <button
-        type="button"
-        class="btn btn-secondary"
-        (click)="closeDetailModal()"
-        aria-label="Close modal">
+      <app-button
+        variant="secondary"
+        (clicked)="closeDetailModal()"
+        ariaLabel="Close modal">
         Close
-      </button>
-      <button
-        type="button"
-        class="btn btn-primary"
-        (click)="viewFamilyDetails()"
-        aria-label="View family details"
-        *ngIf="selectedMember && (selectedMember.family_id || selectedMember.family?.id)">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+      </app-button>
+      <app-button
+        *ngIf="selectedMember && (selectedMember.family_id || selectedMember.family?.id)"
+        variant="primary"
+        (clicked)="viewFamilyDetails()"
+        ariaLabel="View family details">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18" class="btn-icon">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
           <circle cx="9" cy="7" r="4"></circle>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
           <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
         </svg>
         View More
-      </button>
+      </app-button>
     </div>
   </div>
 </div>

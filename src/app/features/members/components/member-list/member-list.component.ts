@@ -7,8 +7,9 @@ import { ToastService } from '@core/services/toast.service';
 import { MemberService, MemberFilters } from '../../services/member.service';
 import { BCCService } from '@core/services/bcc.service';
 import { FamilyMember, BCC } from '@core/models/family.model';
-import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PaginationComponent, ButtonComponent } from '@shared/components';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 @Component({
@@ -18,7 +19,9 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     CommonModule,
     FormsModule,
     PaginationComponent,
-    AdvancedSearchPanelComponent
+    AdvancedSearchPanelComponent,
+    ButtonComponent,
+    SortableDirective
   ],
   templateUrl: './member-list.component.html',
   styleUrls: ['./member-list.component.scss'],
@@ -49,6 +52,11 @@ export class MemberListComponent implements OnInit, OnDestroy {
   selectedStatus = '';
   selectedBccId = '';
   showHeadOnly = false;
+  
+  // Sorting state
+  sortColumn: string = ''; // Backend sort column name
+  sortDirection: 'asc' | 'desc' | null = null;
+  frontendSortColumn: string = ''; // Frontend column name for UI display
   
   // Advanced search panel state
   showAdvancedSearch = false;
@@ -170,8 +178,8 @@ export class MemberListComponent implements OnInit, OnDestroy {
       status: this.selectedStatus || undefined,
       bcc_id: this.selectedBccId || undefined,
       is_head: this.showHeadOnly ? 'true' : undefined,
-      sort_by: 'last_name',
-      sort_order: 'asc',
+      sort_by: this.sortColumn || undefined,
+      sort_order: this.sortDirection || undefined,
       per_page: this.perPage,
       page: this.currentPage
     };
@@ -410,6 +418,69 @@ export class MemberListComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Get father's name for a member
+   * Looks for a member in the same family with relationship_to_head = 'father'
+   * Or if the member is a child, the family head might be the father
+   */
+  getFatherName(member: FamilyMember): string | null {
+    if (!member?.family_id) {
+      return null;
+    }
+
+    // Search through all loaded members to find the father in the same family
+    // First, try to find a member with relationship_to_head = 'father' in the same family
+    const fatherMember = this.members.find(
+      (m: FamilyMember) => 
+        m.family_id === member.family_id && 
+        m.relationship_to_head === 'father' && 
+        m.id !== member.id
+    );
+    
+    if (fatherMember) {
+      return this.getFullName(fatherMember);
+    }
+
+    // If member is a child (son/daughter), the family head might be the father
+    if (member.relationship_to_head === 'son' || member.relationship_to_head === 'daughter') {
+      const familyHead = this.members.find(
+        (m: FamilyMember) => 
+          m.family_id === member.family_id && 
+          m.relationship_to_head === 'self' && 
+          m.gender === 'male' &&
+          m.id !== member.id
+      );
+      
+      if (familyHead) {
+        return this.getFullName(familyHead);
+      }
+    }
+
+    // If family members are loaded in the family object, check there too
+    if (member.family?.members && Array.isArray(member.family.members)) {
+      const fatherFromFamily = member.family.members.find(
+        (m: FamilyMember) => m.relationship_to_head === 'father' && m.id !== member.id
+      );
+      
+      if (fatherFromFamily) {
+        return this.getFullName(fatherFromFamily);
+      }
+
+      // Check if family head is the father
+      if (member.relationship_to_head === 'son' || member.relationship_to_head === 'daughter') {
+        const familyHeadFromFamily = member.family.members.find(
+          (m: FamilyMember) => m.relationship_to_head === 'self' && m.gender === 'male'
+        );
+        
+        if (familyHeadFromFamily) {
+          return this.getFullName(familyHeadFromFamily);
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
    * Get status badge class
    */
   getStatusClass(status: string): string {
@@ -549,6 +620,87 @@ export class MemberListComponent implements OnInit, OnDestroy {
     }
 
     // If we have any address parts, join them with commas and return
+    if (addressParts.length > 0) {
+      return addressParts.join(', ');
+    }
+
+    return null;
+  }
+
+  /**
+   * Handle column sorting
+   */
+  onSort(event: SortEvent): void {
+    // Map frontend column names to backend sort field names
+    let backendSortColumn = event.column;
+    
+    if (event.column === 'last_name') {
+      // Backend expects 'name' to sort by both last_name and first_name
+      backendSortColumn = 'name';
+    } else if (event.column === 'address') {
+      // Backend handles 'address' directly
+      backendSortColumn = 'address';
+    } else if (event.column === 'bcc') {
+      // Backend handles 'bcc' directly
+      backendSortColumn = 'bcc';
+    } else if (event.column === 'father_name') {
+      // Backend handles 'father_name' (though it's a fallback to last_name)
+      backendSortColumn = 'father_name';
+    }
+    
+    // Store both frontend and backend column names
+    this.frontendSortColumn = event.column;
+    this.sortColumn = backendSortColumn;
+    this.sortDirection = event.direction;
+    this.currentPage = 1; // Reset to first page when sorting
+    this.loadMembers();
+  }
+
+  /**
+   * Get formatted address for table display (from family head's address)
+   * Returns address formatted for display, allowing wrapping to two lines
+   * Format: line1, line2, city, state - postal_code, country
+   */
+  getMemberAddressForTable(member: FamilyMember): string | null {
+    if (!member?.family) {
+      return null;
+    }
+
+    const family = member.family;
+    const addressParts: string[] = [];
+
+    // Address line 1
+    if (family.address_line_1) {
+      addressParts.push(family.address_line_1.trim());
+    }
+
+    // Address line 2
+    if (family.address_line_2) {
+      addressParts.push(family.address_line_2.trim());
+    }
+
+    // City
+    if (family.city) {
+      addressParts.push(family.city.trim());
+    }
+
+    // State (if available)
+    if (family.state?.name) {
+      addressParts.push(family.state.name.trim());
+    }
+
+    // Postal code (with dash separator if state exists)
+    if (family.postal_code) {
+      addressParts.push(family.postal_code.trim());
+    }
+
+    // Country (if available)
+    if (family.country?.name) {
+      addressParts.push(family.country.name.trim());
+    }
+
+    // If we have any address parts, join them with commas and return
+    // The CSS will handle wrapping to two lines if needed
     if (addressParts.length > 0) {
       return addressParts.join(', ');
     }

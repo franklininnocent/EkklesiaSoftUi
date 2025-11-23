@@ -1331,12 +1331,13 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
 
   /**
    * Load church leaders (both active and inactive)
+   * Backend already sorts the data, so no client-side sorting needed
    */
   private loadLeaders(): void {
     this.loadingLeaders = true;
     this.cdr.markForCheck();
     
-    // Load all leaders (active and inactive) - backend will sort active first
+    // Load all leaders (active and inactive) - backend already sorts them correctly
     this.leadershipService.getLeaders({})
       .pipe(
         takeUntil(this.destroy$),
@@ -1348,15 +1349,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            // Sort: active first, then inactive
-            this.leaders = response.data.sort((a, b) => {
-              // Active records first (active = 1 comes before active = 0)
-              if (b.active !== a.active) {
-                return b.active - a.active;
-              }
-              // Within same active status, maintain original order
-              return 0;
-            });
+            // Backend already sorts: active first, then by is_primary, display_order, appointed_date
+            // No need for client-side sorting - use data as-is for better performance
+            this.leaders = response.data;
             this.cdr.markForCheck();
           } else {
             console.error('Failed to load leaders:', response);
@@ -1506,16 +1501,14 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
             this.filteredArchdioceses = response.data;
             console.log(`✅ Loaded ${response.data.length} filtered archdioceses`);
           } else {
-            // Filter returned 0 results - fall back to showing all archdioceses
-            console.warn('⚠️ No archdioceses found with current filters, showing all as fallback');
-            this.filteredArchdioceses = this.archdioceses || [];
-            if (this.archdioceses.length > 0) {
-              this.toastService.info(
-                `No archdioceses found matching the selected filters. Showing all ${this.archdioceses.length} available archdioceses.`,
-                'Info',
-                5000
-              );
-            }
+            // Filter returned 0 results - show empty list
+            console.warn('⚠️ No archdioceses found with current filters');
+            this.filteredArchdioceses = [];
+            this.toastService.info(
+              'No archdioceses found matching the selected filters. Please adjust your filters to see results.',
+              'No Results',
+              5000
+            );
           }
         } else {
           // Empty response or failed - fall back to all archdioceses

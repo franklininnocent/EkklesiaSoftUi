@@ -4,6 +4,7 @@
  */
 
 @use '../../../../styles/button-system' as *;
+@use '../../../shared/styles/standardized-list' as *;
 
 // ============================================================================
 // CONTAINER & LAYOUT
@@ -471,6 +472,40 @@
       font-weight: 600;
       line-height: 1.4;
       margin: 0;
+      color: var(--text-primary);
+    }
+    
+    // Header right container for buttons (matches standard list header pattern)
+    .header-right {
+      @extend %standard-header-right;
+    }
+    
+    // Standard button styles for Add Leader button
+    // Using explicit styles to ensure they override any conflicting styles
+    button.btn,
+    .btn {
+      @extend %standard-btn;
+    }
+    
+    button.btn-primary,
+    .btn.btn-primary,
+    .btn-primary {
+      @extend %standard-btn-primary;
+    }
+    
+    .btn-icon {
+      font-size: 0.938rem;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      
+      svg {
+        width: 18px;
+        height: 18px;
+        display: block;
+      }
     }
     
     .section-header-content {
@@ -4153,6 +4188,30 @@
   p {
     color: var(--text-secondary);
     margin: 0 0 1.5rem 0;
+  }
+  
+  // Ensure buttons in empty state match standard button styles
+  .btn {
+    @extend %standard-btn;
+  }
+  
+  .btn-primary {
+    @extend %standard-btn-primary;
+  }
+  
+  .btn-icon {
+    font-size: 0.938rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    
+    svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
   }
 }
 

@@ -479,16 +479,12 @@
 
     <!-- Form Actions -->
     <footer class="modal-footer">
-      <button type="button" class="btn btn-outline" (click)="onCancel()" [disabled]="saving">
+      <app-button variant="cancel" (clicked)="onCancel()" [disabled]="saving">
         Cancel
-      </button>
-      <button type="submit" class="btn btn-primary" [disabled]="saving">
-        <span *ngIf="!saving">{{ isEditMode ? 'Update Record' : 'Save Record' }}</span>
-        <span *ngIf="saving">
-          <span class="saving-spinner"></span>
-          Saving...
-        </span>
-      </button>
+      </app-button>
+      <app-button type="submit" variant="save" [loading]="saving">
+        {{ isEditMode ? 'Update Record' : 'Save Record' }}
+      </app-button>
     </footer>
     </form>
   </div>

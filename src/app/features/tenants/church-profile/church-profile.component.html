@@ -469,19 +469,23 @@
         <div class="section-card">
           <div class="section-header">
             <h2>👥 Church Leadership</h2>
-            <button 
-              *ngIf="canEdit"
-              class="btn btn-primary" 
-              (click)="openNewLeaderModal()"
-              type="button"
-              title="Add new leader">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="16"></line>
-                <line x1="8" y1="12" x2="16" y2="12"></line>
-              </svg>
-              <span>Add Leader</span>
-            </button>
+            <div class="header-right">
+              <button 
+                *ngIf="canEdit"
+                class="btn btn-primary" 
+                (click)="openNewLeaderModal()"
+                type="button"
+                title="Add new leader">
+                <span class="btn-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
+                </span>
+                <span>Add Leader</span>
+              </button>
+            </div>
           </div>
 
           <!-- Loading State -->
@@ -552,11 +556,13 @@
               (click)="openNewLeaderModal()"
               type="button"
               title="Add first leader">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 18px; height: 18px;">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="16"></line>
-                <line x1="8" y1="12" x2="16" y2="12"></line>
-              </svg>
+              <span class="btn-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+              </span>
               <span>Add First Leader</span>
             </button>
           </div>
@@ -573,13 +579,23 @@
         <div class="section-card">
           <div class="section-header">
             <h2>📊 Church Statistics</h2>
-            <button 
-              *ngIf="canEdit"
-              class="btn-3d-action btn-3d-create" 
-              (click)="openNewStatisticModal()">
-              <span>➕</span>
-              <span>Add Record</span>
-            </button>
+            <div class="header-right">
+              <button 
+                *ngIf="canEdit"
+                class="btn btn-primary" 
+                (click)="openNewStatisticModal()"
+                type="button"
+                title="Add new statistic">
+                <span class="btn-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
+                </span>
+                <span>Add Record</span>
+              </button>
+            </div>
           </div>
 
           <!-- Statistics Table -->
@@ -626,9 +642,17 @@
             <p>Track membership, attendance, and church metrics over time.</p>
             <button 
               *ngIf="canEdit"
-              class="btn-3d-action btn-3d-create" 
-              (click)="openNewStatisticModal()">
-              <span>➕</span>
+              class="btn btn-primary" 
+              (click)="openNewStatisticModal()"
+              type="button"
+              title="Add first statistic">
+              <span class="btn-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+              </span>
               <span>Add First Record</span>
             </button>
           </div>
@@ -645,13 +669,23 @@
         <div class="section-card">
           <div class="section-header">
             <h2>📱 Social Media Accounts</h2>
-            <button 
-              *ngIf="canEdit"
-              class="btn-3d-action btn-3d-create" 
-              (click)="openNewSocialModal()">
-              <span>➕</span>
-              <span>Add Account</span>
-            </button>
+            <div class="header-right">
+              <button 
+                *ngIf="canEdit"
+                class="btn btn-primary" 
+                (click)="openNewSocialModal()"
+                type="button"
+                title="Add new social media account">
+                <span class="btn-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="8" x2="12" y2="16"></line>
+                    <line x1="8" y1="12" x2="16" y2="12"></line>
+                  </svg>
+                </span>
+                <span>Add Account</span>
+              </button>
+            </div>
           </div>
 
           <!-- Social Media Cards -->
@@ -696,9 +730,17 @@
             <p>Connect your church's social media presence.</p>
             <button 
               *ngIf="canEdit"
-              class="btn-3d-action btn-3d-create" 
-              (click)="openNewSocialModal()">
-              <span>➕</span>
+              class="btn btn-primary" 
+              (click)="openNewSocialModal()"
+              type="button"
+              title="Add first social media account">
+              <span class="btn-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="8" x2="12" y2="16"></line>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+              </span>
               <span>Add First Account</span>
             </button>
           </div>

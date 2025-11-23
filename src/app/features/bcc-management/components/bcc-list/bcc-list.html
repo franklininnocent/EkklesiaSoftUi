@@ -148,19 +148,12 @@
           <th>Leaders</th>
           <th>Meeting Day</th>
           <th>Contact</th>
+          <th *ngIf="isTenantAdmin">Actions</th>
         </tr>
       </thead>
       <tbody>
         <tr *ngFor="let bcc of bccs">
           <td class="bcc-code first-column-with-status">
-            <span 
-              class="status-indicator-dot"
-                  [class.status-indicator-dot-active]="bcc.status === 'active'"
-                  [class.status-indicator-dot-inactive]="bcc.status === 'inactive'"
-              [attr.aria-label]="bcc.status"
-              [title]="bcc.status">
-              <span class="status-indicator-sr-only">{{ bcc.status }}</span>
-            </span>
             <button 
               type="button"
               class="bcc-code-link" 
@@ -169,6 +162,13 @@
               title="Click to view BCC details">
               {{ bcc.bcc_code }}
             </button>
+            <span 
+              *ngIf="bcc.status === 'inactive'"
+              class="status-indicator-dot status-indicator-dot-inactive"
+              [attr.aria-label]="'Inactive'"
+              [title]="'Inactive'">
+              <span class="status-indicator-sr-only">Inactive</span>
+            </span>
           </td>
           <td class="bcc-name">
             <strong>{{ bcc.name }}</strong>
@@ -205,6 +205,23 @@
             <div class="contact-info">
               <div>-</div>
               <div>-</div>
+            </div>
+          </td>
+          <td *ngIf="isTenantAdmin" class="actions">
+            <div class="action-buttons">
+              <button 
+                class="btn-delete" 
+                (click)="deleteBCC(bcc)"
+                type="button"
+                title="Delete BCC">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                  <polyline points="3 6 5 6 21 6"></polyline>
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  <line x1="10" y1="11" x2="10" y2="17"></line>
+                  <line x1="14" y1="11" x2="14" y2="17"></line>
+                </svg>
+                <span>Delete</span>
+              </button>
             </div>
           </td>
         </tr>

@@ -96,22 +96,33 @@
 /* ========================================================================
    BUTTON COMPONENTS
    ======================================================================== */
+   
+/* 
+ * NOTE: Button styles are now standardized in the ButtonComponent.
+ * This section provides fallback styles for direct button elements
+ * that don't use the app-button component.
+ * 
+ * For consistency, all buttons should use <app-button> component.
+ */
 
-.btn {
+/* Base button styles - matches ButtonComponent */
+button.btn,
+a.btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  padding: 0.625rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.25;
-  border-radius: var(--radius-md);
-  border: 1px solid transparent;
-  transition: all var(--transition-fast);
-  cursor: pointer;
-  text-decoration: none;
+  font-family: inherit;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: center;
   white-space: nowrap;
+  text-decoration: none;
+  user-select: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast) cubic-bezier(0.4, 0, 0.2, 1);
   
   &:focus {
     outline: 2px solid transparent;
@@ -119,22 +130,28 @@
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
   }
   
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+  &:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
   }
   
-  /* Primary Button */
-  &-primary {
-    background: var(--btn-primary-bg);
-    color: var(--btn-primary-text);
-    border-color: transparent;
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    pointer-events: none;
+    transform: none !important;
+  }
+  
+  /* Standard Variants - matches ButtonComponent */
+  &.btn-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
     
     &:hover:not(:disabled) {
-      background: var(--btn-primary-hover);
+      background: linear-gradient(135deg, #5a72d8 0%, #6a4290 100%);
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
     }
     
     &:active:not(:disabled) {
@@ -142,11 +159,10 @@
     }
   }
   
-  /* Secondary Button */
-  &-secondary {
-    background: var(--bg-primary);
+  &.btn-secondary {
+    background: #ffffff;
     color: var(--text-primary);
-    border-color: var(--border-dark);
+    border: 1px solid var(--border-dark);
     
     &:hover:not(:disabled) {
       background: var(--bg-secondary);
@@ -155,59 +171,75 @@
     }
   }
   
-  /* Success Button */
-  &-success {
-    background: var(--success-color);
-    color: white;
-    
-    &:hover:not(:disabled) {
-      background: var(--success-dark);
-      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-    }
-  }
-  
-  /* Danger Button */
-  &-danger {
+  &.btn-danger {
     background: var(--error-color);
-    color: white;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
     
     &:hover:not(:disabled) {
       background: var(--error-dark);
-      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
     }
   }
   
-  /* Warning Button */
-  &-warning {
+  &.btn-success {
+    background: var(--success-color);
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+    
+    &:hover:not(:disabled) {
+      background: var(--success-dark);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(16, 185, 129, 0.4);
+    }
+  }
+  
+  &.btn-warning {
     background: var(--warning-color);
-    color: white;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
     
     &:hover:not(:disabled) {
       background: var(--warning-dark);
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
     }
   }
   
-  /* Info Button */
-  &-info {
+  &.btn-info {
     background: var(--info-color);
-    color: white;
+    color: #ffffff;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
     
     &:hover:not(:disabled) {
       background: var(--info-dark);
-      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
     }
   }
   
-  /* Button Sizes */
-  &-sm {
+  /* Button Sizes - matches ButtonComponent */
+  &.btn-sm {
     padding: 0.375rem 0.875rem;
     font-size: 0.8125rem;
+    min-height: 32px;
   }
   
-  &-lg {
+  &.btn-md {
+    padding: 0.625rem 1.25rem;
+    font-size: 0.875rem;
+    min-height: 40px;
+  }
+  
+  &.btn-lg {
     padding: 0.875rem 1.75rem;
     font-size: 1rem;
+    min-height: 48px;
+  }
+  
+  &.btn-full {
+    width: 100%;
   }
 }
 

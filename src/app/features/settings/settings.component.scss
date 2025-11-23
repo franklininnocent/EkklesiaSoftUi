@@ -174,15 +174,26 @@
       transform: scale(1.05);
       background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
       box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-
-  .setting-icon {
-    filter: brightness(0) invert(1);
-    
-    svg {
-      width: 24px;
-      height: 24px;
     }
-  }
+
+    .setting-icon {
+      filter: brightness(0) invert(1);
+      color: white;
+      
+      ::ng-deep svg {
+        width: 24px !important;
+        height: 24px !important;
+      }
+      
+      ::ng-deep svg path,
+      ::ng-deep svg circle,
+      ::ng-deep svg rect,
+      ::ng-deep svg line,
+      ::ng-deep svg polyline,
+      ::ng-deep svg polygon {
+        stroke: white !important;
+        fill: none !important;
+      }
     }
 
     .setting-arrow {
@@ -226,6 +237,8 @@
   flex-shrink: 0;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+  position: relative;
+  z-index: 1;
 
   .setting-icon {
     font-size: 20px;
@@ -234,11 +247,19 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    color: var(--primary-color);
+    color: #667eea;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    position: relative;
     
     svg {
       width: 24px;
       height: 24px;
+      display: block;
+      flex-shrink: 0;
+      color: #667eea;
+      stroke: #667eea;
     }
   }
 }

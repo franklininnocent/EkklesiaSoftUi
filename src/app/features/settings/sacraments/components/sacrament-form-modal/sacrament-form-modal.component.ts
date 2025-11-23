@@ -31,11 +31,12 @@ import {
   validateTextLength,
   validateRequired
 } from '../../utils/validation.util';
+import { ButtonComponent } from '@shared/components';
 
 @Component({
   selector: 'app-sacrament-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, FamilyFormComponent],
+  imports: [CommonModule, FormsModule, FamilyFormComponent, ButtonComponent],
   templateUrl: './sacrament-form-modal.component.html',
   styleUrl: './sacrament-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -67,6 +68,11 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   familyMembers: FamilyMember[] = [];
   selectedMemberId: string | null = null;
   loadingMembers = false;
+  
+  // Parent selection mode (for Baptism)
+  parentSelectionMode: 'dropdown' | 'manual' = 'dropdown';
+  selectedFatherId: string | null = null;
+  selectedMotherId: string | null = null;
 
   // Constants for template
   readonly statusOptions = SACRAMENT_STATUS_OPTIONS;
@@ -448,6 +454,11 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.families = [];
     this.showFamilyForm = false;
     this.newlyCreatedFamily = null;
+    this.familyMembers = [];
+    this.selectedMemberId = null;
+    this.parentSelectionMode = 'dropdown';
+    this.selectedFatherId = null;
+    this.selectedMotherId = null;
     this.cdr.detectChanges();
   }
 
@@ -550,6 +561,24 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (!sacramentTypeValidation.valid) {
       this.fieldErrors['sacrament_type_id'] = sacramentTypeValidation.message || '';
       isValid = false;
+    }
+
+    // For Baptism, validate father and mother names are mandatory
+    if (this.isBaptism()) {
+      const fatherName = (this.formData['father_name'] || '').toString().trim();
+      const motherName = (this.formData['mother_name'] || '').toString().trim();
+      
+      const fatherValidation = validateRequired(fatherName, 'Father\'s name');
+      if (!fatherValidation.valid) {
+        this.fieldErrors['father_name'] = fatherValidation.message || '';
+        isValid = false;
+      }
+      
+      const motherValidation = validateRequired(motherName, 'Mother\'s name');
+      if (!motherValidation.valid) {
+        this.fieldErrors['mother_name'] = motherValidation.message || '';
+        isValid = false;
+      }
     }
 
     // For Marriage sacraments, validate bride and groom names explicitly
@@ -723,6 +752,22 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       case 'marriage_groom_full_name':
         if (this.isMarriage()) {
           const requiredValidation = validateRequired(String(value || ''), fieldName === 'marriage_bride_full_name' ? 'Bride\'s full name' : 'Groom\'s full name');
+          if (!requiredValidation.valid) {
+            this.fieldErrors[fieldName] = requiredValidation.message || '';
+          }
+        }
+        break;
+      case 'father_name':
+        if (this.isBaptism()) {
+          const requiredValidation = validateRequired(String(value || ''), 'Father\'s name');
+          if (!requiredValidation.valid) {
+            this.fieldErrors[fieldName] = requiredValidation.message || '';
+          }
+        }
+        break;
+      case 'mother_name':
+        if (this.isBaptism()) {
+          const requiredValidation = validateRequired(String(value || ''), 'Mother\'s name');
           if (!requiredValidation.valid) {
             this.fieldErrors[fieldName] = requiredValidation.message || '';
           }
@@ -949,9 +994,19 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     // Load family members when a family is selected
     if (this.selectedFamilyId) {
       this.loadFamilyMembers(this.selectedFamilyId);
+      // Reset parent selections when family changes
+      this.selectedFatherId = null;
+      this.selectedMotherId = null;
+      // Auto-populate parents if available
+      if (this.isBaptism() && this.familySelectionType === 'existing') {
+        this.parentSelectionMode = 'dropdown';
+      }
     } else {
       this.familyMembers = [];
       this.selectedMemberId = null;
+      this.selectedFatherId = null;
+      this.selectedMotherId = null;
+      this.parentSelectionMode = 'manual';
     }
     
     this.cdr.detectChanges();
@@ -1029,14 +1084,109 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       if (member.baptism_godparent_secondary) {
         this.formData['godparent2_name'] = member.baptism_godparent_secondary;
       }
+      
+      // Auto-populate parents from family members if available
+      this.autoPopulateParents();
     }
-
-    // Populate parents if available (from family head or other members)
-    // Note: This would require additional logic to find parents in the family
-    // For now, we'll leave it as manual entry
 
     this.cdr.detectChanges();
     this.toastService.success('Recipient information populated from family member.');
+  }
+
+  /**
+   * Get available fathers from family members
+   */
+  getAvailableFathers(): FamilyMember[] {
+    if (!this.familyMembers.length) return [];
+    
+    return this.familyMembers.filter(member => {
+      // Find members with relationship_to_head = 'father' or 'self' (if male)
+      return (member.relationship_to_head === 'father') ||
+             (member.relationship_to_head === 'self' && member.gender === 'male');
+    });
+  }
+
+  /**
+   * Get available mothers from family members
+   */
+  getAvailableMothers(): FamilyMember[] {
+    if (!this.familyMembers.length) return [];
+    
+    return this.familyMembers.filter(member => {
+      // Find members with relationship_to_head = 'mother' or 'spouse' (if female and head is male)
+      return (member.relationship_to_head === 'mother') ||
+             (member.relationship_to_head === 'spouse' && member.gender === 'female');
+    });
+  }
+
+  /**
+   * Get full name for a family member
+   */
+  getMemberFullName(member: FamilyMember): string {
+    const parts = [member.first_name, member.middle_name, member.last_name].filter(Boolean);
+    return parts.join(' ') || 'N/A';
+  }
+
+  /**
+   * Handle father selection from dropdown
+   */
+  onFatherSelect(): void {
+    if (!this.selectedFatherId) {
+      this.formData['father_name'] = '';
+      return;
+    }
+
+    const father = this.familyMembers.find(m => m.id === this.selectedFatherId);
+    if (father) {
+      this.formData['father_name'] = this.getMemberFullName(father);
+    }
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Handle mother selection from dropdown
+   */
+  onMotherSelect(): void {
+    if (!this.selectedMotherId) {
+      this.formData['mother_name'] = '';
+      return;
+    }
+
+    const mother = this.familyMembers.find(m => m.id === this.selectedMotherId);
+    if (mother) {
+      this.formData['mother_name'] = this.getMemberFullName(mother);
+    }
+    this.cdr.detectChanges();
+  }
+
+  /**
+   * Auto-populate parents from family members
+   */
+  autoPopulateParents(): void {
+    if (!this.familyMembers.length) return;
+
+    // Find father
+    const father = this.getAvailableFathers()[0];
+    if (father) {
+      this.selectedFatherId = father.id;
+      this.formData['father_name'] = this.getMemberFullName(father);
+    }
+
+    // Find mother
+    const mother = this.getAvailableMothers()[0];
+    if (mother) {
+      this.selectedMotherId = mother.id;
+      this.formData['mother_name'] = this.getMemberFullName(mother);
+    }
+  }
+
+  /**
+   * Toggle parent selection mode (kept for backward compatibility, but now handled directly in template)
+   */
+  toggleParentSelectionMode(): void {
+    // This method is now handled directly in the template via (change) events
+    // Keeping it for any programmatic calls if needed
+    this.cdr.detectChanges();
   }
 
   /**

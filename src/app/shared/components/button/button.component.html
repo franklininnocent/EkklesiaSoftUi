@@ -1,13 +1,12 @@
 <button
   [type]="type"
-  [class]="'btn btn-' + variant + ' btn-' + size"
-  [class.btn-full]="fullWidth"
+  [class]="buttonClasses"
   [disabled]="disabled || loading"
   (click)="onClick()"
-  [attr.aria-label]="ariaLabel"
+  [attr.aria-label]="ariaLabel || (iconOnly ? getActionLabel() : null)"
   [attr.aria-busy]="loading"
 >
-  <span *ngIf="loading" class="spinner" aria-hidden="true"></span>
+  <span *ngIf="loading" class="btn-spinner" aria-hidden="true"></span>
   <ng-content></ng-content>
 </button>
 

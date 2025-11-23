@@ -1,3 +1,5 @@
+@use '../../../../styles/button-system' as *;
+
 .empty-state {
   display: flex;
   flex-direction: column;
@@ -43,33 +45,28 @@
 }
 
 .empty-state-button {
-  padding: 10px 24px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
   font-weight: 500;
+  border: none;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
-  
-  &:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-  }
-  
-  &:focus-visible {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-  }
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 42px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  line-height: 1;
   
   &.button-primary {
-    background-color: #3b82f6;
-    color: #ffffff;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
     
     &:hover:not(:disabled) {
-      background-color: #2563eb;
       transform: translateY(-1px);
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
-                  0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
     }
     
     &:active:not(:disabled) {
@@ -78,17 +75,13 @@
   }
   
   &.button-secondary {
-    background-color: #f3f4f6;
-    color: #374151;
-    border: 1px solid #d1d5db;
+    background: white;
+    color: var(--text-primary);
+    border: 1px solid var(--gray-300, #d1d5db);
     
     &:hover:not(:disabled) {
-      background-color: #e5e7eb;
-      transform: translateY(-1px);
-    }
-    
-    &:active:not(:disabled) {
-      transform: translateY(0);
+      background: var(--gray-50, #f9fafb);
+      border-color: var(--gray-400, #9ca3af);
     }
   }
   
@@ -154,4 +147,3 @@
     }
   }
 }
-

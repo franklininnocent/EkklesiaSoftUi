@@ -1,312 +1,61 @@
 @use '../../../../shared/styles/loading-states' as *;
 @use '../../../../shared/styles/status-indicator' as *;
+@use '../../../../shared/styles/standardized-list' as *;
 
 .members-list-container {
-  padding: 1.5rem;
-  min-height: 100vh;
-  box-sizing: border-box;
+  @extend %standard-list-container;
 }
 
 .list-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
-  flex-wrap: wrap;
-  gap: 1rem;
+  @extend %standard-list-header;
 }
 
 .header-left {
-  flex: 1;
+  @extend %standard-header-left;
 }
 
 .list-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 0.375rem 0;
+  @extend %standard-list-title;
 }
 
 .list-subtitle {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0;
+  @extend %standard-list-subtitle;
 }
 
 .header-right {
-  display: flex;
-  gap: 0.75rem;
-  align-items: center;
-  flex-wrap: wrap;
+  @extend %standard-header-right;
 }
 
 // Quick Search Box in Header
 .search-box-header {
-  position: relative;
-  display: flex;
-  align-items: center;
-  background: white;
-  border: 2px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 0.5rem 0.75rem;
-  height: 42px; // Match button height
-  transition: all 0.2s;
-  min-width: 240px;
-  max-width: 320px;
-
-  &:focus-within {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-
-  .search-icon {
-    font-size: 0.938rem;
-    color: #9ca3af;
-    margin-right: 0.5rem;
-    flex-shrink: 0;
-  }
-
-  .search-input-header {
-    flex: 1;
-    border: none;
-    outline: none;
-    font-size: 0.875rem;
-    color: #111827;
-    background: transparent;
-    line-height: 1.5;
-
-    &::placeholder {
-      color: #9ca3af;
-      font-size: 0.875rem;
-    }
-  }
-
-  .clear-search-btn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: #f3f4f6;
-    border: none;
-    color: #6b7280;
-    font-size: 0.688rem;
-    cursor: pointer;
-    transition: all 0.2s;
-    margin-left: 0.5rem;
-    flex-shrink: 0;
-    padding: 0;
-
-    &:hover {
-      background: #ef4444;
-      color: white;
-    }
-  }
+  @extend %standard-search-box;
 }
 
 // Filter Chips Container - Compact Inline Design
 .filter-chips-container {
-  margin: 0.625rem 0;
-  padding: 0.625rem 1rem;
-  background: linear-gradient(135deg, #f8fafc 0%, #eef2f7 100%);
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-  .chips-inline-wrapper {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-
-    .chips-label {
-      display: flex;
-      align-items: center;
-      gap: 0.375rem;
-      font-size: 0.813rem;
-      font-weight: 600;
-      color: #374151;
-      white-space: nowrap;
-
-      .filter-icon {
-        font-size: 0.938rem;
-      }
-    }
-
-    .chips-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.5rem;
-      flex: 1;
-    }
-
-    .btn-clear-all-chips {
-      padding: 0.313rem 0.75rem;
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: white;
-      border: none;
-      border-radius: 5px;
-      font-size: 0.75rem;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s;
-      box-shadow: 0 1px 3px rgba(239, 68, 68, 0.2);
-      white-space: nowrap;
-
-      &:hover {
-        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-        transform: translateY(-1px);
-        box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
-      }
-
-      &:active {
-        transform: translateY(0);
-      }
-    }
-  }
-
-  .filter-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    padding: 0.25rem 0.625rem;
-    background: white;
-    border: 1.5px solid #667eea;
-    border-radius: 14px;
-    font-size: 0.75rem;
-    color: #374151;
-    transition: all 0.2s;
-    box-shadow: 0 1px 3px rgba(102, 126, 234, 0.12);
-
-    &:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
-      border-color: #5568d3;
-    }
-
-    .chip-content {
-      display: flex;
-      gap: 0.25rem;
-      align-items: center;
-
-      .chip-label {
-        font-weight: 600;
-        color: #667eea;
-      }
-
-      .chip-value {
-        font-weight: 500;
-        color: #1f2937;
-        max-width: 150px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-    }
-
-    .chip-remove {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 16px;
-      height: 16px;
-      margin-left: 0.125rem;
-      padding: 0;
-      background: #f3f4f6;
-      border: none;
-      border-radius: 50%;
-      color: #6b7280;
-      font-size: 0.75rem;
-      line-height: 1;
-      cursor: pointer;
-      transition: all 0.2s;
-
-      &:hover {
-        background: #ef4444;
-        color: white;
-        transform: rotate(90deg) scale(1.1);
-      }
-    }
-  }
+  @extend %standard-filter-chips-container;
 }
 
 // Buttons
 .btn {
-  padding: 0.5rem 1rem;
-  border-radius: 8px;
-  font-weight: 500;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  height: 42px; // Consistent height with search box
-  font-size: 0.875rem;
-  white-space: nowrap;
+  @extend %standard-btn;
+}
+
+.btn-primary {
+  @extend %standard-btn-primary;
 }
 
 .btn-filters {
-  background: white;
-  color: #667eea;
-  border: 2px solid #667eea;
-
-  &:hover {
-    background: #f3f4f6;
-    transform: translateY(-1px);
-  }
-
-  .btn-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .filter-badge {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 20px;
-    height: 20px;
-    padding: 0 0.375rem;
-    background: #ef4444;
-    color: white;
-    border-radius: 10px;
-    font-size: 0.688rem;
-    font-weight: 600;
-    margin-left: 0.25rem;
-  }
+  @extend %standard-btn-filters;
 }
 
 // Animations
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
 .animate-fade-in {
-  animation: fade-in 0.3s ease-out;
+  @extend %standard-animate-fade-in;
 }
 
 .animate-scale-in {
-  animation: scale-in 0.2s ease-out;
+  @extend %standard-animate-scale-in;
 }
 
 // Side panel styles (handled by AdvancedSearchPanelComponent, but ensure it's visible)
@@ -316,53 +65,11 @@ app-advanced-search-panel {
 
 // Table Container
 .table-container {
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-  border: 1px solid #e5e7eb;
-  margin-top: 1rem;
+  @extend %standard-table-container;
 }
 
 .members-table {
-  width: 100%;
-  border-collapse: collapse;
-
-  thead {
-    background: #f9fafb;
-    border-bottom: 2px solid #e5e7eb;
-
-    th {
-      padding: 1rem;
-      text-align: left;
-      font-size: 0.813rem;
-      font-weight: 600;
-      color: #374151;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-  }
-
-  tbody {
-    tr {
-      border-bottom: 1px solid #e5e7eb;
-      transition: background-color 0.2s;
-
-      &:hover {
-        background: #f9fafb;
-      }
-
-      &:last-child {
-        border-bottom: none;
-      }
-    }
-
-    td {
-      padding: 1rem;
-      font-size: 0.938rem;
-      color: #1f2937;
-    }
-  }
+  @extend %standard-table;
 }
 
 .member-name-link {
@@ -402,6 +109,40 @@ app-advanced-search-panel {
   font-family: 'SF Mono', 'Monaco', 'Cascadia Code', 'Consolas', monospace;
   font-size: 0.875rem;
   color: #6b7280;
+}
+
+.father-name-cell {
+  min-width: 150px;
+  max-width: 250px;
+  
+  .father-name {
+    font-size: 0.875rem;
+    color: #374151;
+    font-weight: 500;
+  }
+}
+
+.address-cell {
+  min-width: 200px;
+  max-width: 350px;
+  
+  .address-content {
+    display: flex;
+    flex-direction: column;
+    
+    .address-line {
+      font-size: 0.875rem;
+      color: #374151;
+      line-height: 1.5;
+      word-wrap: break-word;
+      word-break: break-word;
+      white-space: normal;
+      max-width: 100%;
+      // Allow natural wrapping to multiple lines (typically 1-2 lines)
+      overflow-wrap: break-word;
+      hyphens: auto;
+    }
+  }
 }
 
 .bcc-name {
@@ -965,6 +706,17 @@ app-advanced-search-panel {
     font-size: 0.875rem;
     color: #6b7280;
     margin: 0;
+  }
+  
+  // Standard button styles for empty state buttons
+  .btn,
+  button.btn {
+    @extend %standard-btn;
+  }
+  
+  .btn-primary,
+  button.btn-primary {
+    @extend %standard-btn-primary;
   }
 }
 

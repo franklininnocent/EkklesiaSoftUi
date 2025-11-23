@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angul
 import { Router } from '@angular/router';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { BCC, BCCStatistics } from '../../../../core/models/family.model';
 import { BCCFormComponent } from '../bcc-form/bcc-form';
@@ -73,7 +74,8 @@ export class BCCListComponent implements OnInit, OnDestroy, AfterViewChecked {
     private bccService: BCCService,
     private fb: FormBuilder,
     private router: Router,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private authService: AuthService
   ) {
     this.filterForm = this.fb.group({
       search: [''],
@@ -504,34 +506,65 @@ export class BCCListComponent implements OnInit, OnDestroy, AfterViewChecked {
   }
 
   /**
-   * Delete BCC
-   */
-  deleteBCC(bcc: BCC): void {
-    if (confirm(`Are you sure you want to delete "${bcc.name}"?`)) {
-      this.bccService.deleteBCC(bcc.id)
-        .pipe(takeUntil(this.destroy$))
-        .subscribe({
-          next: () => {
-            this.loadBCCs();
-            this.loadStatistics();
-            this.toastService.success('BCC deleted successfully', 'Success');
-            this.cdr.markForCheck();
-          },
-          error: (error) => {
-            this.toastService.error('Failed to delete BCC', 'Error');
-            console.error('Error deleting BCC:', error);
-            this.cdr.markForCheck();
-          }
-        });
-    }
-  }
-
-  /**
    * Create new BCC
    */
   createBCC(): void {
     this.selectedBCC = null;
     this.showForm = true;
+  }
+
+  /**
+   * Check if current user is Tenant Admin
+   */
+  get isTenantAdmin(): boolean {
+    return this.authService.isTenantAdmin();
+  }
+
+  /**
+   * Delete a BCC (only for Tenant Admins)
+   */
+  deleteBCC(bcc: BCC): void {
+    // Check if user is Tenant Admin
+    if (!this.isTenantAdmin) {
+      this.toastService.error('Only Tenant Administrators can delete BCCs.', 'Permission Denied', 5000);
+      return;
+    }
+
+    // Confirmation dialog
+    const bccName = bcc.name || bcc.bcc_code || 'this BCC';
+    const familyCount = bcc.families?.length || 0;
+    const warningMessage = familyCount > 0 
+      ? `Are you sure you want to delete ${bccName}? This will unassign ${familyCount} family/families from this BCC. This action cannot be undone.`
+      : `Are you sure you want to delete ${bccName}? This action cannot be undone.`;
+
+    if (!confirm(warningMessage)) {
+      return;
+    }
+
+    this.loading = true;
+    this.cdr.markForCheck();
+
+    this.bccService.deleteBCC(bcc.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.toastService.success('BCC deleted successfully', 'Success', 4000);
+            this.loadBCCs();
+            this.loadStatistics();
+          } else {
+            this.toastService.error(response.message || 'Failed to delete BCC', 'Error', 5000);
+          }
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error deleting BCC:', err);
+          this.toastService.error(err.error?.message || 'Failed to delete BCC', 'Error', 6000);
+          this.loading = false;
+          this.cdr.markForCheck();
+        }
+      });
   }
 
   /**

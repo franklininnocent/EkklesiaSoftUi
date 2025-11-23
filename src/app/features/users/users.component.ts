@@ -1,9 +1,10 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CardComponent, PaginationComponent } from '@shared/components';
+import { PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { User } from '@core/models';
 import { UserFormModalComponent } from './user-form-modal/user-form-modal.component';
 import { Subject } from 'rxjs';
@@ -12,7 +13,7 @@ import { takeUntil } from 'rxjs/operators';
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, CardComponent, PaginationComponent, SortableDirective, UserFormModalComponent],
+  imports: [CommonModule, PaginationComponent, SortableDirective, UserFormModalComponent],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -44,8 +45,16 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   constructor(
     private usersService: UsersService,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private authService: AuthService
   ) {}
+  
+  /**
+   * Check if current user is Tenant Admin
+   */
+  get isTenantAdmin(): boolean {
+    return this.authService.isTenantAdmin();
+  }
 
   ngOnInit(): void {
     this.loadUsers();
@@ -137,6 +146,61 @@ export class UsersComponent implements OnInit, OnDestroy {
         error: (err) => {
           console.error('Error updating user status:', err);
           this.toastService.error(err.error?.message || 'Failed to update user status', 'Error', 6000);
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  /**
+   * Delete a user (only for Tenant Admins)
+   */
+  deleteUser(user: User): void {
+    // Check if user is Tenant Admin
+    if (!this.isTenantAdmin) {
+      this.toastService.error('Only Tenant Administrators can delete users.', 'Permission Denied', 5000);
+      return;
+    }
+
+    // Prevent deletion of primary admin
+    if (user.is_primary_admin) {
+      this.toastService.error('The primary admin account cannot be deleted. This account is essential for maintaining tenant administrative continuity.', 'Cannot Delete', 6000);
+      return;
+    }
+
+    // Prevent self-deletion
+    const currentUser = this.authService.currentUserValue;
+    if (currentUser && user.id === currentUser.id) {
+      this.toastService.error('You cannot delete your own account.', 'Cannot Delete', 5000);
+      return;
+    }
+
+    // Confirmation dialog
+    const userName = user.name || user.email || 'this user';
+    if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
+      return;
+    }
+
+    this.loading = true;
+    this.cdr.markForCheck();
+
+    this.usersService.deleteUser(user.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.toastService.success('User deleted successfully', 'Success', 4000);
+            this.loadUsers();
+            this.loadStatistics();
+          } else {
+            this.toastService.error(response.message || 'Failed to delete user', 'Error', 5000);
+          }
+          this.loading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          console.error('Error deleting user:', err);
+          this.toastService.error(err.error?.message || 'Failed to delete user', 'Error', 6000);
+          this.loading = false;
           this.cdr.markForCheck();
         }
       });
