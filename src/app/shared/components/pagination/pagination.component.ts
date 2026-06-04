@@ -106,9 +106,11 @@ export class PaginationComponent implements OnChanges {
     this.goToPage(this.totalPages);
   }
 
-  onPageSizeChange(event: Event): void {
-    const select = event.target as HTMLSelectElement;
-    const newPageSize = parseInt(select.value, 10);
+  onPageSizeChange(newPageSize: number): void {
+    if (newPageSize === this.pageSize) {
+      return;
+    }
+
     this.pageSizeChange.emit(newPageSize);
     // Reset to first page when page size changes
     this.pageChange.emit(1);

@@ -20,6 +20,10 @@ export const SETTINGS_ROUTES: Routes = [
   {
     path: 'pope',
     loadComponent: () => import('./pope-settings/pope-settings.component').then(m => m.PopeSettingsComponent)
+  },
+  {
+    path: 'subscription',
+    loadComponent: () => import('./subscription/subscription-management.component').then(m => m.SubscriptionManagementComponent)
   }
 ];
 

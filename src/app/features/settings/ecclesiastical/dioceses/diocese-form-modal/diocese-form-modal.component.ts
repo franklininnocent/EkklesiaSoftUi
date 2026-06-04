@@ -193,6 +193,8 @@ export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewIn
 
     operation.subscribe({
       next: (response) => {
+        // Clear cache after successful create/update
+        this.dioceseService.clearCache();
         const message = this.isEditMode ? 'Diocese updated successfully' : 'Diocese created successfully';
         this.toastService.success(message);
         this.saved.emit(response.data);

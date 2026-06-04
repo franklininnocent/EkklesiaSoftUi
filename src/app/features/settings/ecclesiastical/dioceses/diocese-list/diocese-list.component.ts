@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -6,12 +6,12 @@ import { DioceseService } from '@core/services/ecclesiastical';
 import { GeographyService, DenominationService } from '@core/services';
 import { Diocese, DioceseListParams } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
-import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { DioceseFormModalComponent } from '../diocese-form-modal/diocese-form-modal.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 
 @Component({
   selector: 'app-diocese-list',
@@ -19,12 +19,12 @@ import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/ad
   imports: [
     CommonModule, 
     FormsModule, 
-    PaginationComponent, 
     ConfirmationModalComponent, 
     DioceseFormModalComponent,
     LoadingSkeletonComponent,
     EmptyStateComponent,
-    AdvancedSearchPanelComponent
+    AdvancedSearchPanelComponent,
+    PaginationComponent
   ],
   templateUrl: './diocese-list.component.html',
   styleUrl: './diocese-list.component.scss'
@@ -34,13 +34,14 @@ export class DioceseListComponent implements OnInit {
   countries: any[] = [];
   denominations: any[] = [];
   
-  // Pagination
+  // Traditional Pagination
   currentPage = 1;
-  perPage = 20; // Increased to 20 for better screen utilization
+  totalPages = 1;
   totalItems = 0;
-  totalPages = 0;
+  perPage = 20;
+  perPageOptions = [10, 20, 50, 100];
 
-  // Filters
+  // Filters (all server-side)
   searchTerm = '';
   selectedCountry: number | null = null;
   selectedDenomination: number | null = null;
@@ -68,20 +69,30 @@ export class DioceseListComponent implements OnInit {
     private geographyService: GeographyService,
     private denominationService: DenominationService,
     private router: Router,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
-    this.loadDioceses();
+    // Load filters first (they're cached), then load dioceses
     this.loadFilters();
+    // Delay diocese loading slightly to allow filters to initialize
+    setTimeout(() => {
+      this.loadDioceses();
+    }, 50);
   }
 
-  loadDioceses(): void {
-    this.loading = true;
+  loadDioceses(reset: boolean = true): void {
+    if (reset) {
+      this.loading = true;
+      this.currentPage = 1;
+      this.dioceses = [];
+    }
     
     const params: DioceseListParams = {
       page: this.currentPage,
       per_page: this.perPage,
+      // All filtering is server-side
       search: this.searchTerm || undefined,
       country_id: this.selectedCountry || undefined,
       denomination_id: this.selectedDenomination || undefined,
@@ -90,26 +101,63 @@ export class DioceseListComponent implements OnInit {
       sort_order: this.sortOrder
     };
 
-    this.dioceseService.getDioceses(params).subscribe({
-      next: (response) => {
-        if (response.data) {
-          this.dioceses = response.data.data || [];
-          this.totalItems = response.data.total || 0;
-          this.currentPage = response.data.current_page || 1;
-          this.totalPages = response.data.last_page || 1;
+    // Force refresh if resetting (after create/update/delete)
+    const forceRefresh = reset;
+    this.dioceseService.getDioceses(params, forceRefresh).subscribe({
+      next: (response: any) => {
+        if (response && response.success !== false && response.data) {
+          // Handle traditional pagination response format
+          this.dioceses = Array.isArray(response.data) ? [...response.data] : [];
+          
+          // Update pagination info
+          if (response.pagination) {
+            this.currentPage = response.pagination.current_page || 1;
+            this.totalPages = response.pagination.last_page || 1;
+            this.totalItems = response.pagination.total || 0;
+            this.perPage = response.pagination.per_page || this.perPage;
+          }
+        } else {
+          this.dioceses = [];
+          this.currentPage = 1;
+          this.totalPages = 1;
+          this.totalItems = 0;
         }
+        
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading dioceses:', error);
         this.toastService.error('Failed to load dioceses');
         this.loading = false;
+        this.dioceses = [];
+        this.currentPage = 1;
+        this.totalPages = 1;
+        this.totalItems = 0;
+        this.cdr.detectChanges();
       }
     });
   }
 
+  /**
+   * Handle page change
+   */
+  onPageChange(page: number): void {
+    this.currentPage = page;
+    this.loadDioceses(false);
+  }
+
+  /**
+   * Handle per page change
+   */
+  onPerPageChange(perPage: number): void {
+    this.perPage = perPage;
+    this.currentPage = 1;
+    this.loadDioceses(true);
+  }
+
   loadFilters(): void {
-    // Load countries
+    // Load countries (uses cached data from GeographyService)
     this.geographyService.getCountries().subscribe({
       next: (response) => {
         this.countries = response.data || [];
@@ -118,7 +166,7 @@ export class DioceseListComponent implements OnInit {
       error: (error) => console.error('Error loading countries:', error)
     });
 
-    // Load denominations
+    // Load denominations (cached in service)
     this.denominationService.getDenominations().subscribe({
       next: (response) => {
         this.denominations = response.data || [];
@@ -194,7 +242,7 @@ export class DioceseListComponent implements OnInit {
   onAdvancedSearch(searchValues: { [key: string]: any }): void {
     this.advancedSearchValues = searchValues;
     
-    // Map advanced search values to existing filter properties
+    // Map advanced search values to existing filter properties (all server-side)
     if (searchValues['name']) {
       this.searchTerm = searchValues['name'];
     }
@@ -208,9 +256,10 @@ export class DioceseListComponent implements OnInit {
       this.activeFilter = searchValues['active'];
     }
 
-    this.currentPage = 1;
     this.showAdvancedSearch = false; // Auto-close panel after applying
-    this.loadDioceses();
+    // Reset to first page and reload (server-side filtering)
+    this.currentPage = 1;
+    this.loadDioceses(true);
   }
 
   onClearAdvancedSearch(): void {
@@ -271,8 +320,9 @@ export class DioceseListComponent implements OnInit {
     if (filter.key === 'denomination_id') this.selectedDenomination = null;
     if (filter.key === 'active') this.activeFilter = null;
     
+    // Reset to first page and reload (server-side filtering)
     this.currentPage = 1;
-    this.loadDioceses();
+    this.loadDioceses(true);
   }
 
   /**
@@ -284,12 +334,14 @@ export class DioceseListComponent implements OnInit {
   }
 
   onSearch(): void {
+    // Reset to first page and reload (server-side filtering)
     this.currentPage = 1;
-    this.loadDioceses();
+    this.loadDioceses(true);
   }
 
   /**
    * Quick search with debouncing (300ms delay)
+   * All filtering happens server-side
    */
   onQuickSearch(): void {
     // Clear previous timeout
@@ -299,23 +351,25 @@ export class DioceseListComponent implements OnInit {
 
     // Set new timeout for debounced search
     this.searchTimeout = setTimeout(() => {
-      this.currentPage = 1;
-      this.loadDioceses();
+      // Reset to first page and reload (server-side filtering)
+      this.loadDioceses(true);
     }, 300);
   }
 
   /**
-   * Clear search term and refresh results
+   * Clear search term and refresh results (server-side)
    */
   clearSearch(): void {
     this.searchTerm = '';
+    // Reset to first page and reload
     this.currentPage = 1;
-    this.loadDioceses();
+    this.loadDioceses(true);
   }
 
   onFilterChange(): void {
+    // Reset to first page and reload (server-side filtering)
     this.currentPage = 1;
-    this.loadDioceses();
+    this.loadDioceses(true);
   }
 
   clearFilters(): void {
@@ -323,10 +377,14 @@ export class DioceseListComponent implements OnInit {
     this.selectedCountry = null;
     this.selectedDenomination = null;
     this.activeFilter = null;
+    // Reset to first page and reload
     this.currentPage = 1;
-    this.loadDioceses();
+    this.loadDioceses(true);
   }
 
+  /**
+   * Sort by column
+   */
   onSort(column: string): void {
     if (this.sortBy === column) {
       this.sortOrder = this.sortOrder === 'asc' ? 'desc' : 'asc';
@@ -334,18 +392,16 @@ export class DioceseListComponent implements OnInit {
       this.sortBy = column;
       this.sortOrder = 'asc';
     }
-    this.loadDioceses();
-  }
-
-  onPageChange(page: number): void {
-    this.currentPage = page;
-    this.loadDioceses();
+    // Reset to first page and reload
+    this.currentPage = 1;
+    this.loadDioceses(true);
   }
 
   onPageSizeChange(pageSize: number): void {
     this.perPage = pageSize;
-    this.currentPage = 1; // Reset to first page
-    this.loadDioceses();
+    // Reset to first page and reload
+    this.currentPage = 1;
+    this.loadDioceses(true);
   }
 
   onCreateDiocese(): void {
@@ -361,7 +417,14 @@ export class DioceseListComponent implements OnInit {
   onFormSaved(diocese: Diocese): void {
     this.showFormModal = false;
     this.selectedDiocese = null;
-    this.loadDioceses(); // Refresh the list
+    
+    // Clear cache first to ensure fresh data
+    this.dioceseService.clearCache();
+    
+    // Force a complete reload to get latest data with relationships
+    // Reset to first page and reload
+    this.currentPage = 1;
+    this.loadDioceses(true);
   }
 
   onFormCancelled(): void {
@@ -385,7 +448,10 @@ export class DioceseListComponent implements OnInit {
           this.toastService.success('Diocese deleted successfully');
           this.showDeleteModal = false;
           this.dioceseToDelete = null;
-          this.loadDioceses();
+          // Clear cache and reload from first page
+          this.dioceseService.clearCache();
+          this.currentPage = 1;
+          this.loadDioceses(true);
         },
         error: (error) => {
           console.error('Error deleting diocese:', error);
@@ -403,6 +469,14 @@ export class DioceseListComponent implements OnInit {
   getSortIcon(column: string): string {
     if (this.sortBy !== column) return '⇅';
     return this.sortOrder === 'asc' ? '↑' : '↓';
+  }
+
+  /**
+   * Check if column is sortable
+   */
+  isSortable(column: string): boolean {
+    // All columns are sortable with traditional pagination
+    return true;
   }
 
   getStatusBadgeClass(active: boolean): string {

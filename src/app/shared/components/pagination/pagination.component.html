@@ -13,10 +13,10 @@
       <label for="pageSize" class="page-size-label">Show:</label>
       <select 
         id="pageSize" 
-        [value]="pageSize" 
-        (change)="onPageSizeChange($event)"
+        [ngModel]="pageSize" 
+        (ngModelChange)="onPageSizeChange($event)"
         class="page-size-select">
-        <option *ngFor="let size of pageSizeOptions" [value]="size">
+        <option *ngFor="let size of pageSizeOptions" [ngValue]="size">
           {{ size }}
         </option>
       </select>

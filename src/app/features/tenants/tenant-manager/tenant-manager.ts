@@ -5,6 +5,7 @@
 
 import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { Router } from '@angular/router';
 import { TenantCreateModalComponent } from '../tenant-create-modal/tenant-create-modal';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
@@ -28,6 +29,7 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
   public authService = inject(AuthService);  // Made public for template access
+  private router = inject(Router);
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
 
@@ -272,5 +274,12 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   private applySorting(data: Tenant[], column: string, direction: 'asc' | 'desc'): Tenant[] {
     // Sorting not currently used in grid view, but kept for future enhancement
     return data;
+  }
+
+  /**
+   * Navigate to tenant management page
+   */
+  manageTenant(tenant: Tenant): void {
+    this.router.navigate(['/tenants', tenant.id]);
   }
 }

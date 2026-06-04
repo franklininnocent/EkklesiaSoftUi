@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, BehaviorSubject, of } from 'rxjs';
+import { tap, shareReplay, catchError } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import { 
   Bishop, 
@@ -16,6 +17,11 @@ import { ApiResponse, PaginatedResponse } from '@core/models';
 })
 export class BishopService {
   private baseUrl = `${environment.apiUrl}/ecclesiastical/bishops`;
+
+  // Cache for statistics (10 minutes)
+  private statisticsCache$: Observable<ApiResponse<BishopStatistics>> | null = null;
+  private statisticsCacheTime: number = 0;
+  private readonly STATISTICS_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
 
   constructor(private http: HttpClient) {}
 
@@ -67,9 +73,37 @@ export class BishopService {
 
   /**
    * Get bishop statistics
+   * Results are cached for 10 minutes to improve performance
    */
-  getStatistics(): Observable<ApiResponse<BishopStatistics>> {
-    return this.http.get<ApiResponse<BishopStatistics>>(`${this.baseUrl}/statistics`);
+  getStatistics(forceRefresh: boolean = false): Observable<ApiResponse<BishopStatistics>> {
+    const now = Date.now();
+    const cacheValid = this.statisticsCache$ && 
+                      (now - this.statisticsCacheTime) < this.STATISTICS_CACHE_TTL;
+
+    if (!forceRefresh && cacheValid) {
+      return this.statisticsCache$!;
+    }
+
+    this.statisticsCache$ = this.http.get<ApiResponse<BishopStatistics>>(`${this.baseUrl}/statistics`).pipe(
+      tap(() => {
+        this.statisticsCacheTime = Date.now();
+      }),
+      shareReplay(1),
+      catchError(error => {
+        this.statisticsCache$ = null;
+        throw error;
+      })
+    );
+
+    return this.statisticsCache$;
+  }
+
+  /**
+   * Clear all caches (call after create/update/delete operations)
+   */
+  clearCache(): void {
+    this.statisticsCache$ = null;
+    this.statisticsCacheTime = 0;
   }
 
   /**

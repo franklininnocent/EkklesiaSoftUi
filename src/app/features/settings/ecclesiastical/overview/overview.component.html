@@ -18,8 +18,9 @@
     <app-loading-skeleton type="card" [rows]="8"></app-loading-skeleton>
   </div>
 
-  <!-- Main Content -->
-  <div *ngIf="!loading && !error" class="overview-content">
+
+  <!-- Main Content - Show if not loading and we have at least some data -->
+  <div *ngIf="!loading" class="overview-content">
     <!-- Summary Cards -->
     <div class="summary-grid">
       <!-- Total Dioceses Card -->
@@ -338,8 +339,8 @@
     </div>
   </div>
 
-  <!-- Error State -->
-  <div *ngIf="!loading && error" class="error-container">
+  <!-- Error State - Show only if no data at all -->
+  <div *ngIf="!loading && error && !dioceseStats && !bishopStats" class="error-container">
     <div class="error-icon">⚠️</div>
     <h3 class="error-title">Failed to Load Statistics</h3>
     <p class="error-message">{{ error }}</p>
@@ -347,6 +348,11 @@
       <span class="btn-icon">🔄</span>
       Try Again
     </button>
+  </div>
+
+  <!-- Partial Error Warning -->
+  <div *ngIf="!loading && error && (dioceseStats || bishopStats)" class="warning-banner" style="background: #fff3cd; border: 1px solid #ffc107; padding: 1rem; margin: 1rem 0; border-radius: 8px; color: #856404;">
+    <strong>⚠️ Warning:</strong> {{ error }} Some data may be incomplete.
   </div>
 </div>
 

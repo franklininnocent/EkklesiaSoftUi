@@ -1,0 +1,709 @@
+<div class="subscription-management-container">
+  <!-- Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <button class="btn-back" (click)="goBack()" type="button" aria-label="Back to settings">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div class="header-content">
+        <h1>Subscription Management</h1>
+        <p>Manage subscription plans and duration options</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <button 
+        *ngIf="activeTab === 'duration'"
+        class="btn-add" 
+        (click)="openAddModal()" 
+        type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Add Duration Option</span>
+      </button>
+      <button 
+        *ngIf="activeTab === 'plans'"
+        class="btn-add" 
+        (click)="openAddPlanModal()" 
+        type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <line x1="12" y1="5" x2="12" y2="19"></line>
+          <line x1="5" y1="12" x2="19" y2="12"></line>
+        </svg>
+        <span>Add Plan</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs-container">
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'duration'"
+      (click)="setActiveTab('duration')"
+      type="button">
+      Duration Options
+    </button>
+    <button 
+      class="tab-button" 
+      [class.active]="activeTab === 'plans'"
+      (click)="setActiveTab('plans')"
+      type="button">
+      Subscription Plans
+    </button>
+  </div>
+
+  <!-- Duration Options Tab Content -->
+  <div *ngIf="activeTab === 'duration'">
+    <!-- Loading State -->
+    <div *ngIf="loading && durationOptions.length === 0" class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading duration options...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error && !loading" class="error-container" role="alert">
+      <div class="error-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+      <h3>Failed to Load Duration Options</h3>
+      <p>{{ error }}</p>
+      <button class="btn-retry" (click)="loadDurationOptions()" type="button">Retry</button>
+    </div>
+
+    <!-- Duration Options Table -->
+    <div *ngIf="!loading && !error" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Months</th>
+            <th>Label</th>
+            <th>Display Order</th>
+            <th>Status</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let option of durationOptions" [class.inactive]="!option.active">
+            <td>{{ option.months }}</td>
+            <td>{{ option.label }}</td>
+            <td>{{ option.display_order }}</td>
+            <td>
+              <span class="status-badge" [ngClass]="option.active ? 'status-active' : 'status-inactive'">
+                {{ option.active ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <div class="action-buttons">
+                <button 
+                  class="btn-edit" 
+                  (click)="openEditModal(option)"
+                  [attr.aria-label]="'Edit ' + option.label"
+                  type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <button 
+                  class="btn-delete" 
+                  (click)="openDeleteModal(option)"
+                  [attr.aria-label]="'Delete ' + option.label"
+                  type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="durationOptions.length === 0">
+            <td colspan="5" class="empty-state-cell">
+              <div class="empty-state">
+                <p>No duration options found. Click "Add Duration Option" to create one.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Plans Tab Content -->
+  <div *ngIf="activeTab === 'plans'">
+    <!-- Loading State -->
+    <div *ngIf="loading && plans.length === 0" class="loading-container">
+      <div class="spinner"></div>
+      <p>Loading subscription plans...</p>
+    </div>
+
+    <!-- Error State -->
+    <div *ngIf="error && !loading" class="error-container" role="alert">
+      <div class="error-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </div>
+      <h3>Failed to Load Subscription Plans</h3>
+      <p>{{ error }}</p>
+      <button class="btn-retry" (click)="loadPlans()" type="button">Retry</button>
+    </div>
+
+    <!-- Plans Table -->
+    <div *ngIf="!loading && !error" class="table-container">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Name</th>
+            <th>Price</th>
+            <th>Max Users</th>
+            <th>Storage (MB)</th>
+            <th>Features</th>
+            <th>Status</th>
+            <th>Default</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let plan of plans" [class.inactive]="!plan.active">
+            <td><code>{{ plan.key }}</code></td>
+            <td>
+              <strong>{{ plan.name }}</strong>
+              <div *ngIf="plan.description" class="plan-description">{{ plan.description }}</div>
+            </td>
+            <td>₹{{ plan.price | number:'1.2-2' }}</td>
+            <td>{{ plan.max_users === 999999 ? 'Unlimited' : plan.max_users }}</td>
+            <td>{{ plan.max_storage_mb | number }}</td>
+            <td>
+              <div class="features-list">
+                <span *ngFor="let feature of plan.features" class="feature-tag">{{ feature }}</span>
+                <span *ngIf="!plan.features || plan.features.length === 0" class="text-muted">None</span>
+              </div>
+            </td>
+            <td>
+              <span class="status-badge" [ngClass]="plan.active ? 'status-active' : 'status-inactive'">
+                {{ plan.active ? 'Active' : 'Inactive' }}
+              </span>
+            </td>
+            <td>
+              <span *ngIf="plan.is_default" class="badge-default">Default</span>
+              <span *ngIf="!plan.is_default" class="text-muted">-</span>
+            </td>
+            <td class="actions-cell">
+              <div class="action-buttons">
+                <button 
+                  class="btn-edit" 
+                  (click)="openEditPlanModal(plan)"
+                  [attr.aria-label]="'Edit ' + plan.name"
+                  type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                </button>
+                <button 
+                  class="btn-delete" 
+                  (click)="openDeletePlanModal(plan)"
+                  [attr.aria-label]="'Delete ' + plan.name"
+                  type="button">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="plans.length === 0">
+            <td colspan="9" class="empty-state-cell">
+              <div class="empty-state">
+                <p>No subscription plans found. Click "Add Plan" to create one.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Duration Options Modals (existing modals remain the same) -->
+<!-- Add Duration Option Modal -->
+<div *ngIf="showAddModal" class="modal-overlay" (click)="closeAddModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Add Duration Option</h2>
+      <button class="modal-close" (click)="closeAddModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="add-months">Months <span class="required">*</span></label>
+        <input 
+          id="add-months"
+          type="number" 
+          [(ngModel)]="formData.months"
+          min="1"
+          max="120"
+          class="form-input"
+          [disabled]="loading"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="add-label">Label <span class="required">*</span></label>
+        <input 
+          id="add-label"
+          type="text" 
+          [(ngModel)]="formData.label"
+          class="form-input"
+          placeholder="e.g., 1 Month, 1 Year, 3 Years"
+          [disabled]="loading"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="add-display-order">Display Order</label>
+        <input 
+          id="add-display-order"
+          type="number" 
+          [(ngModel)]="formData.display_order"
+          min="0"
+          class="form-input"
+          [disabled]="loading">
+      </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            [(ngModel)]="formData.active"
+            [disabled]="loading">
+          <span>Active</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeAddModal()" type="button">Cancel</button>
+      <button 
+        class="btn-save" 
+        (click)="createDurationOption()" 
+        [disabled]="loading"
+        type="button">
+        {{ loading ? 'Creating...' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Duration Option Modal -->
+<div *ngIf="showEditModal" class="modal-overlay" (click)="closeEditModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Edit Duration Option</h2>
+      <button class="modal-close" (click)="closeEditModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="edit-months">Months <span class="required">*</span></label>
+        <input 
+          id="edit-months"
+          type="number" 
+          [(ngModel)]="formData.months"
+          min="1"
+          max="120"
+          class="form-input"
+          [disabled]="loading"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="edit-label">Label <span class="required">*</span></label>
+        <input 
+          id="edit-label"
+          type="text" 
+          [(ngModel)]="formData.label"
+          class="form-input"
+          [disabled]="loading"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="edit-display-order">Display Order</label>
+        <input 
+          id="edit-display-order"
+          type="number" 
+          [(ngModel)]="formData.display_order"
+          min="0"
+          class="form-input"
+          [disabled]="loading">
+      </div>
+      <div class="form-group">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            [(ngModel)]="formData.active"
+            [disabled]="loading">
+          <span>Active</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeEditModal()" type="button">Cancel</button>
+      <button 
+        class="btn-save" 
+        (click)="updateDurationOption()" 
+        [disabled]="loading"
+        type="button">
+        {{ loading ? 'Updating...' : 'Update' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Duration Option Modal -->
+<div *ngIf="showDeleteModal" class="modal-overlay" (click)="closeDeleteModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Delete Duration Option</h2>
+      <button class="modal-close" (click)="closeDeleteModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete the duration option <strong>{{ deletingOption?.label }}</strong>?</p>
+      <p class="warning-text">This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeDeleteModal()" type="button">Cancel</button>
+      <button 
+        class="btn-delete-confirm" 
+        (click)="deleteDurationOption()" 
+        [disabled]="loading"
+        type="button">
+        {{ loading ? 'Deleting...' : 'Delete' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Plans Modals -->
+<!-- Add Plan Modal -->
+<div *ngIf="showAddPlanModal" class="modal-overlay" (click)="closeAddPlanModal()">
+  <div class="modal-content modal-content-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Add Subscription Plan</h2>
+      <button class="modal-close" (click)="closeAddPlanModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="add-plan-key">Plan Key <span class="required">*</span></label>
+        <input 
+          id="add-plan-key"
+          type="text" 
+          [(ngModel)]="planFormData.key"
+          class="form-input"
+          placeholder="e.g., free, basic, premium"
+          [disabled]="loading"
+          required>
+        <small class="form-hint">Unique identifier (lowercase, no spaces)</small>
+      </div>
+      <div class="form-group">
+        <label for="add-plan-name">Plan Name <span class="required">*</span></label>
+        <input 
+          id="add-plan-name"
+          type="text" 
+          [(ngModel)]="planFormData.name"
+          class="form-input"
+          placeholder="e.g., Free Plan, Basic Plan"
+          [disabled]="loading"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="add-plan-description">Description</label>
+        <textarea 
+          id="add-plan-description"
+          [(ngModel)]="planFormData.description"
+          class="form-input"
+          rows="3"
+          [disabled]="loading"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="add-plan-price">Price (₹) <span class="required">*</span></label>
+          <input 
+            id="add-plan-price"
+            type="number" 
+            [(ngModel)]="planFormData.price"
+            min="0"
+            step="0.01"
+            class="form-input"
+            [disabled]="loading"
+            required>
+        </div>
+        <div class="form-group">
+          <label for="add-plan-max-users">Max Users <span class="required">*</span></label>
+          <input 
+            id="add-plan-max-users"
+            type="number" 
+            [(ngModel)]="planFormData.max_users"
+            min="1"
+            class="form-input"
+            [disabled]="loading"
+            required>
+        </div>
+        <div class="form-group">
+          <label for="add-plan-storage">Storage (MB) <span class="required">*</span></label>
+          <input 
+            id="add-plan-storage"
+            type="number" 
+            [(ngModel)]="planFormData.max_storage_mb"
+            min="1"
+            class="form-input"
+            [disabled]="loading"
+            required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Features</label>
+        <div class="features-checkbox-group">
+          <label *ngFor="let feature of availableFeatures" class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [checked]="isFeatureSelected(feature)"
+              (change)="toggleFeature(feature)"
+              [disabled]="loading">
+            <span>{{ feature }}</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="add-plan-display-order">Display Order</label>
+          <input 
+            id="add-plan-display-order"
+            type="number" 
+            [(ngModel)]="planFormData.display_order"
+            min="0"
+            class="form-input"
+            [disabled]="loading">
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="planFormData.active"
+              [disabled]="loading">
+            <span>Active</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="planFormData.is_default"
+              [disabled]="loading">
+            <span>Default Plan</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeAddPlanModal()" type="button">Cancel</button>
+      <button 
+        class="btn-save" 
+        (click)="createPlan()" 
+        [disabled]="loading"
+        type="button">
+        {{ loading ? 'Creating...' : 'Create' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Edit Plan Modal -->
+<div *ngIf="showEditPlanModal" class="modal-overlay" (click)="closeEditPlanModal()">
+  <div class="modal-content modal-content-large" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Edit Subscription Plan</h2>
+      <button class="modal-close" (click)="closeEditPlanModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label for="edit-plan-key">Plan Key <span class="required">*</span></label>
+        <input 
+          id="edit-plan-key"
+          type="text" 
+          [(ngModel)]="planFormData.key"
+          class="form-input"
+          [disabled]="loading"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="edit-plan-name">Plan Name <span class="required">*</span></label>
+        <input 
+          id="edit-plan-name"
+          type="text" 
+          [(ngModel)]="planFormData.name"
+          class="form-input"
+          [disabled]="loading"
+          required>
+      </div>
+      <div class="form-group">
+        <label for="edit-plan-description">Description</label>
+        <textarea 
+          id="edit-plan-description"
+          [(ngModel)]="planFormData.description"
+          class="form-input"
+          rows="3"
+          [disabled]="loading"></textarea>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="edit-plan-price">Price (₹) <span class="required">*</span></label>
+          <input 
+            id="edit-plan-price"
+            type="number" 
+            [(ngModel)]="planFormData.price"
+            min="0"
+            step="0.01"
+            class="form-input"
+            [disabled]="loading"
+            required>
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-max-users">Max Users <span class="required">*</span></label>
+          <input 
+            id="edit-plan-max-users"
+            type="number" 
+            [(ngModel)]="planFormData.max_users"
+            min="1"
+            class="form-input"
+            [disabled]="loading"
+            required>
+        </div>
+        <div class="form-group">
+          <label for="edit-plan-storage">Storage (MB) <span class="required">*</span></label>
+          <input 
+            id="edit-plan-storage"
+            type="number" 
+            [(ngModel)]="planFormData.max_storage_mb"
+            min="1"
+            class="form-input"
+            [disabled]="loading"
+            required>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Features</label>
+        <div class="features-checkbox-group">
+          <label *ngFor="let feature of availableFeatures" class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [checked]="isFeatureSelected(feature)"
+              (change)="toggleFeature(feature)"
+              [disabled]="loading">
+            <span>{{ feature }}</span>
+          </label>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="edit-plan-display-order">Display Order</label>
+          <input 
+            id="edit-plan-display-order"
+            type="number" 
+            [(ngModel)]="planFormData.display_order"
+            min="0"
+            class="form-input"
+            [disabled]="loading">
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="planFormData.active"
+              [disabled]="loading">
+            <span>Active</span>
+          </label>
+        </div>
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="planFormData.is_default"
+              [disabled]="loading">
+            <span>Default Plan</span>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeEditPlanModal()" type="button">Cancel</button>
+      <button 
+        class="btn-save" 
+        (click)="updatePlan()" 
+        [disabled]="loading"
+        type="button">
+        {{ loading ? 'Updating...' : 'Update' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Delete Plan Modal -->
+<div *ngIf="showDeletePlanModal" class="modal-overlay" (click)="closeDeletePlanModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Delete Subscription Plan</h2>
+      <button class="modal-close" (click)="closeDeletePlanModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete the subscription plan <strong>{{ deletingPlan?.name }}</strong>?</p>
+      <p class="warning-text">This action cannot be undone. If any tenants are using this plan, deletion will be prevented.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeDeletePlanModal()" type="button">Cancel</button>
+      <button 
+        class="btn-delete-confirm" 
+        (click)="deletePlan()" 
+        [disabled]="loading"
+        type="button">
+        {{ loading ? 'Deleting...' : 'Delete' }}
+      </button>
+    </div>
+  </div>
+</div>

@@ -278,6 +278,78 @@ export class TenantService {
   }
 
   /**
+   * Get available subscription plans
+   */
+  getSubscriptionPlans(): Observable<{success: boolean; data: Record<string, any>; currency?: string; duration_options?: Array<{value: number; label: string}>}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.get<{success: boolean; data: Record<string, any>; currency?: string; duration_options?: Array<{value: number; label: string}>}>(`${this.apiUrl}/subscription/plans`)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Upgrade tenant subscription plan
+   */
+  upgradeSubscription(id: number, plan: string, durationMonths?: number): Observable<TenantResponse> {
+    this.setLoading(true);
+    this.clearError();
+
+    const payload: any = { plan };
+    if (durationMonths) {
+      payload.subscription_duration_months = durationMonths;
+    }
+
+    return this.http.post<TenantResponse>(`${this.apiUrl}/${id}/subscription/upgrade`, payload)
+      .pipe(
+        tap(response => {
+          if (response.success && response.data) {
+            // Update tenant in the list
+            const currentTenants = this.tenantsSubject.value;
+            const updatedTenants = currentTenants.map(t => 
+              t.id === id ? response.data : t
+            );
+            this.tenantsSubject.next(updatedTenants);
+          }
+        }),
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Renew tenant subscription
+   */
+  renewSubscription(id: number, durationMonths?: number): Observable<TenantResponse> {
+    this.setLoading(true);
+    this.clearError();
+
+    const payload: any = {};
+    if (durationMonths) {
+      payload.duration_months = durationMonths;
+    }
+
+    return this.http.post<TenantResponse>(`${this.apiUrl}/${id}/subscription/renew`, payload)
+      .pipe(
+        tap(response => {
+          if (response.success && response.data) {
+            // Update tenant in the list
+            const currentTenants = this.tenantsSubject.value;
+            const updatedTenants = currentTenants.map(t => 
+              t.id === id ? response.data : t
+            );
+            this.tenantsSubject.next(updatedTenants);
+          }
+        }),
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
    * Build FormData from request object
    * Handles nested objects and file uploads
    */
@@ -330,6 +402,118 @@ export class TenantService {
     });
 
     return formData;
+  }
+
+  /**
+   * Get all subscription duration options
+   */
+  getDurationOptions(): Observable<{success: boolean; data: any[]; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.get<{success: boolean; data: any[]; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/duration-options`)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Create a new subscription duration option
+   */
+  createDurationOption(data: {months: number; label: string; display_order?: number; active?: boolean}): Observable<{success: boolean; data: any; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.post<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/duration-options`, data)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Update a subscription duration option
+   */
+  updateDurationOption(id: number, data: {months?: number; label?: string; display_order?: number; active?: boolean}): Observable<{success: boolean; data: any; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.put<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/duration-options/${id}`, data)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Delete a subscription duration option
+   */
+  deleteDurationOption(id: number): Observable<{success: boolean; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.delete<{success: boolean; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/duration-options/${id}`)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Get all subscription plans
+   */
+  getPlans(): Observable<{success: boolean; data: any[]; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.get<{success: boolean; data: any[]; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans`)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Create a new subscription plan
+   */
+  createPlan(data: {key: string; name: string; description?: string; price: number; max_users: number; max_storage_mb: number; features?: string[]; display_order?: number; active?: boolean; is_default?: boolean}): Observable<{success: boolean; data: any; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.post<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans`, data)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Update a subscription plan
+   */
+  updatePlan(id: number, data: Partial<{key: string; name: string; description?: string; price: number; max_users: number; max_storage_mb: number; features?: string[]; display_order?: number; active?: boolean; is_default?: boolean}>): Observable<{success: boolean; data: any; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.put<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans/${id}`, data)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
+  }
+
+  /**
+   * Delete a subscription plan
+   */
+  deletePlan(id: number): Observable<{success: boolean; message?: string}> {
+    this.setLoading(true);
+    this.clearError();
+
+    return this.http.delete<{success: boolean; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans/${id}`)
+      .pipe(
+        catchError(error => this.handleError(error)),
+        finalize(() => this.setLoading(false))
+      );
   }
 
   /**

@@ -1,0 +1,410 @@
+<div class="tenant-detail-container">
+  <!-- Header -->
+  <div class="detail-header">
+    <div class="header-left">
+      <button class="btn-back" (click)="goBack()" type="button" aria-label="Back to tenants list">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      <div class="header-content">
+        <h1>{{ tenant?.name || 'Loading...' }}</h1>
+        <p>Manage tenant details, subscription, and settings</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <span *ngIf="tenant" class="status-badge" [ngClass]="getStatusBadgeClass(tenant.active)">
+        {{ getStatusText(tenant.active) }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading && !tenant" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading tenant details...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container" role="alert">
+    <div class="error-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
+    <h3>Failed to Load Tenant</h3>
+    <p>{{ error }}</p>
+    <button class="btn-retry" (click)="loadTenant()" type="button">Retry</button>
+  </div>
+
+  <!-- Tenant Content -->
+  <div *ngIf="tenant && !loading" class="tenant-content">
+    <!-- Tabs -->
+    <div class="tabs-container">
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'details'"
+        (click)="setActiveTab('details')"
+        type="button">
+        Details
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'subscription'"
+        (click)="setActiveTab('subscription')"
+        type="button">
+        Subscription
+      </button>
+      <button 
+        class="tab-button" 
+        [class.active]="activeTab === 'actions'"
+        (click)="setActiveTab('actions')"
+        type="button">
+        Actions
+      </button>
+    </div>
+
+    <!-- Tab Content -->
+    <div class="tab-content">
+      <!-- Details Tab -->
+      <div *ngIf="activeTab === 'details'" class="tab-panel">
+        <div class="panel-header">
+          <h2>Tenant Details</h2>
+          <button 
+            *ngIf="!isEditing"
+            class="btn-edit" 
+            (click)="toggleEdit()"
+            type="button">
+            Edit
+          </button>
+          <div *ngIf="isEditing" class="edit-actions">
+            <button class="btn-save" (click)="saveTenant()" [disabled]="loading" type="button">Save</button>
+            <button class="btn-cancel" (click)="cancelEdit()" type="button">Cancel</button>
+          </div>
+        </div>
+
+        <div class="details-grid">
+          <!-- Basic Information -->
+          <div class="detail-section">
+            <h3>Basic Information</h3>
+            <div class="detail-fields">
+              <div class="field-group">
+                <label>Tenant Name</label>
+                <input 
+                  *ngIf="isEditing"
+                  type="text" 
+                  [(ngModel)]="editForm.name"
+                  class="form-input"
+                  [disabled]="loading">
+                <span *ngIf="!isEditing" class="field-value">{{ tenant.name }}</span>
+              </div>
+              <div class="field-group">
+                <label>Slogan</label>
+                <input 
+                  *ngIf="isEditing"
+                  type="text" 
+                  [(ngModel)]="editForm.slogan"
+                  class="form-input"
+                  [disabled]="loading">
+                <span *ngIf="!isEditing" class="field-value">{{ tenant.slogan || 'N/A' }}</span>
+              </div>
+              <div class="field-group">
+                <label>Slug</label>
+                <input 
+                  *ngIf="isEditing"
+                  type="text" 
+                  [(ngModel)]="editForm.slug"
+                  class="form-input"
+                  [disabled]="loading">
+                <span *ngIf="!isEditing" class="field-value">{{ tenant.slug }}</span>
+              </div>
+              <div class="field-group">
+                <label>Domain</label>
+                <input 
+                  *ngIf="isEditing"
+                  type="text" 
+                  [(ngModel)]="editForm.domain"
+                  class="form-input"
+                  [disabled]="loading">
+                <span *ngIf="!isEditing" class="field-value">{{ tenant.domain || 'N/A' }}</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Contact Information -->
+          <div class="detail-section">
+            <h3>Contact Information</h3>
+            <div class="detail-fields">
+              <div class="field-group">
+                <label>Primary Contact</label>
+                <span class="field-value">{{ tenant.primary_contact?.name || tenant.primaryContact?.name || 'N/A' }}</span>
+              </div>
+              <div class="field-group">
+                <label>Email</label>
+                <span class="field-value">{{ tenant.primary_contact?.email || tenant.primaryContact?.email || tenant.email || 'N/A' }}</span>
+              </div>
+              <div class="field-group">
+                <label>Phone</label>
+                <span class="field-value">{{ tenant.phone || 'N/A' }}</span>
+              </div>
+              <div class="field-group">
+                <label>Website</label>
+                <span class="field-value">
+                  <a *ngIf="tenant.website" [href]="tenant.website" target="_blank" rel="noopener noreferrer">{{ tenant.website }}</a>
+                  <span *ngIf="!tenant.website">N/A</span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Logo -->
+          <div class="detail-section">
+            <h3>Logo</h3>
+            <div class="logo-section">
+              <div class="logo-preview">
+                <img 
+                  *ngIf="getLogoUrl() && !logoPreview"
+                  [src]="getLogoUrl()"
+                  alt="Tenant Logo"
+                  class="logo-image">
+                <img 
+                  *ngIf="logoPreview"
+                  [src]="logoPreview"
+                  alt="Logo Preview"
+                  class="logo-image">
+                <div *ngIf="!getLogoUrl() && !logoPreview" class="logo-placeholder">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="9" y1="3" x2="9" y2="21"></line>
+                    <line x1="15" y1="3" x2="15" y2="21"></line>
+                    <line x1="3" y1="9" x2="21" y2="9"></line>
+                    <line x1="3" y1="15" x2="21" y2="15"></line>
+                  </svg>
+                  <p>No Logo</p>
+                </div>
+              </div>
+              <div class="logo-actions">
+                <input 
+                  type="file" 
+                  accept="image/*"
+                  (change)="onLogoSelected($event)"
+                  id="logo-upload"
+                  class="file-input">
+                <label for="logo-upload" class="btn-upload">Choose Logo</label>
+                <button 
+                  *ngIf="logoFile"
+                  class="btn-upload-submit" 
+                  (click)="uploadLogo()"
+                  [disabled]="loading"
+                  type="button">
+                  Upload
+                </button>
+                <button 
+                  *ngIf="getLogoUrl() && !logoFile"
+                  class="btn-delete-logo" 
+                  (click)="deleteLogo()"
+                  [disabled]="loading"
+                  type="button">
+                  Delete Logo
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription Tab -->
+      <div *ngIf="activeTab === 'subscription'" class="tab-panel">
+        <div class="panel-header">
+          <h2>Subscription Management</h2>
+        </div>
+
+        <div class="subscription-info">
+          <div class="info-card">
+            <div class="info-item">
+              <label>Current Plan</label>
+              <span class="plan-badge" [ngClass]="'plan-' + tenant.plan">{{ tenant.plan | titlecase }}</span>
+            </div>
+            <div class="info-item">
+              <label>Max Users</label>
+              <span class="info-value">{{ tenant.max_users || 'Unlimited' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Max Storage</label>
+              <span class="info-value">{{ tenant.max_storage_mb ? (tenant.max_storage_mb + ' MB') : 'Unlimited' }}</span>
+            </div>
+            <div class="info-item">
+              <label>Trial Ends</label>
+              <span class="info-value">{{ formatDate(tenant.trial_ends_at) }}</span>
+            </div>
+            <div class="info-item">
+              <label>Subscription Ends</label>
+              <span class="info-value">{{ formatDate(tenant.subscription_ends_at) }}</span>
+            </div>
+          </div>
+
+          <div class="subscription-actions">
+            <button class="btn-upgrade" (click)="openUpgradeModal()" type="button">Upgrade Plan</button>
+            <button class="btn-renew" (click)="openRenewModal()" type="button">Renew Subscription</button>
+          </div>
+        </div>
+      </div>
+
+
+      <!-- Actions Tab -->
+      <div *ngIf="activeTab === 'actions'" class="tab-panel">
+        <div class="panel-header">
+          <h2>Tenant Actions</h2>
+        </div>
+
+        <div class="actions-grid">
+          <div class="action-card">
+            <h3>Status Management</h3>
+            <p>Activate or deactivate this tenant</p>
+            <button 
+              class="btn-action-status" 
+              [class.btn-deactivate]="tenant.active === 1"
+              [class.btn-activate]="tenant.active === 0"
+              (click)="toggleTenantStatus()"
+              [disabled]="loading"
+              type="button">
+              {{ tenant.active === 1 ? 'Deactivate Tenant' : 'Activate Tenant' }}
+            </button>
+          </div>
+
+          <div class="action-card">
+            <h3>Reset Password</h3>
+            <p>Send password reset email to primary contact</p>
+            <button class="btn-action-secondary" type="button" disabled>Coming Soon</button>
+          </div>
+
+          <div class="action-card">
+            <h3>Export Data</h3>
+            <p>Download all tenant data as CSV</p>
+            <button class="btn-action-secondary" type="button" disabled>Coming Soon</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upgrade Subscription Modal -->
+<div *ngIf="showUpgradeModal" class="modal-overlay" (click)="closeUpgradeModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Upgrade Subscription</h2>
+      <button class="modal-close" (click)="closeUpgradeModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-description">Select a new plan to upgrade to. You can only upgrade to a higher tier.</p>
+      
+      <div class="plans-grid">
+        <div 
+          *ngFor="let planKey of ['free', 'basic', 'premium', 'enterprise']"
+          class="plan-card"
+          [class.selected]="selectedPlan === planKey"
+          [class.disabled]="!canSelectPlan(planKey)"
+          (click)="canSelectPlan(planKey) ? selectedPlan = planKey : null">
+          <div class="plan-header">
+            <h3>{{ getPlanName(planKey) }}</h3>
+            <div class="plan-price">
+              <span class="price-amount">{{ formatPrice(getPlanPrice(planKey)) }}</span>
+              <span class="price-period" *ngIf="getPlanPrice(planKey) > 0">/month</span>
+            </div>
+          </div>
+          <div class="plan-features">
+            <div class="feature-item">
+              <span class="feature-label">Max Users:</span>
+              <span class="feature-value">{{ availablePlans[planKey]?.max_users || 'N/A' }}</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-label">Storage:</span>
+              <span class="feature-value">{{ availablePlans[planKey]?.max_storage_mb || 'N/A' }} MB</span>
+            </div>
+          </div>
+          <div *ngIf="tenant?.plan === planKey" class="plan-badge-current">
+            Current Plan
+          </div>
+        </div>
+      </div>
+
+      <div class="duration-selector">
+        <label for="subscription-duration">Subscription Duration:</label>
+        <select 
+          id="subscription-duration"
+          [(ngModel)]="subscriptionDuration"
+          class="form-select">
+          <option *ngFor="let option of durationOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeUpgradeModal()" type="button">Cancel</button>
+      <button 
+        class="btn-confirm" 
+        (click)="upgradeSubscription()" 
+        [disabled]="!selectedPlan || loading || !canSelectPlan(selectedPlan) || selectedPlan === tenant?.plan"
+        type="button">
+        {{ loading ? 'Processing...' : (canUpgradeTo(selectedPlan) && selectedPlan !== 'free' ? 'Upgrade' : selectedPlan === 'free' ? 'Switch to Free' : 'Switch Plan') }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Renew Subscription Modal -->
+<div *ngIf="showRenewModal" class="modal-overlay" (click)="closeRenewModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2>Renew Subscription</h2>
+      <button class="modal-close" (click)="closeRenewModal()" type="button" aria-label="Close">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <p class="modal-description">Extend the subscription period for this tenant.</p>
+      
+      <div class="current-subscription-info" *ngIf="tenant">
+        <div class="info-row">
+          <span class="info-label">Current Plan:</span>
+          <span class="info-value">{{ getPlanName(tenant.plan) }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Current End Date:</span>
+          <span class="info-value">{{ formatDate(tenant.subscription_ends_at) }}</span>
+        </div>
+      </div>
+
+      <div class="duration-selector">
+        <label for="renew-duration">Renewal Duration:</label>
+        <select 
+          id="renew-duration"
+          [(ngModel)]="subscriptionDuration"
+          class="form-select">
+          <option *ngFor="let option of durationOptions" [value]="option.value">{{ option.label }}</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" (click)="closeRenewModal()" type="button">Cancel</button>
+      <button 
+        class="btn-confirm" 
+        (click)="renewSubscription()" 
+        [disabled]="loading"
+        type="button">
+        {{ loading ? 'Renewing...' : 'Renew Subscription' }}
+      </button>
+    </div>
+  </div>
+</div>
+

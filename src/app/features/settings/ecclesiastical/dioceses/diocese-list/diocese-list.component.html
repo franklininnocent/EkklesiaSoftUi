@@ -70,6 +70,7 @@
     </div>
   </div>
 
+
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-container">
     <app-loading-skeleton 
@@ -90,8 +91,8 @@
   </app-empty-state>
 
   <!-- Table -->
-  <div *ngIf="!loading && dioceses.length > 0" class="table-container">
-    <table class="diocese-table">
+  <div *ngIf="!loading && dioceses.length > 0" class="table-container" style="display: block !important; visibility: visible !important;">
+    <table class="diocese-table" style="display: table !important; visibility: visible !important;">
       <thead>
         <tr>
           <th (click)="onSort('name')" class="sortable" tabindex="0" role="button" 
@@ -102,6 +103,7 @@
               [attr.aria-sort]="sortBy === 'country_id' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'">
             Country {{ getSortIcon('country_id') }}
           </th>
+          <th>State/Province</th>
           <th>Denomination</th>
           <th>Status</th>
           <th (click)="onSort('established_date')" class="sortable" tabindex="0" role="button"
@@ -117,6 +119,7 @@
             <strong>{{ diocese.name }}</strong>
           </td>
           <td>{{ diocese.country?.name || 'N/A' }}</td>
+          <td>{{ diocese.state?.name || 'N/A' }}</td>
           <td>{{ diocese.denomination?.name || 'N/A' }}</td>
           <td>
             <span [class]="getStatusBadgeClass(diocese.active)">
@@ -140,17 +143,15 @@
     </table>
   </div>
 
-  <!-- Pagination -->
+  <!-- Traditional Pagination -->
   <app-pagination
-    *ngIf="!loading && totalItems > 0"
+    *ngIf="!loading && dioceses.length > 0"
     [currentPage]="currentPage"
-    [pageSize]="perPage"
     [totalItems]="totalItems"
-    [pageSizeOptions]="[10, 20, 30, 50, 100]"
-    [showPageSizeSelector]="true"
-    [showPageInfo]="true"
+    [pageSize]="perPage"
+    [pageSizeOptions]="perPageOptions"
     (pageChange)="onPageChange($event)"
-    (pageSizeChange)="onPageSizeChange($event)">
+    (pageSizeChange)="onPerPageChange($event)">
   </app-pagination>
 
   <!-- Delete Confirmation Modal -->

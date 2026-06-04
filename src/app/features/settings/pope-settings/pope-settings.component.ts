@@ -6,7 +6,7 @@
  * Changed from permission-based access to SuperAdmin-only access.
  */
 
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PopeDetailsService } from '@core/services/church';
@@ -26,6 +26,7 @@ export class PopeSettingsComponent implements OnInit {
   private popeDetailsService = inject(PopeDetailsService);
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
+  private cdr = inject(ChangeDetectorRef);
 
   loading = false;
   saving = false;
@@ -86,25 +87,30 @@ export class PopeSettingsComponent implements OnInit {
 
   /**
    * Load current pope details
+   * Uses cached data if available for faster loading
    */
-  private loadPopeDetails(): void {
+  private loadPopeDetails(forceRefresh: boolean = false): void {
     if (!this.canManage) {
       return;
     }
 
     this.loading = true;
-    this.popeDetailsService.getPopeDetails().subscribe({
+    this.cdr.markForCheck();
+    
+    this.popeDetailsService.getPopeDetails(forceRefresh).subscribe({
       next: (response) => {
         if (response.success) {
           this.popeDetails = response.data;
           this.populateForm(response.data);
         }
         this.loading = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         console.error('Failed to load pope details:', err);
         this.toastService.error('Failed to load pope details');
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -190,8 +196,8 @@ export class PopeSettingsComponent implements OnInit {
           if (response.data.pope_image_url) {
             this.imagePreview = response.data.pope_image_url;
           }
-          // Reload pope details to get updated data
-          this.loadPopeDetails();
+          // Reload pope details to get updated data (force refresh)
+          this.loadPopeDetails(true);
         }
         this.uploading = false;
       },

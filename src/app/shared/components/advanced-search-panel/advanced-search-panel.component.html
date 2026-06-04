@@ -98,21 +98,21 @@
         (ngModelChange)="onFieldChange(field, $event)"
         class="field-input">
 
-      <!-- Select Dropdown -->
-      <select
+      <!-- Select Dropdown (Searchable) -->
+      <ng-select
         *ngIf="field.type === 'select'"
         [id]="'search-' + field.key"
         [name]="field.key"
+        [items]="getSelectOptions(field)"
+        bindLabel="label"
+        bindValue="value"
         [(ngModel)]="field.value"
         (ngModelChange)="onFieldChange(field, $event)"
-        class="field-select">
-        <option [value]="undefined">All {{ field.label }}</option>
-        <option 
-          *ngFor="let option of field.options" 
-          [value]="option.value">
-          {{ option.label }}
-        </option>
-      </select>
+        [searchable]="true"
+        [clearable]="true"
+        [placeholder]="'All ' + field.label"
+        class="field-select-searchable">
+      </ng-select>
 
       <!-- Boolean Checkbox -->
       <label 
@@ -246,21 +246,21 @@
           (ngModelChange)="onFieldChange(field, $event)"
           class="field-input-sidepanel">
 
-        <!-- Select Dropdown -->
-        <select
+        <!-- Select Dropdown (Searchable) -->
+        <ng-select
           *ngIf="field.type === 'select'"
           [id]="'search-side-' + field.key"
           [name]="field.key"
+          [items]="getSelectOptions(field)"
+          bindLabel="label"
+          bindValue="value"
           [(ngModel)]="field.value"
           (ngModelChange)="onFieldChange(field, $event)"
-          class="field-select-sidepanel">
-          <option [value]="undefined">All {{ field.label }}</option>
-          <option 
-            *ngFor="let option of field.options" 
-            [value]="option.value">
-            {{ option.label }}
-          </option>
-        </select>
+          [searchable]="true"
+          [clearable]="true"
+          [placeholder]="'All ' + field.label"
+          class="field-select-searchable-sidepanel">
+        </ng-select>
 
         <!-- Boolean Checkbox -->
         <label 

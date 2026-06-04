@@ -8,8 +8,8 @@
 
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
-import { tap, catchError, finalize } from 'rxjs/operators';
+import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
+import { tap, catchError, finalize, shareReplay } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import { ChurchDataResponse, PopeDetails, UpdatePopeDetailsRequest } from '@core/models/church';
 
@@ -27,21 +27,48 @@ export class PopeDetailsService {
   private popeDetailsSubject = new BehaviorSubject<PopeDetails | null>(null);
   public popeDetails$ = this.popeDetailsSubject.asObservable();
 
+  // Cache for the HTTP observable to prevent duplicate requests
+  private popeDetailsCache$: Observable<ChurchDataResponse<PopeDetails>> | null = null;
+
   /**
    * Get global pope details (not tenant-specific)
+   * Uses cached data if available to avoid redundant API calls
    */
-  getPopeDetails(): Observable<ChurchDataResponse<PopeDetails>> {
-    this.setLoading(true);
+  getPopeDetails(forceRefresh: boolean = false): Observable<ChurchDataResponse<PopeDetails>> {
+    // Return cached data if available and not forcing refresh
+    if (!forceRefresh && this.popeDetailsSubject.value) {
+      return of({
+        success: true,
+        data: this.popeDetailsSubject.value!,
+        message: 'Pope details loaded from cache'
+      });
+    }
 
-    return this.http.get<ChurchDataResponse<PopeDetails>>(this.apiUrl).pipe(
-      tap(response => {
-        if (response.success) {
-          this.popeDetailsSubject.next(response.data);
-        }
-      }),
-      catchError(error => this.handleError(error)),
-      finalize(() => this.setLoading(false))
-    );
+    // Clear cache if forcing refresh
+    if (forceRefresh) {
+      this.popeDetailsCache$ = null;
+    }
+
+    // Use cached observable if available
+    if (!this.popeDetailsCache$) {
+      this.setLoading(true);
+
+      this.popeDetailsCache$ = this.http.get<ChurchDataResponse<PopeDetails>>(this.apiUrl).pipe(
+        tap(response => {
+          if (response.success) {
+            this.popeDetailsSubject.next(response.data);
+          }
+        }),
+        catchError(error => {
+          this.popeDetailsCache$ = null; // Clear cache on error
+          return this.handleError(error);
+        }),
+        finalize(() => this.setLoading(false)),
+        shareReplay(1) // Cache the observable result
+      );
+    }
+
+    return this.popeDetailsCache$;
   }
 
   /**
@@ -129,6 +156,7 @@ export class PopeDetailsService {
    */
   clearPopeDetails(): void {
     this.popeDetailsSubject.next(null);
+    this.popeDetailsCache$ = null;
   }
 
   /**

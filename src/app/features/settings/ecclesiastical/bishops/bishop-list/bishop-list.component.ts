@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -74,7 +74,8 @@ export class BishopListComponent implements OnInit {
     private bishopService: BishopService,
     private dioceseService: DioceseService,
     private router: Router,
-    private toastService: ToastService
+    private toastService: ToastService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -98,25 +99,64 @@ export class BishopListComponent implements OnInit {
 
     this.bishopService.getBishops(params).subscribe({
       next: (response) => {
-        if (response.data) {
-          this.bishops = response.data.data || [];
-          this.totalItems = response.data.total || 0;
-          this.currentPage = response.data.current_page || 1;
-          this.totalPages = response.data.last_page || 1;
+        console.log('Bishops API Response:', response);
+        console.log('Response.data:', response.data);
+        
+        if (response && response.success !== false && response.data) {
+          // Handle both nested and direct data structures
+          let bishopsData: Bishop[] = [];
+          
+          if (Array.isArray(response.data)) {
+            // Direct array response
+            bishopsData = response.data;
+          } else if (response.data.data && Array.isArray(response.data.data)) {
+            // Nested data structure (paginated response)
+            bishopsData = response.data.data;
+            this.totalItems = response.data.total || 0;
+            this.currentPage = response.data.current_page || 1;
+            this.totalPages = response.data.last_page || 1;
+          } else if (response.data && typeof response.data === 'object') {
+            // Try to extract array from object
+            const dataObj = response.data;
+            if (Array.isArray(dataObj)) {
+              bishopsData = dataObj;
+            } else if (dataObj.data && Array.isArray(dataObj.data)) {
+              bishopsData = dataObj.data;
+            }
+          }
+          
+          console.log('Extracted bishops:', bishopsData);
+          console.log('Bishops count:', bishopsData.length);
+          
+          // Create new array reference to trigger change detection
+          this.bishops = Array.from(bishopsData);
+          
+          console.log('Final bishops array length:', this.bishops.length);
+        } else {
+          console.warn('API response indicates failure:', response);
+          this.bishops = [];
         }
+        
         this.loading = false;
+        
+        // Force change detection to update the view
+        this.cdr.markForCheck();
+        this.cdr.detectChanges();
+        
+        console.log('After change detection - bishops.length:', this.bishops.length);
       },
       error: (error) => {
         console.error('Error loading bishops:', error);
         this.toastService.error('Failed to load bishops');
         this.loading = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
   loadFilters(): void {
-    // Load dioceses for filter
-    this.dioceseService.getDioceses().subscribe({
+    // Load dioceses for filter (with minimal params to get all for dropdown)
+    this.dioceseService.getDioceses({ per_page: 1000, page: 1 }).subscribe({
       next: (response) => {
         this.dioceses = response.data?.data || [];
         this.initializeSearchFields();

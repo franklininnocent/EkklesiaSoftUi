@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
 
 export interface SearchField {
   key: string;
@@ -21,7 +22,7 @@ export interface ActiveFilter {
 @Component({
   selector: 'app-advanced-search-panel',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, NgSelectModule],
   templateUrl: './advanced-search-panel.component.html',
   styleUrl: './advanced-search-panel.component.scss'
 })
@@ -56,11 +57,25 @@ export class AdvancedSearchPanelComponent implements OnChanges {
   }
 
   onFieldChange(field: SearchField, value: any): void {
+    // Handle ng-select which may return null/undefined for cleared selection
     if (value === '' || value === null || value === undefined) {
       delete this.searchValues[field.key];
+      field.value = undefined;
     } else {
       this.searchValues[field.key] = value;
+      field.value = value;
     }
+  }
+
+  /**
+   * Get options for select field, including "All" option
+   */
+  getSelectOptions(field: SearchField): Array<{ value: any; label: string }> {
+    if (!field.options) {
+      return [];
+    }
+    // Return options as-is (ng-select will handle the "All" via placeholder and clearable)
+    return field.options;
   }
 
   onSearch(): void {

@@ -57,14 +57,28 @@ export interface DioceseUpdateRequest extends Partial<DioceseCreateRequest> {
 }
 
 export interface DioceseListParams {
+  // Traditional pagination
   page?: number;
   per_page?: number;
+  // Filters
   search?: string;
   country_id?: number;
   denomination_id?: number;
   is_active?: boolean;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  pagination: {
+    current_page: number;
+    last_page: number;
+    per_page: number;
+    total: number;
+    from: number | null;
+    to: number | null;
+  };
 }
 
 export interface DioceseStatistics {
