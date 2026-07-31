@@ -3,7 +3,7 @@
  * Displays toast notifications at the top-right of the screen
  */
 
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { trigger, transition, style, animate } from '@angular/animations';
 import { ToastService, Toast } from '@core/services/toast.service';
@@ -15,6 +15,7 @@ import { Observable } from 'rxjs';
   imports: [CommonModule],
   templateUrl: './toast-container.component.html',
   styleUrls: ['./toast-container.component.scss'],
+  changeDetection: ChangeDetectionStrategy.Eager,
   animations: [
     trigger('slideIn', [
       transition(':enter', [
@@ -29,8 +30,9 @@ import { Observable } from 'rxjs';
 })
 export class ToastContainerComponent implements OnInit {
   toasts$!: Observable<Toast[]>;
+  private readonly toastService = inject(ToastService);
 
-  constructor(private toastService: ToastService) {
+  constructor() {
     console.log('Toast container component created');
   }
 

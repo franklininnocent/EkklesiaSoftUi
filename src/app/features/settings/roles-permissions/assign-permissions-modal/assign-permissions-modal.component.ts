@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ChangeDetectorRef } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Role, Permission } from '@core/models';
@@ -6,6 +6,7 @@ import { PermissionsService } from '@core/services/permissions.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components/filter-panel/filter-panel.component';
+import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 
 interface PermissionGroup {
   module: string;
@@ -21,11 +22,24 @@ interface PermissionGroup {
   standalone: true,
   imports: [CommonModule, FormsModule, FilterPanelComponent],
   templateUrl: './assign-permissions-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './assign-permissions-modal.component.scss'
 })
 export class AssignPermissionsModalComponent implements OnInit, OnChanges {
+  private static readonly REQUIRED_ADMIN_PERMISSION_NAMES = [
+    'roles.view',
+    'roles.create',
+    'roles.update',
+    'roles.delete',
+    'permissions.assign',
+    'roles.assign',
+    'users.view',
+    'users.update'
+  ];
+
   @Input() show = false;
   @Input() role: Role | null = null;
+  @Input() tenantMode = false;
   @Input() isInline = false; // New: Support inline rendering in tabs
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<void>();
@@ -107,7 +121,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
       this.cdr.detectChanges();
     }).catch((error) => {
       console.error('Error loading permissions:', error);
-      this.errorMessage = 'Failed to load permissions. Please try again.';
+      this.errorMessage = this.getFriendlyErrorMessage(error, 'Failed to load permissions');
       this.isLoading = false;
       this.cdr.detectChanges();
     });
@@ -119,9 +133,12 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
    */
   private loadAllPermissions(): Promise<void> {
     return new Promise((resolve, reject) => {
-      this.permissionsService.getPermissions({ per_page: 'all' }).subscribe({
+      this.permissionsService.getPermissions({ per_page: 'all' }, { tenantMode: this.tenantMode }).subscribe({
         next: (response) => {
-          let permissions = Array.isArray(response) ? response : response.data;
+          let permissions = this.extractPermissionsFromResponse(response);
+          if (!permissions) {
+            permissions = [];
+          }
           
           // CRITICAL SECURITY: Filter out "Tenants" and "Pope" module permissions for non-SuperAdmin users
           // This is a defense-in-depth measure in addition to backend filtering
@@ -153,7 +170,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     }
 
     return new Promise((resolve, reject) => {
-      this.permissionsService.getPermissionsForRole(this.role!.id).subscribe({
+      this.permissionsService.getPermissionsForRole(this.role!.id, { tenantMode: this.tenantMode }).subscribe({
         next: (response) => {
           let rolePermissions = Array.isArray(response) ? response : (response.data || []);
           
@@ -200,7 +217,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
         return;
       }
       
-      const module = permission.module || 'Uncategorized';
+      const module = this.resolvePermissionModule(permission);
       if (!grouped[module]) {
         grouped[module] = [];
       }
@@ -440,6 +457,14 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
     let permissionIds = Array.from(this.selectedPermissionIds);
 
+    if (this.hasAdminPermissionConflict()) {
+      const missing = this.getMissingRequiredAdminPermissionLabels();
+      this.isSaving = false;
+      this.errorMessage = `Administrator role must retain critical permissions: ${missing.join(', ')}`;
+      this.toastService.warning(this.errorMessage, 'Safeguard');
+      return;
+    }
+
     // CRITICAL SECURITY: Filter out any Tenants and Pope permission IDs for non-SuperAdmin users (defense in depth)
     if (!this.authService.isSuperAdmin()) {
       const restrictedPermissionIds = this.allPermissions
@@ -463,7 +488,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     this.permissionsService.bulkAssignToRole({
       role_id: this.role.id,
       permission_ids: permissionIds
-    }).subscribe({
+    }, { tenantMode: this.tenantMode }).subscribe({
       next: () => {
         this.isSaving = false;
         this.toastService.success(
@@ -476,7 +501,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
       error: (err) => {
         this.isSaving = false;
         console.error('Error saving permissions:', err);
-        const errorMsg = err.error?.message || 'Failed to save permissions. Please try again.';
+        const errorMsg = this.getFriendlyErrorMessage(err, 'Failed to save permissions');
         this.errorMessage = errorMsg;
         this.toastService.error(errorMsg, 'Error');
       }
@@ -576,12 +601,104 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     return this.searchQuery !== '' || this.moduleFilter !== '';
   }
 
+  isProtectedTenantRole(): boolean {
+    if (!this.tenantMode || !this.role) {
+      return false;
+    }
+    return isProtectedRoleDefinition(this.role);
+  }
+
+  getMissingRequiredAdminPermissions(): string[] {
+    if (!this.isProtectedTenantRole()) {
+      return [];
+    }
+
+    const selectedNames = this.allPermissions
+      .filter((permission) => this.selectedPermissionIds.has(permission.id))
+      .map((permission) => permission.name);
+
+    return AssignPermissionsModalComponent.REQUIRED_ADMIN_PERMISSION_NAMES.filter(
+      (requiredName) => !selectedNames.includes(requiredName)
+    );
+  }
+
+  getMissingRequiredAdminPermissionLabels(): string[] {
+    return this.getMissingRequiredAdminPermissions().map((permissionName) => this.getRequiredPermissionLabel(permissionName));
+  }
+
+  hasAdminPermissionConflict(): boolean {
+    return this.getMissingRequiredAdminPermissions().length > 0;
+  }
+
+  trackByModuleName(_index: number, group: PermissionGroup): string {
+    return group.module;
+  }
+
+  trackByPermissionId(_index: number, permission: Permission): number {
+    return permission.id;
+  }
+
+  getModuleCheckboxId(module: string): string {
+    return `assign-permissions-module-${this.toDomId(module)}`;
+  }
+
+  getPermissionCheckboxId(module: string, permissionId: number): string {
+    return `assign-permissions-permission-${this.toDomId(module)}-${permissionId}`;
+  }
+
+  getPermissionAriaLabel(permission: Permission): string {
+    return `Toggle permission ${permission.display_name || permission.name} (${permission.name})`;
+  }
+
+  getPermissionLabel(permission: Permission): string {
+    const description = permission.description?.trim();
+    if (description) {
+      return description;
+    }
+
+    const displayName = permission.display_name?.trim();
+    if (displayName) {
+      return displayName;
+    }
+
+    return permission.name;
+  }
+
+  isMandatoryAdminPermission(permission: Permission): boolean {
+    return AssignPermissionsModalComponent.REQUIRED_ADMIN_PERMISSION_NAMES.includes(permission.name);
+  }
+
+  getModuleRiskLevel(module: string): 'high' | 'medium' | 'low' {
+    const normalizedModule = module.toLowerCase();
+    const highRiskModules = ['users', 'churchsettings', 'settings'];
+    const mediumRiskModules = ['donations', 'reports', 'attendance', 'families'];
+
+    if (highRiskModules.includes(normalizedModule)) {
+      return 'high';
+    }
+    if (mediumRiskModules.includes(normalizedModule)) {
+      return 'medium';
+    }
+    return 'low';
+  }
+
+  getModuleRiskLabel(module: string): string {
+    const risk = this.getModuleRiskLevel(module);
+    if (risk === 'high') {
+      return 'High Risk';
+    }
+    if (risk === 'medium') {
+      return 'Medium Risk';
+    }
+    return 'Standard';
+  }
+
   /**
    * Update filter panel configuration with module options
    * CRITICAL SECURITY: Excludes "Tenants" and "Pope" modules from filter options for non-SuperAdmin users
    */
   private updateFilterPanelConfig(): void {
-    let modules = Array.from(new Set(this.allPermissions.map(p => p.module || 'Uncategorized')));
+    let modules = Array.from(new Set(this.allPermissions.map((permission) => this.resolvePermissionModule(permission))));
     
     // CRITICAL SECURITY: Filter out "Tenants" and "Pope" modules from filter options for non-SuperAdmin users
     if (!this.authService.isSuperAdmin()) {
@@ -601,6 +718,124 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
         ...modules.map(m => ({ value: m, label: m }))
       ]
     };
+  }
+
+  private getFriendlyErrorMessage(error: any, fallback: string): string {
+    const status = error?.status;
+    const apiMessage = error?.error?.message;
+
+    if (status === 0) {
+      return 'Network connection failed. Please check your internet and try again.';
+    }
+
+    if (status === 403) {
+      return apiMessage || 'You do not have permission to perform this action.';
+    }
+
+    if (status === 422) {
+      const validationErrors = error?.error?.errors;
+      if (validationErrors) {
+        const firstKey = Object.keys(validationErrors)[0];
+        const firstMessage = firstKey ? validationErrors[firstKey]?.[0] : null;
+        if (firstMessage) {
+          return firstMessage;
+        }
+      }
+      return apiMessage || 'Validation failed. Please review your selection and try again.';
+    }
+
+    if (status >= 500) {
+      return 'Server error occurred. Please try again in a moment.';
+    }
+
+    return apiMessage || fallback;
+  }
+
+  private toDomId(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'uncategorized';
+  }
+
+  private resolvePermissionModule(permission: Permission): string {
+    const permissionName = (permission.name || '').toLowerCase();
+    const prefix = permissionName.includes('.') ? permissionName.split('.')[0] : '';
+    const prefixModuleMap: Record<string, string> = {
+      users: 'Users',
+      members: 'Members',
+      families: 'Families',
+      events: 'Events',
+      attendance: 'Attendance',
+      donations: 'Finance',
+      reports: 'Reports',
+      roles: 'Roles',
+      permissions: 'Permissions',
+      settings: 'Settings',
+      church: 'Settings'
+    };
+
+    if (prefix && prefixModuleMap[prefix]) {
+      return prefixModuleMap[prefix];
+    }
+
+    const explicitModule = (permission.module || '').trim();
+    if (!explicitModule) {
+      return 'Uncategorized';
+    }
+
+    if (explicitModule === 'Authentication') {
+      return 'Users';
+    }
+    if (explicitModule === 'RolesAndPermissions') {
+      return 'Roles & Permissions';
+    }
+
+    return explicitModule;
+  }
+
+  private getRequiredPermissionLabel(permissionName: string): string {
+    const matchedPermission = this.allPermissions.find((permission) => permission.name === permissionName);
+    if (matchedPermission) {
+      return this.getPermissionLabel(matchedPermission);
+    }
+
+    const [domain, action] = permissionName.split('.');
+    const normalizedDomain = (domain || '').replace(/_/g, ' ');
+    const normalizedAction = (action || '').replace(/_/g, ' ');
+    const sentence = `${normalizedAction} ${normalizedDomain}`.trim();
+    if (!sentence) {
+      return 'Required permission';
+    }
+    return sentence.charAt(0).toUpperCase() + sentence.slice(1);
+  }
+
+  private extractPermissionsFromResponse(response: any): Permission[] | null {
+    if (!response) {
+      return null;
+    }
+
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    const directData = Array.isArray(response.data) ? response.data : null;
+    const nestedData = Array.isArray(response?.data?.data) ? response.data.data : null;
+    const candidate = directData ?? nestedData;
+
+    if (!candidate) {
+      return null;
+    }
+
+    const isGrouped = candidate.every((item: any) => item && Array.isArray(item.permissions));
+    if (!isGrouped) {
+      return candidate;
+    }
+
+    return candidate.flatMap((group: any) => {
+      const moduleName = group?.module ?? 'Uncategorized';
+      return (group.permissions || []).map((permission: Permission) => ({
+        ...permission,
+        module: permission.module ?? moduleName
+      }));
+    });
   }
 }
 

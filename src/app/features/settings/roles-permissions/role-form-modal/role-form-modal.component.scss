@@ -31,8 +31,7 @@
   background: white;
   border-radius: var(--radius-xl);
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  max-width: 700px;
-  width: 100%;
+  width: min(96vw, 1220px);
   max-height: 90vh;
   display: flex;
   flex-direction: column;
@@ -52,7 +51,7 @@
 
 // Modal Header
 .modal-header {
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg) var(--spacing-xl);
   border-bottom: 2px solid var(--gray-100);
   display: flex;
   align-items: flex-start;
@@ -75,8 +74,8 @@
 
 .header-icon {
   position: relative;
-  width: 64px;
-  height: 64px;
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -103,8 +102,8 @@
   
   svg {
     position: relative;
-    width: 32px;
-    height: 32px;
+    width: 24px;
+    height: 24px;
     stroke: white;
     stroke-width: 2.5;
     fill: none;
@@ -150,7 +149,7 @@
 }
 
 .modal-title {
-  font-size: 1.5rem;
+  font-size: 1.2rem;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 0.25rem 0;
@@ -158,7 +157,7 @@
 }
 
 .modal-subtitle {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
   margin: 0;
   line-height: 1.5;
@@ -208,7 +207,7 @@
 
 // Modal Body
 .modal-body {
-  padding: var(--spacing-xl);
+  padding: var(--spacing-lg);
   overflow-y: auto;
   flex: 1;
 }
@@ -263,13 +262,57 @@
   line-height: 1.5;
 }
 
+.safeguard-alert {
+  display: flex;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  background: #fffbeb;
+  border: 2px solid #fcd34d;
+  border-radius: var(--radius-md);
+  margin-bottom: var(--spacing-lg);
+}
+
+.safeguard-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.safeguard-content {
+  flex: 1;
+}
+
+.safeguard-title {
+  margin: 0 0 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.safeguard-message {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #78350f;
+  line-height: 1.4;
+}
+
 // Form Groups
 .form-group {
-  margin-bottom: var(--spacing-xl);
+  margin-bottom: var(--spacing-lg);
 
   &:last-child {
     margin-bottom: 0;
   }
+}
+
+.form-group--compact {
+  margin-bottom: var(--spacing-md);
+}
+
+.identity-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: var(--spacing-md);
+  align-items: start;
 }
 
 .form-label {
@@ -430,15 +473,15 @@
 
 // Field Hint
 .field-hint {
-  margin: var(--spacing-sm) 0 0 0;
-  font-size: 0.75rem;
+  margin: 0.3rem 0 0 0;
+  font-size: 0.72rem;
   color: var(--text-secondary);
   line-height: 1.5;
 }
 
 // Level Control
 .level-control {
-  margin: var(--spacing-md) 0;
+  margin: 0.45rem 0;
 }
 
 .form-range {
@@ -493,7 +536,7 @@
 }
 
 .level-marker {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   font-weight: 500;
   padding: 0.25rem 0.5rem;
@@ -511,13 +554,13 @@
 .level-description {
   display: flex;
   align-items: center;
-  gap: var(--spacing-sm);
-  padding: var(--spacing-md);
+  gap: 0.35rem;
+  padding: 0.5rem 0.6rem;
   background: linear-gradient(135deg, #667eea10 0%, #764ba210 100%);
   border: 1px solid #667eea30;
   border-radius: var(--radius-md);
-  margin-top: var(--spacing-md);
-  font-size: 0.875rem;
+  margin-top: 0.45rem;
+  font-size: 0.76rem;
   color: var(--text-primary);
   line-height: 1.5;
 }
@@ -566,9 +609,51 @@
   padding: var(--spacing-lg) var(--spacing-xl);
   border-top: 2px solid var(--gray-100);
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: var(--spacing-md);
-  background: var(--gray-50);
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  position: sticky;
+  bottom: 0;
+  z-index: 20;
+  box-shadow: 0 -8px 18px rgba(15, 23, 42, 0.06);
+}
+
+.footer-summary {
+  margin-right: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.footer-summary-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.36rem 0.68rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: #3730a3;
+  border: 1px solid #c7d2fe;
+  font-size: 0.74rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+}
+
+.footer-summary-pill--risk {
+  background: #fff1f2;
+  border-color: #fda4af;
+  color: #9f1239;
+  font-weight: 700;
+}
+
+.footer-summary-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.btn-cancel,
+.btn-save {
+  min-width: 140px;
 }
 
 .btn {
@@ -650,6 +735,7 @@
 
   .modal-container {
     max-height: 95vh;
+    width: 100%;
   }
 
   .modal-header {
@@ -687,9 +773,20 @@
     padding: var(--spacing-lg);
   }
 
+  .identity-grid {
+    grid-template-columns: 1fr;
+  }
+
   .modal-footer {
     padding: var(--spacing-md) var(--spacing-lg);
     flex-wrap: wrap;
+    justify-content: space-between;
+
+    .footer-summary {
+      width: 100%;
+      margin-right: 0;
+      flex-wrap: wrap;
+    }
 
     .btn {
       flex: 1;
@@ -739,7 +836,8 @@
 // ============ PERMISSIONS SECTION ============
 
 .permissions-section {
-  margin-bottom: var(--spacing-lg);
+  margin-top: 0.25rem;
+  margin-bottom: var(--spacing-md);
   border: 2px solid var(--gray-200);
   border-radius: var(--radius-lg);
   overflow: hidden;
@@ -805,9 +903,10 @@
 }
 
 .permissions-body {
-  max-height: 400px;
-  overflow-y: auto;
-  padding: var(--spacing-md);
+  max-height: none;
+  overflow: visible;
+  padding: var(--spacing-sm);
+  background: var(--gray-50);
   animation: slideDown 0.3s ease-out;
 }
 
@@ -832,6 +931,45 @@
   padding: var(--spacing-xxl);
   text-align: center;
   color: var(--text-secondary);
+}
+
+.permissions-info {
+  display: flex;
+  gap: var(--spacing-sm);
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  margin-bottom: var(--spacing-md);
+
+  &__icon {
+    font-size: 1.125rem;
+    line-height: 1;
+  }
+
+  &__title {
+    margin: 0 0 0.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  &__text {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+  }
+}
+
+.permissions-info--warning {
+  background: #fffbeb;
+  border-color: #fcd34d;
+
+  .permissions-info__title {
+    color: #92400e;
+  }
+
+  .permissions-info__text {
+    color: #78350f;
+  }
 }
 
 .permissions-loading {
@@ -883,7 +1021,7 @@
 .permissions-list {
   display: flex;
   flex-direction: column;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-sm);
 }
 
 .permission-module {
@@ -1003,7 +1141,7 @@
 // Responsive for permissions section
 @media (max-width: 768px) {
   .permissions-body {
-    max-height: 300px;
+    max-height: none;
   }
 
   .module-permissions {

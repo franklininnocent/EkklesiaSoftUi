@@ -45,4 +45,15 @@ declare global {
 // Provide jasmine.any adapter using Jest's expect.any
 (globalThis as any).jasmine.any = (ctor: any) => (expect as any).any(ctor);
 
+// Suppress noisy async console output that can trigger
+// "Cannot log after tests are done" in jsdom/zone teardown.
+const silentConsole = {
+  ...globalThis.console,
+  log: () => {},
+  info: () => {},
+  warn: () => {},
+  error: () => {}
+};
+(globalThis as any).console = silentConsole;
+
 

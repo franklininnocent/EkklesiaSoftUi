@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import {
   Permission,
@@ -23,6 +24,8 @@ interface ApiResponse<T = any> {
 })
 export class PermissionsService {
   private apiUrl = `${environment.apiUrl}/permissions`;
+  private tenantApiUrl = `${environment.apiUrl}/tenant/permissions`;
+  private tenantRoleApiUrl = `${environment.apiUrl}/tenant/roles`;
 
   constructor(private http: HttpClient) {}
 
@@ -37,7 +40,7 @@ export class PermissionsService {
     category?: string;
     is_custom?: boolean;
     search?: string;
-  }): Observable<PermissionListResponse> {
+  }, options?: { tenantMode?: boolean }): Observable<PermissionListResponse> {
     let httpParams = new HttpParams();
     if (params) {
       Object.keys(params).forEach(key => {
@@ -47,14 +50,16 @@ export class PermissionsService {
         }
       });
     }
-    return this.http.get<PermissionListResponse>(this.apiUrl, { params: httpParams });
+    return this.http
+      .get<PermissionListResponse>(this.resolvePermissionsApiUrl(options?.tenantMode), { params: httpParams })
+      .pipe(map((response) => this.normalizePermissionCollectionResponse(response)));
   }
 
   /**
    * Get a specific permission by ID
    */
-  getPermission(id: number): Observable<PermissionDetailResponse> {
-    return this.http.get<PermissionDetailResponse>(`${this.apiUrl}/${id}`);
+  getPermission(id: number, options?: { tenantMode?: boolean }): Observable<PermissionDetailResponse> {
+    return this.http.get<PermissionDetailResponse>(`${this.resolvePermissionsApiUrl(options?.tenantMode)}/${id}`);
   }
 
   /**
@@ -95,7 +100,13 @@ export class PermissionsService {
   /**
    * Bulk assign permissions to a role
    */
-  bulkAssignToRole(assignment: BulkRolePermissionAssignment): Observable<ApiResponse> {
+  bulkAssignToRole(assignment: BulkRolePermissionAssignment, options?: { tenantMode?: boolean }): Observable<ApiResponse> {
+    if (options?.tenantMode) {
+      return this.http.put<ApiResponse>(`${this.tenantRoleApiUrl}/${assignment.role_id}/permissions`, {
+        permission_ids: assignment.permission_ids
+      });
+    }
+
     return this.http.post<ApiResponse>(`${this.apiUrl}/bulk-assign-to-role`, assignment);
   }
 
@@ -122,8 +133,68 @@ export class PermissionsService {
   /**
    * Get permissions for a specific role
    */
-  getPermissionsForRole(roleId: number): Observable<ApiResponse<Permission[]>> {
+  getPermissionsForRole(roleId: number, options?: { tenantMode?: boolean }): Observable<ApiResponse<Permission[]>> {
+    if (options?.tenantMode) {
+      return this.http.get<ApiResponse<Permission[]>>(`${this.tenantRoleApiUrl}/${roleId}/permissions`);
+    }
+
     return this.http.get<ApiResponse<Permission[]>>(`${this.apiUrl}/role/${roleId}`);
+  }
+
+  /**
+   * Explicit tenant-only catalog helper.
+   */
+  getTenantPermissions(params?: {
+    per_page?: number | string;
+    active?: 0 | 1;
+    module?: string;
+    category?: string;
+    search?: string;
+  }): Observable<PermissionListResponse> {
+    return this.getPermissions(params, { tenantMode: true });
+  }
+
+  private resolvePermissionsApiUrl(tenantMode = false): string {
+    return tenantMode ? this.tenantApiUrl : this.apiUrl;
+  }
+
+  /**
+   * Normalizes tenant permission catalog responses.
+   * Tenant endpoints may return grouped payloads:
+   * [{ module: 'Users', permissions: Permission[] }]
+   * but UI consumers expect a flat Permission[] under response.data.
+   */
+  private normalizePermissionCollectionResponse<T extends { data?: any }>(response: T): T {
+    if (!response || !Array.isArray(response.data)) {
+      return response;
+    }
+
+    return {
+      ...response,
+      data: this.flattenPermissionPayload(response.data)
+    };
+  }
+
+  private flattenPermissionPayload(data: any[]): Permission[] {
+    if (data.length === 0) {
+      return [];
+    }
+
+    const isGroupedPayload = data.every((item) =>
+      item && typeof item === 'object' && Array.isArray(item.permissions)
+    );
+
+    if (!isGroupedPayload) {
+      return data as Permission[];
+    }
+
+    return data.flatMap((group) => {
+      const moduleName = group.module ?? 'Uncategorized';
+      return (group.permissions as Permission[]).map((permission) => ({
+        ...permission,
+        module: permission.module ?? moduleName
+      }));
+    });
   }
 
   /**

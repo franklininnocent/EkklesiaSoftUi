@@ -1,0 +1,136 @@
+<div class="cld-backdrop" *ngIf="open" (click)="requestClose()" aria-hidden="true"></div>
+
+<section
+  class="cld"
+  *ngIf="open && displayLeader as leader"
+  role="dialog"
+  aria-modal="true"
+  aria-label="Leader profile details"
+>
+  <header class="cld__header">
+    <div class="cld__header-copy">
+      <p class="cld__eyebrow">Church Leadership</p>
+      <h1>{{ leader.full_name }}</h1>
+      <p>Complete leadership profile, appointment history, and contact information.</p>
+    </div>
+    <div class="cld__header-actions">
+      <button type="button" class="cld__btn cld__btn--ghost" (click)="requestClose()">Close</button>
+      <button type="button" class="cld__btn cld__btn--primary" *ngIf="canManage" (click)="requestEdit()">Edit Leader</button>
+      <button type="button" class="cld__close" (click)="requestClose()" aria-label="Close details">×</button>
+    </div>
+  </header>
+
+  <div class="cld__body">
+    <div class="cld__loading" *ngIf="loading">
+      <div class="cld__spinner" aria-hidden="true"></div>
+      <p>Loading leader details…</p>
+    </div>
+
+    <p class="cld__notice" *ngIf="loadError">{{ loadError }}</p>
+
+    <ng-container *ngIf="!loading">
+      <article class="cld-hero">
+        <div class="cld-hero__avatar" [class.cld-hero__avatar--filled]="photoDisplayUrl">
+          <img *ngIf="photoDisplayUrl" [src]="photoDisplayUrl" [alt]="leader.full_name" />
+          <span *ngIf="!photoDisplayUrl" aria-hidden="true">{{ roleIcon }}</span>
+        </div>
+        <div class="cld-hero__copy">
+          <div class="cld-hero__badges">
+            <span class="cld-pill cld-pill--{{ statusTone }}">{{ statusLabel }}</span>
+            <span class="cld-pill cld-pill--warning" *ngIf="leader.is_primary === 1">Primary Leader</span>
+          </div>
+          <h2>{{ leader.title ? leader.title + ' ' : '' }}{{ leader.full_name }}</h2>
+          <p class="cld-hero__role">{{ leader.role }}</p>
+          <p class="cld-hero__meta">Profile ID #{{ leader.id }}</p>
+        </div>
+      </article>
+
+      <div class="cld-grid">
+        <article class="cld-card">
+          <h3>Contact Information</h3>
+          <dl class="cld-meta">
+            <div>
+              <dt>Email</dt>
+              <dd>
+                <a *ngIf="leader.email; else noEmail" [href]="'mailto:' + leader.email">{{ leader.email }}</a>
+                <ng-template #noEmail>Not provided</ng-template>
+              </dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd>{{ displayPhone || 'Not provided' }}</dd>
+            </div>
+            <div *ngIf="displayWhatsapp">
+              <dt>WhatsApp</dt>
+              <dd>{{ displayWhatsapp }}</dd>
+            </div>
+            <div *ngIf="parsedBio.alternateContact">
+              <dt>Alternate Contact</dt>
+              <dd>{{ parsedBio.alternateContact }}</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="cld-card">
+          <h3>Appointment Details</h3>
+          <dl class="cld-meta">
+            <div>
+              <dt>Appointed Date</dt>
+              <dd>{{ formatDate(leader.appointed_date) }}</dd>
+            </div>
+            <div>
+              <dt>Relieved Date</dt>
+              <dd>{{ formatDate(leader.relieved_date) }}</dd>
+            </div>
+            <div *ngIf="leader.start_date">
+              <dt>Start Date</dt>
+              <dd>{{ formatDate(leader.start_date) }}</dd>
+            </div>
+            <div *ngIf="leader.end_date">
+              <dt>End Date</dt>
+              <dd>{{ formatDate(leader.end_date) }}</dd>
+            </div>
+            <div>
+              <dt>Display Order</dt>
+              <dd>{{ leader.display_order }}</dd>
+            </div>
+          </dl>
+        </article>
+
+        <article class="cld-card cld-card--wide">
+          <h3>Biography</h3>
+          <div class="cld-bio" *ngIf="parsedBio.biography; else emptyBio">{{ parsedBio.biography }}</div>
+          <ng-template #emptyBio>
+            <p class="cld-empty">No biography has been added for this leader.</p>
+          </ng-template>
+        </article>
+
+        <article class="cld-card cld-card--wide">
+          <h3>Record Information</h3>
+          <dl class="cld-meta cld-meta--inline">
+            <div>
+              <dt>Created</dt>
+              <dd>{{ formatDateTime(leader.created_at) }}</dd>
+            </div>
+            <div>
+              <dt>Last Updated</dt>
+              <dd>{{ formatDateTime(leader.updated_at) }}</dd>
+            </div>
+            <div>
+              <dt>Tenant ID</dt>
+              <dd>{{ leader.tenant_id }}</dd>
+            </div>
+          </dl>
+        </article>
+      </div>
+    </ng-container>
+  </div>
+
+  <footer class="cld__footer" *ngIf="!loading">
+    <button type="button" class="cld__btn cld__btn--ghost" (click)="requestClose()">Close</button>
+    <div class="cld__footer-actions">
+      <button type="button" class="cld__btn cld__btn--danger" *ngIf="canManage" (click)="requestDelete()">Delete Leader</button>
+      <button type="button" class="cld__btn cld__btn--primary" *ngIf="canManage" (click)="requestEdit()">Edit Leader</button>
+    </div>
+  </footer>
+</section>

@@ -1,0 +1,74 @@
+<div class="clrs" [class.clrs--invalid]="invalid" [class.clrs--open]="panelOpen">
+  <div class="clrs__selected" *ngIf="showSummary">
+    <div class="clrs__selected-icon" aria-hidden="true">{{ summaryIcon() }}</div>
+    <div class="clrs__selected-copy">
+      <strong>{{ summaryLabel() }}</strong>
+      <span>{{ summaryDescription() }}</span>
+    </div>
+    <button type="button" class="clrs__change" (click)="startChangeRole()" [disabled]="disabled">Change Role</button>
+  </div>
+
+  <button
+    *ngIf="showTrigger"
+    type="button"
+    class="clrs__trigger"
+    (click)="openPanel()"
+    [disabled]="disabled"
+    aria-haspopup="listbox"
+    [attr.aria-expanded]="panelOpen"
+  >
+    <span class="clrs__trigger-icon" aria-hidden="true">🔍</span>
+    <span>Search or select leadership role</span>
+  </button>
+
+  <div class="clrs__panel" *ngIf="panelOpen" (keydown)="onPanelKeydown($event)">
+    <div class="clrs__panel-head">
+      <span class="clrs__panel-title">Select Leadership Role</span>
+      <button type="button" class="clrs__panel-close" (click)="closePanel()" aria-label="Close role selector">×</button>
+    </div>
+
+    <div class="clrs__search-wrap">
+      <span class="clrs__search-icon" aria-hidden="true">🔍</span>
+      <input
+        #searchInput
+        type="search"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Search roles..."
+        aria-label="Search leadership roles"
+        autocomplete="off"
+      />
+    </div>
+
+    <div class="clrs__results" role="listbox" aria-label="Leadership roles">
+      <ng-container *ngIf="groupedRoles.length; else noResults">
+        <section class="clrs__group" *ngFor="let group of groupedRoles">
+          <p class="clrs__group-label">{{ groupLabel(group) }}</p>
+          <button
+            type="button"
+            class="clrs__option"
+            *ngFor="let role of group.roles"
+            [class.is-highlighted]="isHighlighted(role)"
+            [class.is-selected]="value === role.value"
+            (click)="selectRole(role)"
+            (mouseenter)="highlightRole(role)"
+          >
+            <span class="clrs__option-icon" aria-hidden="true">{{ role.icon }}</span>
+            <span class="clrs__option-copy">
+              <strong>{{ role.label }}</strong>
+              <small>{{ role.description }}</small>
+            </span>
+          </button>
+        </section>
+      </ng-container>
+
+      <ng-template #noResults>
+        <p class="clrs__empty">No roles match your search.</p>
+      </ng-template>
+    </div>
+
+    <p class="clrs__hint">↑↓ navigate · Enter select · Esc close</p>
+  </div>
+
+  <div class="clrs__mobile-backdrop" *ngIf="panelOpen" (click)="closePanel()" aria-hidden="true"></div>
+</div>

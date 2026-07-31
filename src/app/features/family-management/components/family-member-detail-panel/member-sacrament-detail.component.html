@@ -1,0 +1,30 @@
+<article class="sacrament-tile" [class.is-complete]="completed">
+  <header class="sacrament-tile__header">
+    <div class="sacrament-tile__title-wrap">
+      <span class="sacrament-tile__dot" aria-hidden="true"></span>
+      <h4 class="sacrament-tile__title">{{ sacramentType.name }}</h4>
+      <span class="pill sacrament-tile__status" [class.pill--active]="completed">{{ statusLabel }}</span>
+    </div>
+    <app-edit-icon-button
+      *ngIf="editable"
+      size="sm"
+      [ariaLabel]="'Edit ' + sacramentType.name"
+      (clicked)="onEdit()"
+    />
+  </header>
+
+  <div class="sacrament-tile__body">
+    <p *ngIf="!hasSacramentDetails" class="sacrament-tile__empty">No sacrament details added</p>
+    <ng-container *ngIf="hasSacramentDetails">
+      <dl class="field-list">
+        <div class="field" *ngFor="let row of displayFields">
+          <dt>{{ row.label }}</dt>
+          <dd>{{ row.value }}</dd>
+        </div>
+      </dl>
+      <div class="sacrament-tile__chips" *ngIf="displayChips.length">
+        <span class="pill pill--muted" *ngFor="let chip of displayChips">{{ chip }}</span>
+      </div>
+    </ng-container>
+  </div>
+</article>

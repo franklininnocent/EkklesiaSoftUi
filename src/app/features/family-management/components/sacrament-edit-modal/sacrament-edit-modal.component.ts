@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject } from '@angular/core';
+import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
 import { FamilyMember } from '@core/models/family.model';
@@ -12,6 +12,7 @@ export type SacramentFormType = 'baptism' | 'first_communion' | 'confirmation' |
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './sacrament-edit-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./sacrament-edit-modal.component.scss']
 })
 export class SacramentEditModalComponent implements OnInit, OnChanges, OnDestroy {

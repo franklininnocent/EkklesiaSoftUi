@@ -11,7 +11,7 @@
  * @date 2025-01-XX
  */
 
-import { Component, Input, OnInit, OnDestroy, forwardRef, inject, signal, effect } from '@angular/core';
+import { Component, Input, OnInit, OnDestroy, forwardRef, inject, signal, effect, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ControlValueAccessor, NG_VALUE_ACCESSOR, FormControl, ReactiveFormsModule, Validators, ValidationErrors } from '@angular/forms';
 import { PhoneCodeService } from '@core/services/phone-code.service';
@@ -22,6 +22,7 @@ import { PhoneCodeService } from '@core/services/phone-code.service';
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './phone-input.component.html',
   styleUrl: './phone-input.component.scss',
+  changeDetection: ChangeDetectionStrategy.Eager,
   providers: [
     {
       provide: NG_VALUE_ACCESSOR,
@@ -84,9 +85,7 @@ export class PhoneInputComponent implements ControlValueAccessor, OnInit, OnDest
           this.phoneCode.set(result.phoneCode);
         }
       },
-      error: (err) => {
-        console.error('Error initializing phone code:', err);
-      }
+      error: () => {}
     });
 
     // Set up form control with validators

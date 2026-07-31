@@ -154,7 +154,6 @@ export class PhoneCodeService {
         return result;
       }),
       catchError(err => {
-        console.error('❌ initializeFromApiOnce error:', err);
         const fallback = getTenantCallingCode();
         this._currentPhoneCode.set(fallback);
         return of({ success: false, phoneCode: fallback, source: 'default', error: 'Exception' } as PhoneCodeUpdateResult);
@@ -219,7 +218,6 @@ export class PhoneCodeService {
         }
       }),
       catchError(error => {
-        console.error('❌ Error loading countries for phone code update:', error);
         const defaultCode = getTenantCallingCode();
         this._currentPhoneCode.set(defaultCode);
         return of({
@@ -240,7 +238,6 @@ export class PhoneCodeService {
     const country = countries.find(c => c.id === countryId);
 
     if (!country) {
-      console.warn(`⚠️ Country with ID ${countryId} not found`);
       const defaultCode = getTenantCallingCode();
       this._currentPhoneCode.set(defaultCode);
       
@@ -270,14 +267,12 @@ export class PhoneCodeService {
         phoneCode = `+${code}`;
         source = 'libphonenumber';
       } catch (error) {
-        console.warn(`⚠️ Could not get calling code for ISO2: ${country.iso2}`, error);
         phoneCode = getTenantCallingCode();
         source = 'default';
       }
     }
     // Fallback: Use default tenant calling code
     else {
-      console.warn(`⚠️ Country ${country.name} has no phone_code or ISO2`);
       phoneCode = getTenantCallingCode();
       source = 'default';
     }
@@ -351,7 +346,6 @@ export class PhoneCodeService {
         const code = getCountryCallingCode(country.iso2.toUpperCase() as CountryCode);
         return `+${code}`;
       } catch (error) {
-        console.warn(`Could not get calling code for ISO2: ${country.iso2}`, error);
       }
     }
 

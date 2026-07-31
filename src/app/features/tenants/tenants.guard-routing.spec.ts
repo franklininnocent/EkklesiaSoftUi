@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectionStrategy } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { Router, RouterModule } from '@angular/router';
 import { RouterTestingModule } from '@angular/router/testing';
@@ -7,7 +7,8 @@ import { of } from 'rxjs';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
 import { TENANTS_ROUTES } from './tenants.routes';
 
-@Component({ selector: 'app-dummy', template: '<router-outlet></router-outlet>', standalone: true })
+@Component({ selector: 'app-dummy', template: '<router-outlet></router-outlet>', changeDetection: ChangeDetectionStrategy.Eager,
+ standalone: true })
 class DummyShell {}
 
 describe('Router + tenantAdminGuard integration for Tenants', () => {

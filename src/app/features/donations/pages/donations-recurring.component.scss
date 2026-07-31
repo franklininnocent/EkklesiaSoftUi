@@ -1,0 +1,19 @@
+@import '../styles/stewardship-split-layout.scss';
+
+.row-due {
+  background: var(--cf-amber-soft);
+}
+
+.status-pill {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  background: var(--cf-slate-100);
+  font-size: 0.78rem;
+  text-transform: capitalize;
+}
+
+.status-pill--due {
+  background: var(--cf-amber-soft);
+  color: var(--cf-amber);
+}

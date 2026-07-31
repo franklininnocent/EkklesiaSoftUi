@@ -1,12 +1,12 @@
 <!-- Modal Mode -->
-<div class="modal-overlay" *ngIf="show && !isInline" (click)="onBackdropClick($event)">
+<div class="modal-overlay" *ngIf="show && !isInline" (click)="onBackdropClick($event)" role="dialog" aria-modal="true" aria-labelledby="assign-permissions-title">
   <div class="modal-container" (click)="$event.stopPropagation()">
     <!-- Modal Header -->
     <div class="modal-header">
       <div class="header-content">
         <div class="header-icon">🔗</div>
         <div class="header-text">
-          <h2 class="modal-title">Assign Permissions</h2>
+          <h2 class="modal-title" id="assign-permissions-title">Assign Permissions</h2>
           <p class="modal-subtitle" *ngIf="role">{{ role.name }}</p>
         </div>
       </div>
@@ -15,7 +15,8 @@
         (click)="close()" 
         [disabled]="isSaving"
         type="button"
-        title="Close">
+        title="Close"
+        aria-label="Close assign permissions modal">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <line x1="18" y1="6" x2="6" y2="18"></line>
           <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -32,7 +33,7 @@
       </div>
 
       <!-- Error State -->
-      <div *ngIf="errorMessage && !isLoading" class="error-banner">
+      <div *ngIf="errorMessage && !isLoading" class="error-banner" role="alert" aria-live="polite">
         <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="10"></circle>
           <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -127,6 +128,19 @@
           </div>
         </div>
 
+        <div class="safeguard-hint" *ngIf="tenantMode">
+          Tenant safeguard: permission escalation is blocked. You can only assign permissions you currently hold.
+        </div>
+
+        <div class="error-banner" *ngIf="hasAdminPermissionConflict()" role="alert" aria-live="polite">
+          <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <span>Administrator safeguard: missing required permissions - {{ getMissingRequiredAdminPermissionLabels().join(', ') }}</span>
+        </div>
+
         <!-- Permissions Groups -->
         <div class="permissions-container">
           <!-- Empty State -->
@@ -141,7 +155,7 @@
           </div>
 
           <!-- Module Groups -->
-          <div class="module-group" *ngFor="let group of filteredGroups" [class.collapsed]="isModuleCollapsed(group.module)">
+          <div class="module-group" *ngFor="let group of filteredGroups; trackBy: trackByModuleName" [class.collapsed]="isModuleCollapsed(group.module)">
             <!-- Module Header -->
             <div class="module-header" (click)="toggleModuleCollapse(group.module)">
               <div class="module-header-left">
@@ -158,18 +172,23 @@
                   <polyline points="9 18 15 12 9 6"></polyline>
                 </svg>
                 
-                <label class="checkbox-container module-checkbox" (click)="$event.stopPropagation()">
+                <label class="checkbox-container module-checkbox" [for]="getModuleCheckboxId(group.module)" (click)="$event.stopPropagation()">
                   <input 
+                    [id]="getModuleCheckboxId(group.module)"
                     type="checkbox" 
                     [checked]="group.allSelected"
                     [indeterminate]="group.someSelected"
                     (change)="toggleModule(group)"
-                    [disabled]="isSaving">
+                    [disabled]="isSaving"
+                    [attr.aria-label]="'Select all permissions in ' + group.module + ' module'">
                   <span class="checkmark" [class.indeterminate]="group.someSelected"></span>
                 </label>
 
                 <span class="module-name">{{ group.module }}</span>
                 <span class="module-count">({{ group.selectedCount }} / {{ group.totalCount }})</span>
+                <span class="permission-category" [ngClass]="'risk-' + getModuleRiskLevel(group.module)">
+                  {{ getModuleRiskLabel(group.module) }}
+                </span>
               </div>
               <span class="toggle-hint">{{ isModuleCollapsed(group.module) ? 'Expand' : 'Collapse' }}</span>
             </div>
@@ -178,25 +197,26 @@
             <div class="module-content" *ngIf="!isModuleCollapsed(group.module)">
               <div class="permissions-grid">
                 <label 
-                  *ngFor="let permission of group.permissions" 
+                  *ngFor="let permission of group.permissions; trackBy: trackByPermissionId" 
+                  [for]="getPermissionCheckboxId(group.module, permission.id)"
                   class="permission-item"
                   [class.selected]="selectedPermissionIds.has(permission.id)">
                   <div class="checkbox-container">
                     <input 
+                      [id]="getPermissionCheckboxId(group.module, permission.id)"
                       type="checkbox" 
                       [checked]="selectedPermissionIds.has(permission.id)"
                       (change)="togglePermission(permission)"
-                      [disabled]="isSaving">
+                      [disabled]="isSaving"
+                      [attr.aria-label]="getPermissionAriaLabel(permission)">
                     <span class="checkmark"></span>
                   </div>
                   <div class="permission-info">
-                    <div class="permission-name">{{ permission.display_name }}</div>
+                    <div class="permission-name">{{ getPermissionLabel(permission) }}</div>
                     <div class="permission-details">
-                      <span class="permission-code">{{ permission.name }}</span>
-                      <span class="permission-category" *ngIf="permission.category">{{ permission.category }}</span>
-                    </div>
-                    <div class="permission-description" *ngIf="permission.description">
-                      {{ permission.description }}
+                      <span class="permission-category risk-high" *ngIf="isMandatoryAdminPermission(permission)">
+                        Mandatory Admin
+                      </span>
                     </div>
                   </div>
                 </label>
@@ -219,7 +239,7 @@
       <button 
         class="btn-primary" 
         (click)="save()"
-        [disabled]="isSaving || isLoading || !hasChanges()"
+        [disabled]="isSaving || isLoading || !hasChanges() || hasAdminPermissionConflict()"
         type="button">
         <span class="btn-spinner" *ngIf="isSaving"></span>
         <span *ngIf="!isSaving">Save Changes</span>
@@ -230,7 +250,7 @@
 </div>
 
 <!-- Inline Mode (for tab integration) -->
-<div class="inline-container" *ngIf="show && isInline">
+<div class="inline-container" *ngIf="show && isInline" role="region" aria-label="Assign permissions panel">
   <!-- Modal Body (reused) -->
   <div class="modal-body inline-body">
     <!-- Loading State -->
@@ -240,7 +260,7 @@
     </div>
 
     <!-- Error State -->
-    <div *ngIf="errorMessage && !isLoading" class="error-banner">
+    <div *ngIf="errorMessage && !isLoading" class="error-banner" role="alert" aria-live="polite">
       <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="12"></line>
@@ -335,6 +355,19 @@
         </div>
       </div>
 
+      <div class="safeguard-hint" *ngIf="tenantMode">
+        Tenant safeguard: permission escalation is blocked. You can only assign permissions you currently hold.
+      </div>
+
+      <div class="error-banner" *ngIf="hasAdminPermissionConflict()" role="alert" aria-live="polite">
+        <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <span>Administrator safeguard: missing required permissions - {{ getMissingRequiredAdminPermissionLabels().join(', ') }}</span>
+      </div>
+
       <!-- Permissions Groups -->
       <div class="permissions-container">
         <!-- Empty State -->
@@ -349,7 +382,7 @@
         </div>
 
         <!-- Module Groups -->
-        <div class="module-group" *ngFor="let group of filteredGroups" [class.collapsed]="isModuleCollapsed(group.module)">
+        <div class="module-group" *ngFor="let group of filteredGroups; trackBy: trackByModuleName" [class.collapsed]="isModuleCollapsed(group.module)">
           <!-- Module Header -->
           <div class="module-header" (click)="toggleModuleCollapse(group.module)">
             <div class="module-header-left">
@@ -366,18 +399,23 @@
                 <polyline points="9 18 15 12 9 6"></polyline>
               </svg>
               
-              <label class="checkbox-container module-checkbox" (click)="$event.stopPropagation()">
+              <label class="checkbox-container module-checkbox" [for]="getModuleCheckboxId(group.module)" (click)="$event.stopPropagation()">
                 <input 
+                  [id]="getModuleCheckboxId(group.module)"
                   type="checkbox" 
                   [checked]="group.allSelected"
                   [indeterminate]="group.someSelected"
                   (change)="toggleModule(group)"
-                  [disabled]="isSaving">
+                  [disabled]="isSaving"
+                  [attr.aria-label]="'Select all permissions in ' + group.module + ' module'">
                 <span class="checkmark" [class.indeterminate]="group.someSelected"></span>
               </label>
 
               <span class="module-name">{{ group.module }}</span>
               <span class="module-count">({{ group.selectedCount }} / {{ group.totalCount }})</span>
+              <span class="permission-category" [ngClass]="'risk-' + getModuleRiskLevel(group.module)">
+                {{ getModuleRiskLabel(group.module) }}
+              </span>
             </div>
             <span class="toggle-hint">{{ isModuleCollapsed(group.module) ? 'Expand' : 'Collapse' }}</span>
           </div>
@@ -386,25 +424,26 @@
           <div class="module-content" *ngIf="!isModuleCollapsed(group.module)">
             <div class="permissions-grid">
               <label 
-                *ngFor="let permission of group.permissions" 
+                *ngFor="let permission of group.permissions; trackBy: trackByPermissionId" 
+                [for]="getPermissionCheckboxId(group.module, permission.id)"
                 class="permission-item"
                 [class.selected]="selectedPermissionIds.has(permission.id)">
                 <div class="checkbox-container">
                   <input 
+                    [id]="getPermissionCheckboxId(group.module, permission.id)"
                     type="checkbox" 
                     [checked]="selectedPermissionIds.has(permission.id)"
                     (change)="togglePermission(permission)"
-                    [disabled]="isSaving">
+                    [disabled]="isSaving"
+                    [attr.aria-label]="getPermissionAriaLabel(permission)">
                   <span class="checkmark"></span>
                 </div>
                 <div class="permission-info">
-                  <div class="permission-name">{{ permission.display_name }}</div>
+                  <div class="permission-name">{{ getPermissionLabel(permission) }}</div>
                   <div class="permission-details">
-                    <span class="permission-code">{{ permission.name }}</span>
-                    <span class="permission-category" *ngIf="permission.category">{{ permission.category }}</span>
-                  </div>
-                  <div class="permission-description" *ngIf="permission.description">
-                    {{ permission.description }}
+                    <span class="permission-category risk-high" *ngIf="isMandatoryAdminPermission(permission)">
+                      Mandatory Admin
+                    </span>
                   </div>
                 </div>
               </label>
@@ -427,7 +466,7 @@
     <button 
       class="btn-primary" 
       (click)="save()"
-      [disabled]="isSaving || isLoading || !hasChanges()"
+      [disabled]="isSaving || isLoading || !hasChanges() || hasAdminPermissionConflict()"
       type="button">
       <span class="btn-spinner" *ngIf="isSaving"></span>
       <span *ngIf="!isSaving">Save Changes</span>

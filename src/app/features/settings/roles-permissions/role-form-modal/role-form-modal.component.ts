@@ -4,15 +4,19 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Role, RoleCreateRequest, RoleUpdateRequest, Permission } from '@core/models';
 import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
+import { AuthService } from '@core/services/auth.service';
 import { forkJoin, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { isHighRiskPermissionName } from '@shared/utils/rbac-permission.util';
+import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
+import { RolePermissionWorkspaceComponent } from '../role-permission-workspace/role-permission-workspace.component';
 
 @Component({
   selector: 'app-role-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, RolePermissionWorkspaceComponent],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -20,6 +24,7 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
 export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewChecked, OnDestroy {
   @Input() show = false;
   @Input() role: Role | null = null; // For edit mode
+  @Input() tenantMode = false;
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<Role>();
 
@@ -42,11 +47,13 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     private fb: FormBuilder,
     private rolesService: RolesService,
     private permissionsService: PermissionsService,
+    private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
   // Configuration
   minLevel = 5;
+  effectiveMinLevel = 5;
   maxLevel = 10;
   maxNameLength = 255;
   maxDescriptionLength = 500;
@@ -54,8 +61,11 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   // Permissions
   permissions: Permission[] = [];
   selectedPermissionIds: Set<number> = new Set();
+  groupedPermissionsByModule = new Map<string, Permission[]>();
+  moduleNames: string[] = [];
   loadingPermissions = false;
   permissionsError: string | null = null;
+  permissionCatalogAccessDenied = false;
   showPermissions = false; // Toggle for permissions section
 
 
@@ -90,6 +100,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       
       // Clear any previous errors
       this.errorMessage = null;
+      this.permissionCatalogAccessDenied = false;
     }
     
     // Handle role changes (when switching between edit modals)
@@ -100,9 +111,16 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         this.loadRolePermissions();
       }
     }
+
+    if (changes['tenantMode'] && this.roleForm) {
+      this.applyProtectedRoleLocks();
+    }
   }
 
   private initializeForm(): void {
+    // Edit mode must accept historical default role levels (e.g., 2-4).
+    this.effectiveMinLevel = this.resolveEffectiveMinLevel();
+
     this.roleForm = this.fb.group({
       name: [
         this.role?.name || '',
@@ -120,14 +138,16 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         ]
       ],
       level: [
-        this.role?.level || this.minLevel,
+        this.role?.level || this.effectiveMinLevel,
         [
           Validators.required,
-          Validators.min(this.minLevel),
+          Validators.min(this.effectiveMinLevel),
           Validators.max(this.maxLevel)
         ]
       ]
     });
+
+    this.applyProtectedRoleLocks();
   }
 
   // Getter methods for form controls
@@ -181,7 +201,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       return 'Role level is required';
     }
     if (this.level?.hasError('min')) {
-      return `Level must be at least ${this.minLevel}`;
+      return `Level must be at least ${this.effectiveMinLevel}`;
     }
     if (this.level?.hasError('max')) {
       return `Level cannot exceed ${this.maxLevel}`;
@@ -200,6 +220,14 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
 
   // Form submission
   onSubmit(): void {
+    if (this.isRoleIdentityLocked() && this.role) {
+      // Keep identity fields immutable for protected tenant roles.
+      this.roleForm.patchValue({
+        name: this.role.name,
+        level: this.role.level
+      }, { emitEvent: false });
+    }
+
     if (!this.roleForm.valid) {
       markFormGroupTouched(this.roleForm);
       return;
@@ -216,7 +244,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   }
 
   private createRole(): void {
-    const formValue = this.roleForm.value;
+    const formValue = this.roleForm.getRawValue();
     const request: RoleCreateRequest = {
       name: formValue.name.trim(),
       description: formValue.description?.trim() || undefined,
@@ -225,15 +253,15 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       is_custom: true
     };
 
-    this.rolesService.createRole(request).pipe(
+    this.rolesService.createRole(request, { tenantMode: this.tenantMode }).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: (response) => {
         if (response.data && response.data.role) {
           const createdRole = response.data.role;
           
-          // Assign permissions if any are selected
-          if (this.selectedPermissionIds.size > 0) {
+          // Assign permissions only when current user is authorized for permission sync.
+          if (this.selectedPermissionIds.size > 0 && this.canAssignRolePermissions()) {
             this.assignPermissionsToRole(createdRole);
           } else {
             this.isSubmitting = false;
@@ -245,7 +273,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       },
       error: (err) => {
         this.isSubmitting = false;
-        this.errorMessage = this.extractErrorMessage(err);
+        this.errorMessage = this.getFriendlyErrorMessage(err, 'Failed to create role');
         this.cdr.markForCheck();
       }
     });
@@ -254,27 +282,43 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   private updateRole(): void {
     if (!this.role) return;
 
-    const formValue = this.roleForm.value;
+    const formValue = this.roleForm.getRawValue();
     const request: RoleUpdateRequest = {
       name: formValue.name.trim(),
       description: formValue.description?.trim() || undefined,
       level: formValue.level
     };
 
-    this.rolesService.updateRole(this.role.id, request).pipe(
+    this.rolesService.updateRole(this.role.id, request, { tenantMode: this.tenantMode }).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: (response) => {
         if (response.data && response.data.role) {
           const updatedRole = response.data.role;
-          
-          // Always update permissions for existing role
-          this.assignPermissionsToRole(updatedRole);
+
+          if (this.permissionCatalogAccessDenied) {
+            this.isSubmitting = false;
+            this.saved.emit(updatedRole);
+            this.cdr.markForCheck();
+            this.close();
+            return;
+          }
+
+          // Update permissions only when catalog access and permission-sync authorization are available.
+          if (this.canAssignRolePermissions()) {
+            this.assignPermissionsToRole(updatedRole);
+            return;
+          }
+
+          this.isSubmitting = false;
+          this.saved.emit(updatedRole);
+          this.cdr.markForCheck();
+          this.close();
         }
       },
       error: (err) => {
         this.isSubmitting = false;
-        this.errorMessage = this.extractErrorMessage(err);
+        this.errorMessage = this.getFriendlyErrorMessage(err, 'Failed to update role');
         this.cdr.markForCheck();
       }
     });
@@ -287,7 +331,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     this.permissionsService.bulkAssignToRole({ 
       role_id: role.id, 
       permission_ids: permissionIds 
-    }).pipe(
+    }, { tenantMode: this.tenantMode }).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: () => {
@@ -297,10 +341,20 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         this.close();
       },
       error: (err: any) => {
+        if (err?.status === 403) {
+          // Role creation/update succeeded; current user is not allowed to sync permissions.
+          // Treat this as non-blocking to avoid false failure UX.
+          this.isSubmitting = false;
+          this.saved.emit(role);
+          this.cdr.markForCheck();
+          this.close();
+          return;
+        }
+
         this.isSubmitting = false;
         console.error('Error assigning permissions:', err);
         // Show partial success message - role was created/updated but permissions failed
-        this.errorMessage = `Role ${this.isEditMode ? 'updated' : 'created'} successfully, but there was an error assigning permissions: ${this.extractErrorMessage(err)}`;
+        this.errorMessage = `Role ${this.isEditMode ? 'updated' : 'created'} successfully, but permission sync failed: ${this.getFriendlyErrorMessage(err, 'Failed to assign permissions')}`;
         // Still emit the saved role even if permissions failed
         this.saved.emit(role);
         this.cdr.markForCheck();
@@ -308,16 +362,45 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     });
   }
 
-  private extractErrorMessage(err: any): string {
-    if (err.error?.message) {
-      return err.error.message;
+  private getFriendlyErrorMessage(err: any, fallback: string): string {
+    const status = err?.status;
+    const apiMessage = err?.error?.message;
+
+    if (status === 0) {
+      return 'Network connection failed. Please check your internet and try again.';
     }
-    if (err.error?.errors) {
-      // Laravel validation errors
-      const errors = Object.values(err.error.errors).flat();
-      return errors.join(', ');
+
+    if (status === 403) {
+      return apiMessage || 'You do not have permission to perform this action.';
     }
-    return 'An unexpected error occurred. Please try again.';
+
+    if (status === 422) {
+      const validationErrors = err?.error?.errors;
+      if (validationErrors) {
+        const firstKey = Object.keys(validationErrors)[0];
+        const firstMessage = firstKey ? validationErrors[firstKey]?.[0] : null;
+        if (firstMessage) {
+          return firstMessage;
+        }
+      }
+      return apiMessage || 'Validation failed. Please review your input and try again.';
+    }
+
+    if (status >= 500) {
+      return 'Server error occurred. Please try again in a moment.';
+    }
+
+    return apiMessage || fallback;
+  }
+
+  private canAssignRolePermissions(): boolean {
+    if (this.tenantMode) {
+      return this.authService.canManageRbac();
+    }
+
+    return this.authService.hasPermission('permissions.assign')
+      || this.authService.isSuperAdmin()
+      || this.authService.isEkklesiaAdmin();
   }
 
   // Modal actions
@@ -346,9 +429,29 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     this.roleForm.reset({
       name: '',
       description: '',
-      level: this.minLevel
+      level: this.effectiveMinLevel
     });
     this.errorMessage = null;
+  }
+
+  get levelMarkers(): number[] {
+    const markers = [this.effectiveMinLevel];
+    for (let i = 6; i <= 9; i += 1) {
+      if (i > this.effectiveMinLevel && i < this.maxLevel) {
+        markers.push(i);
+      }
+    }
+    if (!markers.includes(this.maxLevel)) {
+      markers.push(this.maxLevel);
+    }
+    return markers;
+  }
+
+  private resolveEffectiveMinLevel(): number {
+    if (this.isEditMode && this.role?.level) {
+      return Math.min(this.minLevel, this.role.level);
+    }
+    return this.minLevel;
   }
 
   // Prevent modal close when clicking inside
@@ -374,19 +477,14 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     this.loadingPermissions = true;
     this.permissionsError = null;
 
-    this.permissionsService.getPermissions({ per_page: 'all', active: 1 }).subscribe({
+    this.permissionsService.getPermissions({ per_page: 'all', active: 1 }, { tenantMode: this.tenantMode }).subscribe({
       next: (response: any) => {
-        // Handle both paginated and non-paginated responses
-        if (response.success !== undefined) {
-          // Non-paginated response with success field
-          if (response.success) {
-            this.permissions = response.data;
-          } else {
-            this.permissionsError = response.message || 'Failed to load permissions';
-          }
-        } else if (response.data && Array.isArray(response.data)) {
-          // Paginated response
-          this.permissions = response.data;
+        const normalizedPermissions = this.extractPermissionsFromResponse(response);
+        if (normalizedPermissions) {
+          this.permissions = normalizedPermissions;
+          this.rebuildPermissionsIndex();
+        } else if (response?.success === false) {
+          this.permissionsError = response?.message || 'Failed to load permissions';
         } else {
           this.permissionsError = 'Invalid response format';
         }
@@ -394,7 +492,16 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       },
       error: (err: any) => {
         console.error('Error loading permissions:', err);
-        this.permissionsError = err.error?.message || 'Failed to load permissions';
+        if (err?.status === 403) {
+          // Allow role create/update flow even when permission catalog cannot be viewed.
+          this.permissionCatalogAccessDenied = true;
+          this.permissionsError = null;
+          this.permissions = [];
+          this.groupedPermissionsByModule = new Map<string, Permission[]>();
+          this.moduleNames = [];
+        } else {
+          this.permissionsError = this.getFriendlyErrorMessage(err, 'Failed to load permissions');
+        }
         this.loadingPermissions = false;
       }
     });
@@ -403,7 +510,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   loadRolePermissions(): void {
     if (!this.role) return;
 
-    this.permissionsService.getPermissionsForRole(this.role.id).pipe(
+    this.permissionsService.getPermissionsForRole(this.role.id, { tenantMode: this.tenantMode }).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: (response) => {
@@ -414,6 +521,12 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       },
       error: (err) => {
         console.error('Error loading role permissions:', err);
+        if (err?.status === 403) {
+          this.permissionCatalogAccessDenied = true;
+          this.permissionsError = null;
+        } else {
+          this.permissionsError = this.getFriendlyErrorMessage(err, 'Failed to load role permissions');
+        }
         this.cdr.markForCheck();
       }
     });
@@ -421,22 +534,12 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
 
   // Group permissions by module
   get permissionsByModule(): Map<string, Permission[]> {
-    const grouped = new Map<string, Permission[]>();
-    
-    this.permissions.forEach(permission => {
-      const module = permission.module || 'Other';
-      if (!grouped.has(module)) {
-        grouped.set(module, []);
-      }
-      grouped.get(module)!.push(permission);
-    });
-
-    return grouped;
+    return this.groupedPermissionsByModule;
   }
 
   // Get unique modules sorted
   get modules(): string[] {
-    return Array.from(this.permissionsByModule.keys()).sort();
+    return this.moduleNames;
   }
 
   // Toggle permission selection
@@ -480,14 +583,195 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     return selectedCount > 0 && selectedCount < modulePermissions.length;
   }
 
+  isAllPermissionsSelected(): boolean {
+    return this.permissions.length > 0 && this.permissions.every((permission) => this.selectedPermissionIds.has(permission.id));
+  }
+
+  isSomePermissionsSelected(): boolean {
+    const selectedCount = this.selectedPermissionIds.size;
+    return selectedCount > 0 && selectedCount < this.permissions.length;
+  }
+
+  toggleAllPermissions(): void {
+    if (this.isAllPermissionsSelected()) {
+      this.selectedPermissionIds.clear();
+      return;
+    }
+
+    this.permissions.forEach((permission) => this.selectedPermissionIds.add(permission.id));
+  }
+
   // Get count of selected permissions
   get selectedPermissionsCount(): number {
     return this.selectedPermissionIds.size;
   }
 
+  get selectedModulesCount(): number {
+    return this.moduleNames.filter((module) => {
+      const permissions = this.groupedPermissionsByModule.get(module) || [];
+      return permissions.some((permission) => this.selectedPermissionIds.has(permission.id));
+    }).length;
+  }
+
+  get highRiskSelectedCount(): number {
+    return this.permissions.filter((permission) => this.selectedPermissionIds.has(permission.id) && this.isHighRiskPermission(permission)).length;
+  }
+
   // Toggle permissions panel
   togglePermissionsPanel(): void {
     this.showPermissions = !this.showPermissions;
+  }
+
+  onWorkspaceSelectionChange(next: Set<number>): void {
+    this.selectedPermissionIds = next;
+    this.cdr.markForCheck();
+  }
+
+  trackByModuleName(_index: number, module: string): string {
+    return module;
+  }
+
+  trackByPermissionId(_index: number, permission: Permission): number {
+    return permission.id;
+  }
+
+  getPermissionLabel(permission: Permission): string {
+    const description = permission.description?.trim();
+    if (description) {
+      return description;
+    }
+
+    const displayName = permission.display_name?.trim();
+    if (displayName) {
+      return displayName;
+    }
+
+    return permission.name;
+  }
+
+  getModuleCheckboxId(module: string): string {
+    return `role-form-module-${this.toDomId(module)}`;
+  }
+
+  getPermissionCheckboxId(module: string, permissionId: number): string {
+    return `role-form-permission-${this.toDomId(module)}-${permissionId}`;
+  }
+
+  private rebuildPermissionsIndex(): void {
+    const grouped = new Map<string, Permission[]>();
+
+    this.permissions.forEach((permission) => {
+      const module = this.resolvePermissionModule(permission);
+      if (!grouped.has(module)) {
+        grouped.set(module, []);
+      }
+      grouped.get(module)!.push(permission);
+    });
+
+    this.groupedPermissionsByModule = grouped;
+    this.moduleNames = Array.from(grouped.keys()).sort();
+  }
+
+  private extractPermissionsFromResponse(response: any): Permission[] | null {
+    if (!response) {
+      return null;
+    }
+
+    // Flat array payload.
+    if (Array.isArray(response)) {
+      return response;
+    }
+
+    // Common envelope shapes: { data: Permission[] } or { data: { data: Permission[] } }.
+    const directData = Array.isArray(response.data) ? response.data : null;
+    const nestedData = Array.isArray(response?.data?.data) ? response.data.data : null;
+    const candidate = directData ?? nestedData;
+
+    if (!candidate) {
+      return null;
+    }
+
+    const isGrouped = candidate.every((item: any) => item && Array.isArray(item.permissions));
+    if (!isGrouped) {
+      return candidate;
+    }
+
+    // Grouped payload: [{ module: 'Users', permissions: Permission[] }].
+    return candidate.flatMap((group: any) => {
+      const moduleName = group?.module ?? 'Other';
+      return (group.permissions || []).map((permission: Permission) => ({
+        ...permission,
+        module: permission.module ?? moduleName
+      }));
+    });
+  }
+
+  private toDomId(value: string): string {
+    return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'uncategorized';
+  }
+
+  private resolvePermissionModule(permission: Permission): string {
+    const permissionName = (permission.name || '').toLowerCase();
+    const prefix = permissionName.includes('.') ? permissionName.split('.')[0] : '';
+    const prefixModuleMap: Record<string, string> = {
+      users: 'Users',
+      members: 'Members',
+      families: 'Families',
+      events: 'Events',
+      attendance: 'Attendance',
+      donations: 'Finance',
+      reports: 'Reports',
+      roles: 'Roles',
+      permissions: 'Permissions',
+      settings: 'Settings',
+      church: 'Settings'
+    };
+
+    if (prefix && prefixModuleMap[prefix]) {
+      return prefixModuleMap[prefix];
+    }
+
+    const explicitModule = (permission.module || '').trim();
+    if (!explicitModule) {
+      return 'Other';
+    }
+
+    // Legacy/system module labels.
+    if (explicitModule === 'Authentication') {
+      return 'Users';
+    }
+    if (explicitModule === 'RolesAndPermissions') {
+      return 'Roles & Permissions';
+    }
+
+    return explicitModule;
+  }
+
+  private isHighRiskPermission(permission: Permission): boolean {
+    return isHighRiskPermissionName(permission.name);
+  }
+
+  isProtectedTenantRole(): boolean {
+    return this.tenantMode && isProtectedRoleDefinition(this.role);
+  }
+
+  isRoleIdentityLocked(): boolean {
+    return this.isEditMode && this.isProtectedTenantRole();
+  }
+
+  private applyProtectedRoleLocks(): void {
+    if (!this.roleForm) {
+      return;
+    }
+
+    if (this.isRoleIdentityLocked()) {
+      this.roleForm.get('name')?.disable({ emitEvent: false });
+      this.roleForm.get('level')?.disable({ emitEvent: false });
+      return;
+    }
+
+    this.roleForm.get('name')?.enable({ emitEvent: false });
+    this.roleForm.get('level')?.enable({ emitEvent: false });
   }
 
   ngAfterViewChecked(): void {

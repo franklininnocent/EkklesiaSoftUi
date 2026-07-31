@@ -58,39 +58,39 @@ describe('SacramentFormModalComponent', () => {
   });
 
   it('requiresParents should depend on type BAPTISM', () => {
-    component.formData.sacrament_type_id = 1; // Baptism
-    expect(component.requiresParents()).toBeTrue();
-    component.formData.sacrament_type_id = 3; // Marriage
-    expect(component.requiresParents()).toBeFalse();
+    component.formData['sacrament_type_id'] = 1; // Baptism
+    expect(component.requiresParents()).toBe(true);
+    component.formData['sacrament_type_id'] = 3; // Marriage
+    expect(component.requiresParents()).toBe(false);
   });
 
   it('requiresGodparents should depend on types BAPTISM and CONFIRMATION', () => {
-    component.formData.sacrament_type_id = 1; // Baptism
-    expect(component.requiresGodparents()).toBeTrue();
-    component.formData.sacrament_type_id = 2; // Confirmation
-    expect(component.requiresGodparents()).toBeTrue();
-    component.formData.sacrament_type_id = 3; // Marriage
-    expect(component.requiresGodparents()).toBeFalse();
+    component.formData['sacrament_type_id'] = 1; // Baptism
+    expect(component.requiresGodparents()).toBe(true);
+    component.formData['sacrament_type_id'] = 2; // Confirmation
+    expect(component.requiresGodparents()).toBe(true);
+    component.formData['sacrament_type_id'] = 3; // Marriage
+    expect(component.requiresGodparents()).toBe(false);
   });
 
   it('validateForm should enforce required fields', () => {
     component.formData = { sacrament_type_id: undefined, recipient_name: '', date_administered: '' } as any;
-    expect(component.validateForm()).toBeFalse();
+    expect(component.validateForm()).toBe(false);
     expect((toastStub.error as any)).toHaveBeenCalled();
 
     component.formData = { sacrament_type_id: 1, recipient_name: '', date_administered: '' } as any;
-    expect(component.validateForm()).toBeFalse();
+    expect(component.validateForm()).toBe(false);
 
     component.formData = { sacrament_type_id: 1, recipient_name: 'John', date_administered: '' } as any;
-    expect(component.validateForm()).toBeFalse();
+    expect(component.validateForm()).toBe(false);
 
-    component.formData = { sacrament_type_id: 1, recipient_name: 'John', date_administered: '2025-01-01' } as any;
-    expect(component.validateForm()).toBeTrue();
+    component.formData = { sacrament_type_id: 2, recipient_name: 'John', date_administered: '2025-01-01' } as any;
+    expect(component.validateForm()).toBe(true);
   });
 
   it('should call create on save when not in edit mode', () => {
     component.isEditMode = false;
-    component.formData = { sacrament_type_id: 1, recipient_name: 'Jane', date_administered: '2025-01-01' } as any;
+    component.formData = { sacrament_type_id: 2, recipient_name: 'Jane', date_administered: '2025-01-01' } as any;
     component.onSave();
     expect((sacramentServiceStub.createSacrament as any)).toHaveBeenCalled();
   });

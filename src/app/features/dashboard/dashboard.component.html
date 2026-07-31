@@ -1,130 +1,456 @@
-<div class="dashboard">
-  <div class="dashboard-header">
-    <div class="header-content">
-      <h1>Dashboard</h1>
-      <p *ngIf="currentUser$ | async as user" class="welcome-text">
-        Welcome back, <strong>{{ user.name }}</strong>!
+<div class="church-dashboard">
+  <!-- Page header (uses app shell for tenant + profile; no duplicate topbar) -->
+  <header class="cd-page-header">
+    <div class="cd-page-header__intro">
+      <h1 class="cd-page-title">Operations Dashboard</h1>
+      <p class="cd-page-subtitle" *ngIf="currentUser$ | async as user">
+        {{ getGreeting() }}, <strong>{{ getUserFirstName(user.name) }}</strong>
+        <span class="cd-page-subtitle__sep">·</span>
+        <time [attr.datetime]="today | date:'yyyy-MM-dd'">{{ today | date:'EEEE, MMMM d, y' }}</time>
+        <span *ngIf="operationsSummary?.persona as persona" class="cd-page-subtitle__persona">
+          · {{ persona.label }}
+        </span>
       </p>
+      <p *ngIf="operationsSummary?.persona?.emphasis" class="cd-page-persona">{{ operationsSummary?.persona?.emphasis }}</p>
     </div>
-    <div class="header-actions">
-      <span class="date">{{ today | date:'fullDate' }}</span>
+    <div class="cd-page-header__search">
+      <svg class="cd-page-header__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+      </svg>
+      <input
+        type="search"
+        class="cd-page-header__search-input"
+        placeholder="Search members, events, volunteers..."
+        [(ngModel)]="searchQuery"
+        (keydown)="onSearchKeydown($event)"
+        aria-label="Search church operations"
+      />
+      <kbd class="cd-page-header__kbd">Ctrl+K</kbd>
     </div>
-  </div>
+  </header>
 
-  <!-- Stats Grid -->
-  <div class="stats-grid">
-    <app-card *ngFor="let stat of stats" [padding]="'md'" [shadow]="true">
-        <div class="stat-card" 
-           [class.clickable]="stat.clickable"
-           (click)="onStatCardClick(stat)"
-           [title]="stat.clickable ? 'Click to view ' + stat.title.toLowerCase() : ''"
-           [attr.aria-label]="stat.title + ': ' + stat.value">
-        <div class="stat-icon" [innerHTML]="getStatIcon(stat.icon)"></div>
-        <div class="stat-content">
-          <h3 class="stat-title">{{ stat.title }}</h3>
-          <div class="stat-value">{{ stat.value }}</div>
-          <div class="stat-change" [class.positive]="stat.trend === 'up'" [class.negative]="stat.trend === 'down'">
-            <span class="trend-icon">{{ stat.trend === 'up' ? '↗' : '↘' }}</span>
-            {{ stat.change }}
-          </div>
+  <!-- Real church registry (live API counts) -->
+  <section class="cd-registry" aria-label="Church registry summary">
+    <button type="button" class="cd-registry__card" (click)="navigateTo('/families')">
+      <span class="cd-registry__label">Families</span>
+      <span class="cd-registry__value">{{ totalFamilies | number }}</span>
+      <span class="cd-registry__hint">View all families</span>
+    </button>
+    <button type="button" class="cd-registry__card" (click)="navigateTo('/members')">
+      <span class="cd-registry__label">Members</span>
+      <span class="cd-registry__value">{{ totalMembers | number }}</span>
+      <span class="cd-registry__hint">Member directory</span>
+    </button>
+    <button type="button" class="cd-registry__card" (click)="navigateTo('/bccs')">
+      <span class="cd-registry__label">Life Groups</span>
+      <span class="cd-registry__value">{{ totalBCCs | number }}</span>
+      <span class="cd-registry__hint">Manage BCCs</span>
+    </button>
+  </section>
+
+  <!-- Hero KPI Row -->
+  <section class="cd-hero" aria-label="Key performance indicators">
+    <article
+      *ngFor="let kpi of heroKpis"
+      class="cd-kpi"
+      [ngClass]="'cd-kpi--' + kpi.accent"
+    >
+      <div class="cd-kpi__head">
+        <span class="cd-kpi__label">{{ kpi.label }}</span>
+        <span
+          class="cd-kpi__delta"
+          [class.is-up]="kpi.trend === 'up'"
+          [class.is-down]="kpi.trend === 'down'"
+        >
+          {{ kpi.change }}
+        </span>
+      </div>
+      <div class="cd-kpi__value">{{ kpi.value }}</div>
+      <p class="cd-kpi__sub">{{ kpi.sublabel }}</p>
+      <svg class="cd-kpi__spark" viewBox="0 0 72 28" preserveAspectRatio="none" aria-hidden="true">
+        <path [attr.d]="getSparklinePath(kpi.sparkline)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </article>
+  </section>
+
+  <!-- Community Analytics Strip -->
+  <section class="cd-analytics" aria-label="Community and engagement analytics">
+    <article class="cd-panel">
+      <header class="cd-panel__head">
+        <h2>Attendance Trend</h2>
+        <span class="cd-panel__badge">Weekly</span>
+      </header>
+      <div class="cd-attendance-split">
+        <div class="cd-attendance-metric">
+          <span class="cd-attendance-metric__label">In-Person</span>
+          <span class="cd-attendance-metric__value">{{ attendanceBreakdown.inPerson | number }}</span>
+          <span class="cd-attendance-metric__delta is-up">{{ attendanceBreakdown.inPersonChange }}</span>
+        </div>
+        <div class="cd-attendance-metric">
+          <span class="cd-attendance-metric__label">Online Streaming</span>
+          <span class="cd-attendance-metric__value">{{ attendanceBreakdown.online | number }}</span>
+          <span class="cd-attendance-metric__delta is-up">{{ attendanceBreakdown.onlineChange }}</span>
         </div>
       </div>
-    </app-card>
-  </div>
+    </article>
 
-  <!-- Main Content -->
-  <div class="dashboard-content">
-    <div class="content-row">
-      <!-- Recent Activity -->
-      <div class="content-col">
-        <app-card title="Recent Activity" [shadow]="true">
-          <div class="activity-list">
-            <div class="activity-item" *ngFor="let activity of recentActivities" [attr.aria-label]="activity.title + ': ' + activity.description">
-              <div class="activity-icon" [class]="activity.type" [innerHTML]="getActivityIcon(activity.icon)"></div>
-              <div class="activity-details">
-                <div class="activity-title">{{ activity.title }}</div>
-                <div class="activity-description">{{ activity.description }}</div>
-                <div class="activity-time">{{ activity.time }}</div>
+    <article class="cd-panel">
+      <header class="cd-panel__head">
+        <h2>Growth Vectors</h2>
+        <span class="cd-panel__badge">This Month</span>
+      </header>
+      <dl class="cd-stat-row">
+        <div class="cd-stat-row__item">
+          <dt>New Member Sign-ups</dt>
+          <dd>{{ growthMetrics.newMembers }}</dd>
+        </div>
+        <div class="cd-stat-row__item">
+          <dt>Assimilation Progress</dt>
+          <dd>{{ growthMetrics.assimilationRate }}%</dd>
+        </div>
+        <div class="cd-stat-row__item">
+          <dt>Visitors to Active</dt>
+          <dd>{{ growthMetrics.visitorsToActive }}</dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="cd-panel">
+      <header class="cd-panel__head">
+        <h2>Life Groups</h2>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">Manage groups</button>
+      </header>
+      <div class="cd-groups-grid">
+        <div class="cd-groups-item" *ngFor="let group of lifeGroups">
+          <span class="cd-groups-item__value">{{ group.value }}</span>
+          <span class="cd-groups-item__label">{{ group.label }}</span>
+          <span class="cd-groups-item__detail">{{ group.detail }}</span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- BCC, Sacraments, Birthdays & Anniversaries -->
+  <section class="cd-community" aria-label="BCC, sacraments, and member celebrations">
+    <article class="cd-panel cd-panel--bcc">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>BCC Overview</h2>
+          <p class="cd-panel__desc">Basic Christian Communities — groups, capacity, and meeting rhythm</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">View all BCCs</button>
+      </header>
+
+      <div class="cd-bcc-stats" *ngIf="bccStatistics">
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Active BCCs</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.active_bccs }}</span>
+        </div>
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Families in BCCs</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.total_families_in_bccs }}</span>
+        </div>
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Utilization</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.utilization_percentage }}%</span>
+        </div>
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Open Capacity</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.bccs_with_space }}</span>
+        </div>
+      </div>
+
+      <ul class="cd-bcc-list" *ngIf="!loadingBccDetails && bccHighlights.length > 0">
+        <li *ngFor="let bcc of bccHighlights" class="cd-bcc-item">
+          <button type="button" class="cd-bcc-item__main" (click)="navigateToBcc(bcc.id)">
+            <span class="cd-bcc-item__name">{{ bcc.name }}</span>
+            <span class="cd-bcc-item__code">{{ bcc.code }}</span>
+          </button>
+          <div class="cd-bcc-item__meta">
+            <span>{{ bcc.families }} families</span>
+            <span>{{ bcc.meetingLabel }}</span>
+          </div>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingBccDetails && bccHighlights.length === 0">No active BCC records found.</p>
+      <p class="cd-loading" *ngIf="loadingBccDetails">Loading BCC details...</p>
+    </article>
+
+    <article class="cd-panel cd-panel--sacraments">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>Sacramental Records</h2>
+          <p class="cd-panel__desc">{{ sacramentsThisMonth }} sacraments recorded this month</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/settings/sacraments')">Open sacraments</button>
+      </header>
+
+      <div class="cd-sacrament-counts" *ngIf="sacramentTypeCounts.length > 0">
+        <span class="cd-sacrament-count" *ngFor="let item of sacramentTypeCounts">
+          {{ item.label }} <strong>{{ item.count }}</strong>
+        </span>
+      </div>
+
+      <ul class="cd-sacrament-list" *ngIf="!loadingSacraments && sacramentHighlights.length > 0">
+        <li *ngFor="let record of sacramentHighlights" class="cd-sacrament-item">
+          <div class="cd-sacrament-item__head">
+            <span class="cd-sacrament-item__type">{{ record.typeName }}</span>
+            <time class="cd-sacrament-item__date">{{ formatSacramentDate(record.dateAdministered) }}</time>
+          </div>
+          <p class="cd-sacrament-item__name">{{ record.recipientName }}</p>
+          <p class="cd-sacrament-item__place" *ngIf="record.place">{{ record.place }}</p>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingSacraments && sacramentHighlights.length === 0">No sacramental records this month.</p>
+      <p class="cd-loading" *ngIf="loadingSacraments">Loading sacramental records...</p>
+    </article>
+
+    <article class="cd-panel cd-panel--birthdays">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>Birthdays This Week</h2>
+          <p class="cd-panel__desc">{{ weekRangeLabel }}</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/members')">Member directory</button>
+      </header>
+
+      <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && weekBirthdays.length > 0">
+        <li *ngFor="let item of weekBirthdays" class="cd-celebration-item">
+          <button type="button" class="cd-celebration-item__main" (click)="navigateToFamily(item.familyId)">
+            <span class="cd-celebration-item__day">{{ item.dayLabel }}</span>
+            <div class="cd-celebration-item__copy">
+              <span class="cd-celebration-item__name">{{ item.name }}</span>
+              <span class="cd-celebration-item__detail">{{ item.detail }} · {{ item.dateLabel }}</span>
+            </div>
+          </button>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingCelebrations && weekBirthdays.length === 0">No member birthdays scheduled this week.</p>
+      <p class="cd-loading" *ngIf="loadingCelebrations">Checking member birthdays...</p>
+    </article>
+
+    <article class="cd-panel cd-panel--anniversaries">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>Wedding Anniversaries</h2>
+          <p class="cd-panel__desc">Celebrations this week · {{ weekRangeLabel }}</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/families')">Family records</button>
+      </header>
+
+      <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && weekAnniversaries.length > 0">
+        <li *ngFor="let item of weekAnniversaries" class="cd-celebration-item cd-celebration-item--anniversary">
+          <button type="button" class="cd-celebration-item__main" (click)="navigateToFamily(item.familyId)">
+            <span class="cd-celebration-item__day">{{ item.dayLabel }}</span>
+            <div class="cd-celebration-item__copy">
+              <span class="cd-celebration-item__name">{{ item.name }}</span>
+              <span class="cd-celebration-item__detail">{{ item.detail }} · {{ item.dateLabel }}</span>
+            </div>
+          </button>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingCelebrations && weekAnniversaries.length === 0">No wedding anniversaries this week.</p>
+      <p class="cd-loading" *ngIf="loadingCelebrations">Checking anniversaries...</p>
+    </article>
+  </section>
+
+  <!-- Main Body Split -->
+  <div class="cd-main">
+    <div class="cd-main__primary">
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Sunday Service Readiness</h2>
+            <p class="cd-panel__desc">Today's schedule, volunteer check-ins, and venue flow</p>
+          </div>
+          <span class="cd-panel__live">Live operations</span>
+        </header>
+        <ol class="cd-timeline">
+          <li
+            *ngFor="let item of todaySchedule"
+            class="cd-timeline__item"
+            [class.is-action]="item.status === 'action'"
+          >
+            <time class="cd-timeline__time">{{ item.time }}</time>
+            <div class="cd-timeline__track">
+              <div class="cd-timeline__dot" [attr.data-category]="item.category"></div>
+            </div>
+            <div class="cd-timeline__content">
+              <div class="cd-timeline__title-row">
+                <h3>{{ item.title }}</h3>
+                <span class="cd-timeline__status" [attr.data-status]="item.status">
+                  {{ item.status === 'action' ? 'Action needed' : (item.status === 'pending' ? 'Pending' : 'Confirmed') }}
+                </span>
               </div>
+              <p>{{ item.detail }}</p>
             </div>
-          </div>
-        </app-card>
-      </div>
+          </li>
+        </ol>
+      </article>
 
-      <!-- Quick Actions -->
-      <div class="content-col">
-        <app-card title="Quick Actions" [shadow]="true">
-          <div class="quick-actions">
-            <button class="btn-create" 
-                    (click)="handleAction('addUser')"
-                    type="button"
-                    title="Create new user">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                <circle cx="8.5" cy="7" r="4"></circle>
-                <line x1="20" y1="8" x2="20" y2="14"></line>
-                <line x1="23" y1="11" x2="17" y2="11"></line>
-              </svg>
-              <span>Add User</span>
-            </button>
-            <button class="btn-info" 
-                    (click)="handleAction('viewReports')"
-                    type="button"
-                    title="View reports and analytics">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="18" y1="20" x2="18" y2="10"></line>
-                <line x1="12" y1="20" x2="12" y2="4"></line>
-                <line x1="6" y1="20" x2="6" y2="14"></line>
-              </svg>
-              <span>View Reports</span>
-            </button>
-            <button class="btn-settings" 
-                    (click)="handleAction('settings')"
-                    type="button"
-                    title="Application settings">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M12 1v6m0 6v6m0-13a2 2 0 0 1 2 2m0 0a2 2 0 0 1-2 2m0-4a2 2 0 0 0-2 2m0 0a2 2 0 0 0 2 2m-5.5 5.5l5.5-5.5m0 0l5.5 5.5M1 12h6m6 0h6"></path>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-              <span>Settings</span>
-            </button>
-            <button class="btn-add" 
-                    (click)="handleAction('sendEmail')"
-                    type="button"
-                    title="Send email notification">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-              <span>Send Email</span>
-            </button>
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Attendance &amp; Giving Correlation</h2>
+            <p class="cd-panel__desc">Last 6 months — Sunday attendance vs. monthly tithes (in $1k)</p>
           </div>
-        </app-card>
+        </header>
+        <div class="cd-chart">
+          <div class="cd-chart__legend">
+            <span class="cd-chart__legend-item cd-chart__legend-item--attendance">Attendance</span>
+            <span class="cd-chart__legend-item cd-chart__legend-item--giving">Giving ($1k)</span>
+          </div>
+          <div class="cd-chart__grid" role="img" aria-label="Six month attendance and giving chart">
+            <div class="cd-chart__col" *ngFor="let point of attendanceGivingChart">
+              <div class="cd-chart__bars">
+                <div
+                  class="cd-chart__bar cd-chart__bar--attendance"
+                  [style.height.px]="getChartBarHeightPx(point.attendance, maxAttendance)"
+                  [attr.title]="point.attendance + ' attendance'"
+                ></div>
+                <div
+                  class="cd-chart__bar cd-chart__bar--giving"
+                  [style.height.px]="getChartBarHeightPx(point.giving, maxGiving)"
+                  [attr.title]="'$' + point.giving + 'k giving'"
+                ></div>
+              </div>
+              <span class="cd-chart__label">{{ point.month }}</span>
+            </div>
+          </div>
+        </div>
+      </article>
 
-        <!-- System Status -->
-        <app-card title="System Status" [shadow]="true" class="mt-4">
-          <div class="system-status">
-            <div class="status-item">
-              <span class="status-label">Server Status</span>
-              <span class="status-badge success">Online</span>
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Stewardship Hub</h2>
+            <p class="cd-panel__desc" *ngIf="operationsSummary?.financial?.health as health">
+              Health score {{ health.score }} · {{ health.label }}
+            </p>
+            <p class="cd-panel__desc" *ngIf="!operationsSummary">High-level stewardship health — connect donations for live totals</p>
+          </div>
+          <button type="button" class="cd-panel__link" *ngIf="canViewFinancial" (click)="openFinancialDashboard()">Open Financial Dashboard</button>
+        </header>
+        <p *ngIf="loadingFinancial" class="cd-panel__desc">Loading live stewardship data…</p>
+        <div class="cd-giving-summary" *ngIf="!loadingFinancial">
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">This Month</span>
+            <span class="cd-giving-summary__value">{{ givingSummary.monthly }}</span>
+          </div>
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">Outstanding</span>
+            <span class="cd-giving-summary__value">{{ operationsSummary ? formatCurrency(operationsSummary.financial?.totals?.pending_dues || 0) : givingSummary.budgetGoal }}</span>
+          </div>
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">Families Needing Care</span>
+            <span class="cd-giving-summary__value">{{ operationsSummary?.financial?.attention_summary?.count || 0 }}</span>
+            <span class="cd-giving-summary__detail">{{ formatCurrency(operationsSummary?.financial?.attention_summary?.total_overdue_amount || 0) }} overdue</span>
+          </div>
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">Participation</span>
+            <span class="cd-giving-summary__value">{{ operationsSummary?.financial?.families?.participation_rate || 0 }}%</span>
+          </div>
+        </div>
+        <ul class="cd-financial-attention" *ngIf="operationsSummary?.families_requiring_attention?.length">
+          <li *ngFor="let family of operationsSummary?.families_requiring_attention ?? []">
+            <button type="button" (click)="navigateToFamily(family.family_id)">
+              <strong>{{ family.family_name }}</strong>
+              <span>{{ family.overdue_amount | number:'1.2-2' }} overdue · {{ family.days_overdue }} days</span>
+            </button>
+          </li>
+        </ul>
+        <div class="cd-giving-channels" *ngIf="!operationsSummary">
+          <h3 class="cd-giving-channels__title">Giving Channels</h3>
+          <div class="cd-giving-channel" *ngFor="let channel of givingChannels">
+            <div class="cd-giving-channel__head">
+              <span>{{ channel.channel }}</span>
+              <span>{{ channel.amount }}</span>
             </div>
-            <div class="status-item">
-              <span class="status-label">Database</span>
-              <span class="status-badge success">Connected</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">API Services</span>
-              <span class="status-badge success">Running</span>
-            </div>
-            <div class="status-item">
-              <span class="status-label">Cache</span>
-              <span class="status-badge warning">Low Memory</span>
+            <div class="cd-progress cd-progress--subtle">
+              <div class="cd-progress__fill" [style.width.%]="channel.share"></div>
             </div>
           </div>
-        </app-card>
-      </div>
+        </div>
+      </article>
     </div>
+
+    <aside class="cd-main__sidebar" aria-label="Pastoral care and volunteer bottlenecks">
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Volunteer Coordination</h2>
+            <p class="cd-panel__desc">Sunday 9:00 AM service shift fulfillment</p>
+          </div>
+        </header>
+        <ul class="cd-volunteer-list">
+          <li *ngFor="let shift of volunteerShifts" class="cd-volunteer-item" [attr.data-status]="shift.status">
+            <svg class="cd-volunteer-ring" viewBox="0 0 40 40" aria-hidden="true">
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#e8edf2" stroke-width="4"/>
+              <circle
+                cx="20" cy="20" r="16" fill="none"
+                stroke="currentColor" stroke-width="4"
+                stroke-linecap="round"
+                transform="rotate(-90 20 20)"
+                [attr.stroke-dasharray]="100.53"
+                [attr.stroke-dashoffset]="getVolunteerRingOffset(shift)"
+              />
+            </svg>
+            <div class="cd-volunteer-item__content">
+              <div class="cd-volunteer-item__head">
+                <span class="cd-volunteer-item__team">{{ shift.team }}</span>
+                <span class="cd-volunteer-item__pct">{{ getVolunteerPercent(shift) }}%</span>
+              </div>
+              <p>{{ shift.filled }} of {{ shift.required }} filled</p>
+              <span class="cd-volunteer-item__flag" *ngIf="shift.status === 'critical'">Action needed before Sunday</span>
+              <span class="cd-volunteer-item__flag is-watch" *ngIf="shift.status === 'watch'">Recruit 1–2 more volunteers</span>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Pastoral Care Alerts</h2>
+            <p class="cd-panel__desc">Urgent community needs requiring attention</p>
+          </div>
+        </header>
+        <ul class="cd-care-list">
+          <li *ngFor="let alert of careAlerts" class="cd-care-item" [class.is-urgent]="alert.priority === 'urgent'">
+            <div class="cd-care-item__count">{{ alert.count }}</div>
+            <div class="cd-care-item__content">
+              <span class="cd-care-item__title">{{ alert.title }}</span>
+              <button type="button" class="cd-link-btn">{{ alert.action }}</button>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Pastoral Workflow</h2>
+            <p class="cd-panel__desc">Assign follow-ups to pastoral staff</p>
+          </div>
+        </header>
+        <ul class="cd-task-list">
+          <li *ngFor="let task of pastoralTasks" class="cd-task-item" [class.is-open]="task.status === 'open'">
+            <div class="cd-task-item__main">
+              <span class="cd-task-item__title">{{ task.title }}</span>
+              <span class="cd-task-item__meta">{{ task.assignee }} · Due {{ task.due }}</span>
+            </div>
+            <button
+              *ngIf="task.status === 'open'"
+              type="button"
+              class="cd-task-item__assign"
+              (click)="assignTask(task)"
+            >
+              Assign
+            </button>
+            <span *ngIf="task.status === 'assigned'" class="cd-task-item__assigned">Assigned</span>
+          </li>
+        </ul>
+      </article>
+    </aside>
   </div>
 </div>
-

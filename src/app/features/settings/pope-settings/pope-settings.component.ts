@@ -6,7 +6,7 @@
  * Changed from permission-based access to SuperAdmin-only access.
  */
 
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PopeDetailsService } from '@core/services/church';
@@ -19,6 +19,7 @@ import { PopeDetails, UpdatePopeDetailsRequest } from '@core/models/church';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './pope-settings.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './pope-settings.component.scss'
 })
 export class PopeSettingsComponent implements OnInit {

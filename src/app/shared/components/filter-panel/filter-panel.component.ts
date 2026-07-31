@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, OnInit } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 
@@ -29,6 +29,7 @@ export interface FilterValues {
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './filter-panel.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './filter-panel.component.scss'
 })
 export class FilterPanelComponent implements OnInit {

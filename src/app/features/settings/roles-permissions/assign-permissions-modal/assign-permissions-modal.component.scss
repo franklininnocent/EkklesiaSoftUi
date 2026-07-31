@@ -247,6 +247,17 @@
   }
 }
 
+.safeguard-hint {
+  margin-bottom: var(--spacing-md);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-md);
+  border: 1px solid #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+}
+
 // ============ COMBINED CONTROLS BAR (Stats + Actions) ============
 .combined-controls-bar {
   display: flex;
@@ -924,6 +935,24 @@
   background: linear-gradient(135deg, #4facfe15 0%, #00f2fe15 100%);
   color: #00a8cc;
   border: 1px solid #00a8cc;
+
+  &.risk-high {
+    background: #fef2f2;
+    color: #b91c1c;
+    border-color: #fca5a5;
+  }
+
+  &.risk-medium {
+    background: #fffbeb;
+    color: #92400e;
+    border-color: #fcd34d;
+  }
+
+  &.risk-low {
+    background: #ecfeff;
+    color: #0e7490;
+    border-color: #67e8f9;
+  }
 }
 
 .permission-description {

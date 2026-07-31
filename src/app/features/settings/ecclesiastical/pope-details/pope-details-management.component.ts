@@ -6,7 +6,7 @@
  * Requires Ekklesia Roles permissions.
  */
 
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PopeDetailsService } from '@core/services/church';
@@ -19,6 +19,7 @@ import { PopeDetails, UpdatePopeDetailsRequest } from '@core/models/church';
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule],
   templateUrl: './pope-details-management.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './pope-details-management.component.scss'
 })
 export class PopeDetailsManagementComponent implements OnInit {

@@ -21,6 +21,7 @@ interface ApiResponse<T = any> {
 })
 export class RolesService {
   private apiUrl = `${environment.apiUrl}/roles`;
+  private tenantApiUrl = `${environment.apiUrl}/tenant/roles`;
 
   constructor(private http: HttpClient) {}
 
@@ -33,7 +34,7 @@ export class RolesService {
     tenant_id?: number;
     is_custom?: boolean;
     search?: string;
-  }): Observable<RoleListResponse> {
+  }, options?: { tenantMode?: boolean }): Observable<RoleListResponse> {
     let httpParams = new HttpParams();
     if (params) {
       Object.keys(params).forEach(key => {
@@ -43,35 +44,35 @@ export class RolesService {
         }
       });
     }
-    return this.http.get<RoleListResponse>(this.apiUrl, { params: httpParams });
+    return this.http.get<RoleListResponse>(this.resolveApiUrl(options?.tenantMode), { params: httpParams });
   }
 
   /**
    * Get a specific role by ID
    */
-  getRole(id: number): Observable<RoleDetailResponse> {
-    return this.http.get<RoleDetailResponse>(`${this.apiUrl}/${id}`);
+  getRole(id: number, options?: { tenantMode?: boolean }): Observable<RoleDetailResponse> {
+    return this.http.get<RoleDetailResponse>(`${this.resolveApiUrl(options?.tenantMode)}/${id}`);
   }
 
   /**
    * Create a new role
    */
-  createRole(role: RoleCreateRequest): Observable<ApiResponse<{ role: Role }>> {
-    return this.http.post<ApiResponse<{ role: Role }>>(this.apiUrl, role);
+  createRole(role: RoleCreateRequest, options?: { tenantMode?: boolean }): Observable<ApiResponse<{ role: Role }>> {
+    return this.http.post<ApiResponse<{ role: Role }>>(this.resolveApiUrl(options?.tenantMode), role);
   }
 
   /**
    * Update an existing role
    */
-  updateRole(id: number, role: RoleUpdateRequest): Observable<ApiResponse<{ role: Role }>> {
-    return this.http.put<ApiResponse<{ role: Role }>>(`${this.apiUrl}/${id}`, role);
+  updateRole(id: number, role: RoleUpdateRequest, options?: { tenantMode?: boolean }): Observable<ApiResponse<{ role: Role }>> {
+    return this.http.put<ApiResponse<{ role: Role }>>(`${this.resolveApiUrl(options?.tenantMode)}/${id}`, role);
   }
 
   /**
    * Delete a role (soft delete)
    */
-  deleteRole(id: number): Observable<ApiResponse> {
-    return this.http.delete<ApiResponse>(`${this.apiUrl}/${id}`);
+  deleteRole(id: number, options?: { tenantMode?: boolean }): Observable<ApiResponse> {
+    return this.http.delete<ApiResponse>(`${this.resolveApiUrl(options?.tenantMode)}/${id}`);
   }
 
   /**
@@ -98,8 +99,28 @@ export class RolesService {
   /**
    * Toggle role active status
    */
-  toggleRoleStatus(id: number, active: boolean): Observable<ApiResponse<{ role: Role }>> {
+  toggleRoleStatus(id: number, active: boolean, options?: { tenantMode?: boolean }): Observable<ApiResponse<{ role: Role }>> {
+    if (options?.tenantMode) {
+      const url = `${this.tenantApiUrl}/${id}/${active ? 'activate' : 'deactivate'}`;
+      return this.http.post<ApiResponse<{ role: Role }>>(url, {});
+    }
+
     return active ? this.activateRole(id) : this.deactivateRole(id);
+  }
+
+  /**
+   * Explicit tenant-only list helper.
+   */
+  getTenantRoles(params?: {
+    per_page?: number | string;
+    active?: 0 | 1;
+    search?: string;
+  }): Observable<RoleListResponse> {
+    return this.getRoles(params, { tenantMode: true });
+  }
+
+  private resolveApiUrl(tenantMode = false): string {
+    return tenantMode ? this.tenantApiUrl : this.apiUrl;
   }
 }
 

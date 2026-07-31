@@ -4,10 +4,13 @@ import { FormsModule } from '@angular/forms';
 import { Role, Permission } from '@core/models';
 import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
+import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
+import { User } from '@core/models/user.model';
 import { CardComponent, PaginationComponent, FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
+import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 import { RoleFormModalComponent } from './role-form-modal/role-form-modal.component';
 import { AssignPermissionsModalComponent } from './assign-permissions-modal/assign-permissions-modal.component';
 import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/pope-details-management.component';
@@ -26,9 +29,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   @ViewChild('assignModal') assignModalRef!: AssignPermissionsModalComponent;
   
-  activeTab: 'roles' | 'permissions' | 'assign' | 'pope' = 'roles';
+  activeTab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope' = 'roles';
   hasEkklesiaRole = false; // For backward compatibility
   hasSuperAdminAccess = false; // For Pope tab - SuperAdmin only
+  isTenantMode = false;
   
   // Filter Panel State
   showRolesFilterPanel = false;
@@ -71,7 +75,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   // Filters
   searchQuery = '';
   statusFilter: 'all' | 'active' | 'inactive' = 'all';
-  typeFilter: 'all' | 'system' | 'custom' = 'all';
+  typeFilter: 'all' | 'system' | 'custom' | 'protected' | 'default' = 'all';
   moduleFilter = '';
 
   // Filter Panel Configurations
@@ -81,7 +85,14 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     showStatusFilter: true,
     showTypeFilter: true,
     showModuleFilter: false,
-    searchPlaceholder: 'Search roles by name or display name...'
+    searchPlaceholder: 'Search roles by name or description...',
+    typeOptions: [
+      { value: 'all', label: 'All Types' },
+      { value: 'protected', label: 'Protected' },
+      { value: 'default', label: 'Default' },
+      { value: 'custom', label: 'Custom' },
+      { value: 'system', label: 'System' }
+    ]
   };
 
   permissionsFilterConfig: FilterPanelConfig = {
@@ -90,7 +101,12 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     showStatusFilter: true,
     showTypeFilter: true,
     showModuleFilter: true,
-    searchPlaceholder: 'Search permissions by name, display name, module...'
+    searchPlaceholder: 'Search permissions by name, display name, module...',
+    typeOptions: [
+      { value: 'all', label: 'All Types' },
+      { value: 'system', label: 'System' },
+      { value: 'custom', label: 'Custom' }
+    ]
   };
   
   // Modals
@@ -99,23 +115,37 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   showCreatePermissionModal = false;
   showEditPermissionModal = false;
   showAssignPermissionsModal = false;
+  showRoleDeleteConfirmModal = false;
+  showRoleStatusConfirmModal = false;
   
   selectedRole: Role | null = null;
   selectedPermission: Permission | null = null;
   selectedRoleForAssignment: Role | null = null; // For Assign Permissions tab
+  pendingRoleAction: Role | null = null;
+  pendingRoleStatusTarget: 0 | 1 | null = null;
+
+  // User role assignments
+  tenantUsers: User[] = [];
+  loadingTenantUsers = false;
+  tenantUsersError: string | null = null;
+  selectedUserForRoles: User | null = null;
+  selectedRoleIdsForUser: number[] = [];
+  savingUserRoles = false;
 
   constructor(
     private rolesService: RolesService,
     private permissionsService: PermissionsService,
+    private usersService: UsersService,
     private toastService: ToastService,
     public authService: AuthService,  // Made public for template access
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.checkEkklesiaRole();
     this.loadRoles();
     this.loadPermissions();
-    this.checkEkklesiaRole();
+    this.loadTenantUsers();
   }
 
   /**
@@ -126,11 +156,14 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     // Check immediately first
     this.updateEkklesiaRole(this.authService.currentUserValue);
     this.updateSuperAdminAccess(this.authService.currentUserValue);
+    this.updateTenantMode(this.authService.currentUserValue);
     
     // Also subscribe to user changes
     this.authService.currentUser$.pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
       this.updateEkklesiaRole(user);
       this.updateSuperAdminAccess(user);
+      this.updateTenantMode(user);
+      this.loadTenantUsers();
       this.cdr.detectChanges();
     });
   }
@@ -170,12 +203,27 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     this.hasSuperAdminAccess = this.authService.isSuperAdmin();
   }
 
+  private updateTenantMode(user: any): void {
+    if (!user) {
+      this.isTenantMode = false;
+      this.selectedUserForRoles = null;
+      this.tenantUsers = [];
+      return;
+    }
+
+    this.isTenantMode = !!user.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin();
+    if (!this.isTenantMode) {
+      this.selectedUserForRoles = null;
+      this.tenantUsers = [];
+    }
+  }
+
   // Tab Management
-  selectTab(tab: 'roles' | 'permissions' | 'assign' | 'pope'): void {
+  selectTab(tab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope'): void {
     this.activeTab = tab;
   }
 
-  isActiveTab(tab: 'roles' | 'permissions' | 'assign' | 'pope'): boolean {
+  isActiveTab(tab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope'): boolean {
     return this.activeTab === tab;
   }
 
@@ -186,18 +234,19 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
     const params: any = { per_page: 'all' };
 
-    this.rolesService.getRoles(params)
+    this.rolesService.getRoles(params, { tenantMode: this.isTenantMode })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: (response) => {
         this.allRoles = Array.isArray(response) ? response : response.data;
         this.applyFiltersAndPagination('roles');
+        this.syncSelectedRoleForAssignment();
         this.loadingRoles = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error loading roles:', err);
-        this.rolesError = err.error?.message || 'Failed to load roles';
+        this.rolesError = this.getFriendlyErrorMessage(err, 'Failed to load roles');
         this.loadingRoles = false;
         this.cdr.markForCheck();
       }
@@ -256,22 +305,42 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   }
 
   deleteRole(role: Role): void {
-    if (!confirm(`Are you sure you want to delete the role "${role.name}"?\n\nThis action cannot be undone.`)) {
+    this.pendingRoleAction = role;
+    this.showRoleDeleteConfirmModal = true;
+  }
+
+  cancelDeleteRole(): void {
+    this.showRoleDeleteConfirmModal = false;
+    this.pendingRoleAction = null;
+  }
+
+  confirmDeleteRole(): void {
+    const role = this.pendingRoleAction;
+    if (!role) {
       return;
     }
 
-    this.rolesService.deleteRole(role.id)
+    if ((role.users_count || 0) > 0) {
+      this.toastService.warning(
+        'This role has assigned users. Reassign users first before deleting.',
+        'Delete Blocked'
+      );
+      return;
+    }
+
+    this.rolesService.deleteRole(role.id, { tenantMode: this.isTenantMode })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: () => {
         console.log(`✅ Role "${role.name}" deleted successfully`);
         this.toastService.success(`Role "${role.name}" deleted successfully!`, 'Role Deleted');
+        this.cancelDeleteRole();
         this.loadRoles();
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error deleting role:', err);
-        this.toastService.error(err.error?.message || 'Failed to delete role', 'Error');
+        this.toastService.error(this.getFriendlyErrorMessage(err, 'Failed to delete role'), 'Error');
       }
     });
   }
@@ -286,38 +355,16 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     if (!user) {
       return false;
     }
-
-    // SuperAdmins and EkklesiaAdmins/Managers can always manage roles
-    if (this.authService.isSuperAdmin() || this.authService.isEkklesiaAdmin()) {
-      return true;
-    }
-
-    // Check for EkklesiaManager
-    const ekklesiaManagerRoles = ['EkklesiaManager', 'Ekklesia Manager'];
-    if (ekklesiaManagerRoles.includes(user.role_name || '') || 
-        ekklesiaManagerRoles.includes(user.role?.name || '')) {
-      return true;
-    }
-
-    // Tenant Administrators can manage roles for their tenant
-    // Check multiple ways the Administrator role might be stored
-    const isAdministrator = 
-      this.authService.isTenantAdmin() || // Check via AuthService method
-      user.role_name === 'Administrator' || // Check legacy role_name
-      user.role?.name === 'Administrator' || // Check legacy role object
-      (user.roles && user.roles.some(r => r.name === 'Administrator')); // Check roles array
-    
-    if (isAdministrator && user.tenant_id) {
-      return true;
-    }
-
-    return false;
+    return this.authService.canManageRbac(user);
   }
 
   /**
    * Check if the current user can create roles
    */
   canCreateRole(): boolean {
+    if (this.isTenantMode) {
+      return this.canManageRoles();
+    }
     return this.canManageRoles() || this.authService.hasPermission('roles.create');
   }
 
@@ -325,6 +372,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    * Check if the current user can update roles
    */
   canUpdateRole(): boolean {
+    if (this.isTenantMode) {
+      return this.canManageRoles();
+    }
     return this.canManageRoles() || this.authService.hasPermission('roles.update');
   }
 
@@ -332,6 +382,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    * Check if the current user can delete roles
    */
   canDeleteRole(): boolean {
+    if (this.isTenantMode) {
+      return this.canManageRoles();
+    }
     return this.canManageRoles() || this.authService.hasPermission('roles.delete');
   }
 
@@ -339,6 +392,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    * Check if the current user can assign permissions
    */
   canAssignPermissions(): boolean {
+    if (this.isTenantMode) {
+      return this.canManageRoles();
+    }
     return this.canManageRoles() || this.authService.hasPermission('permissions.assign');
   }
 
@@ -346,6 +402,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    * Check if the current user can create permissions
    */
   canCreatePermission(): boolean {
+    if (this.isTenantMode) {
+      return false;
+    }
     return this.canManageRoles() || this.authService.hasPermission('permissions.create');
   }
 
@@ -353,6 +412,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    * Check if the current user can update permissions
    */
   canUpdatePermission(): boolean {
+    if (this.isTenantMode) {
+      return false;
+    }
     return this.canManageRoles() || this.authService.hasPermission('permissions.update');
   }
 
@@ -360,6 +422,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    * Check if the current user can delete permissions
    */
   canDeletePermission(): boolean {
+    if (this.isTenantMode) {
+      return false;
+    }
     return this.canManageRoles() || this.authService.hasPermission('permissions.delete');
   }
 
@@ -368,18 +433,55 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    * System roles (like Administrator) cannot be toggled
    */
   canToggleRoleStatus(role: Role): boolean {
-    // System roles cannot be toggled
-    if (!role.is_custom) {
+    if (!this.canUpdateRole()) {
       return false;
     }
-    
-    // Additional check: Don't allow toggling if role name is "Administrator" or "Super Administrator"
-    const protectedRoles = ['Administrator', 'Super Administrator', 'Super Admin'];
-    if (protectedRoles.includes(role.name)) {
+
+    if (this.isProtectedRole(role)) {
       return false;
     }
-    
-    return true;
+
+    if (this.isTenantMode) {
+      return true;
+    }
+
+    // Platform/system mode keeps legacy behavior.
+    return role.is_custom;
+  }
+
+  isProtectedTenantRole(role: Role): boolean {
+    if (!this.isTenantMode) {
+      return false;
+    }
+
+    return this.getRoleClassification(role) === 'protected';
+  }
+
+  canEditRoleRow(role: Role): boolean {
+    if (!this.canUpdateRole() || this.isProtectedRole(role)) {
+      return false;
+    }
+
+    if (this.isTenantMode) {
+      return true;
+    }
+
+    return role.is_custom;
+  }
+
+  canDeleteRoleRow(role: Role): boolean {
+    if (!this.canDeleteRole() || this.isProtectedRole(role)) {
+      return false;
+    }
+
+    if (this.isTenantMode) {
+      if ((role.users_count || 0) > 0) {
+        return false;
+      }
+      return true;
+    }
+
+    return role.is_custom;
   }
 
   toggleRoleStatus(role: Role): void {
@@ -392,15 +494,33 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const newStatus = role.active === 1 ? 0 : 1;
+    this.pendingRoleAction = role;
+    this.pendingRoleStatusTarget = role.active === 1 ? 0 : 1;
+    this.showRoleStatusConfirmModal = true;
+  }
+
+  cancelToggleRoleStatus(): void {
+    this.showRoleStatusConfirmModal = false;
+    this.pendingRoleAction = null;
+    this.pendingRoleStatusTarget = null;
+  }
+
+  confirmToggleRoleStatus(): void {
+    const role = this.pendingRoleAction;
+    const newStatus = this.pendingRoleStatusTarget;
+    if (!role || newStatus === null) {
+      return;
+    }
+
     const statusText = newStatus === 1 ? 'activated' : 'deactivated';
-    
-    this.rolesService.toggleRoleStatus(role.id, newStatus === 1)
+
+    this.rolesService.toggleRoleStatus(role.id, newStatus === 1, { tenantMode: this.isTenantMode })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: () => {
         role.active = newStatus;
         console.log(`✅ Role "${role.name}" ${statusText} successfully`);
+        this.cancelToggleRoleStatus();
         this.cdr.markForCheck();
         this.toastService.success(
           `Role "${role.name}" ${statusText} successfully!`,
@@ -410,11 +530,26 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Error toggling role status:', err);
         this.toastService.error(
-          err.error?.message || 'Failed to update role status',
+          this.getFriendlyErrorMessage(err, 'Failed to update role status'),
           'Error'
         );
       }
     });
+  }
+
+  getRoleDeleteImpactMessage(role: Role | null): string {
+    if (!role) {
+      return '';
+    }
+
+    const userCount = role.users_count || 0;
+    const permissionCount = role.permissions_count || 0;
+
+    if (userCount > 0) {
+      return `Deleting this role is blocked because ${userCount} user${userCount > 1 ? 's are' : ' is'} still assigned.`;
+    }
+
+    return `Deleting this role will remove ${permissionCount} permission mapping${permissionCount === 1 ? '' : 's'} from this role definition.`;
   }
 
   // Permissions Management
@@ -424,7 +559,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
     const params: any = { per_page: 'all' };
 
-    this.permissionsService.getPermissions(params).subscribe({
+    this.permissionsService.getPermissions(params, { tenantMode: this.isTenantMode }).subscribe({
       next: (response) => {
         this.allPermissions = Array.isArray(response) ? response : response.data;
         this.applyFiltersAndPagination('permissions');
@@ -433,7 +568,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Error loading permissions:', err);
-        this.permissionsError = err.error?.message || 'Failed to load permissions';
+        this.permissionsError = this.getFriendlyErrorMessage(err, 'Failed to load permissions');
         this.loadingPermissions = false;
       }
     });
@@ -572,7 +707,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       error: (err) => {
         console.error('Error deleting permission:', err);
         this.toastService.error(
-          err.error?.message || 'Failed to delete permission',
+          this.getFriendlyErrorMessage(err, 'Failed to delete permission'),
           'Error'
         );
       }
@@ -610,6 +745,172 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     this.loadRoles(); // Reload roles to reflect changes
     this.selectedRoleForAssignment = null; // Clear selection
     this.toastService.success('Permissions assigned successfully', 'Success');
+  }
+
+  // Tenant User Role Assignment
+  loadTenantUsers(): void {
+    if (!this.isTenantMode) {
+      this.tenantUsers = [];
+      return;
+    }
+
+    this.loadingTenantUsers = true;
+    this.tenantUsersError = null;
+
+    this.usersService.getUsers({ per_page: 'all', status: 'active' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.tenantUsers = response.data || [];
+          this.syncSelectedUserForRoles();
+          this.loadingTenantUsers = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.tenantUsersError = this.getFriendlyErrorMessage(err, 'Failed to load tenant users');
+          this.loadingTenantUsers = false;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  selectUserForRoleAssignment(user: User): void {
+    this.selectedUserForRoles = user;
+    this.selectedRoleIdsForUser = (user.roles || []).map((role) => role.id);
+  }
+
+  isRoleCheckedForSelectedUser(roleId: number): boolean {
+    return this.selectedRoleIdsForUser.includes(roleId);
+  }
+
+  toggleRoleForSelectedUser(roleId: number, checked: boolean): void {
+    if (checked) {
+      if (!this.selectedRoleIdsForUser.includes(roleId)) {
+        this.selectedRoleIdsForUser = [...this.selectedRoleIdsForUser, roleId];
+      }
+      return;
+    }
+
+    this.selectedRoleIdsForUser = this.selectedRoleIdsForUser.filter((id) => id !== roleId);
+  }
+
+  saveSelectedUserRoles(): void {
+    if (!this.selectedUserForRoles) {
+      return;
+    }
+
+    this.savingUserRoles = true;
+    this.usersService.assignRoles(this.selectedUserForRoles.id, this.selectedRoleIdsForUser, { tenantMode: this.isTenantMode })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.savingUserRoles = false;
+          this.toastService.success('User roles updated successfully', 'Success');
+          this.loadTenantUsers();
+        },
+        error: (err) => {
+          this.savingUserRoles = false;
+          this.toastService.error(this.getFriendlyErrorMessage(err, 'Failed to update user roles'), 'Error');
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  getUserRolesDisplay(user: User): string {
+    const names = (user.roles || []).map((role) => role.name);
+    return names.length ? names.join(', ') : 'No roles';
+  }
+
+  trackByRoleId(_index: number, role: Role): number {
+    return role.id;
+  }
+
+  trackByPermissionId(_index: number, permission: Permission): number {
+    return permission.id;
+  }
+
+  trackByUserId(_index: number, user: User): number {
+    return user.id;
+  }
+
+  trackByModuleName(_index: number, module: string): string {
+    return module;
+  }
+
+  get tenantUserTotal(): number {
+    return this.tenantUsers.length;
+  }
+
+  get tenantAssignedUsersCount(): number {
+    return this.tenantUsers.filter((user) => (user.roles || []).length > 0).length;
+  }
+
+  get tenantUnassignedUsersCount(): number {
+    return this.tenantUsers.filter((user) => (user.roles || []).length === 0).length;
+  }
+
+  get tenantAdminUsersCount(): number {
+    return this.tenantUsers.filter((user) => (user.roles || []).some((role) => this.isProtectedTenantRole(role))).length;
+  }
+
+  private getFriendlyErrorMessage(error: any, fallback: string): string {
+    const status = error?.status;
+    const apiMessage = error?.error?.message;
+
+    if (status === 0) {
+      return 'Network connection failed. Please check your internet and try again.';
+    }
+
+    if (status === 403) {
+      return apiMessage || 'You do not have permission to perform this action.';
+    }
+
+    if (status === 422) {
+      const validationErrors = error?.error?.errors;
+      if (validationErrors) {
+        const firstKey = Object.keys(validationErrors)[0];
+        const firstMessage = firstKey ? validationErrors[firstKey]?.[0] : null;
+        if (firstMessage) {
+          return firstMessage;
+        }
+      }
+      return apiMessage || 'Validation failed. Please review your input and try again.';
+    }
+
+    if (status >= 500) {
+      return 'Server error occurred. Please try again in a moment.';
+    }
+
+    return apiMessage || fallback;
+  }
+
+  private syncSelectedRoleForAssignment(): void {
+    if (!this.selectedRoleForAssignment) {
+      return;
+    }
+
+    const refreshedRole = this.allRoles.find((role) => role.id === this.selectedRoleForAssignment!.id);
+    if (!refreshedRole || refreshedRole.active !== 1) {
+      this.selectedRoleForAssignment = null;
+      return;
+    }
+
+    this.selectedRoleForAssignment = refreshedRole;
+  }
+
+  private syncSelectedUserForRoles(): void {
+    if (!this.selectedUserForRoles) {
+      return;
+    }
+
+    const refreshedUser = this.tenantUsers.find((user) => user.id === this.selectedUserForRoles!.id);
+    if (!refreshedUser) {
+      this.selectedUserForRoles = null;
+      this.selectedRoleIdsForUser = [];
+      return;
+    }
+
+    this.selectedUserForRoles = refreshedUser;
   }
 
   // Filters
@@ -666,8 +967,15 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
       // Apply type filter
       if (this.typeFilter !== 'all') {
-        const isCustomValue = this.typeFilter === 'custom';
-        filtered = filtered.filter(role => role.is_custom === isCustomValue);
+        if (this.typeFilter === 'custom') {
+          filtered = filtered.filter((role) => this.getRoleClassification(role) === 'custom');
+        } else if (this.typeFilter === 'system') {
+          filtered = filtered.filter((role) => role.is_custom === false);
+        } else if (this.typeFilter === 'protected') {
+          filtered = filtered.filter((role) => this.getRoleClassification(role) === 'protected');
+        } else if (this.typeFilter === 'default') {
+          filtered = filtered.filter((role) => this.getRoleClassification(role) === 'default');
+        }
       }
 
       // Update total count after filtering
@@ -742,7 +1050,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   applyRolesFilters(filters: FilterValues): void {
     this.searchQuery = filters.search || '';
     this.statusFilter = (filters.status as 'all' | 'active' | 'inactive') || 'all';
-    this.typeFilter = (filters.type as 'all' | 'system' | 'custom') || 'all';
+    this.typeFilter = (filters.type as 'all' | 'system' | 'custom' | 'protected' | 'default') || 'all';
     this.rolesPage = 1; // Reset to first page
     this.applyFiltersAndPagination('roles');
   }
@@ -790,6 +1098,23 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     };
   }
 
+  getRolesFilterValues(): FilterValues {
+    return {
+      search: this.searchQuery,
+      status: this.statusFilter,
+      type: this.typeFilter
+    };
+  }
+
+  getPermissionsFilterValues(): FilterValues {
+    return {
+      search: this.searchQuery,
+      status: this.statusFilter,
+      type: this.typeFilter,
+      module: this.moduleFilter
+    };
+  }
+
   // Maximum number of filter chips to display before showing "+ more"
   maxVisibleChips = 3;
 
@@ -800,23 +1125,17 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
            this.moduleFilter !== '';
   }
 
-  // Cached filter chips to prevent infinite change detection
-  private _cachedChips: Array<{type: string, label: string, value: string}> = [];
-  private _cachedVisibleChips: Array<{type: string, label: string, value: string}> = [];
-  private _cachedHiddenChips: Array<{type: string, label: string, value: string}> = [];
-  private _cachedHiddenCount: number = 0;
-  private _cachedTooltip: string = '';
-  private _lastFilterState = '';
+  hasActiveRolesFilters(): boolean {
+    return this.searchQuery !== '' ||
+      this.statusFilter !== 'all' ||
+      this.typeFilter !== 'all';
+  }
 
-  getActiveFilterChips(): Array<{type: string, label: string, value: string}> {
-    // Cache based on current filter state to prevent infinite loops
-    const currentState = `${this.searchQuery}|${this.statusFilter}|${this.typeFilter}|${this.moduleFilter}`;
-    
-    if (this._lastFilterState === currentState) {
-      return this._cachedChips;
-    }
-    
-    this._lastFilterState = currentState;
+  hasActivePermissionsFilters(): boolean {
+    return this.hasActiveRolesFilters() || this.moduleFilter !== '';
+  }
+
+  getActiveFilterChips(context: 'roles' | 'permissions'): Array<{type: string, label: string, value: string}> {
     const chips: Array<{type: string, label: string, value: string}> = [];
     
     if (this.searchQuery) {
@@ -836,66 +1155,44 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     }
     
     if (this.typeFilter !== 'all') {
+      const roleTypeLabelMap: Record<string, string> = {
+        system: 'System',
+        custom: 'Custom',
+        protected: 'Protected',
+        default: 'Default'
+      };
       chips.push({
         type: 'type',
         label: 'Type',
-        value: this.typeFilter === 'system' ? 'System' : 'Custom'
+        value: roleTypeLabelMap[this.typeFilter] || 'Custom'
       });
     }
     
-    if (this.moduleFilter) {
+    if (context === 'permissions' && this.moduleFilter) {
       chips.push({
         type: 'module',
         label: 'Module',
         value: this.moduleFilter
       });
     }
-    
-    this._cachedChips = chips;
-    
-    // Update all dependent caches at once
-    this._cachedVisibleChips = chips.slice(0, this.maxVisibleChips);
-    this._cachedHiddenChips = chips.slice(this.maxVisibleChips);
-    this._cachedHiddenCount = this._cachedHiddenChips.length;
-    this._cachedTooltip = this._cachedHiddenChips.map(chip => `${chip.label}: ${chip.value}`).join('\n');
-    
+
     return chips;
   }
 
-  getVisibleFilterChips(): Array<{type: string, label: string, value: string}> {
-    // Ensure cache is up to date
-    const currentState = `${this.searchQuery}|${this.statusFilter}|${this.typeFilter}|${this.moduleFilter}`;
-    if (this._lastFilterState !== currentState) {
-      this.getActiveFilterChips();
-    }
-    return this._cachedVisibleChips;
+  getVisibleFilterChips(context: 'roles' | 'permissions'): Array<{type: string, label: string, value: string}> {
+    return this.getActiveFilterChips(context).slice(0, this.maxVisibleChips);
   }
 
-  getHiddenFilterChips(): Array<{type: string, label: string, value: string}> {
-    // Ensure cache is up to date
-    const currentState = `${this.searchQuery}|${this.statusFilter}|${this.typeFilter}|${this.moduleFilter}`;
-    if (this._lastFilterState !== currentState) {
-      this.getActiveFilterChips();
-    }
-    return this._cachedHiddenChips;
+  getHiddenFilterChips(context: 'roles' | 'permissions'): Array<{type: string, label: string, value: string}> {
+    return this.getActiveFilterChips(context).slice(this.maxVisibleChips);
   }
 
-  getHiddenChipsCount(): number {
-    // Ensure cache is up to date
-    const currentState = `${this.searchQuery}|${this.statusFilter}|${this.typeFilter}|${this.moduleFilter}`;
-    if (this._lastFilterState !== currentState) {
-      this.getActiveFilterChips();
-    }
-    return this._cachedHiddenCount;
+  getHiddenChipsCount(context: 'roles' | 'permissions'): number {
+    return this.getHiddenFilterChips(context).length;
   }
 
-  getHiddenChipsTooltip(): string {
-    // Ensure cache is up to date
-    const currentState = `${this.searchQuery}|${this.statusFilter}|${this.typeFilter}|${this.moduleFilter}`;
-    if (this._lastFilterState !== currentState) {
-      this.getActiveFilterChips();
-    }
-    return this._cachedTooltip;
+  getHiddenChipsTooltip(context: 'roles' | 'permissions'): string {
+    return this.getHiddenFilterChips(context).map(chip => `${chip.label}: ${chip.value}`).join('\n');
   }
 
   openFilterPanelWithCurrentFilters(): void {
@@ -935,8 +1232,44 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   // Helper Methods
   getRoleBadgeClass(role: Role): string {
-    if (role.is_custom) return 'badge-custom';
+    const classification = this.getRoleClassification(role);
+    if (classification === 'protected') return 'badge-protected';
+    if (classification === 'default') return 'badge-default';
+    if (classification === 'custom') return 'badge-custom';
     return 'badge-system';
+  }
+
+  getRoleBadgeLabel(role: Role): string {
+    const classification = this.getRoleClassification(role);
+    if (classification === 'protected') return 'Protected';
+    if (classification === 'default') return 'Default';
+    if (classification === 'custom') return 'Custom';
+    return 'System';
+  }
+
+  getRoleClassification(role: Role): 'protected' | 'default' | 'custom' | 'system' {
+    if (role.role_classification === 'protected_system') {
+      return 'protected';
+    }
+
+    if (role.role_classification === 'default_template') {
+      return 'default';
+    }
+
+    if (role.role_classification === 'custom') {
+      return 'custom';
+    }
+
+    // Fallback for older payloads.
+    if (this.isProtectedRole(role)) {
+      return 'protected';
+    }
+
+    return role.is_custom ? 'custom' : 'system';
+  }
+
+  private isProtectedRole(role: Role): boolean {
+    return isProtectedRoleDefinition(role);
   }
 
   getStatusBadgeClass(active: 0 | 1): string {
@@ -945,6 +1278,60 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   getStatusText(active: 0 | 1): string {
     return active === 1 ? 'Active' : 'Inactive';
+  }
+
+  getRolesEmptyTitle(): string {
+    return this.hasActiveRolesFilters() ? 'No Roles Match Current Filters' : 'No Roles Found';
+  }
+
+  getRolesEmptyDescription(): string {
+    if (this.hasActiveRolesFilters()) {
+      return 'Try adjusting filters or clear them to view all roles.';
+    }
+    return this.isTenantMode
+      ? 'No additional roles configured.'
+      : 'No roles are currently available.';
+  }
+
+  getPermissionsEmptyTitle(): string {
+    return this.hasActivePermissionsFilters() ? 'No Permissions Match Current Filters' : 'No Permissions Found';
+  }
+
+  getPermissionsEmptyDescription(): string {
+    if (this.hasActivePermissionsFilters()) {
+      return 'Try adjusting filters or clear them to view all permissions.';
+    }
+    return this.isTenantMode
+      ? 'No tenant-assignable permissions are available right now.'
+      : 'No permissions are currently available.';
+  }
+
+  getPermissionPrimaryLabel(permission: Permission): string {
+    const description = permission.description?.trim();
+    if (description) {
+      return description;
+    }
+
+    const displayName = permission.display_name?.trim();
+    if (displayName) {
+      return displayName;
+    }
+
+    return 'Permission';
+  }
+
+  getPermissionSecondaryLabel(permission: Permission): string {
+    const displayName = permission.display_name?.trim();
+    if (displayName && displayName !== this.getPermissionPrimaryLabel(permission)) {
+      return displayName;
+    }
+
+    const category = permission.category?.trim();
+    if (category) {
+      return category;
+    }
+
+    return '-';
   }
 
   // Sorting Helper Methods

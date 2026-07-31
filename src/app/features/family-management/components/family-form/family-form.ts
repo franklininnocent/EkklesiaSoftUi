@@ -1,6 +1,20 @@
-import { Component, Input, Output, EventEmitter, OnInit, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  EventEmitter,
+  HostListener,
+  Input,
+  OnChanges,
+  OnInit,
+  Output,
+  SimpleChanges,
+  ViewChild,
+  ElementRef,
+  AfterViewInit
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule } from '@angular/forms';
+import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { FamilyService } from '../../../../core/services/family.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { Family, BCC, FamilyMember } from '../../../../core/models/family.model';
@@ -9,15 +23,24 @@ import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { AuthService } from '@core/services';
 import { getCountryCallingCode, CountryCode, parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
+import {
+  extractMemberApiError,
+  getMemberApiData,
+  getMemberApiMessage,
+  isMemberApiSuccess,
+  prepareFamilyMemberPayload
+} from '../../utils/prepare-family-member-payload.util';
+import { ToastService } from '../../../../core/services/toast.service';
 
 @Component({
   selector: 'app-family-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FamilyMemberFormModalComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, FamilyMemberFormModalComponent],
   templateUrl: './family-form.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-form.scss']
 })
-export class FamilyFormComponent implements OnInit, AfterViewInit {
+export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
   @Input() family: Family | null = null;
   @Input() bccs: BCC[] = []; // Optional: if parent provides BCCs, use them; otherwise load independently
   @Output() save = new EventEmitter<any>();
@@ -37,6 +60,23 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     return this.phoneCodeService.getPhoneCodeSync();
   }
   expandedMemberIndexes: Set<number> = new Set();
+  /** Per-member collapsed sections inside an expanded card (personal / sacraments). */
+  expandedMemberDetailSections: Map<number, Set<'personal' | 'sacraments'>> = new Map();
+  memberSearchQuery = '';
+  memberFilter: 'all' | 'active' | 'inactive' | 'children' | 'parents' | 'grandparents' | 'others' = 'all';
+  memberActionsOpenIndex: number | null = null;
+  readonly memberFilterOptions: Array<{
+    id: 'all' | 'active' | 'inactive' | 'children' | 'parents' | 'grandparents' | 'others';
+    label: string;
+  }> = [
+    { id: 'all', label: 'All' },
+    { id: 'active', label: 'Active' },
+    { id: 'inactive', label: 'Inactive' },
+    { id: 'children', label: 'Children' },
+    { id: 'parents', label: 'Parents' },
+    { id: 'grandparents', label: 'Grandparents' },
+    { id: 'others', label: 'Others' }
+  ];
   activeBCCs: BCC[] = []; // Store active BCCs for dropdown
 
   @ViewChild('infoTabContent', { static: false }) infoTabContentRef!: ElementRef<HTMLDivElement>;
@@ -50,7 +90,9 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     private familyService: FamilyService,
     private bccService: BCCService,
     private phoneCodeService: PhoneCodeService,
-    private authService: AuthService
+    private authService: AuthService,
+    private toastService: ToastService,
+    private cdr: ChangeDetectorRef
   ) {
     this.familyForm = this.fb.group({
       family_name: ['', Validators.required],
@@ -64,6 +106,13 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
       notes: [''],
       members: this.fb.array([])
     });
+  }
+
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['family'] && !changes['family'].firstChange && this.family) {
+      this.patchFormData();
+      this.cdr.markForCheck();
+    }
   }
 
   ngOnInit(): void {
@@ -168,6 +217,8 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
         this.familyForm.get('updated_at')?.setValue(this.family.updated_at);
       }
       
+      this.collapseAllMemberCards();
+
       // Always reset member form array before loading fresh data
       while (this.members.length > 0) {
         this.members.removeAt(0);
@@ -265,6 +316,273 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
    */
   get regularMembersCount(): number {
     return this.getRegularMemberIndices().length;
+  }
+
+  get filteredRegularMemberIndices(): number[] {
+    const query = this.memberSearchQuery.trim().toLowerCase();
+    return this.getRegularMemberIndices().filter((index) => {
+      const member = this.members.at(index);
+      const firstName = String(member.get('first_name')?.value || '').toLowerCase();
+      const lastName = String(member.get('last_name')?.value || '').toLowerCase();
+      const email = String(member.get('email')?.value || '').toLowerCase();
+      const phone = String(member.get('phone')?.value || '').toLowerCase();
+      const relationship = String(member.get('relationship_to_head')?.value || '').toLowerCase();
+      const status = String(member.get('status')?.value || 'active').toLowerCase();
+
+      const matchesQuery = !query || [firstName, lastName, email, phone, relationship]
+        .some((v) => v.includes(query));
+      if (!matchesQuery) {
+        return false;
+      }
+
+      switch (this.memberFilter) {
+        case 'active':
+        case 'inactive':
+          return status === this.memberFilter;
+        case 'children':
+          return ['son', 'daughter', 'grandson', 'granddaughter'].includes(relationship);
+        case 'parents':
+          return ['father', 'mother'].includes(relationship);
+        case 'grandparents':
+          return ['grandfather', 'grandmother'].includes(relationship);
+        case 'others':
+          return ![
+            'son', 'daughter', 'grandson', 'granddaughter',
+            'father', 'mother', 'grandfather', 'grandmother'
+          ].includes(relationship);
+        default:
+          return true;
+      }
+    });
+  }
+
+  getStatusLabel(status: unknown): string {
+    const normalized = String(status || 'active').toLowerCase();
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+  }
+
+  getRelationshipLabel(relationship: unknown): string {
+    const text = String(relationship || 'other').trim().toLowerCase();
+    if (!text) {
+      return 'Other';
+    }
+    return text
+      .split(/[\s_]+/)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  getMemberInitials(index: number): string {
+    const member = this.members.at(index);
+    const first = String(member.get('first_name')?.value || '').trim();
+    const last = String(member.get('last_name')?.value || '').trim();
+    const initials = `${first.charAt(0)}${last.charAt(0)}`.trim();
+    return (initials || 'U').toUpperCase();
+  }
+
+  getMemberDisplayName(index: number): string {
+    const member = this.members.at(index)?.getRawValue();
+    return this.getDisplayName(member);
+  }
+
+  getMemberStatusClass(index: number): string {
+    const status = String(this.members.at(index).get('status')?.value || 'active').toLowerCase();
+    return `em-status--${status}`;
+  }
+
+  getMemberRelationshipClass(index: number): string {
+    const rel = String(this.members.at(index).get('relationship_to_head')?.value || 'other').toLowerCase();
+    return `em-relationship--${rel.replace(/\s+/g, '-')}`;
+  }
+
+  getAvatarTone(index: number): string {
+    const name = this.getMemberDisplayName(index);
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const tone = Math.abs(hash) % 6;
+    return `em-avatar--tone-${tone}`;
+  }
+
+  getMemberPhoneDisplay(index: number): string {
+    const phone = String(this.members.at(index).get('phone')?.value || '').trim();
+    if (!phone) {
+      return '—';
+    }
+    return `${this.callingCode} ${phone}`;
+  }
+
+  getMemberEmailDisplay(index: number): string {
+    const email = String(this.members.at(index).get('email')?.value || '').trim();
+    return email || '—';
+  }
+
+  getFamilyAddressDisplay(): string {
+    const parts = [
+      this.familyForm.get('address_line_1')?.value,
+      this.familyForm.get('address_line_2')?.value,
+      this.familyForm.get('city')?.value,
+      this.familyForm.get('postal_code')?.value
+    ]
+      .map((v) => (v ? String(v).trim() : ''))
+      .filter(Boolean);
+    return parts.length ? parts.join(', ') : '—';
+  }
+
+  getMemberCountByStatus(status: 'active' | 'inactive'): number {
+    return this.getRegularMemberIndices().filter((index) => {
+      const memberStatus = String(this.members.at(index).get('status')?.value || 'active').toLowerCase();
+      return memberStatus === status;
+    }).length;
+  }
+
+  setMemberFilter(filter: typeof this.memberFilter): void {
+    this.memberFilter = filter;
+    this.cdr.markForCheck();
+  }
+
+  clearMemberFilters(): void {
+    this.memberSearchQuery = '';
+    this.memberFilter = 'all';
+    this.cdr.markForCheck();
+  }
+
+  formatMemberField(value: unknown): string {
+    if (value === null || value === undefined) {
+      return '—';
+    }
+    const text = String(value).trim();
+    return text || '—';
+  }
+
+  formatMemberDate(value: unknown): string {
+    if (!value) {
+      return '—';
+    }
+    try {
+      const date = new Date(String(value));
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric'
+      });
+    } catch {
+      return String(value);
+    }
+  }
+
+  getMemberMeta(index: number): { updatedAt?: string; createdAt?: string } {
+    const memberId = this.members.at(index).get('id')?.value;
+    if (!memberId || !this.family?.members) {
+      return {};
+    }
+    const cached = this.family.members.find((m) => m.id === memberId);
+    return {
+      updatedAt: cached?.updated_at,
+      createdAt: cached?.created_at
+    };
+  }
+
+  getMemberUpdatedLabel(index: number): string {
+    const { updatedAt } = this.getMemberMeta(index);
+    if (!updatedAt) {
+      return 'Recently updated';
+    }
+    const date = new Date(updatedAt);
+    if (Number.isNaN(date.getTime())) {
+      return 'Recently updated';
+    }
+    const diffMs = Date.now() - date.getTime();
+    const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    if (days <= 0) {
+      return 'Updated today';
+    }
+    if (days === 1) {
+      return 'Updated yesterday';
+    }
+    if (days < 30) {
+      return `Updated ${days} days ago`;
+    }
+    return `Updated ${this.formatMemberDate(updatedAt)}`;
+  }
+
+  toggleMemberActionsMenu(index: number, event: Event): void {
+    event.stopPropagation();
+    this.memberActionsOpenIndex = this.memberActionsOpenIndex === index ? null : index;
+    this.cdr.markForCheck();
+  }
+
+  closeMemberActionsMenu(): void {
+    if (this.memberActionsOpenIndex !== null) {
+      this.memberActionsOpenIndex = null;
+      this.cdr.markForCheck();
+    }
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.closeMemberActionsMenu();
+  }
+
+  onMemberAction(action: 'edit' | 'delete' | 'inactive' | 'sacraments', index: number, event: Event): void {
+    event.stopPropagation();
+    this.closeMemberActionsMenu();
+
+    switch (action) {
+      case 'edit':
+        this.openEditMemberModal(index);
+        break;
+      case 'delete':
+        this.removeMember(index);
+        break;
+      case 'inactive':
+        this.markMemberInactive(index);
+        break;
+      case 'sacraments':
+        if (!this.isMemberExpanded(index)) {
+          this.toggleMember(index);
+        }
+        this.expandMemberDetailSection(index, 'sacraments');
+        break;
+    }
+  }
+
+  private markMemberInactive(index: number): void {
+    const member = this.members.at(index);
+    const currentStatus = String(member.get('status')?.value || 'active').toLowerCase();
+    if (currentStatus === 'inactive') {
+      return;
+    }
+    if (!confirm('Mark this member as inactive?')) {
+      return;
+    }
+
+    const familyId = this.family?.id;
+    const memberId = member.get('id')?.value;
+    member.patchValue({ status: 'inactive' });
+
+    if (!familyId || !memberId) {
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const payload = prepareFamilyMemberPayload(member.getRawValue(), this.callingCode);
+    payload['status'] = 'inactive';
+    this.familyService.updateFamilyMember(String(familyId), String(memberId), payload).subscribe({
+      next: (response) => {
+        if (isMemberApiSuccess(response)) {
+          this.toastService.success('Member marked as inactive', 'Success', 4000);
+          this.reloadMembersFromServer(String(familyId));
+        }
+      },
+      error: () => {
+        this.toastService.error('Failed to update member status', 'Error', 4000);
+      }
+    });
   }
 
   /**
@@ -418,13 +736,56 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
   toggleMember(index: number): void {
     if (this.expandedMemberIndexes.has(index)) {
       this.expandedMemberIndexes.delete(index);
+      this.expandedMemberDetailSections.delete(index);
     } else {
       this.expandedMemberIndexes.add(index);
+      this.expandedMemberDetailSections.set(index, this.createDefaultMemberDetailSections());
     }
   }
 
   isMemberExpanded(index: number): boolean {
     return this.expandedMemberIndexes.has(index);
+  }
+
+  toggleMemberDetailSection(index: number, section: 'personal' | 'sacraments', event?: Event): void {
+    event?.stopPropagation();
+    if (!this.expandedMemberIndexes.has(index)) {
+      this.expandedMemberIndexes.add(index);
+      this.expandedMemberDetailSections.set(index, this.createDefaultMemberDetailSections());
+      return;
+    }
+    const sections = this.expandedMemberDetailSections.get(index) ?? this.createDefaultMemberDetailSections();
+    if (sections.has(section)) {
+      sections.delete(section);
+    } else {
+      sections.add(section);
+    }
+    this.expandedMemberDetailSections.set(index, sections);
+  }
+
+  isMemberDetailSectionExpanded(index: number, section: 'personal' | 'sacraments'): boolean {
+    return this.expandedMemberDetailSections.get(index)?.has(section) ?? false;
+  }
+
+  private collapseAllMemberCards(): void {
+    this.expandedMemberIndexes.clear();
+    this.expandedMemberDetailSections.clear();
+  }
+
+  expandMemberDetailSection(index: number, section: 'personal' | 'sacraments'): void {
+    if (!this.expandedMemberIndexes.has(index)) {
+      this.expandedMemberIndexes.add(index);
+      this.expandedMemberDetailSections.set(index, this.createDefaultMemberDetailSections());
+      return;
+    }
+    const sections = this.expandedMemberDetailSections.get(index) ?? this.createDefaultMemberDetailSections();
+    sections.add(section);
+    this.expandedMemberDetailSections.set(index, sections);
+  }
+
+  /** Both detail sections expanded when a member card is first opened. */
+  private createDefaultMemberDetailSections(): Set<'personal' | 'sacraments'> {
+    return new Set<'personal' | 'sacraments'>(['personal', 'sacraments']);
   }
 
   /**
@@ -696,13 +1057,19 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
       this.familyService.updateFamilyMember(familyId, memberId, payload).subscribe({
         next: (response) => {
           this.memberModalSaving = false;
-          if (response.success && response.data) {
-            this.applyMemberUpdateFromResponse(index, response.data);
-            this.upsertFamilyMemberCache(response.data);
-            this.switchTab('members');
-            this.closeMemberModal();
-        } else {
-            this.memberModalError = response.message || 'Failed to update family member.';
+          if (isMemberApiSuccess(response)) {
+            const savedMember = getMemberApiData<FamilyMember>(response);
+            if (savedMember) {
+              this.applyMemberUpdateFromResponse(index, savedMember);
+              this.upsertFamilyMemberCache(savedMember);
+            }
+            this.finishMemberModalSuccess(
+              getMemberApiMessage(response, 'Member updated successfully'),
+              familyId
+            );
+          } else {
+            this.memberModalError = getMemberApiMessage(response, 'Failed to update family member.');
+            this.cdr.markForCheck();
           }
         },
         error: (error) => {
@@ -727,13 +1094,19 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     this.familyService.addFamilyMember(familyId, payload).subscribe({
       next: (response) => {
         this.memberModalSaving = false;
-        if (response.success && response.data) {
-          this.addMember(response.data);
-          this.upsertFamilyMemberCache(response.data);
-          this.switchTab('members');
-          this.closeMemberModal();
-      } else {
-          this.memberModalError = response.message || 'Failed to add family member.';
+        if (isMemberApiSuccess(response)) {
+          const savedMember = getMemberApiData<FamilyMember>(response);
+          if (savedMember) {
+            this.addMember(savedMember);
+            this.upsertFamilyMemberCache(savedMember);
+          }
+          this.finishMemberModalSuccess(
+            getMemberApiMessage(response, 'Member added successfully'),
+            familyId
+          );
+        } else {
+          this.memberModalError = getMemberApiMessage(response, 'Failed to add family member.');
+          this.cdr.markForCheck();
         }
       },
       error: (error) => {
@@ -756,11 +1129,37 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     }
   }
 
+  private finishMemberModalSuccess(message: string, familyId: string): void {
+    this.closeMemberModal();
+    this.toastService.success(message, 'Success', 4000);
+    this.switchTab('members');
+    this.reloadMembersFromServer(familyId);
+  }
+
+  private reloadMembersFromServer(familyId: string): void {
+    this.familyService.getFamily(familyId).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          if (this.family) {
+            this.family.members = res.data.members ?? [];
+          }
+          this.patchFormData();
+        }
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        console.error('Error refreshing members list:', err);
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
   private closeMemberModal(): void {
     this.showMemberModal = false;
     this.memberToEditIndex = null;
     this.memberModalError = null;
     this.memberModalSaving = false;
+    this.cdr.markForCheck();
   }
 
   private patchMemberFormGroupWithFormValue(index: number, value: FamilyMemberFormValue, memberId?: string | null): void {
@@ -841,100 +1240,8 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     group.get('id')?.setValue(member.id, { emitEvent: false });
   }
 
-  private prepareMemberPayload(value: FamilyMemberFormValue): Record<string, any> {
-    const sanitize = (input: string | null | undefined): string | null => {
-      if (input === null || input === undefined) {
-        return null;
-      }
-      const trimmed = String(input).trim();
-      return trimmed.length > 0 ? trimmed : null;
-    };
-
-    const normalizeLower = (input: string | null | undefined): string | null => {
-      const sanitized = sanitize(input);
-      return sanitized ? sanitized.toLowerCase() : null;
-    };
-
-    const normalizeChurchType = (input: string | null | undefined): 'home_parish' | 'other' | null => {
-      if (!input) {
-        return null;
-      }
-      const normalized = input.toLowerCase().trim();
-      return normalized === 'other' ? 'other' : normalized === 'home_parish' ? 'home_parish' : null;
-    };
-
-    return {
-      first_name: (value.first_name || '').trim(),
-      middle_name: sanitize(value.middle_name),
-      last_name: (value.last_name || '').trim(),
-      date_of_birth: sanitize(value.date_of_birth),
-      gender: normalizeLower(value.gender) as FamilyMember['gender'],
-      relationship_to_head: (normalizeLower(value.relationship_to_head) || 'other') as FamilyMember['relationship_to_head'],
-      marital_status: normalizeLower(value.marital_status) as FamilyMember['marital_status'],
-      phone: this.formatPhoneForApi(value.phone),
-      email: sanitize(value.email),
-      occupation: sanitize(value.occupation),
-      education: sanitize(value.education),
-      baptism_date: sanitize(value.baptism_date),
-      baptism_place: sanitize(value.baptism_place),
-      baptism_godparent_primary: sanitize(value.baptism_godparent_primary),
-      baptism_godparent_secondary: sanitize(value.baptism_godparent_secondary),
-      baptism_location_type: sanitize(value.baptism_location_type),
-      baptism_church_name: sanitize(value.baptism_church_name),
-      baptism_church_address: sanitize(value.baptism_church_address),
-      baptism_priest_name: sanitize(value.baptism_priest_name),
-      baptism_priest_is_home: value.baptism_priest_is_home === null || value.baptism_priest_is_home === undefined
-        ? null
-        : !!value.baptism_priest_is_home,
-      first_communion_date: sanitize(value.first_communion_date),
-      first_communion_place: sanitize(value.first_communion_place),
-      confirmation_date: sanitize(value.confirmation_date),
-      confirmation_place: sanitize(value.confirmation_place),
-      marriage_date: sanitize(value.marriage_date),
-      marriage_place: sanitize(value.marriage_place),
-      marriage_spouse_name: sanitize(value.marriage_spouse_name),
-      marriage_bride_full_name: sanitize((value as any).marriage_bride_full_name),
-      marriage_bride_address: sanitize((value as any).marriage_bride_address),
-      marriage_bride_church_type: normalizeChurchType((value as any).marriage_bride_church_type),
-      marriage_bride_church_name: sanitize((value as any).marriage_bride_church_name),
-      marriage_bride_church_address: sanitize((value as any).marriage_bride_church_address),
-      marriage_groom_full_name: sanitize((value as any).marriage_groom_full_name),
-      marriage_groom_address: sanitize((value as any).marriage_groom_address),
-      marriage_groom_church_type: normalizeChurchType((value as any).marriage_groom_church_type),
-      marriage_groom_church_name: sanitize((value as any).marriage_groom_church_name),
-      marriage_groom_church_address: sanitize((value as any).marriage_groom_church_address),
-      status: (normalizeLower(value.status) || 'active') as FamilyMember['status']
-    };
-  }
-
-  private formatPhoneForApi(raw: string | null | undefined): string | null {
-    if (raw === null || raw === undefined) {
-      return null;
-    }
-
-    const trimmed = String(raw).trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    const digits = trimmed.replace(/\D/g, '');
-    if (!digits) {
-      return null;
-    }
-
-    const dialCodeRaw = (this.callingCode || '').trim();
-    const dialCode = dialCodeRaw.startsWith('+') ? dialCodeRaw : `+${dialCodeRaw}`;
-    const dialDigits = dialCode.replace(/\D/g, '');
-
-    if (!dialDigits) {
-      return dialCode.startsWith('+') ? `${dialCode}${digits}` : `+${digits}`;
-    }
-
-    if (digits.startsWith(dialDigits)) {
-      return `+${digits}`;
-    }
-
-    return `${dialCode}${digits}`;
+  private prepareMemberPayload(value: FamilyMemberFormValue): Record<string, unknown> {
+    return prepareFamilyMemberPayload(value, this.callingCode);
   }
 
   private upsertFamilyMemberCache(member: FamilyMember): void {
@@ -996,21 +1303,8 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
     return normalizedId;
   }
 
-  private extractApiError(error: any, fallback: string): string {
-    const backendMessage = error?.error?.message || error?.message;
-
-    if (error?.error?.errors && typeof error.error.errors === 'object') {
-      const firstKey = Object.keys(error.error.errors)[0];
-      const firstValue = error.error.errors[firstKey];
-      if (Array.isArray(firstValue) && firstValue.length > 0) {
-        return firstValue[0];
-      }
-      if (typeof firstValue === 'string') {
-        return firstValue;
-      }
-    }
-
-    return backendMessage || fallback;
+  private extractApiError(error: unknown, fallback: string): string {
+    return extractMemberApiError(error, fallback);
   }
 
   /**
@@ -1018,6 +1312,9 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
    */
   switchTab(tab: string): void {
     this.activeTab = tab;
+    if (tab === 'members') {
+      this.collapseAllMemberCards();
+    }
     // Ensure new tab content starts at the top
     setTimeout(() => this.scrollActiveTabToTop(), 50);
   }
@@ -1548,8 +1845,22 @@ export class FamilyFormComponent implements OnInit, AfterViewInit {
               this.switchTab('members');
             }
             
-            // Expand the member card to show the error
+            // Expand the member card and relevant section to show the error
             this.expandedMemberIndexes.add(memberIndex);
+            const sacramentFields = new Set([
+              'baptism_date',
+              'baptism_place',
+              'baptism_church_name',
+              'first_communion_date',
+              'confirmation_date',
+              'marriage_date',
+              'marriage_place',
+              'marriage_spouse_name'
+            ]);
+            const section: 'personal' | 'sacraments' = sacramentFields.has(memberField)
+              ? 'sacraments'
+              : 'personal';
+            this.expandMemberDetailSection(memberIndex, section);
           }
         } else {
           // Handle top-level fields

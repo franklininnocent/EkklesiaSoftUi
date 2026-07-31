@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -24,6 +24,7 @@ export interface ActiveFilter {
   standalone: true,
   imports: [CommonModule, FormsModule, NgSelectModule],
   templateUrl: './advanced-search-panel.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './advanced-search-panel.component.scss'
 })
 export class AdvancedSearchPanelComponent implements OnChanges {

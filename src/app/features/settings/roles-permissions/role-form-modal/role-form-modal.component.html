@@ -49,37 +49,75 @@
           </div>
         </div>
 
-        <!-- Role Name Field -->
-        <div class="form-group">
-          <label for="roleName" class="form-label">
-            <span class="label-text">Role Name</span>
-            <span class="label-required">*</span>
-          </label>
-          <input
-            id="roleName"
-            type="text"
-            class="form-control"
-            formControlName="name"
-            placeholder="e.g., Content Manager, Team Lead"
-            [class.error]="hasError('name')"
-            [class.is-valid]="name?.valid && name?.touched"
-          />
-          <span class="field-error" *ngIf="hasError('name')">
-            {{ getErrorMessage('name') }}
-          </span>
-          <div class="validation-message success" *ngIf="name?.valid && name?.touched" role="status" aria-live="polite">
-            <span class="validation-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                <polyline points="20 6 9 17 4 12"></polyline>
-              </svg>
-            </span>
-            <span>Role name is valid</span>
+        <div class="safeguard-alert" *ngIf="isRoleIdentityLocked()" role="note" aria-live="polite">
+          <div class="safeguard-icon">🔒</div>
+          <div class="safeguard-content">
+            <p class="safeguard-title">Protected Role Safeguard</p>
+            <p class="safeguard-message">
+              Role name and level are locked for the Administrator role in tenant mode.
+              You can update description and permissions only.
+            </p>
           </div>
-          <p class="field-hint">Use a clear, descriptive name (letters, numbers, spaces, hyphens, underscores)</p>
+        </div>
+
+        <div class="identity-grid">
+          <!-- Role Name Field -->
+          <div class="form-group form-group--compact">
+            <label for="roleName" class="form-label">
+              <span class="label-text">Role Name</span>
+              <span class="label-required">*</span>
+            </label>
+            <input
+              id="roleName"
+              type="text"
+              class="form-control"
+              formControlName="name"
+              placeholder="e.g., Content Manager, Team Lead"
+              [class.error]="hasError('name')"
+              [class.is-valid]="name?.valid && name?.touched"
+              [disabled]="isRoleIdentityLocked()"
+            />
+            <span class="field-error" *ngIf="hasError('name')">
+              {{ getErrorMessage('name') }}
+            </span>
+            <p class="field-hint">Use letters, numbers, spaces, hyphens, and underscores</p>
+          </div>
+
+          <!-- Level Field -->
+          <div class="form-group form-group--compact">
+            <label for="roleLevel" class="form-label">
+              <span class="label-text">Role Level</span>
+              <span class="label-required">*</span>
+              <span class="level-badge">Level {{ level?.value }}</span>
+            </label>
+            <div class="level-control">
+              <input
+                id="roleLevel"
+                type="range"
+                class="form-range"
+                formControlName="level"
+                [min]="effectiveMinLevel"
+                [max]="maxLevel"
+                step="1"
+                [disabled]="isRoleIdentityLocked()"
+              />
+              <div class="level-markers">
+                <span *ngFor="let i of levelMarkers" class="level-marker" [class.active]="level?.value === i">
+                  {{ i }}
+                </span>
+              </div>
+            </div>
+            <div class="level-description">
+              <span>{{ getLevelDescription(level?.value) }}</span>
+            </div>
+            <span class="field-error" *ngIf="hasError('level')">
+              {{ getErrorMessage('level') }}
+            </span>
+          </div>
         </div>
 
         <!-- Description Field -->
-        <div class="form-group">
+        <div class="form-group form-group--compact">
           <label for="roleDescription" class="form-label">
             <span class="label-text">Description</span>
             <span class="label-optional">(Optional)</span>
@@ -89,7 +127,7 @@
             class="form-control textarea"
             formControlName="description"
             placeholder="Describe the role's purpose and responsibilities..."
-            rows="4"
+            rows="3"
             [class.error]="hasError('description')"
             [class.is-valid]="description?.valid && description?.touched && description?.value"
           ></textarea>
@@ -102,39 +140,6 @@
               <span>{{ descriptionCharCount }} / {{ maxDescriptionLength }}</span>
             </div>
           </div>
-        </div>
-
-        <!-- Level Field -->
-        <div class="form-group">
-          <label for="roleLevel" class="form-label">
-            <span class="label-text">Role Level</span>
-            <span class="label-required">*</span>
-            <span class="level-badge">Level {{ level?.value }}</span>
-          </label>
-          <div class="level-control">
-            <input
-              id="roleLevel"
-              type="range"
-              class="form-range"
-              formControlName="level"
-              [min]="minLevel"
-              [max]="maxLevel"
-              step="1"
-            />
-            <div class="level-markers">
-              <span *ngFor="let i of [minLevel, 6, 7, 8, 9, maxLevel]" class="level-marker" [class.active]="level?.value === i">
-                {{ i }}
-              </span>
-            </div>
-          </div>
-          <div class="level-description">
-            <span class="level-icon">ℹ️</span>
-            <span>{{ getLevelDescription(level?.value) }}</span>
-          </div>
-          <span class="field-error" *ngIf="hasError('level')">
-            {{ getErrorMessage('level') }}
-          </span>
-          <p class="field-hint">Higher levels indicate greater administrative access ({{ minLevel }}-{{ maxLevel }} for custom roles)</p>
         </div>
 
         <!-- Permissions Section -->
@@ -153,68 +158,46 @@
           </div>
 
           <div class="permissions-body" *ngIf="showPermissions">
+            <div *ngIf="permissionCatalogAccessDenied" class="permissions-info permissions-info--warning">
+              <span class="permissions-info__icon">🔒</span>
+              <div>
+                <p class="permissions-info__title">Permission Catalog Not Available</p>
+                <p class="permissions-info__text">
+                  You can create or update this role, but your account cannot view assignable permissions.
+                  Ask an administrator to grant access to view assignable permissions.
+                </p>
+              </div>
+            </div>
+
             <!-- Loading State -->
-            <div *ngIf="loadingPermissions" class="permissions-loading">
+            <div *ngIf="loadingPermissions && !permissionCatalogAccessDenied" class="permissions-loading">
               <div class="spinner"></div>
               <p>Loading permissions...</p>
             </div>
 
             <!-- Error State -->
-            <div *ngIf="permissionsError && !loadingPermissions" class="permissions-error">
+            <div *ngIf="permissionsError && !loadingPermissions && !permissionCatalogAccessDenied" class="permissions-error">
               <span class="error-icon">⚠️</span>
               <p>{{ permissionsError }}</p>
               <button class="btn-retry" (click)="loadPermissions()">Retry</button>
             </div>
 
-            <!-- Permissions List -->
-            <div *ngIf="!loadingPermissions && !permissionsError" class="permissions-list">
-              <div *ngFor="let module of modules" class="permission-module">
-                <div class="module-header">
-                  <label class="module-checkbox">
-                    <input 
-                      type="checkbox" 
-                      [checked]="isModuleFullySelected(module)"
-                      [indeterminate]="isModulePartiallySelected(module)"
-                      (change)="toggleModulePermissions(module)"
-                    />
-                    <span class="module-name">{{ module }}</span>
-                    <span class="module-count">
-                      ({{ (permissionsByModule.get(module) || []).length }} permissions)
-                    </span>
-                  </label>
-                </div>
-                <div class="module-permissions">
-                  <label 
-                    *ngFor="let permission of permissionsByModule.get(module)" 
-                    class="permission-checkbox"
-                  >
-                    <input 
-                      type="checkbox" 
-                      [checked]="isPermissionSelected(permission.id)"
-                      (change)="togglePermission(permission.id)"
-                    />
-                    <div class="permission-info">
-                      <span class="permission-name">{{ permission.display_name }}</span>
-                      <span class="permission-description" *ngIf="permission.description">
-                        {{ permission.description }}
-                      </span>
-                      <span class="permission-category">{{ permission.category }}</span>
-                    </div>
-                  </label>
-                </div>
-              </div>
-
-              <!-- Empty State -->
-              <div *ngIf="permissions.length === 0" class="permissions-empty">
-                <span class="empty-icon">📋</span>
-                <p>No permissions available</p>
-              </div>
+            <!-- Permissions Workspace -->
+            <div *ngIf="!loadingPermissions && !permissionsError && !permissionCatalogAccessDenied" class="permissions-list">
+              <app-role-permission-workspace
+                [modules]="modules"
+                [permissionsByModule]="permissionsByModule"
+                [selectedPermissionIds]="selectedPermissionIds"
+                [disabled]="isSubmitting"
+                [showSummary]="false"
+                (selectedPermissionIdsChange)="onWorkspaceSelectionChange($event)"
+              ></app-role-permission-workspace>
             </div>
           </div>
         </div>
 
         <!-- Info Box -->
-        <div class="info-box">
+        <div class="info-box" *ngIf="!tenantMode">
           <div class="info-icon">💡</div>
           <div class="info-content">
             <p class="info-title">Tenant-Specific Role</p>
@@ -226,6 +209,20 @@
 
     <!-- Modal Footer -->
     <div class="modal-footer">
+      <div class="footer-summary" *ngIf="showPermissions && !permissionCatalogAccessDenied">
+        <div class="footer-summary-pill">
+          <span class="footer-summary-label">Selected</span>
+          <strong>{{ selectedPermissionsCount }}</strong>
+        </div>
+        <div class="footer-summary-pill">
+          <span class="footer-summary-label">Modules</span>
+          <strong>{{ selectedModulesCount }}</strong>
+        </div>
+        <div class="footer-summary-pill footer-summary-pill--risk" *ngIf="highRiskSelectedCount > 0">
+          <span class="footer-summary-label">High Risk</span>
+          <strong>{{ highRiskSelectedCount }}</strong>
+        </div>
+      </div>
       <button 
         type="button" 
         class="btn-cancel" 

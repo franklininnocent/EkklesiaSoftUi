@@ -14,11 +14,15 @@ import * as AuthActions from '@core/store/auth/auth.actions';
 import { AuthService } from '@core/services/auth.service';
 import { ThemeService, FontSize, FontSizeConfig } from '@core/services/theme.service';
 import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb';
+import { QuickCollectDrawerComponent } from '@features/donations/components/quick-collect-drawer/quick-collect-drawer.component';
+import { QuickCollectService } from '@features/donations/services/quick-collect.service';
+import { CommandPaletteComponent } from '@shared/components/command-palette/command-palette.component';
+import { GlobalFamilySearchComponent } from '@shared/components/global-family-search/global-family-search.component';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, BreadcrumbComponent],
+  imports: [CommonModule, RouterModule, BreadcrumbComponent, QuickCollectDrawerComponent, CommandPaletteComponent, GlobalFamilySearchComponent],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -51,6 +55,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   public themeService = inject(ThemeService);
   private destroy$ = new Subject<void>();
+  private quickCollectService = inject(QuickCollectService);
 
   currentUser$: Observable<User | null>;
   currentTenant$: Observable<Tenant | null>;
@@ -207,23 +212,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
    */
   canManageRoles(user: User | null): boolean {
     if (!user) return false;
-    
-    // SuperAdmins and EkklesiaAdmins can always manage roles
-    if (user.role_name === 'SuperAdmin' || user.role_name === 'EkklesiaAdmin' || user.role_name === 'EkklesiaManager') {
-      return true;
-    }
-    
-    // Fallback: Check by role object
-    if (user.role?.name === 'SuperAdmin' || user.role?.name === 'EkklesiaAdmin' || user.role?.name === 'EkklesiaManager') {
-      return true;
-    }
-    
-    // Tenant Administrators can also manage roles for their tenant
-    if (user.role_name === 'Administrator' && user.tenant_id) {
-      return true;
-    }
-    
-    return false;
+    return this.authService.canAccessRbac(user);
+  }
+
+  canViewDonations(user: User | null): boolean {
+    return this.authService.canAccessDonations(user);
+  }
+
+  openQuickCollect(): void {
+    this.quickCollectService.open();
   }
 }
 

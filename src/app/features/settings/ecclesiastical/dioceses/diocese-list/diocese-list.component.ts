@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -27,6 +27,7 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
     PaginationComponent
   ],
   templateUrl: './diocese-list.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './diocese-list.component.scss'
 })
 export class DioceseListComponent implements OnInit {

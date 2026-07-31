@@ -5,6 +5,7 @@ import { User, Role, Permission, UserRequest } from '@core/models';
 import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { PhoneInputComponent, ButtonComponent } from '@shared/components';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -45,6 +46,7 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   private usersService = inject(UsersService);
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
+  private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
 
   // Form state
@@ -181,17 +183,16 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   private loadRoles(): void {
     this.loadingRoles = true;
     this.rolesError = null;
+    const currentUser = this.authService.currentUserValue;
+    const tenantMode = !!currentUser?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin();
     
-    this.rolesService.getRoles({ per_page: 'all' }).pipe(
+    this.rolesService.getRoles({ per_page: 'all' }, { tenantMode }).pipe(
       takeUntil(this.destroy$)
     ).subscribe({
       next: (response) => {
-        if (response.success) {
-          // Filter to only show active, custom roles (tenant-specific)
-          this.availableRoles = response.data.filter(role => 
-            role.active === 1 && role.is_custom
-          );
-        }
+        const roles = Array.isArray(response) ? response : (response.data || []);
+        // Show active roles only; include system roles like Administrator where needed.
+        this.availableRoles = roles.filter(role => role.active === 1);
         this.loadingRoles = false;
         this.cdr.markForCheck();
       },

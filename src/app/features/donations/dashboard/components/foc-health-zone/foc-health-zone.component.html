@@ -1,0 +1,33 @@
+<section class="foc-health-zone" aria-label="Financial health overview">
+  <article class="foc-health-index" [attr.data-status]="data.health_index.status">
+    <div class="foc-health-index__gauge" aria-hidden="true">
+      <svg viewBox="0 0 120 72">
+        <path d="M12 60 A48 48 0 0 1 108 60" fill="none" stroke="var(--foc-border)" stroke-width="8" stroke-linecap="round"/>
+        <path d="M12 60 A48 48 0 0 1 108 60" fill="none" stroke="var(--foc-accent)" stroke-width="8" stroke-linecap="round" [attr.stroke-dasharray]="gaugeArc()"/>
+      </svg>
+      <strong>{{ data.health_index.score | number:'1.0-0' }}</strong>
+      <span>/ 100</span>
+    </div>
+    <div class="foc-health-index__copy">
+      <p class="foc-health-index__label">Financial Health Index</p>
+      <h2>{{ data.health_index.label }}</h2>
+      <p>{{ data.health_index.ai_summary || data.health_index.summary }}</p>
+    </div>
+  </article>
+  <div class="foc-executive-grid">
+    <article class="foc-exec-card" *ngFor="let card of data.executive_cards">
+      <span class="foc-exec-card__label">{{ card.label }}</span>
+      <div class="foc-exec-card__value-row">
+        <strong>{{ formatCard(card) }}</strong>
+        <span class="foc-exec-card__trend" *ngIf="card.trend_pct != null" [class.up]="card.trend_direction === 'up'" [class.down]="card.trend_direction === 'down'">
+          {{ card.trend_direction === 'up' ? '↑' : '↓' }} {{ card.trend_pct | number:'1.1-1' }}%
+        </span>
+      </div>
+      <small>{{ card.comparison_period }}</small>
+      <p>{{ card.context_message }}</p>
+      <svg class="foc-exec-card__spark" viewBox="0 0 80 24" preserveAspectRatio="none" aria-hidden="true">
+        <polyline [attr.points]="sparkline(card.value)" fill="none" stroke="currentColor" stroke-width="2"/>
+      </svg>
+    </article>
+  </div>
+</section>

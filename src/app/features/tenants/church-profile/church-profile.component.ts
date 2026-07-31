@@ -1,4 +1,4 @@
-                                                                                                                                                                /**
+/**
  * Church Profile Component
  * 
  * Comprehensive church management interface with tabs for:
@@ -16,14 +16,19 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } 
 import { ActivatedRoute, Router } from '@angular/router';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { TenantService } from '@core/services/tenant.service';
+import { FamilyService } from '@core/services/family.service';
+import { BCCService } from '@core/services/bcc.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { Tenant, TenantResponse } from '@core/models';
-import { finalize, takeUntil } from 'rxjs/operators';
+import { finalize, takeUntil, switchMap } from 'rxjs/operators';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 import { GeographyService, Country } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { ChurchLeaderWorkspaceComponent } from './components/church-leader-workspace/church-leader-workspace.component';
+import { ChurchLeaderDetailComponent } from './components/church-leader-detail/church-leader-detail.component';
+import { ChurchLeadershipTableComponent } from './components/church-leadership-table/church-leadership-table.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
@@ -55,13 +60,14 @@ import {
 @Component({
   selector: 'app-church-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule, PhoneInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule, PhoneInputComponent, ChurchLeaderWorkspaceComponent, ChurchLeaderDetailComponent, ChurchLeadershipTableComponent],
   templateUrl: './church-profile.component.html',
   styleUrl: './church-profile.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ChurchProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
+  private leadersLoadTrigger$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
   // Tab Management
   activeTab: 'profile' | 'leadership' | 'statistics' | 'social' = 'profile';
@@ -111,6 +117,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   };
   
   showLeaderModal = false;
+  showLeaderDetail = false;
+  viewingLeader: ChurchLeadership | null = null;
   showStatisticModal = false;
   showSocialModal = false;
   showGeneralModal = false;
@@ -156,9 +164,27 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private store = inject(Store);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
+  private familyService = inject(FamilyService);
+  private bccService = inject(BCCService);
 
   canEdit = false;
   designVariant: 'summary' | 'tiles' | 'definition' = 'summary';
+  aboutExpanded = false;
+
+  snapshotKpis: { label: string; value: string; hint?: string }[] = [
+    { label: 'Members', value: '—', hint: 'Loading...' },
+    { label: 'Families', value: '—', hint: 'Loading...' },
+    { label: 'Ministries', value: '—', hint: 'Loading...' },
+    { label: 'Volunteers', value: '—', hint: 'Loading...' }
+  ];
+
+  operationalMetrics: { label: string; percent: number }[] = [];
+  private overviewMembers = 0;
+  private overviewFamilies = 0;
+  private overviewMinistries = 0;
+  private overviewVolunteers = 0;
+  private overviewActiveMembers = 0;
+  private overviewBccUtilization = 84;
   
   // Social Media Platform Options
   socialPlatforms = [
@@ -594,6 +620,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.checkPermissions();
     this.initializeForms();
+    this.setupLeadersLoading();
     this.loadAllData();
     
     // Check for tab query parameter
@@ -613,21 +640,19 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private checkPermissions(): void {
     const currentUser = this.authService.currentUserValue;
     
-    // Allow tenant administrators to edit their own church profile
-    const hasManageTenants = this.authService.hasPermission('manage_tenants');
+    // Align with backend guardrails: tenant admin/primary admin/church.settings.edit only.
+    const hasChurchSettingsEdit = this.authService.hasPermission('church.settings.edit');
     const isPrimaryAdmin = currentUser?.is_primary_admin === true;
-    const isTenantAdmin = currentUser?.user_type === 2; // 2 = tenant_admin
+    const isTenantAdmin = this.authService.isTenantAdmin();
     
-    // Allow ANY logged-in user with a tenant_id to edit their church profile
-    // This is appropriate since they can only edit their OWN church's profile
     const hasTenant = !!currentUser?.tenant_id;
     
-    this.canEdit = hasManageTenants || isPrimaryAdmin || isTenantAdmin || hasTenant;
+    this.canEdit = hasTenant && (hasChurchSettingsEdit || isPrimaryAdmin || isTenantAdmin);
     
     // Comprehensive debug logging
     console.log('🔍 Church Profile Edit Permission Check:', {
       canEdit: this.canEdit,
-      hasManageTenants,
+      hasChurchSettingsEdit,
       isPrimaryAdmin,
       isTenantAdmin,
       hasTenant,
@@ -747,6 +772,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     switch (this.activeTab) {
       case 'profile':
         this.loadExtendedProfile();
+        this.loadLeaders();
+        this.loadStatistics();
+        this.loadOverviewMetrics();
         break;
       case 'leadership':
         this.loadLeaders();
@@ -943,6 +971,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
           }
           
           this.populateProfileForm(response.data);
+          this.refreshOperationalMetrics();
+          this.cdr.markForCheck();
           
           // After form is populated, if denomination is selected, filter archdioceses
           if (response.data.denomination_id) {
@@ -1333,25 +1363,28 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Load church leaders (both active and inactive)
    * Backend already sorts the data, so no client-side sorting needed
    */
-  private loadLeaders(): void {
-    this.loadingLeaders = true;
-    this.cdr.markForCheck();
-    
-    // Load all leaders (active and inactive) - backend already sorts them correctly
-    this.leadershipService.getLeaders({})
+  private setupLeadersLoading(): void {
+    this.leadersLoadTrigger$
       .pipe(
-        takeUntil(this.destroy$),
-        finalize(() => {
-          this.loadingLeaders = false;
+        switchMap(() => {
+          this.loadingLeaders = true;
           this.cdr.markForCheck();
-        })
+          return this.leadershipService.getLeaders({}).pipe(
+            finalize(() => {
+              this.loadingLeaders = false;
+              this.cdr.markForCheck();
+            })
+          );
+        }),
+        takeUntil(this.destroy$)
       )
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            // Backend already sorts: active first, then by is_primary, display_order, appointed_date
-            // No need for client-side sorting - use data as-is for better performance
             this.leaders = response.data;
+            this.overviewMinistries = this.leaders.filter((l) => Number(l.active) === 1).length;
+            this.refreshSnapshotDisplay();
+            this.refreshOperationalMetrics();
             this.cdr.markForCheck();
           } else {
             console.error('Failed to load leaders:', response);
@@ -1369,6 +1402,27 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       });
   }
 
+  private loadLeaders(): void {
+    this.leadersLoadTrigger$.next();
+  }
+
+  private mergeLeaderIntoList(leader: ChurchLeadership): void {
+    const index = this.leaders.findIndex((item) => item.id === leader.id);
+    if (index >= 0) {
+      this.leaders = [
+        ...this.leaders.slice(0, index),
+        leader,
+        ...this.leaders.slice(index + 1)
+      ];
+    } else {
+      this.leaders = [leader, ...this.leaders];
+    }
+    this.overviewMinistries = this.leaders.filter((l) => Number(l.active) === 1).length;
+    this.refreshSnapshotDisplay();
+    this.refreshOperationalMetrics();
+    this.cdr.markForCheck();
+  }
+
   /**
    * Load church statistics
    */
@@ -1377,6 +1431,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       next: (response) => {
         if (response.success) {
           this.statistics = response.data;
+          this.refreshOperationalMetrics();
+          this.cdr.markForCheck();
         }
       },
       error: (err: Error) => {
@@ -1766,6 +1822,39 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   // ===============================================================
 
   /**
+   * Open leader detail panel
+   */
+  openLeaderDetail(leader: ChurchLeadership): void {
+    this.viewingLeader = leader;
+    this.showLeaderDetail = true;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Close leader detail panel
+   */
+  closeLeaderDetail(): void {
+    this.showLeaderDetail = false;
+    this.viewingLeader = null;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Open edit from detail panel
+   */
+  onLeaderDetailEdit(leader: ChurchLeadership): void {
+    this.closeLeaderDetail();
+    this.openEditLeaderModal(leader);
+  }
+
+  /**
+   * Delete from detail panel
+   */
+  onLeaderDetailDelete(leader: ChurchLeadership): void {
+    this.deleteLeader(leader);
+  }
+
+  /**
    * Open new leader modal
    */
   openNewLeaderModal(): void {
@@ -1774,21 +1863,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       return;
     }
     this.selectedLeader = null;
-    this.leaderForm.reset({ active: 1, is_primary: 0, display_order: 0 });
     this.showLeaderModal = true;
-    
-    // Ensure form is enabled
-    if (this.leaderForm) {
-      this.leaderForm.enable();
-    }
-    
-    // Focus first input after modal opens
-    setTimeout(() => {
-      const firstInput = document.querySelector('#leader_full_name') as HTMLInputElement;
-      if (firstInput) {
-        firstInput.focus();
-      }
-    }, 100);
+    this.cdr.markForCheck();
   }
 
   /**
@@ -1817,29 +1893,25 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       return;
     }
     this.selectedLeader = leader;
-    
-    // Format date fields for HTML date inputs (YYYY-MM-DD)
-    const formData = {
-      ...leader,
-      appointed_date: this.formatDateForInput(leader.appointed_date),
-      relieved_date: this.formatDateForInput(leader.relieved_date),
-      start_date: this.formatDateForInput(leader.start_date),
-      end_date: this.formatDateForInput(leader.end_date)
-    };
-    
-    this.leaderForm.patchValue(formData);
     this.showLeaderModal = true;
+    this.cdr.markForCheck();
   }
 
   /**
-   * Close leader modal
+   * Close leader workspace
    */
   closeLeaderModal(): void {
     this.showLeaderModal = false;
     this.selectedLeader = null;
-    this.leaderForm.reset();
-    this.leaderForm.markAsPristine();
-    this.leaderForm.markAsUntouched();
+    this.loadLeaders();
+    this.cdr.markForCheck();
+  }
+
+  onLeaderWorkspaceSaved(leader?: ChurchLeadership): void {
+    if (leader) {
+      this.mergeLeaderIntoList(leader);
+    }
+    this.loadLeaders();
   }
 
   /**
@@ -1869,39 +1941,6 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Save leader (create or update)
-   */
-  saveLeader(): void {
-    if (this.leaderForm.invalid) {
-      this.toastService.warning('Please fill in all required fields.', 'Validation Error');
-      return;
-    }
-
-    this.saving = true;
-    const formData = this.leaderForm.value;
-
-    const request = this.selectedLeader
-      ? this.leadershipService.updateLeader(this.selectedLeader.id, formData)
-      : this.leadershipService.createLeader(formData);
-
-    request.pipe(finalize(() => this.saving = false)).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.loadLeaders();
-          this.closeLeaderModal();
-          this.toastService.success(
-            this.selectedLeader ? 'Leader updated successfully!' : 'Leader added successfully!',
-            'Success'
-          );
-        }
-      },
-      error: (err: Error) => {
-        this.toastService.error(err.message, 'Error');
-      }
-    });
-  }
-
-  /**
    * Delete leader
    */
   deleteLeader(leader: ChurchLeadership): void {
@@ -1917,6 +1956,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     this.leadershipService.deleteLeader(leader.id).subscribe({
       next: (response) => {
         if (response.success) {
+          if (this.viewingLeader?.id === leader.id) {
+            this.closeLeaderDetail();
+          }
           this.loadLeaders();
           this.toastService.success('Leader deleted successfully!', 'Success');
         }
@@ -2324,6 +2366,217 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     }
     
     return null;
+  }
+
+  get identityFields(): { icon: string; label: string; value: string }[] {
+    return [
+      {
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>',
+        label: 'Patron Saint',
+        value: this.extendedProfile?.patron_name || 'Not set'
+      },
+      {
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+        label: 'Denomination',
+        value: this.getDenominationName()
+      },
+      {
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="10" r="3"/><path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 0 1 18 0z"/></svg>',
+        label: 'Diocese',
+        value: this.getArchdioceseName()
+      },
+      {
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>',
+        label: 'Established',
+        value: this.getFoundedYear() || 'Not set'
+      },
+      {
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
+        label: 'Church Type',
+        value: 'Parish Church'
+      },
+      {
+        icon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+        label: 'Canonical Status',
+        value: this.churchProfile?.active === 1 ? 'Active Parish' : 'Inactive Parish'
+      }
+    ];
+  }
+
+  getChurchSubtitle(): string {
+    if (this.churchProfile?.slogan) return this.churchProfile.slogan;
+    if (this.extendedProfile?.patron_name) return `Dedicated to ${this.extendedProfile.patron_name}`;
+    return '';
+  }
+
+  getFoundedYear(): string | null {
+    const year = this.extendedProfile?.founded_year || this.churchProfile?.founded_year;
+    return year ? String(year) : null;
+  }
+
+  getProfileEmail(): string | null {
+    return this.extendedProfile?.email || this.churchProfile?.email || this.churchProfile?.primary_contact?.email || this.churchProfile?.primaryContact?.email || null;
+  }
+
+  getProfilePhone(): string | null {
+    return this.extendedProfile?.phone
+      || this.churchProfile?.phone
+      || this.churchProfile?.primary_contact?.contact_number
+      || this.churchProfile?.primaryContact?.contact_number
+      || null;
+  }
+
+  getParishPriest(): ChurchLeadership | null {
+    const activeLeaders = this.leaders.filter(l => l.active === 1);
+    const primary = activeLeaders.find(l => l.is_primary === 1)
+      || activeLeaders.find(l => (l.role || '').toLowerCase().includes('pastor') && !(l.role || '').toLowerCase().includes('associate'));
+    if (primary) return primary;
+    if (this.churchProfile?.pastor_name) {
+      return {
+        id: 0,
+        tenant_id: this.churchProfile.id,
+        full_name: this.churchProfile.pastor_name,
+        role: 'Parish Priest',
+        title: 'Parish Administrator',
+        is_primary: 1,
+        display_order: 0,
+        active: 1
+      };
+    }
+    return null;
+  }
+
+  getAssistantPriests(): ChurchLeadership[] {
+    const priest = this.getParishPriest();
+    return this.leaders
+      .filter(l => l.active === 1 && (l.role || '').toLowerCase().includes('associate'))
+      .filter(l => !priest || l.id !== priest.id)
+      .slice(0, 3);
+  }
+
+  getAboutText(): string {
+    const about = this.extendedProfile?.about || this.profileForm?.get('about')?.value || this.churchProfile?.about;
+    if (about && String(about).trim()) return String(about).trim();
+    const founded = this.getFoundedYear();
+    const patron = this.extendedProfile?.patron_name;
+    const diocese = this.getArchdioceseName();
+    if (this.churchProfile?.name) {
+      return `${this.churchProfile.name}${founded ? ` was established in ${founded}` : ''}${diocese !== 'Not Set' ? ` and serves under ${diocese}` : ''}${patron ? `, dedicated to ${patron}` : ''}. Add a parish narrative to share your mission, history, and community story.`;
+    }
+    return 'Add a parish narrative to describe your church history, mission, and community impact.';
+  }
+
+  isAboutLong(): boolean {
+    return this.getAboutText().length > 280;
+  }
+
+  startEditNarrative(): void {
+    if (!this.canEdit) {
+      this.toastService.warning('You do not have permission to edit.', 'Permission Denied');
+      return;
+    }
+    this.startEditSection('identity');
+    this.aboutExpanded = true;
+    this.cdr.markForCheck();
+  }
+
+  copyToClipboard(value: string): void {
+    if (!value) return;
+    navigator.clipboard?.writeText(value).then(() => {
+      this.toastService.success('Copied to clipboard', 'Contact');
+    }).catch(() => {
+      this.toastService.error('Unable to copy value', 'Contact');
+    });
+  }
+
+  navigateToSettings(): void {
+    this.router.navigate(['/settings']);
+  }
+
+  onGenerateReport(): void {
+    this.toastService.info('Report generation will be available in a future release.', 'Coming Soon');
+  }
+
+  onViewPublicProfile(): void {
+    this.toastService.info('Public profile preview will be available in a future release.', 'Coming Soon');
+  }
+
+  private loadOverviewMetrics(): void {
+    this.familyService.getStatistics().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.overviewMembers = response.data.total_members || this.churchProfile?.membership_count || 0;
+          this.overviewFamilies = response.data.total_families || 0;
+          this.overviewActiveMembers = response.data.active_members || this.overviewMembers;
+          this.refreshSnapshotDisplay();
+          this.refreshOperationalMetrics();
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => this.cdr.markForCheck()
+    });
+
+    this.bccService.getStatistics().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.overviewVolunteers = response.data.total_leaders || 0;
+          this.overviewBccUtilization = response.data.utilization_percentage || this.overviewBccUtilization;
+          if (!this.overviewMinistries) {
+            this.overviewMinistries = response.data.active_bccs || response.data.total_bccs || 0;
+          }
+          this.refreshSnapshotDisplay();
+          this.refreshOperationalMetrics();
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => this.cdr.markForCheck()
+    });
+  }
+
+  private refreshSnapshotDisplay(): void {
+    const fmt = (n: number) => (n > 0 ? n.toLocaleString('en-US') : '—');
+    this.snapshotKpis = [
+      { label: 'Members', value: fmt(this.overviewMembers), hint: 'Registered parish members' },
+      { label: 'Families', value: fmt(this.overviewFamilies), hint: 'Active family records' },
+      { label: 'Ministries', value: fmt(this.overviewMinistries), hint: 'Active ministry leaders' },
+      { label: 'Volunteers', value: fmt(this.overviewVolunteers), hint: 'BCC and volunteer leaders' }
+    ];
+  }
+
+  private refreshOperationalMetrics(): void {
+    const latest = this.statistics[0];
+    const membershipHealth = this.overviewMembers > 0
+      ? Math.min(100, Math.round((this.overviewActiveMembers / this.overviewMembers) * 100))
+      : (latest?.membership_count ? 92 : 78);
+
+    const sacramentalScore = this.statistics.length > 0
+      ? Math.min(100, 70 + Math.min(30, (latest.baptisms || 0) + (latest.confirmations || 0) + (latest.marriages || 0)))
+      : 82;
+
+    this.operationalMetrics = [
+      { label: 'Membership Health', percent: membershipHealth },
+      { label: 'Sacramental Records', percent: sacramentalScore },
+      { label: 'Volunteer Engagement', percent: this.overviewBccUtilization },
+      { label: 'Profile Completeness', percent: this.computeProfileCompleteness() }
+    ];
+  }
+
+  private computeProfileCompleteness(): number {
+    const checks = [
+      !!this.churchProfile?.name,
+      !!this.churchProfile?.logo_full_url,
+      !!this.extendedProfile?.patron_name,
+      this.getDenominationName() !== 'Not Set',
+      this.getArchdioceseName() !== 'Not Set',
+      !!this.getFoundedYear(),
+      !!this.getProfileEmail(),
+      !!this.getProfilePhone(),
+      !!this.getWebsiteUrl(),
+      !!this.getOfficialAddress(),
+      !!this.getAboutText() && !this.getAboutText().startsWith('Add a parish narrative')
+    ];
+    const filled = checks.filter(Boolean).length;
+    return Math.round((filled / checks.length) * 100);
   }
 }
 

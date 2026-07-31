@@ -195,6 +195,18 @@
   align-items: center;
 }
 
+.topbar-center {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--spacing-md);
+  min-width: 0;
+
+  @media (max-width: 768px) {
+    display: none;
+  }
+}
+
 .mobile-menu-btn {
   display: none;
   background: none;
@@ -318,6 +330,21 @@
   display: flex;
   align-items: center;
   gap: var(--spacing-lg);
+}
+
+.collect-btn {
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  border-radius: 10px;
+  padding: 0.5rem 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.collect-btn:hover {
+  background: #1d4ed8;
 }
 
 .user-menu {

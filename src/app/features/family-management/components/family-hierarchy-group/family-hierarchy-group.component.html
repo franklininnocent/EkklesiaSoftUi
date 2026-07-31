@@ -1,0 +1,41 @@
+<div class="hierarchy-group" [class.is-expanded]="expanded" [class.is-collapsed]="!expanded">
+  <button
+    type="button"
+    class="hierarchy-group__header"
+    [attr.aria-expanded]="expanded"
+    (click)="toggleExpanded()"
+  >
+    <span class="hierarchy-group__chevron-wrap" aria-hidden="true">
+      <svg
+        class="hierarchy-group__chevron-icon"
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.25"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <path d="m9 18 6-6-6-6" />
+      </svg>
+    </span>
+    <span class="hierarchy-group__label">{{ group.label }}</span>
+    <span class="hierarchy-group__count" [attr.aria-label]="group.members.length + ' members'">{{
+      group.members.length
+    }}</span>
+  </button>
+
+  <div class="hierarchy-group__tree" *ngIf="expanded" role="group" [attr.aria-label]="group.label">
+    <div class="hierarchy-group__rail" aria-hidden="true"></div>
+    <div class="hierarchy-group__members">
+      <app-member-nav-row
+        *ngFor="let vm of group.members"
+        [vm]="vm"
+        [selected]="isSelected(vm)"
+        [focused]="focusedMemberIndex === vm.memberIndex"
+        [optionId]="optionId(vm.memberIndex)"
+        (selectMember)="selectMember.emit($event)"
+      />
+    </div>
+  </div>
+</div>

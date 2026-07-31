@@ -1,0 +1,102 @@
+.family-summary-card {
+  padding: 12px 12px 8px;
+  background: #fff;
+  border-bottom: 1px solid #e5e7eb;
+
+  &__surface {
+    padding: 16px;
+    background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__title {
+    margin: 0;
+    min-width: 0;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.25;
+    letter-spacing: -0.02em;
+    color: #0f172a;
+    word-break: break-word;
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+
+    &.is-active {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #86efac;
+    }
+
+    &.is-inactive {
+      background: #fef3c7;
+      color: #92400e;
+      border: 1px solid #fcd34d;
+    }
+
+    &.is-migrated {
+      background: #e2e8f0;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+    }
+  }
+
+  &__facts {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  &__fact {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 6px;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+
+    dt {
+      margin: 0;
+      font-weight: 500;
+      color: #64748b;
+    }
+
+    dd {
+      margin: 0;
+      font-weight: 700;
+      color: #0f172a;
+      font-variant-numeric: tabular-nums;
+      word-break: break-word;
+    }
+  }
+}

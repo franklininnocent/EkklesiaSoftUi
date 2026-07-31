@@ -5,6 +5,8 @@ export interface Role {
   name: string;
   description?: string | null;
   level: number;
+  role_type?: 'platform' | 'tenant';
+  role_classification?: 'protected_system' | 'default_template' | 'custom';
   tenant_id?: number | null;
   is_custom: boolean;
   active: 0 | 1;

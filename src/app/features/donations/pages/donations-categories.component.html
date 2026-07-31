@@ -1,0 +1,172 @@
+<section class="categories-page cf-page cf-split-page">
+  <header class="cf-split-page__hero cf-hero">
+    <div class="cf-split-page__hero-copy">
+      <h1>Offering Categories</h1>
+      <p>Define gift types for voluntary collections — create and manage categories side by side.</p>
+    </div>
+    <div class="cf-split-page__hero-actions" *ngIf="canManage && categoriesLoaded && !showForm">
+      <a routerLink="/donations/register" class="cf-btn">Today's Register</a>
+      <button type="button" class="cf-btn" *ngIf="!categories.length" (click)="seedDefaults()" [disabled]="seeding">
+        {{ seeding ? 'Adding defaults…' : 'Add defaults' }}
+      </button>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Add category</button>
+    </div>
+  </header>
+
+  <div class="cf-split-loading cf-split-card" *ngIf="!categoriesLoaded" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-split-loading__label">Loading offering categories…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="categoriesLoaded">
+    <div class="cf-split-banner cf-split-banner--error" *ngIf="categoriesLoadError" role="alert">
+      <p class="category-load-error__text">{{ categoriesLoadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+    </div>
+
+    <div class="cf-split-workspace" *ngIf="!categoriesLoadError" [class.cf-split-workspace--single]="!canManage">
+      <aside class="cf-split-panel" *ngIf="canManage">
+        <article class="cf-split-card" id="category-form-card">
+          <header class="cf-split-card__header">
+            <div class="cf-split-card__header-copy">
+              <h2>{{ editingCategoryId ? 'Edit category' : 'Add category' }}</h2>
+              <p *ngIf="!showForm">Sunday, charity, building fund, and other gift types.</p>
+            </div>
+            <button type="button" class="cf-btn cf-split-card__close" *ngIf="showForm" (click)="closeForm()" aria-label="Close">×</button>
+          </header>
+
+          <div class="cf-split-form-cta" *ngIf="!showForm">
+            <div class="cf-split-form-cta__icon" aria-hidden="true">▤</div>
+            <p class="cf-split-form-cta__title">Add an offering category</p>
+            <p class="cf-split-form-cta__text">Categories help volunteers pick the right gift type during Quick Collect.</p>
+            <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Add category</button>
+            <button type="button" class="cf-btn" *ngIf="!categories.length" (click)="seedDefaults()" [disabled]="seeding">
+              {{ seeding ? 'Adding…' : 'Add default categories' }}
+            </button>
+          </div>
+
+          <form *ngIf="showForm" [formGroup]="form" (ngSubmit)="save()" class="cf-split-form-body" novalidate>
+            <section class="cf-split-section" aria-labelledby="category-section-details">
+              <h3 id="category-section-details" class="cf-split-section__title">Category details</h3>
+              <div class="cf-split-grid">
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="category-name">Category name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <input id="category-name" formControlName="name" placeholder="Sunday Collection" autocomplete="off" aria-required="true" />
+                </div>
+                <div class="cf-split-field">
+                  <label for="category-code">Reference code <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <input id="category-code" formControlName="code" placeholder="SUNDAY" autocomplete="off" aria-required="true" />
+                  <p class="cf-split-field__hint">Short code used in reports and registers.</p>
+                </div>
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="category-description">Description <span class="cf-split-optional">optional</span></label>
+                  <textarea id="category-description" formControlName="description" rows="3" placeholder="Brief note for volunteers"></textarea>
+                </div>
+              </div>
+            </section>
+
+            <section class="cf-split-section" aria-labelledby="category-section-receipt">
+              <h3 id="category-section-receipt" class="cf-split-section__title">Receipt settings</h3>
+              <label class="cf-split-toggle cf-split-toggle--block">
+                <input type="checkbox" formControlName="is_tax_deductible" />
+                <span>
+                  Tax deductible on receipts
+                  <small>Include this category when calculating tax-deductible amounts on printed receipts.</small>
+                </span>
+              </label>
+              <label class="cf-split-toggle cf-split-toggle--block" *ngIf="editingCategoryId">
+                <input type="checkbox" formControlName="active" />
+                <span>
+                  Active
+                  <small>Inactive categories are hidden from Quick Collect and new register entries.</small>
+                </span>
+              </label>
+            </section>
+
+            <div class="cf-split-form-actions">
+              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
+                {{ saving ? 'Saving…' : (editingCategoryId ? 'Save changes' : 'Add category') }}
+              </button>
+              <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+            </div>
+          </form>
+        </article>
+      </aside>
+
+      <main class="cf-split-panel">
+        <article class="cf-split-card cf-split-card--list">
+          <header class="cf-split-card__header cf-split-card__header--list">
+            <div class="cf-split-card__header-copy">
+              <h2>Category list</h2>
+              <p>{{ categories.length }} categor{{ categories.length === 1 ? 'y' : 'ies' }} · {{ taxDeductibleCount }} tax-deductible</p>
+            </div>
+            <div class="cf-split-list-toolbar">
+              <input type="search" [(ngModel)]="tableSearch" placeholder="Search categories…" aria-label="Search categories" class="cf-split-list-search" />
+            </div>
+          </header>
+
+          <div class="cf-split-list-body">
+            <div class="cf-split-table-scroll" *ngIf="filteredCategories.length">
+              <table class="cf-table cf-split-table">
+                <thead>
+                  <tr>
+                    <th>Name</th>
+                    <th>Code</th>
+                    <th>Tax receipt</th>
+                    <th>Active</th>
+                    <th *ngIf="canManage" aria-label="Actions"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let cat of filteredCategories" [class.row-inactive]="!cat.active">
+                    <td><strong>{{ cat.name }}</strong></td>
+                    <td>{{ cat.code }}</td>
+                    <td>{{ cat.is_tax_deductible ? 'Yes' : 'No' }}</td>
+                    <td>{{ cat.active ? 'Yes' : 'No' }}</td>
+                    <td class="row-actions" *ngIf="canManage">
+                      <div class="category-row-actions">
+                        <app-edit-icon-button
+                          size="sm"
+                          [ariaLabel]="'Edit ' + cat.name"
+                          [title]="'Edit ' + cat.name"
+                          (clicked)="editCategory(cat)"
+                        ></app-edit-icon-button>
+                        <button
+                          type="button"
+                          class="category-row-actions__delete"
+                          (click)="deleteCategory(cat)"
+                          [disabled]="deletingId === cat.id"
+                          [attr.aria-label]="'Delete ' + cat.name"
+                        >
+                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon" aria-hidden="true">
+                            <polyline points="3 6 5 6 21 6"></polyline>
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            <line x1="10" y1="11" x2="10" y2="17"></line>
+                            <line x1="14" y1="11" x2="14" y2="17"></line>
+                          </svg>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p *ngIf="categories.length && !filteredCategories.length" class="cf-split-list-empty">No categories match your search.</p>
+
+            <div class="cf-split-list-empty-state" *ngIf="!categories.length">
+              <app-cf-empty-state
+                icon="▤"
+                title="No offering categories"
+                description="Categories help volunteers pick the right gift type during Quick Collect and register entry."
+                [hasActions]="canManage"
+              >
+                <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="seedDefaults()" [disabled]="seeding">Add default categories</button>
+              </app-cf-empty-state>
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+  </ng-container>
+</section>

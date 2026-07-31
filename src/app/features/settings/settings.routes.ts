@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { rbacGuard } from '@core/guards/rbac.guard';
 
 export const SETTINGS_ROUTES: Routes = [
   {
@@ -7,6 +8,7 @@ export const SETTINGS_ROUTES: Routes = [
   },
   {
     path: 'roles-permissions',
+    canActivate: [rbacGuard],
     loadComponent: () => import('./roles-permissions/roles-permissions.component').then(m => m.RolesPermissionsComponent)
   },
   {

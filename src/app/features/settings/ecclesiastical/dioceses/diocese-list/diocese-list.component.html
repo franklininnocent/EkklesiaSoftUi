@@ -159,7 +159,7 @@
     *ngIf="showDeleteModal"
     [show]="showDeleteModal"
     [title]="'Delete Diocese'"
-    [message]="'Are you sure you want to delete ' + dioceseToDelete?.name + '? This action cannot be undone.'"
+    [message]="'Are you sure you want to delete ' + (dioceseToDelete?.name || '') + '? This action cannot be undone.'"
     [confirmText]="'Delete'"
     [confirmButtonClass]="'btn-danger'"
     (confirmed)="confirmDelete()"

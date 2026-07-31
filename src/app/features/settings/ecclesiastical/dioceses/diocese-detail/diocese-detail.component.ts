@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { DioceseService, BishopService } from '@core/services/ecclesiastical';
@@ -19,6 +19,7 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
     ConfirmationModalComponent
   ],
   templateUrl: './diocese-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './diocese-detail.component.scss'
 })
 export class DioceseDetailComponent implements OnInit {

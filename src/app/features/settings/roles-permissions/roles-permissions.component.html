@@ -31,6 +31,14 @@
         <span class="tab-icon">🔗</span>
         <span class="tab-text">Assign Permissions</span>
       </button>
+      <button
+        *ngIf="isTenantMode"
+        class="tab-item"
+        [class.active]="isActiveTab('users')"
+        (click)="selectTab('users')">
+        <span class="tab-icon">🧑‍💼</span>
+        <span class="tab-text">User Role Assignments</span>
+      </button>
       <button 
         *ngIf="hasSuperAdminAccess"
         class="tab-item" 
@@ -94,13 +102,13 @@
             class="btn-filter-inline" 
             (click)="openRolesFilterPanel()"
             type="button"
-            [class.active]="hasActiveFilters()"
+            [class.active]="hasActiveRolesFilters()"
             title="Filter roles">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
             </svg>
             <span>Filters</span>
-            <span class="filter-badge" *ngIf="hasActiveFilters()">●</span>
+            <span class="filter-badge" *ngIf="hasActiveRolesFilters()">●</span>
           </button>
           <button 
             *ngIf="canCreateRole()"
@@ -119,9 +127,9 @@
       </div>
 
       <!-- Active Filter Chips -->
-      <div class="filter-chips-row" *ngIf="getActiveFilterChips().length > 0">
+      <div class="filter-chips-row" *ngIf="getActiveFilterChips('roles').length > 0">
         <div 
-          *ngFor="let chip of getVisibleFilterChips()" 
+          *ngFor="let chip of getVisibleFilterChips('roles')" 
           class="filter-chip"
           [title]="chip.label + ': ' + chip.value">
           <span class="chip-label">{{ chip.label }}:</span>
@@ -138,11 +146,11 @@
           </button>
         </div>
         <button 
-          *ngIf="getHiddenChipsCount() > 0"
+          *ngIf="getHiddenChipsCount('roles') > 0"
           class="filter-chip filter-chip-more"
           (click)="openFilterPanelWithCurrentFilters()"
           type="button"
-          [title]="getHiddenChipsTooltip()">
+          [title]="getHiddenChipsTooltip('roles')">
           <span class="chip-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="1"></circle>
@@ -150,7 +158,7 @@
               <circle cx="12" cy="19" r="1"></circle>
             </svg>
           </span>
-          <span class="chip-value">{{ getHiddenChipsCount() }} more</span>
+          <span class="chip-value">{{ getHiddenChipsCount('roles') }} more</span>
         </button>
       </div>
 
@@ -181,12 +189,12 @@
               <th [appSortable]="'level'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Level</th>
               <th [appSortable]="'is_custom'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Type</th>
               <th [appSortable]="'active'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Status</th>
-              <th [appSortable]="'tenant.name'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Tenant</th>
+              <th *ngIf="!isTenantMode" [appSortable]="'tenant.name'" [direction]="rolesSortDirection" (sort)="onRolesSort($event)">Tenant</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            <tr *ngFor="let role of roles">
+            <tr *ngFor="let role of roles; trackBy: trackByRoleId">
               <td class="role-name">
                 <div class="name-cell">
                   <span class="name-text">{{ role.name }}</span>
@@ -196,7 +204,7 @@
               <td><span class="level-badge">Level {{ role.level }}</span></td>
               <td>
                 <span class="type-badge" [ngClass]="getRoleBadgeClass(role)">
-                  {{ role.is_custom ? 'Custom' : 'System' }}
+                  {{ getRoleBadgeLabel(role) }}
                 </span>
               </td>
               <td>
@@ -204,7 +212,7 @@
                   {{ getStatusText(role.active) }}
                 </span>
               </td>
-              <td>{{ role.tenant?.name || 'Global' }}</td>
+              <td *ngIf="!isTenantMode">{{ role.tenant?.name || 'Global' }}</td>
               <td class="actions-cell">
                 <button 
                   *ngIf="canAssignPermissions() && canUpdateRole()"
@@ -224,19 +232,19 @@
                 <button 
                   *ngIf="!canToggleRoleStatus(role)" 
                   class="action-btn action-locked" 
-                  title="System Role - Cannot Toggle Status" 
+                  [title]="isProtectedTenantRole(role) ? 'Protected role cannot be deactivated.' : ((role.users_count || 0) > 0 ? 'Role has assigned users. Reassign users before deletion or disable workflows.' : 'Role cannot be toggled.')" 
                   disabled>
                   🔒
                 </button>
                 <button 
-                  *ngIf="canUpdateRole() && role.is_custom"
+                  *ngIf="canEditRoleRow(role)"
                   class="action-btn action-edit" 
                   (click)="openEditRoleModal(role)" 
                   title="Edit">
                   ✏️
                 </button>
                 <button 
-                  *ngIf="canDeleteRole() && role.is_custom"
+                  *ngIf="canDeleteRoleRow(role)"
                   class="action-btn action-delete" 
                   (click)="deleteRole(role)" 
                   title="Delete">
@@ -255,8 +263,8 @@
         <!-- Empty State -->
         <div *ngIf="roles.length === 0" class="empty-state">
           <div class="empty-icon">👥</div>
-          <h3>No Roles Found</h3>
-          <p>No roles match your current filters</p>
+          <h3>{{ getRolesEmptyTitle() }}</h3>
+          <p>{{ getRolesEmptyDescription() }}</p>
           <button 
             *ngIf="canCreateRole()"
             class="btn-create" 
@@ -342,13 +350,13 @@
             class="btn-filter-inline" 
             (click)="openPermissionsFilterPanel()"
             type="button"
-            [class.active]="hasActiveFilters()"
+            [class.active]="hasActivePermissionsFilters()"
             title="Filter permissions">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
             </svg>
             <span>Filters</span>
-            <span class="filter-badge" *ngIf="hasActiveFilters()">●</span>
+            <span class="filter-badge" *ngIf="hasActivePermissionsFilters()">●</span>
           </button>
           <button 
             class="btn-action-inline" 
@@ -389,9 +397,9 @@
       </div>
 
       <!-- Active Filter Chips -->
-      <div class="filter-chips-row" *ngIf="getActiveFilterChips().length > 0">
+      <div class="filter-chips-row" *ngIf="getActiveFilterChips('permissions').length > 0">
         <div 
-          *ngFor="let chip of getVisibleFilterChips()" 
+          *ngFor="let chip of getVisibleFilterChips('permissions')" 
           class="filter-chip"
           [title]="chip.label + ': ' + chip.value">
           <span class="chip-label">{{ chip.label }}:</span>
@@ -408,11 +416,11 @@
           </button>
         </div>
         <button 
-          *ngIf="getHiddenChipsCount() > 0"
+          *ngIf="getHiddenChipsCount('permissions') > 0"
           class="filter-chip filter-chip-more"
           (click)="openFilterPanelWithCurrentFilters()"
           type="button"
-          [title]="getHiddenChipsTooltip()">
+          [title]="getHiddenChipsTooltip('permissions')">
           <span class="chip-icon">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="1"></circle>
@@ -420,7 +428,7 @@
               <circle cx="12" cy="19" r="1"></circle>
             </svg>
           </span>
-          <span class="chip-value">{{ getHiddenChipsCount() }} more</span>
+          <span class="chip-value">{{ getHiddenChipsCount('permissions') }} more</span>
         </button>
       </div>
 
@@ -446,7 +454,7 @@
         <div class="permissions-grouped" *ngIf="permissions.length > 0">
           <!-- Module Group -->
           <div 
-            *ngFor="let module of getModuleNames()" 
+            *ngFor="let module of getModuleNames(); trackBy: trackByModuleName" 
             class="module-group"
             [class.collapsed]="isModuleCollapsed(module)">
             
@@ -481,8 +489,8 @@
               <table class="data-table">
                 <thead>
                   <tr>
-                    <th [appSortable]="'name'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Permission Name</th>
-                    <th [appSortable]="'display_name'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Display Name</th>
+                    <th [appSortable]="'description'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Permission</th>
+                    <th [appSortable]="'display_name'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Details</th>
                     <th [appSortable]="'category'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Category</th>
                     <th [appSortable]="'is_custom'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Type</th>
                     <th [appSortable]="'active'" [direction]="permissionsSortDirection" (sort)="onPermissionsSort($event)">Status</th>
@@ -490,9 +498,9 @@
                   </tr>
                 </thead>
                 <tbody>
-                  <tr *ngFor="let permission of groupedPermissions[module]">
-                    <td class="permission-name">{{ permission.name }}</td>
-                    <td class="permission-display-name">{{ permission.display_name }}</td>
+                  <tr *ngFor="let permission of groupedPermissions[module]; trackBy: trackByPermissionId">
+                    <td class="permission-name">{{ getPermissionPrimaryLabel(permission) }}</td>
+                    <td class="permission-display-name">{{ getPermissionSecondaryLabel(permission) }}</td>
                     <td>{{ permission.category || '-' }}</td>
                     <td>
                       <span class="type-badge" [ngClass]="permission.is_custom ? 'badge-custom' : 'badge-system'">
@@ -535,8 +543,8 @@
         <!-- Empty State -->
         <div *ngIf="permissions.length === 0" class="empty-state">
           <div class="empty-icon">🔐</div>
-          <h3>No Permissions Found</h3>
-          <p>No permissions match your current filters</p>
+          <h3>{{ getPermissionsEmptyTitle() }}</h3>
+          <p>{{ getPermissionsEmptyDescription() }}</p>
           <button 
             *ngIf="canCreatePermission()"
             class="btn-create" 
@@ -576,7 +584,7 @@
           <!-- Roles Grid -->
           <div class="roles-grid" *ngIf="roles.length > 0">
             <div 
-              *ngFor="let role of roles" 
+              *ngFor="let role of roles; trackBy: trackByRoleId" 
               class="role-card"
               (click)="selectRoleForAssignment(role)"
               [class.disabled]="!role.active">
@@ -590,7 +598,7 @@
               <div class="role-card-footer">
                 <span class="role-level">Level {{ role.level }}</span>
                 <span class="role-type" [ngClass]="getRoleBadgeClass(role)">
-                  {{ role.is_custom ? 'Custom' : 'System' }}
+                  {{ getRoleBadgeLabel(role) }}
                 </span>
                 <span class="role-status" [ngClass]="getStatusBadgeClass(role.active)">
                   {{ getStatusText(role.active) }}
@@ -707,11 +715,152 @@
             #assignModal
             [show]="true"
             [role]="selectedRoleForAssignment"
+            [tenantMode]="isTenantMode"
             [isInline]="true"
             (closed)="clearRoleSelection()"
             (saved)="onPermissionsAssignedInTab()">
           </app-assign-permissions-modal>
         </div>
+      </div>
+    </app-card>
+  </div>
+
+  <!-- User Role Assignments Tab -->
+  <div class="tab-content" *ngIf="activeTab === 'users' && isTenantMode">
+    <app-card [padding]="'lg'">
+      <div class="selection-header">
+        <div class="header-icon">🧑‍💼</div>
+        <div class="header-content">
+          <h2>User Role Assignments</h2>
+          <p>Assign tenant roles to active users with immediate safeguards from backend policy rules.</p>
+        </div>
+      </div>
+
+      <div class="roles-grid">
+        <div class="role-card">
+          <div class="role-info">
+            <h3 class="role-name">{{ tenantUserTotal }}</h3>
+            <p class="role-description">Active tenant users</p>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-info">
+            <h3 class="role-name">{{ tenantAssignedUsersCount }}</h3>
+            <p class="role-description">Users with assigned roles</p>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-info">
+            <h3 class="role-name">{{ tenantUnassignedUsersCount }}</h3>
+            <p class="role-description">Users pending role assignment</p>
+          </div>
+        </div>
+        <div class="role-card">
+          <div class="role-info">
+            <h3 class="role-name">{{ tenantAdminUsersCount }}</h3>
+            <p class="role-description">Users with admin roles</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="safeguards-panel mt-lg">
+        <h3>Safeguards</h3>
+        <p>Administrator role protections and last-admin checks are enforced by backend policy and service guardrails.</p>
+      </div>
+
+      <div *ngIf="loadingTenantUsers" class="loading-container">
+        <div class="loading-spinner"></div>
+        <p>Loading users...</p>
+      </div>
+
+      <div *ngIf="tenantUsersError && !loadingTenantUsers" class="error-container">
+        <div class="error-icon">⚠️</div>
+        <h3>Failed to Load Users</h3>
+        <p>{{ tenantUsersError }}</p>
+        <button class="btn-retry" (click)="loadTenantUsers()">
+          <span>🔄</span>
+          <span>Retry</span>
+        </button>
+      </div>
+
+      <div *ngIf="!loadingTenantUsers && !tenantUsersError" class="table-container">
+        <table class="data-table" *ngIf="tenantUsers.length > 0">
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Email</th>
+              <th>Current Roles</th>
+              <th>Manage</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of tenantUsers; trackBy: trackByUserId">
+              <td>{{ user.name }}</td>
+              <td>{{ user.email }}</td>
+              <td>{{ getUserRolesDisplay(user) }}</td>
+              <td class="actions-cell">
+                <button class="action-btn action-edit" (click)="selectUserForRoleAssignment(user)" title="Manage User Roles">
+                  ✏️
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <div *ngIf="tenantUsers.length === 0" class="empty-state">
+          <div class="empty-icon">🧑‍💼</div>
+          <h3>No Active Users Found</h3>
+          <p>Create or activate users to manage role assignments.</p>
+        </div>
+      </div>
+
+      <div *ngIf="selectedUserForRoles" class="mt-lg">
+        <app-card [padding]="'lg'">
+          <div class="selection-header">
+            <div class="header-content">
+              <h2>Assign Roles: {{ selectedUserForRoles.name }}</h2>
+              <p>{{ selectedUserForRoles.email }}</p>
+            </div>
+          </div>
+
+          <div class="roles-grid" *ngIf="roles.length > 0">
+            <label *ngFor="let role of roles; trackBy: trackByRoleId" class="role-card">
+              <div class="role-card-header">
+                <div class="role-info">
+                  <h3 class="role-name">{{ role.name }}</h3>
+                  <p class="role-description">{{ role.description || 'No description' }}</p>
+                </div>
+                <div class="checkbox-container">
+                  <input
+                    type="checkbox"
+                    [checked]="isRoleCheckedForSelectedUser(role.id)"
+                    (change)="toggleRoleForSelectedUser(role.id, $any($event.target).checked)"
+                    [disabled]="savingUserRoles || role.active !== 1"
+                  />
+                  <span class="checkmark"></span>
+                </div>
+              </div>
+              <div class="role-card-footer">
+                <span class="role-level">Level {{ role.level }}</span>
+                <span class="role-type" [ngClass]="getRoleBadgeClass(role)">
+                  {{ getRoleBadgeLabel(role) }}
+                </span>
+                <span class="role-status" [ngClass]="getStatusBadgeClass(role.active)">
+                  {{ getStatusText(role.active) }}
+                </span>
+              </div>
+            </label>
+          </div>
+
+          <div class="header-actions mt-lg">
+            <button class="btn-secondary" type="button" (click)="selectedUserForRoles = null" [disabled]="savingUserRoles">
+              Cancel
+            </button>
+            <button class="btn-primary" type="button" (click)="saveSelectedUserRoles()" [disabled]="savingUserRoles">
+              {{ savingUserRoles ? 'Saving...' : 'Save User Roles' }}
+            </button>
+          </div>
+        </app-card>
       </div>
     </app-card>
   </div>
@@ -726,6 +875,7 @@
 <!-- Create Role Modal -->
 <app-role-form-modal
   [show]="showCreateRoleModal"
+  [tenantMode]="isTenantMode"
   [role]="null"
   (closed)="closeCreateRoleModal()"
   (saved)="onRoleSaved($event)">
@@ -734,6 +884,7 @@
 <!-- Edit Role Modal -->
 <app-role-form-modal
   [show]="showEditRoleModal"
+  [tenantMode]="isTenantMode"
   [role]="selectedRole"
   (closed)="closeEditRoleModal()"
   (saved)="onRoleSaved($event)">
@@ -742,6 +893,7 @@
 <!-- Assign Permissions Modal -->
 <app-assign-permissions-modal
   [show]="showAssignPermissionsModal"
+  [tenantMode]="isTenantMode"
   [role]="selectedRole"
   (closed)="closeAssignPermissionsModal()"
   (saved)="onPermissionsAssigned()">
@@ -751,7 +903,7 @@
 <app-filter-panel
   [isOpen]="showRolesFilterPanel"
   [config]="rolesFilterConfig"
-  [initialValues]="getCurrentFilterValues()"
+  [initialValues]="getRolesFilterValues()"
   (close)="closeRolesFilterPanel()"
   (apply)="applyRolesFilters($event)"
   (reset)="resetRolesFilters()">
@@ -761,9 +913,65 @@
 <app-filter-panel
   [isOpen]="showPermissionsFilterPanel"
   [config]="permissionsFilterConfig"
-  [initialValues]="getCurrentFilterValues()"
+  [initialValues]="getPermissionsFilterValues()"
   (close)="closePermissionsFilterPanel()"
   (apply)="applyPermissionsFilters($event)"
   (reset)="resetPermissionsFilters()">
 </app-filter-panel>
+
+<!-- Role Delete Confirmation Modal -->
+<div class="action-modal-overlay" *ngIf="showRoleDeleteConfirmModal">
+  <div class="action-modal">
+    <div class="action-modal__header">
+      <h3>Delete Role</h3>
+      <button type="button" class="action-modal__close" (click)="cancelDeleteRole()">✕</button>
+    </div>
+    <div class="action-modal__body">
+      <p class="action-modal__title">{{ pendingRoleAction?.name }}</p>
+      <p class="action-modal__meta">
+        Assigned users: <strong>{{ pendingRoleAction?.users_count || 0 }}</strong> |
+        Permissions: <strong>{{ pendingRoleAction?.permissions_count || 0 }}</strong>
+      </p>
+      <p class="action-modal__impact">
+        {{ getRoleDeleteImpactMessage(pendingRoleAction) }}
+      </p>
+    </div>
+    <div class="action-modal__footer">
+      <button type="button" class="btn-secondary" (click)="cancelDeleteRole()">Cancel</button>
+      <button
+        type="button"
+        class="btn-danger"
+        (click)="confirmDeleteRole()"
+        [disabled]="(pendingRoleAction?.users_count || 0) > 0"
+      >
+        Confirm Delete
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Role Status Confirmation Modal -->
+<div class="action-modal-overlay" *ngIf="showRoleStatusConfirmModal">
+  <div class="action-modal">
+    <div class="action-modal__header">
+      <h3>{{ pendingRoleStatusTarget === 0 ? 'Deactivate Role' : 'Activate Role' }}</h3>
+      <button type="button" class="action-modal__close" (click)="cancelToggleRoleStatus()">✕</button>
+    </div>
+    <div class="action-modal__body">
+      <p class="action-modal__title">{{ pendingRoleAction?.name }}</p>
+      <p class="action-modal__impact" *ngIf="pendingRoleStatusTarget === 0">
+        Inactive roles cannot be assigned to new users. Existing assignments remain visible.
+      </p>
+      <p class="action-modal__impact" *ngIf="pendingRoleStatusTarget === 1">
+        This role will be available again for new user assignments.
+      </p>
+    </div>
+    <div class="action-modal__footer">
+      <button type="button" class="btn-secondary" (click)="cancelToggleRoleStatus()">Cancel</button>
+      <button type="button" class="btn-primary" (click)="confirmToggleRoleStatus()">
+        Confirm {{ pendingRoleStatusTarget === 0 ? 'Deactivate' : 'Activate' }}
+      </button>
+    </div>
+  </div>
+</div>
 

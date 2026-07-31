@@ -33,9 +33,12 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
  */
 export function trapFocus(container: HTMLElement): () => void {
   const focusableElements = getFocusableElements(container);
+  const noopCleanup = (): void => {
+    return;
+  };
   
   if (focusableElements.length === 0) {
-    return () => {}; // No cleanup needed
+    return noopCleanup;
   }
 
   const firstElement = focusableElements[0];

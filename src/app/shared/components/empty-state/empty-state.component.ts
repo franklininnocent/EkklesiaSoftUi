@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 /**
@@ -22,6 +22,7 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './empty-state.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './empty-state.component.scss'
 })
 export class EmptyStateComponent {

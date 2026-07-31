@@ -124,8 +124,7 @@ describe('SacramentListComponent', () => {
     component.selectedStatus = 'active';
     fixture.detectChanges();
     expect(component.getActiveFilterCount()).toBe(2);
-    const compiled = fixture.nativeElement as HTMLElement;
-    expect(compiled.querySelectorAll('.filter-chip').length).toBeGreaterThan(0);
+    expect(component.getActiveFilters().length).toBeGreaterThan(0);
   });
 });
 

@@ -92,6 +92,20 @@
          </span>
          <span class="nav-text">Members</span>
        </a>
+
+       <a
+         *ngIf="canViewDonations((currentUser$ | async))"
+         routerLink="donations"
+         routerLinkActive="active"
+         class="nav-item"
+        aria-label="Stewardship and Donations">
+         <span class="nav-icon">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+           </svg>
+         </span>
+        <span class="nav-text">Stewardship & Donations</span>
+       </a>
        
        <!-- Tenants menu - Only visible for SuperAdmin and EkklesiaAdmin -->
        <a 
@@ -123,6 +137,20 @@
          </span>
          <span class="nav-text">Users</span>
        </a>
+
+      <a
+        *ngIf="canManageRoles((currentUser$ | async))"
+        routerLink="settings/roles-permissions"
+        routerLinkActive="active"
+        class="nav-item"
+        aria-label="Roles and Permissions">
+        <span class="nav-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+          </svg>
+        </span>
+        <span class="nav-text">Roles & Permissions</span>
+      </a>
        
       <a routerLink="settings/sacraments" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-item" aria-label="Sacraments">
         <span class="nav-icon">
@@ -170,8 +198,20 @@
           </div>
         </div>
       </div>
+
+      <div class="topbar-center" *ngIf="(currentUser$ | async)?.tenant_id">
+        <app-global-family-search></app-global-family-search>
+      </div>
       
       <div class="topbar-right">
+        <button
+          *ngIf="canViewDonations((currentUser$ | async))"
+          type="button"
+          class="collect-btn"
+          (click)="openQuickCollect()"
+        >
+          + Collect
+        </button>
         <div class="user-menu" *ngIf="currentUser$ | async as user">
           <div class="user-dropdown" [class.open]="isUserMenuOpen && !isUserMenuClosing">
             <button class="user-trigger" (click)="toggleUserMenu($event)">
@@ -301,5 +341,8 @@
       </div>
     </div>
   </div>
+
+  <app-quick-collect-drawer></app-quick-collect-drawer>
+  <app-command-palette></app-command-palette>
 </div>
 

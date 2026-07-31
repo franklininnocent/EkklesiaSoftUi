@@ -1,0 +1,152 @@
+<section class="recurring-page cf-page cf-split-page">
+  <header class="cf-split-page__hero cf-hero">
+    <div class="cf-split-page__hero-copy">
+      <h1>Recurring Gifts</h1>
+      <p>Scheduled voluntary giving — create schedules and manage collections side by side.</p>
+    </div>
+    <div class="cf-split-page__hero-actions" *ngIf="canCollect && schedulesLoaded && !showForm">
+      <button type="button" class="cf-btn cf-btn-primary" (click)="runDue()" [disabled]="running">
+        {{ running ? 'Running…' : 'Run due schedules' }}
+      </button>
+      <button type="button" class="cf-btn" (click)="openCreateForm()">New schedule</button>
+    </div>
+  </header>
+
+  <div class="cf-split-loading cf-split-card" *ngIf="!schedulesLoaded" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-split-loading__label">Loading recurring schedules…</p>
+    <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="schedulesLoaded">
+    <div class="cf-split-workspace" [class.cf-split-workspace--single]="!canCollect">
+      <aside class="cf-split-panel" *ngIf="canCollect">
+        <article class="cf-split-card" id="recurring-form-card">
+          <header class="cf-split-card__header">
+            <div class="cf-split-card__header-copy">
+              <h2>New schedule</h2>
+              <p *ngIf="!showForm">Donor, category, amount, and frequency.</p>
+            </div>
+            <button type="button" class="cf-btn cf-split-card__close" *ngIf="showForm" (click)="closeForm()" aria-label="Close">×</button>
+          </header>
+
+          <div class="cf-split-form-cta" *ngIf="!showForm">
+            <div class="cf-split-form-cta__icon" aria-hidden="true">↻</div>
+            <p class="cf-split-form-cta__title">Create a recurring schedule</p>
+            <p class="cf-split-form-cta__text">Set up monthly or quarterly gifts for loyal supporters.</p>
+            <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">New schedule</button>
+          </div>
+
+          <form *ngIf="showForm" [formGroup]="form" (ngSubmit)="save()" class="cf-split-form-body" novalidate>
+            <section class="cf-split-section" aria-labelledby="recurring-section-donor">
+              <h3 id="recurring-section-donor" class="cf-split-section__title">Donor & category</h3>
+              <div class="cf-split-grid">
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="recurring-donor">Donor</label>
+                  <select id="recurring-donor" formControlName="donor_id">
+                    <option value="">Select donor</option>
+                    <option *ngFor="let donor of donors" [value]="donor.id">{{ donor.name }}</option>
+                  </select>
+                </div>
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="recurring-category">Category</label>
+                  <select id="recurring-category" formControlName="donation_category_id">
+                    <option value="">Select category</option>
+                    <option *ngFor="let cat of categories" [value]="cat.id">{{ cat.name }}</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section class="cf-split-section" aria-labelledby="recurring-section-schedule">
+              <h3 id="recurring-section-schedule" class="cf-split-section__title">Schedule details</h3>
+              <div class="cf-split-grid">
+                <div class="cf-split-field">
+                  <label for="recurring-amount">Amount <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <input id="recurring-amount" formControlName="amount" type="number" min="0.01" step="0.01" placeholder="500" aria-required="true" />
+                </div>
+                <div class="cf-split-field">
+                  <label for="recurring-frequency">Frequency <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <select id="recurring-frequency" formControlName="frequency">
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="yearly">Yearly</option>
+                  </select>
+                </div>
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="recurring-next-run">Next run on <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <input id="recurring-next-run" formControlName="next_run_on" type="date" aria-required="true" />
+                </div>
+              </div>
+            </section>
+
+            <div class="cf-split-form-actions">
+              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
+                {{ saving ? 'Saving…' : 'Create schedule' }}
+              </button>
+              <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+            </div>
+          </form>
+        </article>
+      </aside>
+
+      <main class="cf-split-panel">
+        <article class="cf-split-card cf-split-card--list">
+          <header class="cf-split-card__header cf-split-card__header--list">
+            <div class="cf-split-card__header-copy">
+              <h2>Schedule list</h2>
+              <p>{{ activeCount }} active · {{ dueSoonCount }} due soon</p>
+            </div>
+            <div class="cf-split-list-toolbar">
+              <input type="search" [(ngModel)]="tableSearch" placeholder="Filter schedules…" aria-label="Filter schedules" class="cf-split-list-search" />
+            </div>
+          </header>
+
+          <div class="cf-split-list-body">
+            <div class="cf-split-table-scroll" *ngIf="filteredSchedules.length">
+              <table class="cf-table cf-split-table">
+                <thead>
+                  <tr>
+                    <th>Amount</th>
+                    <th>Frequency</th>
+                    <th>Next run</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr *ngFor="let schedule of filteredSchedules" [class.row-due]="isDueSoon(schedule)">
+                    <td>{{ schedule.amount | number:'1.2-2' }}</td>
+                    <td>{{ schedule.frequency }}</td>
+                    <td>{{ schedule.next_run_on | date }}</td>
+                    <td>
+                      <span class="status-pill" [class.status-pill--due]="isDueSoon(schedule)">{{ schedule.status }}</span>
+                    </td>
+                    <td class="row-actions">
+                      <button *ngIf="canCollect && schedule.status === 'active'" type="button" class="cf-btn" (click)="pause(schedule.id)">Pause</button>
+                      <button *ngIf="canCollect && schedule.status !== 'cancelled'" type="button" class="cf-btn" (click)="cancel(schedule.id)">Cancel</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p *ngIf="schedules.length && !filteredSchedules.length" class="cf-split-list-empty">No schedules match your filter.</p>
+
+            <div class="cf-split-list-empty-state" *ngIf="!schedules.length">
+              <app-cf-empty-state
+                icon="↻"
+                title="No recurring schedules"
+                description="Set up monthly or quarterly gifts for loyal supporters — then run due collections in one click."
+                [hasActions]="canCollect"
+              >
+                <button type="button" class="cf-btn cf-btn-primary" *ngIf="canCollect" (click)="openCreateForm()">Create schedule</button>
+                <a routerLink="/donations/donors" class="cf-btn">View donors</a>
+              </app-cf-empty-state>
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+  </ng-container>
+</section>

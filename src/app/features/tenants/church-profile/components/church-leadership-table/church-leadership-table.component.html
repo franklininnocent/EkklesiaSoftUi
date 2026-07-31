@@ -1,0 +1,188 @@
+<div class="clt">
+  <div class="clt__toolbar">
+    <div class="clt__toolbar-main">
+      <div class="clt__search">
+        <span class="clt__search-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><path d="m21 21-4.35-4.35"></path></svg>
+        </span>
+        <input
+          type="search"
+          [(ngModel)]="searchTerm"
+          (ngModelChange)="onSearchChange()"
+          placeholder="Search leaders..."
+          aria-label="Search church leaders"
+        />
+        <button
+          *ngIf="searchTerm"
+          type="button"
+          class="clt__search-clear"
+          (click)="clearSearch()"
+          aria-label="Clear search"
+        >
+          ×
+        </button>
+      </div>
+
+      <button type="button" class="clt__filter-toggle" [class.is-active]="showFilters" (click)="toggleFilters()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+        Filters
+        <span *ngIf="activeFilterCount" class="clt__filter-count">{{ activeFilterCount }}</span>
+      </button>
+
+      <span class="clt__summary">{{ summaryLabel }}</span>
+    </div>
+
+    <button *ngIf="canEdit" type="button" class="clt__add-btn" (click)="requestAdd()">
+      + Add Leader
+    </button>
+  </div>
+
+  <div class="clt__filters" *ngIf="showFilters">
+    <label class="clt__filter-field">
+      <span>Status</span>
+      <select [(ngModel)]="statusFilter" (ngModelChange)="onFilterChange()">
+        <option value="">All statuses</option>
+        <option value="active">Active</option>
+        <option value="inactive">Inactive</option>
+      </select>
+    </label>
+
+    <label class="clt__filter-field">
+      <span>Role</span>
+      <select [(ngModel)]="roleFilter" (ngModelChange)="onFilterChange()">
+        <option value="">All roles</option>
+        <option *ngFor="let role of roleFilterOptions" [value]="role">{{ role }}</option>
+      </select>
+    </label>
+
+    <label class="clt__filter-field">
+      <span>Primary Leader</span>
+      <select [(ngModel)]="primaryFilter" (ngModelChange)="onFilterChange()">
+        <option value="">All leaders</option>
+        <option value="primary">Primary only</option>
+        <option value="non_primary">Non-primary</option>
+      </select>
+    </label>
+
+    <button type="button" class="clt__clear-filters" *ngIf="activeFilterCount" (click)="clearAllFilters()">
+      Clear filters
+    </button>
+  </div>
+
+  <div class="clt__chips" *ngIf="activeFilterChips.length">
+    <button
+      type="button"
+      class="clt__chip"
+      *ngFor="let chip of activeFilterChips"
+      (click)="removeFilterChip(chip.key)"
+      [attr.aria-label]="'Remove filter ' + chip.label"
+    >
+      {{ chip.label }}: {{ chip.value }} ×
+    </button>
+    <button type="button" class="clt__chip clt__chip--clear" (click)="clearAllFilters()">Clear all</button>
+  </div>
+
+  <div *ngIf="loading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading leaders...</p>
+  </div>
+
+  <div *ngIf="!loading && !hasLeaders" class="empty-state">
+    <span class="empty-icon">👥</span>
+    <h3>No Leaders Added</h3>
+    <p>Add church leaders, pastors, and ministry heads.</p>
+    <button *ngIf="canEdit" type="button" class="btn btn-primary" (click)="requestAdd()">Add First Leader</button>
+  </div>
+
+  <div *ngIf="!loading && hasLeaders && !hasFilteredResults" class="empty-state">
+    <span class="empty-icon">🔎</span>
+    <h3>No Matching Leaders</h3>
+    <p>Try adjusting your search or filters.</p>
+    <button type="button" class="btn btn-secondary" (click)="clearAllFilters()">Reset filters</button>
+  </div>
+
+  <div *ngIf="!loading && hasFilteredResults" class="table-responsive">
+    <table class="data-table clt__table">
+      <thead>
+        <tr>
+          <th appSortable="full_name" [direction]="sortColumn === 'full_name' ? sortDirection : null" (sort)="onSort($event)">Name</th>
+          <th appSortable="role" [direction]="sortColumn === 'role' ? sortDirection : null" (sort)="onSort($event)">Role</th>
+          <th appSortable="title" [direction]="sortColumn === 'title' ? sortDirection : null" (sort)="onSort($event)">Title</th>
+          <th>Contact</th>
+          <th appSortable="active" [direction]="sortColumn === 'active' ? sortDirection : null" (sort)="onSort($event)">Status</th>
+          <th appSortable="is_primary" [direction]="sortColumn === 'is_primary' ? sortDirection : null" (sort)="onSort($event)">Primary</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let leader of paginatedLeaders" class="leader-row">
+          <td>
+            <button
+              type="button"
+              class="leader-name-link"
+              (click)="requestView(leader)"
+              [attr.aria-label]="'View details for ' + leader.full_name"
+            >
+              <strong>{{ leader.full_name }}</strong>
+            </button>
+          </td>
+          <td>{{ leader.role }}</td>
+          <td>{{ leader.title || 'N/A' }}</td>
+          <td>
+            <div *ngIf="leader.email">📧 {{ leader.email }}</div>
+            <div *ngIf="leader.phone">📞 {{ leader.phone }}</div>
+            <span *ngIf="!leader.email && !leader.phone" class="clt__muted">—</span>
+          </td>
+          <td>
+            <span class="badge" [class.badge-success]="isActive(leader)" [class.badge-secondary]="!isActive(leader)">
+              {{ isActive(leader) ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-warning" *ngIf="isPrimary(leader)">⭐ Primary</span>
+            <span *ngIf="!isPrimary(leader)" class="clt__muted">—</span>
+          </td>
+          <td>
+            <div class="action-buttons">
+              <button
+                class="btn-3d-mini btn-3d-view"
+                (click)="requestView(leader)"
+                title="View Details"
+                type="button"
+                [attr.aria-label]="'View details for ' + leader.full_name"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                  <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+              </button>
+              <button
+                *ngIf="canEdit"
+                class="btn-3d-mini btn-3d-edit"
+                (click)="requestEdit(leader)"
+                title="Edit Leader"
+                type="button"
+                [attr.aria-label]="'Edit ' + leader.full_name"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                </svg>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <app-pagination
+    *ngIf="!loading && hasFilteredResults"
+    [currentPage]="currentPage"
+    [pageSize]="pageSize"
+    [totalItems]="totalFiltered"
+    [pageSizeOptions]="pageSizeOptions"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
+  ></app-pagination>
+</div>

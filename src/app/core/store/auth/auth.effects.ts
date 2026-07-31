@@ -76,22 +76,17 @@ export class AuthEffects {
       switchMap(() =>
         this.authService.logout().pipe(
           map(() => AuthActions.logoutSuccess()),
-          catchError(error => of(AuthActions.logoutFailure({ error: error.message })))
+          catchError(() => of(AuthActions.logoutSuccess()))
         )
       )
     )
   );
 
-  logoutSuccess$ = createEffect(
-    () =>
-      this.actions$.pipe(
-        ofType(AuthActions.logoutSuccess),
-        tap(() => {
-          console.log('👋 Logout successful! Redirecting to login...');
-          this.router.navigate(['/auth/login']);
-        })
-      ),
-    { dispatch: false }
+  logoutSuccess$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(AuthActions.logoutSuccess),
+      map(() => TenantActions.clearCurrentTenant())
+    )
   );
 
   loadUser$ = createEffect(() =>

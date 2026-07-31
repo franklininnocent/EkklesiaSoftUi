@@ -152,23 +152,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
    */
   canManageRoles(user: User | null): boolean {
     if (!user) return false;
-    
-    // SuperAdmins and EkklesiaAdmins can always manage roles
-    if (user.role_name === 'SuperAdmin' || user.role_name === 'EkklesiaAdmin' || user.role_name === 'EkklesiaManager') {
-      return true;
-    }
-    
-    // Fallback: Check by role object
-    if (user.role?.name === 'SuperAdmin' || user.role?.name === 'EkklesiaAdmin' || user.role?.name === 'EkklesiaManager') {
-      return true;
-    }
-    
-    // Tenant Administrators can also manage roles for their tenant
-    if (user.role_name === 'Administrator' && user.tenant_id) {
-      return true;
-    }
-    
-    return false;
+    return this.authService.canAccessRbac(user);
   }
 
   /**
@@ -270,6 +254,22 @@ export class SettingsComponent implements OnInit, OnDestroy {
    */
   getVisibleSections(user: User | null): any[] {
     return this.settingsSections.filter(section => this.shouldDisplaySection(section, user));
+  }
+
+  private hasRoleName(user: User, roleName: string): boolean {
+    if (user.role_name === roleName || user.role?.name === roleName) {
+      return true;
+    }
+
+    return !!user.roles?.some(role => role.name === roleName);
+  }
+
+  private hasPermissionName(user: User, permissionName: string): boolean {
+    if (this.authService.hasAnyPermission([permissionName])) {
+      return true;
+    }
+
+    return !!user.permissions?.some(permission => permission.name === permissionName);
   }
 }
 

@@ -1,4 +1,4 @@
-import { Directive, EventEmitter, Input, Output, HostListener, HostBinding, ElementRef, Renderer2 } from '@angular/core';
+import { Directive, EventEmitter, Input, Output, HostListener, HostBinding, ElementRef, Renderer2, inject } from '@angular/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 
@@ -12,15 +12,17 @@ export interface SortEvent {
   standalone: true
 })
 export class SortableDirective {
-  @Input('appSortable') column: string = '';
+  @Input('appSortable') column = '';
   @Input() direction: SortDirection = null;
   @Output() sort = new EventEmitter<SortEvent>();
+  private readonly el = inject(ElementRef);
+  private readonly renderer = inject(Renderer2);
 
   @HostBinding('class.sortable') sortable = true;
   @HostBinding('class.asc') get isAsc() { return this.direction === 'asc'; }
   @HostBinding('class.desc') get isDesc() { return this.direction === 'desc'; }
 
-  constructor(private el: ElementRef, private renderer: Renderer2) {
+  constructor() {
     this.addSortIcon();
   }
 

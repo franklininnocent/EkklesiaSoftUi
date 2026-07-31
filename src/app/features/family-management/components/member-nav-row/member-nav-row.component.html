@@ -1,0 +1,29 @@
+<div
+  class="member-nav-row"
+  [class.is-selected]="selected"
+  [class.is-focused]="focused"
+  [class.is-inactive]="vm.member.status !== 'active'"
+  [class.has-missing-info]="vm.hasMissingInfo"
+  role="option"
+  [attr.id]="optionId"
+  [attr.aria-selected]="selected"
+  [attr.tabindex]="focused || selected ? 0 : -1"
+  (click)="onSelect()"
+  (keydown)="onKeydown($event)"
+>
+  <div class="member-nav-row__accent" aria-hidden="true"></div>
+
+  <div class="member-nav-row__avatar" aria-hidden="true">
+    <img *ngIf="vm.avatarUrl" [src]="vm.avatarUrl" [alt]="" class="member-nav-row__photo" />
+    <span *ngIf="!vm.avatarUrl" class="member-nav-row__initials">{{ vm.avatarInitial }}</span>
+  </div>
+
+  <div class="member-nav-row__body">
+    <div class="member-nav-row__primary">
+      <span class="member-nav-row__name">{{ vm.displayName }}</span>
+      <span class="member-nav-row__chip" [ngClass]="vm.membershipStatusClass">{{ vm.membershipStatusLabel }}</span>
+      <span class="member-nav-row__warn" *ngIf="vm.hasMissingInfo" title="Incomplete profile" aria-label="Incomplete profile">⚠</span>
+    </div>
+    <span class="member-nav-row__badge" [ngClass]="vm.relationshipBadgeClass">{{ vm.relationshipLabel }}</span>
+  </div>
+</div>

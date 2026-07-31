@@ -15,6 +15,28 @@ import { Subject, takeUntil } from 'rxjs';
 import { ChurchProfileService } from '@core/services/church/church-profile.service';
 import { ChurchProfile } from '@core/models/church';
 import { SacramentTypeLookupService, SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
+import { FamilyRelationshipNavigatorComponent } from '../family-relationship-navigator/family-relationship-navigator.component';
+import { FamilyMemberDetailPanelComponent } from '../family-member-detail-panel/family-member-detail-panel.component';
+import { DonationsService } from '@features/donations/services/donations.service';
+import { FamilyFinancialDashboardComponent } from '../family-financial-dashboard/family-financial-dashboard.component';
+import { DonationFamilyFinancialProfile } from '@features/donations/models/donation.model';
+import { NavigatorFilterKey } from '../../models/family-navigator.model';
+import {
+  isSacramentCompleted as sacramentCompleted,
+  resolveCanonicalSacrament as resolveSacrament
+} from '../../utils/sacrament-completion.util';
+import {
+  extractMemberApiError,
+  getMemberApiData,
+  getMemberApiMessage,
+  isMemberApiSuccess,
+  prepareFamilyMemberPayload
+} from '../../utils/prepare-family-member-payload.util';
+import { PhoneCodeService } from '@core/services/phone-code.service';
+
+type FamilyWorkspaceView = 'members' | 'financial';
+
+const WORKSPACE_TABS: FamilyWorkspaceView[] = ['members', 'financial'];
 
 const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
   { id: -1, name: 'Baptism', code: 'baptism', display_order: 1, active: true },
@@ -26,7 +48,15 @@ const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
 @Component({
   selector: 'app-family-detail',
   standalone: true,
-  imports: [CommonModule, FamilyFormComponent, FamilyMemberFormModalComponent, SacramentEditModalComponent],
+  imports: [
+    CommonModule,
+    FamilyFormComponent,
+    FamilyMemberFormModalComponent,
+    SacramentEditModalComponent,
+    FamilyRelationshipNavigatorComponent,
+    FamilyMemberDetailPanelComponent,
+    FamilyFinancialDashboardComponent
+  ],
   templateUrl: './family-detail.html',
   styleUrls: ['./family-detail.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -38,11 +68,16 @@ export class FamilyDetail implements OnInit, OnDestroy {
   showEdit = false;
   sacramentTypesDisplay: SacramentTypeDto[] = [...DEFAULT_SACRAMENT_TYPES];
   expandedMemberIndexes: Set<number> = new Set();
+  selectedMemberId: string | null = null;
+  searchQuery = '';
+  navigatorFilters: NavigatorFilterKey[] = [];
   showMemberModal = false;
+  memberModalSaving = false;
+  memberModalError: string | null = null;
   memberToEditIndex: number | null = null;
   memberToEdit: FamilyMemberFormValue | null = null;
   editingHeadImage = false;
-  headSacramentsExpanded = false;
+  headSacramentsExpanded = true;
   isHeadMemberMode = false; // Flag to indicate if we're adding/editing family head
   showSacramentModal = false;
   sacramentModalType: SacramentFormType = 'baptism';
@@ -51,24 +86,38 @@ export class FamilyDetail implements OnInit, OnDestroy {
   homeParishName: string | null = null;
   homeParishAddress: string | null = null;
   homeParishPriest: string | null = null;
+  familyFinancialProfile: DonationFamilyFinancialProfile | null = null;
+  workspaceView: FamilyWorkspaceView = 'members';
+  readonly workspaceTabs = WORKSPACE_TABS;
+  readonly workspaceTabLabels: Record<FamilyWorkspaceView, string> = {
+    members: 'Members',
+    financial: 'Financial 360°'
+  };
 
   private currentTenant: Tenant | null = null;
   private readonly destroy$ = new Subject<void>();
+
+  get callingCode(): string {
+    return this.phoneCodeService.getPhoneCodeSync();
+  }
 
   constructor(
     private route: ActivatedRoute,
     private router: Router,
     private familyService: FamilyService,
+    private phoneCodeService: PhoneCodeService,
     private toastService: ToastService,
     private store: Store,
     private churchProfileService: ChurchProfileService,
     private sacramentTypeLookup: SacramentTypeLookupService,
+    private donationsService: DonationsService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
     this.initializeHomeParishContext();
     this.loadSacramentTypes();
+    this.initializeWorkspaceView();
 
     const id = this.route.snapshot.paramMap.get('id') as string;
     if (!id) {
@@ -77,6 +126,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
     this.loadFamily(id);
+    this.loadFamilyFinancialSummary(id);
   }
 
   ngOnDestroy(): void {
@@ -351,46 +401,187 @@ export class FamilyDetail implements OnInit, OnDestroy {
   loadFamily(id: string): void {
     this.loading = true;
     this.error = null;
+    const previousSelectedId = this.selectedMemberId;
     this.cdr.markForCheck();
-    
+
     this.familyService.getFamily(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
+        next: (res) => this.applyFamilyLoadResponse(res, previousSelectedId, true),
+        error: (err) => this.applyFamilyLoadError(err)
+      });
+  }
+
+  private loadFamilyFinancialSummary(familyId: string): void {
+    this.donationsService.getFamilyFinancialProfile(familyId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.familyFinancialProfile = response?.data ?? null;
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.familyFinancialProfile = null;
+          this.cdr.detectChanges();
+        }
+      });
+  }
+
+  reloadFamilyFinancialSummary(): void {
+    if (!this.family?.id) {
+      return;
+    }
+    this.loadFamilyFinancialSummary(this.family.id);
+  }
+
+  setWorkspaceView(view: FamilyWorkspaceView): void {
+    if (this.workspaceView === view) {
+      return;
+    }
+
+    this.workspaceView = view;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab: view === 'members' ? null : view },
+      queryParamsHandling: 'merge',
+      replaceUrl: true
+    });
+    this.cdr.markForCheck();
+  }
+
+  workspaceTabId(view: FamilyWorkspaceView): string {
+    return `family-workspace-tab-${view}`;
+  }
+
+  workspacePanelId(view: FamilyWorkspaceView): string {
+    return `family-workspace-panel-${view}`;
+  }
+
+  handleWorkspaceTabKeydown(event: KeyboardEvent, view: FamilyWorkspaceView): void {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      this.setWorkspaceView(view);
+      return;
+    }
+
+    const currentIndex = this.workspaceTabs.indexOf(view);
+    if (currentIndex === -1) {
+      return;
+    }
+
+    if (event.key === 'Home') {
+      event.preventDefault();
+      this.activateWorkspaceTab(this.workspaceTabs[0]);
+      return;
+    }
+
+    if (event.key === 'End') {
+      event.preventDefault();
+      this.activateWorkspaceTab(this.workspaceTabs[this.workspaceTabs.length - 1]);
+      return;
+    }
+
+    if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) {
+      return;
+    }
+
+    event.preventDefault();
+    const direction = event.key === 'ArrowRight' ? 1 : -1;
+    const nextIndex = Math.max(0, Math.min(this.workspaceTabs.length - 1, currentIndex + direction));
+    this.activateWorkspaceTab(this.workspaceTabs[nextIndex]);
+  }
+
+  private initializeWorkspaceView(): void {
+    this.applyWorkspaceViewFromQuery(this.route.snapshot.queryParamMap.get('tab'));
+
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((params) => {
+        this.applyWorkspaceViewFromQuery(params.get('tab'));
+      });
+  }
+
+  private applyWorkspaceViewFromQuery(tab: string | null): void {
+    const view: FamilyWorkspaceView = tab === 'financial' ? 'financial' : 'members';
+    if (this.workspaceView === view) {
+      return;
+    }
+
+    this.workspaceView = view;
+    this.cdr.markForCheck();
+  }
+
+  private activateWorkspaceTab(view: FamilyWorkspaceView): void {
+    this.setWorkspaceView(view);
+    document.getElementById(this.workspaceTabId(view))?.focus();
+  }
+
+  /** Refresh family data after member save without hiding the page behind the full-page loader. */
+  private reloadFamilyAfterMemberSave(familyId: string, newMemberId?: string | null): void {
+    this.familyService.getFamily(familyId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
         next: (res) => {
-          if (res.success && res.data) {
-            this.error = null;
-            this.family = res.data;
-            this.headSacramentsExpanded = false;
-            this.expandedMemberIndexes.clear();
-
-            if (!this.homeParishName) {
-              this.homeParishName = this.currentTenant?.name || this.homeParishName;
-            }
-
-            if (!this.homeParishAddress) {
-              this.homeParishAddress = this.composeTenantAddress(this.currentTenant ?? ({} as Tenant)) || this.homeParishAddress;
-            }
-
-            if (!this.homeParishPriest) {
-              this.homeParishPriest = this.currentTenant?.pastor_name || this.homeParishPriest;
-            }
-          } else {
-            this.family = null;
-            this.error = (res.message && res.message.trim().length > 0) ? res.message : 'Failed to load family';
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
+          const previousSelectedId = newMemberId || this.selectedMemberId;
+          this.applyFamilyLoadResponse(res, previousSelectedId, false);
         },
         error: (err) => {
-          this.family = null;
-          const apiMessage = err?.error?.message;
-          this.error = (typeof apiMessage === 'string' && apiMessage.trim().length > 0)
-            ? apiMessage
-            : 'Failed to load family';
-          this.loading = false;
+          console.error('Error refreshing family after member save:', err);
           this.cdr.markForCheck();
         }
       });
+  }
+
+  private applyFamilyLoadResponse(
+    res: { success?: boolean; data?: Family; message?: string },
+    previousSelectedId: string | null,
+    fromFullPageLoad: boolean
+  ): void {
+    if (res.success && res.data) {
+      this.error = null;
+      this.family = res.data;
+      this.headSacramentsExpanded = true;
+      this.expandedMemberIndexes.clear();
+
+      const stillExists = previousSelectedId &&
+        this.family.members?.some((m) => m.id === previousSelectedId);
+      if (stillExists) {
+        this.selectedMemberId = previousSelectedId;
+      } else {
+        this.selectInitialMember();
+      }
+
+      if (!this.homeParishName) {
+        this.homeParishName = this.currentTenant?.name || this.homeParishName;
+      }
+
+      if (!this.homeParishAddress) {
+        this.homeParishAddress =
+          this.composeTenantAddress(this.currentTenant ?? ({} as Tenant)) || this.homeParishAddress;
+      }
+
+      if (!this.homeParishPriest) {
+        this.homeParishPriest = this.currentTenant?.pastor_name || this.homeParishPriest;
+      }
+    } else if (fromFullPageLoad) {
+      this.family = null;
+      this.error = (res.message && res.message.trim().length > 0) ? res.message : 'Failed to load family';
+    }
+
+    if (fromFullPageLoad) {
+      this.loading = false;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private applyFamilyLoadError(err: { error?: { message?: string } }): void {
+    this.family = null;
+    const apiMessage = err?.error?.message;
+    this.error = (typeof apiMessage === 'string' && apiMessage.trim().length > 0)
+      ? apiMessage
+      : 'Failed to load family';
+    this.loading = false;
+    this.cdr.markForCheck();
   }
 
   openEdit(): void {
@@ -806,48 +997,82 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   isSacramentCompleted(member: FamilyMember | null | undefined, code: string): boolean {
-    if (!member) {
-      return false;
-    }
-    const canonical = this.resolveCanonicalSacrament(code);
-    switch (canonical) {
-      case 'baptism':
-        return !!member.baptism_date;
-      case 'first_communion':
-        return !!member.first_communion_date;
-      case 'confirmation':
-        return !!member.confirmation_date;
-      case 'marriage':
-        return !!member.marriage_date;
-      default:
-        return false;
-    }
+    return sacramentCompleted(member, code);
   }
 
   private resolveCanonicalSacrament(code: string): SacramentFormType | null {
-    if (!code) {
+    return resolveSacrament(code);
+  }
+
+  selectInitialMember(): void {
+    const head = this.getFamilyHead();
+    if (head?.id) {
+      this.selectedMemberId = head.id;
+      return;
+    }
+    const first = this.family?.members?.[0];
+    this.selectedMemberId = first?.id ?? null;
+  }
+
+  getHeadMemberId(): string | null {
+    return this.getFamilyHead()?.id ?? null;
+  }
+
+  getSelectedMemberIndex(): number | null {
+    if (!this.selectedMemberId || !this.family?.members) {
       return null;
     }
-    const normalized = code.trim().toLowerCase();
-    switch (normalized) {
-      case 'baptism':
-        return 'baptism';
-      case 'first_communion':
-      case 'first holy communion':
-      case 'eucharist':
-      case 'eucharist (first holy communion)':
-      case 'holy communion':
-      case 'eucharist (holy communion)':
-        return 'first_communion';
-      case 'confirmation':
-        return 'confirmation';
-      case 'marriage':
-      case 'matrimony':
-      case 'matrimony (marriage)':
-        return 'marriage';
-      default:
-        return null;
+    const idx = this.family.members.findIndex((m) => m.id === this.selectedMemberId);
+    return idx >= 0 ? idx : null;
+  }
+
+  isSelectedMemberHead(): boolean {
+    const idx = this.getSelectedMemberIndex();
+    return idx !== null && this.isHeadMember(idx);
+  }
+
+  showHeadWithoutMemberPanel(): boolean {
+    return !!this.family?.head_of_family && !this.getFamilyHead();
+  }
+
+  onNavigatorSelectMember(index: number): void {
+    const member = this.family?.members?.[index];
+    if (member?.id) {
+      this.selectedMemberId = member.id;
+      this.cdr.markForCheck();
     }
+  }
+
+  onNavigatorSearchChange(query: string): void {
+    this.searchQuery = query;
+    this.cdr.markForCheck();
+  }
+
+  onNavigatorFilterToggle(key: NavigatorFilterKey): void {
+    const idx = this.navigatorFilters.indexOf(key);
+    if (idx >= 0) {
+      this.navigatorFilters = this.navigatorFilters.filter((f) => f !== key);
+    } else {
+      this.navigatorFilters = [...this.navigatorFilters, key];
+    }
+    this.cdr.markForCheck();
+  }
+
+  onNavigatorAddMember(): void {
+    this.memberToEditIndex = null;
+    this.memberToEdit = null;
+    this.isHeadMemberMode = false;
+    this.memberModalError = null;
+    this.memberModalSaving = false;
+    this.showMemberModal = true;
+  }
+
+  onPanelSacramentModal(event: { index: number; code: string }): void {
+    this.openSacramentModal(event.index, event.code);
+  }
+
+  onPanelHeadSacramentModal(code: string): void {
+    this.openHeadSacramentModal(code);
   }
 
   openSacramentModal(memberIndex: number, sacrament: string, event?: Event): void {
@@ -1131,6 +1356,8 @@ export class FamilyDetail implements OnInit, OnDestroy {
       };
     }
     
+    this.memberModalError = null;
+    this.memberModalSaving = false;
     this.showMemberModal = true;
   }
 
@@ -1140,6 +1367,8 @@ export class FamilyDetail implements OnInit, OnDestroy {
     // Store the member data once when opening the modal to prevent re-patching the form
     // This ensures the form only gets the initial data and user changes are preserved
     this.memberToEdit = this.getMemberFormValue(index);
+    this.memberModalError = null;
+    this.memberModalSaving = false;
     this.showMemberModal = true;
   }
 
@@ -1170,6 +1399,8 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   onMemberModalSave(value: FamilyMemberFormValue): void {
+    this.memberModalError = null;
+
     // CRITICAL: If this is head member mode, ensure relationship is always 'self'
     if (this.isHeadMemberMode) {
       value.relationship_to_head = 'self';
@@ -1177,74 +1408,42 @@ export class FamilyDetail implements OnInit, OnDestroy {
     
     // If memberToEditIndex is null, this is a new member (add mode)
     if (this.memberToEditIndex === null) {
-      // Adding new member (could be head or regular member)
-      if (!this.family || !this.family.id) {
-        this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
+      if (!this.family?.id) {
+        this.memberModalError = 'Family not loaded. Please refresh and try again.';
         return;
       }
-      
-      // Prepare payload - remove id field for new members
-      const payload: any = { ...value };
-      delete payload.id;
-      
-      // Ensure family_id is properly converted to string and trimmed
-      const familyId = String(this.family.id || '').trim();
-      
-      // Validate that ID is not empty after trimming
-      if (!familyId) {
-        this.toastService.error('Invalid family ID. Please refresh and try again.', 'Error', 5000);
-        return;
-      }
-      
-      // Validate family ID is a UUID
+
+      const familyId = String(this.family.id).trim();
       const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       if (!uuidRegex.test(familyId)) {
-        this.toastService.error('Invalid family ID format. Please refresh and try again.', 'Error', 5000);
-        console.error('Invalid family ID format:', familyId);
+        this.memberModalError = 'Invalid family ID format. Please refresh and try again.';
         return;
       }
-      
-      console.log('Adding new family member (head mode:', this.isHeadMemberMode, '):', {
-        familyId,
-        memberName: `${value.first_name} ${value.last_name}`,
-        relationship: value.relationship_to_head,
-        payloadKeys: Object.keys(payload)
-      });
-      
+
+      const payload = prepareFamilyMemberPayload(value, this.callingCode);
+      this.memberModalSaving = true;
+
       this.familyService.addFamilyMember(familyId, payload)
         .pipe(takeUntil(this.destroy$))
         .subscribe({
           next: (res) => {
-            if (res.success) {
-              this.toastService.success('Member added successfully', 'Success', 4000);
-              this.showMemberModal = false;
-              this.memberToEditIndex = null;
-              this.memberToEdit = null;
-              this.isHeadMemberMode = false;
-              // Reload family to get updated data from server
-              if (this.family?.id) {
-                this.loadFamily(String(this.family.id));
-              }
+            this.memberModalSaving = false;
+            if (isMemberApiSuccess(res)) {
+              const savedMember = getMemberApiData<FamilyMember>(res);
+              this.finishMemberModalSuccess(
+                getMemberApiMessage(res, 'Member added successfully'),
+                familyId,
+                savedMember?.id ?? null
+              );
             } else {
-              this.toastService.error(res.message || 'Failed to add member', 'Error', 5000);
+              this.memberModalError = getMemberApiMessage(res, 'Failed to add member');
+              this.cdr.markForCheck();
             }
-            this.cdr.markForCheck();
           },
           error: (err) => {
             console.error('Error adding family member:', err);
-            let errorMessage = 'Failed to add member';
-            
-            if (err?.error) {
-              if (err.error.errors) {
-                // Validation errors
-                const validationErrors = Object.values(err.error.errors).flat();
-                errorMessage = validationErrors.join(', ') || errorMessage;
-              } else if (err.error.message) {
-                errorMessage = err.error.message;
-              }
-            }
-            
-            this.toastService.error(errorMessage, 'Error', 6000);
+            this.memberModalSaving = false;
+            this.memberModalError = extractMemberApiError(err, 'Failed to add member');
             this.cdr.markForCheck();
           }
         });
@@ -1277,9 +1476,8 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
     
-    // Prepare payload - remove id field (handled by URL parameter)
-    const payload: any = { ...value };
-    delete payload.id;
+    const payload = prepareFamilyMemberPayload(value, this.callingCode);
+    this.memberModalSaving = true;
     
     // Ensure family_id is properly converted to string and trimmed
     const familyId = String(this.family.id || '').trim();
@@ -1302,53 +1500,53 @@ export class FamilyDetail implements OnInit, OnDestroy {
       memberId,
       memberName: `${member.first_name} ${member.last_name}`,
       payloadKeys: Object.keys(payload),
-      payloadStatus: payload.status
+      payloadStatus: payload['status']
     });
     
     this.familyService.updateFamilyMember(familyId, memberId, payload)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
-          if (res.success) {
-            this.toastService.success('Member updated successfully', 'Success', 4000);
-            this.showMemberModal = false;
-            this.memberToEditIndex = null;
-            this.memberToEdit = null;
-            this.isHeadMemberMode = false; // Reset flag
-            // Reload family to get updated data from server
-            if (this.family?.id) {
-              this.loadFamily(String(this.family.id));
-            }
+          this.memberModalSaving = false;
+          if (isMemberApiSuccess(res)) {
+            const savedMember = getMemberApiData<FamilyMember>(res);
+            this.finishMemberModalSuccess(
+              getMemberApiMessage(res, 'Member updated successfully'),
+              familyId,
+              savedMember?.id ?? memberId
+            );
           } else {
-            this.toastService.error(res.message || 'Failed to update member', 'Error', 5000);
+            this.memberModalError = getMemberApiMessage(res, 'Failed to update member');
+            this.cdr.markForCheck();
           }
-          this.cdr.markForCheck();
         },
         error: (err) => {
           console.error('Error updating family member:', err);
-          let errorMessage = 'Failed to update member';
-          
-          if (err?.error) {
-            if (err.error.errors) {
-              // Validation errors
-              const validationErrors = Object.values(err.error.errors).flat();
-              errorMessage = validationErrors.join(', ') || errorMessage;
-            } else if (err.error.message) {
-              errorMessage = err.error.message;
-            }
-          }
-          
-          this.toastService.error(errorMessage, 'Error', 6000);
+          this.memberModalSaving = false;
+          this.memberModalError = extractMemberApiError(err, 'Failed to update member');
           this.cdr.markForCheck();
         }
       });
   }
 
   onMemberModalCancel(): void {
+    this.closeMemberModal();
+  }
+
+  private finishMemberModalSuccess(message: string, familyId: string, selectMemberId?: string | null): void {
+    this.closeMemberModal();
+    this.toastService.success(message, 'Success', 4000);
+    this.reloadFamilyAfterMemberSave(familyId, selectMemberId ?? null);
+  }
+
+  private closeMemberModal(): void {
     this.showMemberModal = false;
     this.memberToEditIndex = null;
     this.memberToEdit = null;
-    this.isHeadMemberMode = false; // Reset flag
+    this.isHeadMemberMode = false;
+    this.memberModalError = null;
+    this.memberModalSaving = false;
+    this.cdr.markForCheck();
   }
 
   // ==================== FAMILY PROFILE IMAGE OPERATIONS ====================

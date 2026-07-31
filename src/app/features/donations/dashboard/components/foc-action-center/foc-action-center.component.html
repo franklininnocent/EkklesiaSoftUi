@@ -1,0 +1,39 @@
+<section class="foc-action-center" id="foc-action-center" aria-label="Action center">
+  <header>
+    <h2>Action Center</h2>
+    <p>Prioritized work queues for today's financial operations</p>
+  </header>
+  <div
+    class="foc-action-grid"
+    role="list"
+    aria-label="Prioritized work queues"
+    *ngIf="queues.length; else emptyActionCenter"
+  >
+    <article
+      class="foc-action-card"
+      role="listitem"
+      tabindex="0"
+      *ngFor="let queue of queues; let i = index"
+      [attr.data-priority]="queue.priority"
+      [class.foc-action-card--focused]="focusedIndex === i"
+      (focus)="focusedIndex = i"
+      (keydown)="onQueueKeydown($event, i)"
+    >
+      <div class="foc-action-card__head">
+        <h3>{{ queue.title }}</h3>
+        <span class="foc-priority">{{ queue.priority }}</span>
+      </div>
+      <p>{{ queue.summary }}</p>
+      <div class="foc-action-card__metrics">
+        <span>{{ queue.affected_count }} affected</span>
+        <strong *ngIf="queue.expected_amount > 0">{{ formatCurrency(queue.expected_amount) }}</strong>
+      </div>
+      <div class="foc-action-card__actions">
+        <a *ngFor="let action of queue.suggested_actions" [routerLink]="queue.cta_route" class="foc-btn foc-btn--subtle">{{ action }}</a>
+      </div>
+    </article>
+  </div>
+  <ng-template #emptyActionCenter>
+    <p class="foc-empty">All work queues are clear. Monitor collections and family engagement throughout the week.</p>
+  </ng-template>
+</section>

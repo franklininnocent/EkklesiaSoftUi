@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges, OnInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
@@ -79,6 +79,7 @@ function createLocalPhoneValidator(getDialCode: () => string): ValidatorFn {
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent],
   templateUrl: './family-member-form-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-member-form-modal.component.scss']
 })
 export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
@@ -117,7 +118,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       relationship_to_head: ['other', Validators.required],
       marital_status: ['single'],
       phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
-      email: ['', Validators.email],
+      email: ['', [Validators.email]],
       occupation: [''],
       education: [''],
       baptism_date: [''],
@@ -527,8 +528,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
     }
     
     this.errorMessage = null;
-    this._saving = true;
-    
+
     // CRITICAL: If isHeadOnly mode, ensure relationship is always 'self'
     if (this.isHeadOnly) {
       this.form.get('relationship_to_head')?.setValue('self', { emitEvent: false });
@@ -615,13 +615,9 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       fullFormValue: formValue
     });
     
-    // Ensure phone has country code applied (user enters local part only)
-    formValue.phone = this.formatPhoneForApi(formValue.phone);
-    
+    // Phone stays as local digits; parent/API layer applies country code when posting
     const value = formValue as FamilyMemberFormValue;
     this.save.emit(value);
-    
-    // Note: saving flag will be reset by parent component after API call completes
   }
 
   onCancel(): void {
@@ -672,32 +668,6 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
     return digitsOnlyPhone;
   }
 
-  /**
-   * Apply the current country dial code to the phone input before submitting to parent/API.
-   * The phone input component stores only digits, so we need to add the country code.
-   */
-  private formatPhoneForApi(raw: string | null | undefined): string | null {
-    if (raw === null || raw === undefined || !raw) {
-      return null;
-    }
-
-    const trimmed = String(raw).trim();
-    if (!trimmed) {
-      return null;
-    }
-
-    // Phone input component already stores only digits
-    const digits = trimmed.replace(/\D/g, '');
-    if (!digits) {
-      return null;
-    }
-
-    // Get phone code from service
-    const dialCode = this.phoneCodeService.getPhoneCodeSync() || '+1';
-    
-    // Combine dial code with digits
-    return dialCode + ' ' + digits;
-  }
 }
 
 

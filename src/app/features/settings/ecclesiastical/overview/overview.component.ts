@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { DioceseService, BishopService } from '@core/services/ecclesiastical';
@@ -38,6 +38,7 @@ interface BishopStatistics {
     EmptyStateComponent
   ],
   templateUrl: './overview.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './overview.component.scss'
 })
 export class EcclesiasticalOverviewComponent implements OnInit, OnDestroy {

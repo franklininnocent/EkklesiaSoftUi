@@ -1,3 +1,36 @@
+.family-financial-summary {
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.financial-metrics {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-weight: 600;
+}
+
+.financial-section {
+  margin-top: 0.85rem;
+}
+
+.financial-section h4 {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+}
+
+.financial-list {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #374151;
+}
+
+.financial-list li + li {
+  margin-top: 0.25rem;
+}
 @mixin card {
   background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
   border: 1px solid #e5e7eb;
@@ -106,6 +139,109 @@
   padding: 1.5rem;
   min-height: 100vh;
   box-sizing: border-box;
+}
+
+.family-360-layout {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.family-360-nav {
+  width: 360px;
+  flex-shrink: 0;
+  position: sticky;
+  top: var(--app-header-offset, 16px);
+  align-self: flex-start;
+  z-index: 1;
+}
+
+.family-360-detail {
+  flex: 1;
+  min-width: 0;
+  min-height: calc(100vh - var(--app-header-offset, 80px) - 3rem);
+  overflow: visible;
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+
+  app-family-member-detail-panel {
+    display: block;
+    width: 100%;
+    min-height: inherit;
+  }
+}
+
+.family-360-workspace {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+  padding: 0.2rem;
+  border: 1px solid var(--cf-panel-border, #e2e8f0);
+  border-radius: var(--cf-radius-sm, 10px);
+  background: var(--cf-slate-50, #f8fafc);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.family-360-workspace__tab {
+  position: relative;
+  border: 1px solid transparent;
+  background: transparent;
+  border-radius: var(--cf-radius-sm, 8px);
+  padding: 0.5rem 0.85rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--cf-muted, #64748b);
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+
+  &:hover {
+    color: var(--cf-slate-900, #0f172a);
+    background: rgba(255, 255, 255, 0.75);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-primary, #4f46e5);
+    outline-offset: 1px;
+  }
+
+  &.active {
+    color: var(--cf-slate-900, #0f172a);
+    background: #fff;
+    border-color: var(--cf-panel-border, #e2e8f0);
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  }
+
+  &.active::after {
+    content: '';
+    position: absolute;
+    left: 0.65rem;
+    right: 0.65rem;
+    bottom: 0.3rem;
+    height: 2px;
+    border-radius: 999px;
+    background: var(--cf-primary, #4f46e5);
+  }
+}
+
+@media (max-width: 960px) {
+  .family-360-layout {
+    flex-direction: column;
+  }
+
+  .family-360-nav {
+    width: 100%;
+    max-width: 100%;
+    position: static;
+  }
+
+  .family-360-detail {
+    min-height: 0;
+    width: 100%;
+  }
 }
 
 .detail-header {
@@ -431,11 +567,11 @@
         position: relative;
         cursor: pointer;
         flex-shrink: 0;
-        width: 120px;
-        height: 120px;
-        border-radius: 12px;
+        width: 72px;
+        height: 72px;
+        border-radius: 10px;
         overflow: hidden;
-        border: 3px solid #e5e7eb;
+        border: 2px solid #e5e7eb;
         background: linear-gradient(135deg, #eef2ff 0%, #e9d5ff 100%);
         transition: all 0.3s ease;
         
@@ -1391,9 +1527,6 @@
   .member-card-view .details-grid { grid-template-columns: 1fr; }
 }
 
-@media (max-width: 900px) {
-  .members-card-grid { column-count: 1; }
-}
 
 @media (min-width: 1280px) {
   .member-card-view .details-grid { grid-template-columns: repeat(3, minmax(240px,1fr)); }

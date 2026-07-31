@@ -1,0 +1,182 @@
+<header class="foc-exec" aria-label="Financial operations command center">
+  <!-- Row 1: Global context bar -->
+  <div class="foc-exec__context-bar">
+    <div class="foc-exec__church">
+      <span class="foc-exec__icon foc-exec__icon--church" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+          <path d="M12 3 4 9v12h16V9L12 3Z" />
+          <path d="M9 21v-6h6v6" />
+        </svg>
+      </span>
+      <span class="foc-exec__church-name">{{ data.meta.church_name }}</span>
+    </div>
+
+    <p class="foc-exec__center-mark">Financial Operations Center</p>
+
+    <div class="foc-exec__context-actions">
+      <app-foc-operations-hub
+        [data]="data"
+        [currencyCode]="currencyCode"
+        (quickCollect)="quickCollect.emit()"
+        (recordExpense)="recordExpense.emit()"
+      />
+
+      <div class="foc-exec__view-toggle" *ngIf="rollup?.available" role="group" aria-label="Dashboard scope">
+        <button type="button" [class.is-active]="dashboardView === 'local'" (click)="dashboardViewChange.emit('local')">Parish</button>
+        <button type="button" [class.is-active]="dashboardView === 'rollup'" (click)="dashboardViewChange.emit('rollup')">Diocese</button>
+      </div>
+
+      <div class="foc-exec__period" role="group" aria-label="Reporting period">
+        <span class="foc-exec__period-label">
+          <svg class="foc-exec__period-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+          </svg>
+          <span>Period</span>
+        </span>
+        <div class="foc-exec__period-toggle">
+          <button
+            type="button"
+            *ngFor="let option of periodOptions"
+            [class.is-active]="period === option.value"
+            [attr.aria-pressed]="period === option.value"
+            [attr.title]="option.title"
+            (click)="onPeriodChange(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
+      <button type="button" class="foc-exec__icon-btn" (click)="refresh.emit()" aria-label="Refresh dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+          <path d="M21 3v6h-6" />
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Row 2: Hero command center -->
+  <div class="foc-exec__hero">
+    <div class="foc-exec__hero-copy">
+      <p class="foc-exec__eyebrow">Stewardship Operations</p>
+      <h1>Financial Operations Center</h1>
+      <p class="foc-exec__subtitle">
+        Monitor collections, family contributions, funding performance, and financial health across the parish.
+      </p>
+
+      <div class="foc-exec__hero-badges">
+        <span class="foc-exec__badge" *ngIf="financialYearLabel">
+          <span class="foc-exec__icon foc-exec__icon--sm" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          </span>
+          {{ financialYearLabel }}
+        </span>
+        <span class="foc-exec__badge">
+          <span class="foc-exec__icon foc-exec__icon--sm" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </span>
+          {{ roleLabel }}
+        </span>
+        <span class="foc-exec__badge" [class.foc-exec__badge--success]="collectionsActive">
+          <span class="foc-exec__icon foc-exec__icon--sm" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          </span>
+          {{ collectionsActive ? 'Collections Active' : 'Collections Idle' }}
+        </span>
+        <span class="foc-exec__badge" *ngIf="familiesContributedToday > 0">
+          <span class="foc-exec__icon foc-exec__icon--sm" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </span>
+          {{ familiesContributedToday }} {{ familiesContributedToday === 1 ? 'Family' : 'Families' }} Contributed Today
+        </span>
+      </div>
+
+      <div class="foc-exec__status" [attr.data-status]="data.health_index?.status || 'attention'">
+        <span class="foc-exec__status-dot" aria-hidden="true"></span>
+        <div class="foc-exec__status-copy">
+          <strong>{{ operationalHeadline }}</strong>
+          <p>
+            {{ contributionsTodayCount }} {{ contributionsTodayCount === 1 ? 'contribution' : 'contributions' }} received today
+            <span class="foc-exec__status-sep" aria-hidden="true">·</span>
+            {{ overdueAttentionCount }} overdue {{ overdueAttentionCount === 1 ? 'collection requires' : 'collections require' }} attention
+            <span class="foc-exec__status-sep" aria-hidden="true">·</span>
+            Last sync {{ syncLabel }}
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <div class="foc-exec__hero-actions">
+      <button type="button" class="foc-exec__cta" (click)="quickCollect.emit()">
+        <span class="foc-exec__icon foc-exec__icon--cta" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </span>
+        Collect Contribution
+      </button>
+
+      <div class="foc-exec__action-group" role="toolbar" aria-label="Financial operations actions">
+        <button type="button" (click)="recordExpense.emit()">Record Expense</button>
+        <a routerLink="/donations/projects">Create Project</a>
+        <a routerLink="/donations/receipts">Receipts</a>
+        <a [routerLink]="['/donations/reports']" [queryParams]="{ period }">Export Report</a>
+        <button type="button" (click)="scrollToAdvisor.emit()">AI Insights</button>
+      </div>
+
+      <div class="foc-exec__persona-actions" *ngIf="persona?.quick_actions?.length" role="toolbar" aria-label="Persona quick actions">
+        <button type="button" *ngFor="let action of persona?.quick_actions" (click)="quickAction.emit(action.id)">
+          {{ action.label }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Row 3: Operational snapshot strip -->
+  <div class="foc-exec__snapshots" aria-label="Operational snapshot">
+    <article class="foc-exec__snapshot">
+      <span class="foc-exec__snapshot-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      </span>
+      <div>
+        <span class="foc-exec__snapshot-label">Today's Collections</span>
+        <strong class="foc-exec__snapshot-value">{{ formatCurrency(todayCollected) }}</strong>
+      </div>
+    </article>
+
+    <article class="foc-exec__snapshot">
+      <span class="foc-exec__snapshot-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </span>
+      <div>
+        <span class="foc-exec__snapshot-label">Active Contributors</span>
+        <strong class="foc-exec__snapshot-value">{{ activeContributors }} {{ activeContributors === 1 ? 'Family' : 'Families' }}</strong>
+      </div>
+    </article>
+
+    <article class="foc-exec__snapshot">
+      <span class="foc-exec__snapshot-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+      </span>
+      <div>
+        <span class="foc-exec__snapshot-label">Outstanding Dues</span>
+        <strong class="foc-exec__snapshot-value">{{ formatCurrency(outstandingDues) }}</strong>
+      </div>
+    </article>
+
+    <app-foc-collection-health-kpi
+      *ngIf="collectionHealth"
+      [health]="collectionHealth"
+    ></app-foc-collection-health-kpi>
+
+    <article class="foc-exec__snapshot">
+      <span class="foc-exec__snapshot-icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+      </span>
+      <div>
+        <span class="foc-exec__snapshot-label">Funding Status</span>
+        <strong class="foc-exec__snapshot-value">{{ fundingStatusLabel }}</strong>
+      </div>
+    </article>
+  </div>
+</header>

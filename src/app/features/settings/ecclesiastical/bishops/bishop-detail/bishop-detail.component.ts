@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { BishopService } from '@core/services/ecclesiastical';
@@ -17,6 +17,7 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
     ConfirmationModalComponent
   ],
   templateUrl: './bishop-detail.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './bishop-detail.component.scss'
 })
 export class BishopDetailComponent implements OnInit {

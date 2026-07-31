@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, inject, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '@core/services';
@@ -9,6 +9,7 @@ import { take } from 'rxjs/operators';
   standalone: true,
   imports: [CommonModule, RouterModule],
   templateUrl: './ecclesiastical.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './ecclesiastical.component.scss'
 })
 export class EcclesiasticalComponent implements OnInit {

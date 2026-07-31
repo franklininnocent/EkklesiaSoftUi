@@ -12,16 +12,21 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
 
       if (error.error instanceof ErrorEvent) {
         // Client-side error
-        errorMessage = `Error: ${error.error.message}`;
+        errorMessage = 'A network error occurred while processing your request. Please try again.';
       } else {
         // Server-side error
         switch (error.status) {
+          case 0:
+            errorMessage = 'Unable to reach the server right now. Please check your internet connection and try again.';
+            break;
           case 400:
             errorMessage = error.error?.message || 'Bad Request';
             break;
           case 401:
             errorMessage = 'Unauthorized. Please login again.';
-            router.navigate(['/auth/login']);
+            if (!req.url.includes('/auth/logout')) {
+              router.navigate(['/auth/login']);
+            }
             break;
           case 403:
             errorMessage = 'Forbidden. You do not have permission.';
@@ -36,7 +41,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             errorMessage = 'Internal server error. Please try again later.';
             break;
           default:
-            errorMessage = error.error?.message || `Error Code: ${error.status}`;
+            errorMessage = error.error?.message || 'Something went wrong. Please try again.';
         }
       }
 

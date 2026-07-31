@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, NavigationEnd, ActivatedRoute } from '@angular/router';
 import { filter, distinctUntilChanged } from 'rxjs/operators';
@@ -14,6 +14,7 @@ export interface Breadcrumb {
   standalone: true,
   imports: [CommonModule],
   templateUrl: './breadcrumb.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./breadcrumb.scss']
 })
 export class BreadcrumbComponent implements OnInit {

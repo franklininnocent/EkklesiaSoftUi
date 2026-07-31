@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, tap, map } from 'rxjs';
+import { Observable, BehaviorSubject, tap, map, catchError, throwError, of, timeout, finalize } from 'rxjs';
 import { Router } from '@angular/router';
 import { environment } from '@environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from '@core/models';
@@ -14,6 +14,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private phoneCodeService = inject(PhoneCodeService);
+  private readonly authEndpointPrefix = '/auth';
   
   private currentUserSubject = new BehaviorSubject<User | null>(this.getUserFromStorage());
   public currentUser$ = this.currentUserSubject.asObservable();
@@ -21,28 +22,30 @@ export class AuthService {
   constructor() {}
 
   register(data: RegisterRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/register`, data)
+    return this.postWithFallback<AuthResponse>('/register', data)
       .pipe(
         tap(response => this.handleAuthSuccess(response))
       );
   }
 
   login(credentials: LoginRequest): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/login`, credentials)
+    return this.postWithFallback<AuthResponse>('/login', credentials)
       .pipe(
         tap(response => this.handleAuthSuccess(response))
       );
   }
 
   logout(): Observable<any> {
-    return this.http.post(`${environment.apiUrl}/auth/logout`, {})
+    return this.postWithFallback('/logout', {})
       .pipe(
-        tap(() => this.handleLogout())
+        timeout(5000),
+        catchError(() => of(null)),
+        finalize(() => this.handleLogout())
       );
   }
 
   getCurrentUser(): Observable<User> {
-    return this.http.get<{ success: boolean; data: User; message: string }>(`${environment.apiUrl}/auth/get-user`)
+    return this.getWithFallback<{ success: boolean; data: User; message: string }>('/get-user')
       .pipe(
         // Extract the user data from the response
         map(response => response.data)
@@ -69,7 +72,7 @@ export class AuthService {
   }
 
   refreshTokens(refreshToken: string): Observable<AuthResponse> {
-    return this.http.post<AuthResponse>(`${environment.apiUrl}/auth/refresh`, { refresh_token: refreshToken })
+    return this.postWithFallback<AuthResponse>('/refresh', { refresh_token: refreshToken })
       .pipe(
         tap(response => this.handleAuthSuccess(response))
       );
@@ -98,6 +101,60 @@ export class AuthService {
 
   private setToken(token: string): void {
     localStorage.setItem(environment.tokenKey, token);
+  }
+
+  private postWithFallback<T>(path: string, payload: unknown): Observable<T> {
+    const primaryUrl = this.buildPrimaryAuthUrl(path);
+    const fallbackUrl = this.buildFallbackAuthUrl(path);
+
+    return this.http.post<T>(primaryUrl, payload).pipe(
+      catchError((error) => {
+        if (!this.shouldRetryOnFallback(error, primaryUrl, fallbackUrl)) {
+          return throwError(() => error);
+        }
+
+        return this.http.post<T>(fallbackUrl, payload);
+      })
+    );
+  }
+
+  private getWithFallback<T>(path: string): Observable<T> {
+    const primaryUrl = this.buildPrimaryAuthUrl(path);
+    const fallbackUrl = this.buildFallbackAuthUrl(path);
+
+    return this.http.get<T>(primaryUrl).pipe(
+      catchError((error) => {
+        if (!this.shouldRetryOnFallback(error, primaryUrl, fallbackUrl)) {
+          return throwError(() => error);
+        }
+
+        return this.http.get<T>(fallbackUrl);
+      })
+    );
+  }
+
+  private shouldRetryOnFallback(error: any, primaryUrl: string, fallbackUrl: string): boolean {
+    if (error?.status !== 0) {
+      return false;
+    }
+
+    if (!fallbackUrl || primaryUrl === fallbackUrl) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private buildPrimaryAuthUrl(path: string): string {
+    return `${environment.apiUrl}${this.authEndpointPrefix}${path}`;
+  }
+
+  private buildFallbackAuthUrl(path: string): string {
+    if (typeof window === 'undefined' || !window.location?.origin) {
+      return this.buildPrimaryAuthUrl(path);
+    }
+
+    return `${window.location.origin}/api${this.authEndpointPrefix}${path}`;
   }
 
   private setUser(user: User): void {
@@ -172,6 +229,12 @@ export class AuthService {
     localStorage.removeItem(environment.roleIdKey);
     localStorage.removeItem(environment.userKey);
     localStorage.removeItem(environment.tenantKey);
+    // Backward-compat cleanup for any legacy auth keys.
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('tenant_id');
     this.currentUserSubject.next(null);
     this.router.navigate(['/auth/login']);
   }
@@ -280,7 +343,94 @@ export class AuthService {
    * @returns True if user is a Tenant Administrator, false otherwise
    */
   isTenantAdmin(): boolean {
-    return this.hasRole('Administrator');
+    const user = this.currentUserValue;
+    if (!user) {
+      return false;
+    }
+
+    const tenantAdminRoleNames = ['Administrator', 'Church Administrator'];
+
+    return tenantAdminRoleNames.some((roleName) =>
+      this.hasRole(roleName) || user.role_name === roleName || user.role?.name === roleName
+    );
+  }
+
+  canAccessRbac(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return true;
+    }
+
+    const isEkklesiaManager =
+      user.role_name === 'EkklesiaManager' ||
+      user.role?.name === 'EkklesiaManager' ||
+      !!user.roles?.some((role) => role.name === 'EkklesiaManager');
+
+    if (isEkklesiaManager) {
+      return true;
+    }
+
+    const isTenantAdmin = !!user.tenant_id && this.isTenantAdmin();
+    const hasRbacViewPermission = this.hasAnyPermission(['roles.view', 'permissions.view']);
+
+    return isTenantAdmin || hasRbacViewPermission;
+  }
+
+  canManageRbac(user: User | null = this.currentUserValue): boolean {
+    return this.canAccessRbac(user);
+  }
+
+  canAccessDonations(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    // Platform admins should always be able to access/manage tenant financial modules.
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return true;
+    }
+
+    if (!user.tenant_id) {
+      return false;
+    }
+
+    const tenantAdminRoleNames = ['Administrator', 'Church Administrator'];
+    const hasTenantAdminRole = tenantAdminRoleNames.some((roleName) =>
+      (user.roles || []).some((role) => role?.name === roleName) ||
+      user.role_name === roleName ||
+      user.role?.name === roleName
+    );
+
+    const primaryAdminRaw = (user as any).is_primary_admin;
+    const isPrimaryAdmin = primaryAdminRaw === true || primaryAdminRaw === 1 || primaryAdminRaw === '1';
+    if (isPrimaryAdmin || hasTenantAdminRole) {
+      return true;
+    }
+
+    // Keep donations menu/route behavior aligned with working RBAC visibility.
+    if (this.canAccessRbac(user)) {
+      return true;
+    }
+
+    const permissionNames = [
+      'donations.view',
+      'donations.collect',
+      'donations.manage',
+      'donations.create',
+      'donations.edit',
+      'donations.delete',
+      'donations.reports',
+      'donations.export',
+      'reports.view',
+      'reports.export'
+    ];
+
+    return permissionNames.some((permissionName) =>
+      (user.permissions || []).some((permission) => permission?.name === permissionName)
+    );
   }
 }
 

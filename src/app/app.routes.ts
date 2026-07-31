@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth.guard';
 import { tenantGuard } from '@core/guards/tenant.guard';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
+import { donationsGuard } from '@core/guards/donations.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { FamilyListComponent } from './features/family-management/components/family-list/family-list';
 import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
@@ -70,6 +71,11 @@ export const routes: Routes = [
       {
         path: 'members',
         loadChildren: () => import('./features/members/members.routes').then(m => m.MEMBERS_ROUTES)
+      },
+      {
+        path: 'donations',
+        canActivate: [donationsGuard],
+        loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
       }
     ]
   },
@@ -120,6 +126,11 @@ export const routes: Routes = [
       {
         path: 'bccs/:id',
         component: BccDetail
+      },
+      {
+        path: 'donations',
+        canActivate: [donationsGuard],
+        loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
       }
     ]
   },

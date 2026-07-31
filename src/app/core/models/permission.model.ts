@@ -5,6 +5,7 @@ export interface Permission {
   description?: string | null;
   module?: string | null;
   category?: string | null;
+  scope?: 'platform' | 'tenant' | 'both';
   tenant_id?: number | null;
   is_custom: boolean;
   active: 0 | 1;

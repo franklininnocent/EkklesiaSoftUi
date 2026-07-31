@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { DioceseService } from '@core/services/ecclesiastical';
@@ -14,6 +14,7 @@ import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/val
   standalone: true,
   imports: [CommonModule, ReactiveFormsModule, LoadingSpinnerComponent, PhoneInputComponent],
   templateUrl: './diocese-form-modal.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './diocese-form-modal.component.scss'
 })
 export class DioceseFormModalComponent implements OnInit, OnChanges, AfterViewInit {

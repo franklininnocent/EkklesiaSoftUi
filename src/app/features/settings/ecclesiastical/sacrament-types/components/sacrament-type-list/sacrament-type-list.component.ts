@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { SacramentTypeService } from '../../services/sacrament-type.service';
@@ -19,6 +19,7 @@ import { ToastService } from '@core/services/toast.service';
     PaginationComponent
   ],
   templateUrl: './sacrament-type-list.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./sacrament-type-list.component.scss']
 })
 export class SacramentTypeListComponent implements OnInit {

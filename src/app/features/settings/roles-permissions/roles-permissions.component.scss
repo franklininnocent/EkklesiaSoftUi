@@ -234,6 +234,18 @@
   }
 }
 
+.btn-danger {
+  @include button-base;
+  background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+  color: white;
+  border: 1px solid #b91c1c;
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(185, 28, 28, 0.35);
+  }
+}
+
 // Filter Button Active State
 .btn-filter.active {
   border-color: var(--primary-color);
@@ -657,6 +669,18 @@
 
 .type-badge {
   @include badge-base;
+
+  &.badge-protected {
+    background: linear-gradient(135deg, #fee2e215 0%, #fecaca15 100%);
+    color: #b91c1c;
+    border: 1px solid #ef4444;
+  }
+
+  &.badge-default {
+    background: linear-gradient(135deg, #fef3c715 0%, #fde68a15 100%);
+    color: #b45309;
+    border: 1px solid #f59e0b;
+  }
 
   &.badge-system {
     background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
@@ -1093,6 +1117,78 @@
 
 .role-type {
   @include badge-base;
+}
+
+.action-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  padding: 1rem;
+}
+
+.action-modal {
+  width: min(560px, 100%);
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid var(--gray-200);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.25);
+}
+
+.action-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid var(--gray-200);
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--text-primary);
+  }
+}
+
+.action-modal__close {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.action-modal__body {
+  padding: 1rem;
+}
+
+.action-modal__title {
+  margin: 0 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.action-modal__meta {
+  margin: 0 0 0.65rem;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+
+.action-modal__impact {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.action-modal__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.6rem;
+  padding: 0.85rem 1rem;
+  border-top: 1px solid var(--gray-200);
 }
 
 .role-status {
@@ -1798,6 +1894,25 @@
 
 .fw-semibold {
   font-weight: 600;
+}
+
+.safeguards-panel {
+  padding: var(--spacing-md);
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  background: #fffbeb;
+
+  h3 {
+    margin: 0 0 var(--spacing-xs);
+    font-size: var(--font-size-md);
+    color: #92400e;
+  }
+
+  p {
+    margin: 0;
+    font-size: var(--font-size-sm);
+    color: #78350f;
+  }
 }
 
 // ============ PRINT STYLES ============

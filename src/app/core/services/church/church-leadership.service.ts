@@ -7,7 +7,7 @@
 
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, BehaviorSubject, throwError } from 'rxjs';
+import { Observable, BehaviorSubject, throwError, of } from 'rxjs';
 import { tap, catchError, finalize } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import {
@@ -111,6 +111,45 @@ export class ChurchLeadershipService {
       catchError(error => this.handleError(error)),
       finalize(() => this.setLoading(false))
     );
+  }
+
+  /**
+   * Upload or replace a leader profile photo
+   */
+  uploadLeaderPhoto(id: number, file: File): Observable<ChurchDataResponse<ChurchLeadership>> {
+    this.setLoading(true);
+    const formData = new FormData();
+    formData.append('image', file);
+
+    return this.http.post<ChurchDataResponse<ChurchLeadership>>(`${this.apiUrl}/${id}/upload-photo`, formData).pipe(
+      tap((response) => {
+        if (response.success) {
+          const currentLeaders = this.leadersSubject.value;
+          const updatedLeaders = currentLeaders.map((leader) => leader.id === id ? response.data : leader);
+          this.leadersSubject.next(updatedLeaders);
+        }
+      }),
+      catchError((error) => this.handleError(error)),
+      finalize(() => this.setLoading(false))
+    );
+  }
+
+  /**
+   * Resolve a stored leader photo path to a browser-loadable URL.
+   */
+  resolveLeaderPhotoUrl(photoUrl?: string | null): string | null {
+    if (!photoUrl) {
+      return null;
+    }
+
+    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://') || photoUrl.startsWith('data:')) {
+      return photoUrl;
+    }
+
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return baseUrl.endsWith('/')
+      ? `${baseUrl}storage/${photoUrl}`
+      : `${baseUrl}/storage/${photoUrl}`;
   }
 
   /**

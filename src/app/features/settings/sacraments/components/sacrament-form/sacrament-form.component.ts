@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -17,6 +17,7 @@ import { ButtonComponent } from '@shared/components';
   standalone: true,
   imports: [CommonModule, FormsModule, ButtonComponent],
   templateUrl: './sacrament-form.component.html',
+  changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './sacrament-form.component.scss'
 })
 export class SacramentFormComponent implements OnInit {

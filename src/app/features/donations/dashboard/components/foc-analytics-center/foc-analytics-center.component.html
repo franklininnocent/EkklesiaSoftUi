@@ -1,0 +1,44 @@
+<section class="foc-analytics" aria-label="Financial analytics">
+  <header><h2>Performance Analytics</h2></header>
+  <div class="foc-analytics-grid">
+    <article class="foc-panel foc-panel--wide">
+      <app-dashboard-collection-chart [summary]="chartSummary"></app-dashboard-collection-chart>
+    </article>
+    <article class="foc-panel">
+      <h3>Collection Trend</h3>
+      <div class="foc-bar-chart" *ngIf="data.analytics.collection_trend.length; else emptyTrend">
+        <div class="foc-bar-chart__item" *ngFor="let row of data.analytics.collection_trend">
+          <div class="foc-bar-chart__bar" [style.height.%]="barHeight(row.collected)"></div>
+          <span>{{ row.label }}</span>
+        </div>
+      </div>
+      <ng-template #emptyTrend><p class="foc-empty">No trend data for this period.</p></ng-template>
+    </article>
+    <article class="foc-panel">
+      <h3>Family Engagement</h3>
+      <ul class="foc-metric-list">
+        <li><span>Active contributors</span><strong>{{ data.analytics.family_engagement.active_contributors }}</strong></li>
+        <li><span>Inactive families</span><strong>{{ data.analytics.family_engagement.inactive_families }}</strong></li>
+        <li><span>Participation rate</span><strong>{{ data.analytics.family_engagement.participation_rate }}%</strong></li>
+        <li><span>Delta vs prior period</span><strong>{{ data.analytics.family_engagement.contributing_families_delta }}</strong></li>
+      </ul>
+    </article>
+    <article class="foc-panel">
+      <h3>Geographic Contributions</h3>
+      <app-foc-geographic-chart [rows]="data.analytics.geographic.by_bcc" [currencyCode]="currencyCode"></app-foc-geographic-chart>
+    </article>
+    <article class="foc-panel">
+      <h3>Project Funding</h3>
+      <div class="foc-project-list" *ngIf="data.analytics.project_funding?.length; else emptyProjects">
+        <div class="foc-project-row" *ngFor="let project of data.analytics.project_funding || []">
+          <div>
+            <strong>{{ project?.name }}</strong>
+            <span>{{ project?.funding_percentage }}% funded</span>
+          </div>
+          <div class="foc-progress"><div class="foc-progress__fill" [style.width.%]="project?.funding_percentage || 0"></div></div>
+        </div>
+      </div>
+      <ng-template #emptyProjects><p class="foc-empty">No active project funding data.</p></ng-template>
+    </article>
+  </div>
+</section>

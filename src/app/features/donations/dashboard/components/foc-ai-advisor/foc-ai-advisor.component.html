@@ -1,0 +1,15 @@
+<section class="foc-panel" id="foc-ai-advisor" aria-label="AI financial advisor">
+  <h3>AI Financial Advisor</h3>
+  <ul class="foc-insight-list" *ngIf="advisor.narratives?.length">
+    <li *ngFor="let narrative of advisor.narratives">{{ narrative }}</li>
+  </ul>
+  <ul class="foc-insight-list">
+    <li *ngFor="let insight of advisor.insights">{{ insight.body || insight.title }}</li>
+    <li *ngIf="advisor.forecast_narrative">{{ advisor.forecast_narrative }}</li>
+  </ul>
+  <div class="foc-chip-row">
+    <button type="button" class="foc-btn foc-btn--subtle" *ngFor="let action of advisor.recommended_actions">
+      {{ action }}
+    </button>
+  </div>
+</section>

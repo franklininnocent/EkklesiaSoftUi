@@ -1,0 +1,257 @@
+<div class="clw-backdrop" *ngIf="open" (click)="requestClose()" aria-hidden="true"></div>
+
+<section
+  class="clw"
+  *ngIf="open"
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-label]="pageTitle"
+>
+  <ng-container>
+    <header class="clw__header">
+      <div class="clw__header-copy">
+        <p class="clw__eyebrow">Church Leadership</p>
+        <h1>{{ pageTitle }}</h1>
+        <p>{{ isEditMode ? 'Update leadership profile, appointment details, and contact information.' : 'Create and manage leadership profiles, appointments, responsibilities, and contact information.' }}</p>
+      </div>
+      <div class="clw__header-actions">
+        <button
+          *ngIf="!isEditMode"
+          type="button"
+          class="clw__btn clw__btn--ghost"
+          (click)="saveDraft()"
+          [disabled]="saving || !hasDraftContent"
+          title="Saves progress on this browser only — does not publish to the directory"
+        >
+          Save Local Draft
+        </button>
+        <button type="button" class="clw__btn clw__btn--ghost" (click)="requestClose()" [disabled]="saving">Cancel</button>
+        <button type="button" class="clw__btn clw__btn--primary" (click)="submit()" [disabled]="saving">
+          {{ saveButtonLabel }}
+        </button>
+        <button type="button" class="clw__close" (click)="requestClose()" aria-label="Close workspace">×</button>
+      </div>
+    </header>
+
+    <form class="clw__body" [formGroup]="form" (ngSubmit)="submit()">
+      <div class="clw__main">
+        <div class="clw-validation" *ngIf="showValidationBanner" role="alert">
+          <strong>Complete required fields to save:</strong>
+          <span>{{ missingRequiredFields.join(', ') }}</span>
+        </div>
+        <article class="clw-card">
+          <header class="clw-card__head">
+            <h2>Leader Profile</h2>
+            <p>Identity, role, and official church records.</p>
+          </header>
+
+          <div
+            class="clw-photo"
+            [class.clw-photo--drag]="dragOver"
+            (dragover)="onDragOver($event)"
+            (dragleave)="onDragLeave()"
+            (drop)="onPhotoDrop($event)"
+          >
+            <div class="clw-photo__avatar" [class.clw-photo__avatar--filled]="photoPreview">
+              <img *ngIf="photoPreview" [src]="photoPreview" alt="Leader photo preview" />
+              <span *ngIf="!photoPreview" aria-hidden="true">👤</span>
+            </div>
+            <div class="clw-photo__copy">
+              <strong>Profile Photo</strong>
+              <p>Upload a professional portrait for directories and leadership pages.</p>
+              <div class="clw-photo__actions">
+                <label class="clw__btn clw__btn--secondary">
+                  Upload Photo
+                  <input type="file" accept="image/*" hidden (change)="onPhotoSelected($event)" />
+                </label>
+                <button type="button" class="clw__btn clw__btn--ghost" *ngIf="photoPreview" (click)="removePhoto()">Remove</button>
+              </div>
+              <small>Drag and drop supported · JPG or PNG · Max 2 MB</small>
+            </div>
+          </div>
+
+          <div class="clw-field">
+            <label for="clw_full_name">Full Name *</label>
+            <input id="clw_full_name" type="text" formControlName="full_name" placeholder="e.g. Fr. Mathew Joseph" />
+            <small>Enter the official name used in church records.</small>
+          </div>
+
+          <div class="clw-field">
+            <label class="clw-field__label" for="clw_role_selector">Leadership Role *</label>
+            <app-church-leader-role-selector
+              id="clw_role_selector"
+              formControlName="role"
+              [invalid]="!!(form.get('role')?.touched && form.get('role')?.invalid)"
+            ></app-church-leader-role-selector>
+            <small class="clw-field-error" *ngIf="form.get('role')?.touched && form.get('role')?.invalid">Select a leadership role.</small>
+          </div>
+
+          <div class="clw-field">
+            <label for="clw_title">Title</label>
+            <ng-select
+              id="clw_title"
+              formControlName="title"
+              [items]="titleOptions"
+              bindLabel="label"
+              bindValue="value"
+              placeholder="Select title"
+              [clearable]="true"
+              [searchable]="true"
+            ></ng-select>
+          </div>
+        </article>
+
+        <article class="clw-card">
+          <header class="clw-card__head">
+            <h2>Contact Information</h2>
+            <p>Reach the leader for pastoral, administrative, and parish coordination.</p>
+          </header>
+
+          <div class="clw-grid clw-grid--2">
+            <div class="clw-field">
+              <label for="clw_email">Email Address</label>
+              <input id="clw_email" type="email" formControlName="email" placeholder="name@parish.org" />
+              <small class="clw-valid" *ngIf="emailValid">✓ Valid email</small>
+            </div>
+            <div class="clw-field">
+              <app-phone-input
+                [label]="'Phone Number'"
+                [id]="'clw_phone'"
+                [name]="'phone'"
+                [required]="false"
+                [disabled]="saving"
+                [maxLength]="15"
+                [minLength]="0"
+                formControlName="phone"
+              ></app-phone-input>
+            </div>
+            <div class="clw-field">
+              <app-phone-input
+                [label]="'WhatsApp Number'"
+                [id]="'clw_whatsapp'"
+                [name]="'whatsapp_number'"
+                [required]="false"
+                [disabled]="saving"
+                [maxLength]="15"
+                [minLength]="0"
+                formControlName="whatsapp_number"
+              ></app-phone-input>
+            </div>
+            <div class="clw-field">
+              <label for="clw_alt">Optional Alternate Contact</label>
+              <input id="clw_alt" type="text" formControlName="alternate_contact" placeholder="Assistant, family contact, etc." />
+            </div>
+          </div>
+        </article>
+
+        <article class="clw-card">
+          <header class="clw-card__head">
+            <h2>Appointment Details</h2>
+            <p>Service timeline, status, and leadership tenure.</p>
+          </header>
+
+          <div class="clw-field">
+            <label for="clw_appointed">Appointed Date *</label>
+            <div class="clw-date-row">
+              <input id="clw_appointed" type="date" formControlName="appointed_date" />
+              <div class="clw-date-presets">
+                <button type="button" (click)="setAppointedDatePreset('today')">Today</button>
+                <button type="button" (click)="setAppointedDatePreset('month_start')">Beginning of Month</button>
+              </div>
+            </div>
+            <small class="clw-field-error" *ngIf="form.get('appointed_date')?.touched && form.get('appointed_date')?.invalid">Appointed date is required.</small>
+          </div>
+
+          <div class="clw-field" *ngIf="showRelievedDate">
+            <label for="clw_relieved">Relieved Date</label>
+            <input id="clw_relieved" type="date" formControlName="relieved_date" />
+            <small>Leave empty for active leaders.</small>
+          </div>
+
+          <div class="clw-field">
+            <span class="clw-field__label">Leadership Status</span>
+            <div class="clw-status-grid">
+              <button
+                type="button"
+                class="clw-status clw-status--{{ status.tone }}"
+                *ngFor="let status of statusOptions"
+                [class.is-selected]="form.get('leadership_status')?.value === status.id"
+                (click)="selectStatus(status.id)"
+              >
+                <strong>{{ status.label }}</strong>
+                <small>{{ status.description }}</small>
+              </button>
+            </div>
+          </div>
+
+          <label class="clw-check">
+            <input type="checkbox" [checked]="form.get('is_primary')?.value === 1" (change)="form.get('is_primary')?.setValue($any($event.target).checked ? 1 : 0)" />
+            <span>Mark as primary parish leader</span>
+          </label>
+        </article>
+
+        <article class="clw-card">
+          <header class="clw-card__head">
+            <h2>Biography</h2>
+            <p>Background, ministry experience, achievements, and responsibilities.</p>
+          </header>
+
+          <div class="clw-editor-toolbar">
+            <button type="button" (click)="insertBiographyToken('paragraph')">Paragraph</button>
+            <button type="button" (click)="insertBiographyToken('bullet')">Bullet List</button>
+          </div>
+          <textarea
+            formControlName="biography"
+            rows="8"
+            placeholder="Provide background information, ministry experience, achievements, responsibilities, and additional notes."
+          ></textarea>
+        </article>
+      </div>
+
+      <aside class="clw__sidebar">
+        <article class="clw-summary">
+          <header>
+            <h3>Leadership Summary</h3>
+            <span>{{ completionPct }}% complete</span>
+          </header>
+          <div class="clw-summary__profile">
+            <div class="clw-summary__avatar">
+              <img *ngIf="photoPreview" [src]="photoPreview" alt="" />
+              <span *ngIf="!photoPreview">{{ displayName.charAt(0) }}</span>
+            </div>
+            <div>
+              <strong>{{ displayName }}</strong>
+              <p>{{ selectedRoleLabel }}</p>
+              <span class="clw-pill clw-pill--{{ selectedStatus?.tone || 'neutral' }}">{{ selectedStatus?.label || 'Active' }}</span>
+            </div>
+          </div>
+          <dl class="clw-summary__meta">
+            <div><dt>Appointment</dt><dd>{{ formatDisplayDate(form.get('appointed_date')?.value) }}</dd></div>
+            <div><dt>Email</dt><dd>{{ form.get('email')?.value || '—' }}</dd></div>
+            <div><dt>Phone</dt><dd>{{ form.get('phone')?.value || form.get('whatsapp_number')?.value || '—' }}</dd></div>
+          </dl>
+        </article>
+
+        <article class="clw-guidelines">
+          <h3>Leadership Guidelines</h3>
+          <ul>
+            <li>Ensure leadership role is assigned correctly.</li>
+            <li>Use official church records for names and titles.</li>
+            <li>Verify contact details before publishing.</li>
+            <li>Active leaders appear in parish directories.</li>
+          </ul>
+        </article>
+
+        <article class="clw-checklist">
+          <h3>Completion Checklist</h3>
+          <ul>
+            <li *ngFor="let item of checklist" [class.is-done]="item.done">
+              <span>{{ item.done ? '✓' : '○' }}</span>
+              {{ item.label }}
+            </li>
+          </ul>
+        </article>
+      </aside>
+    </form>
+  </ng-container>
+</section>

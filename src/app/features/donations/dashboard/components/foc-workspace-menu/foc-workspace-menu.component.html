@@ -1,0 +1,172 @@
+<div class="foc-ops">
+  <button
+    type="button"
+    class="foc-ops__trigger"
+    (click)="toggle()"
+    [attr.aria-expanded]="open"
+    aria-haspopup="dialog"
+    aria-controls="foc-operations-hub-drawer"
+  >
+    <span class="foc-ops__trigger-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+        <path d="M4 7h16M4 12h10M4 17h16" />
+        <circle cx="18" cy="12" r="2.5" />
+      </svg>
+    </span>
+    <span class="foc-ops__trigger-copy">
+      <strong>Operations Hub</strong>
+      <small>Priorities & workflows</small>
+    </span>
+    <span class="foc-ops__trigger-badge" *ngIf="attentionBadge">{{ attentionBadge }}</span>
+  </button>
+
+  <div #drawerRoot class="foc-ops__drawer-root" [class.is-open]="open" *ngIf="open && vm">
+    <div class="foc-ops__backdrop" (click)="close()" aria-hidden="true"></div>
+
+    <aside
+      class="foc-ops__drawer"
+      id="foc-operations-hub-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="foc-ops-title"
+    >
+      <header class="foc-ops__header">
+        <div class="foc-ops__header-copy">
+          <h2 id="foc-ops-title">Operations Hub</h2>
+          <p class="foc-ops__subtitle">Tasks, priorities, workflows, and operational insights.</p>
+          <div class="foc-ops__header-meta">
+            <span class="foc-ops__status" [class.foc-ops__status--clear]="!vm.hasActivePriorities">
+              {{ vm.priorityStatusLabel }}
+            </span>
+            <span class="foc-ops__sync">Updated {{ vm.syncLabel }}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          class="foc-ops__close"
+          data-ops-close
+          (click)="close()"
+          aria-label="Close Operations Hub"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M6 6l12 12M18 6 6 18" />
+          </svg>
+        </button>
+      </header>
+
+      <div class="foc-ops__scroll">
+        <section class="foc-ops__section" aria-labelledby="foc-ops-priorities">
+          <div class="foc-ops__section-head">
+            <h3 id="foc-ops-priorities">Priority Actions</h3>
+          </div>
+
+          <div class="foc-ops__priority-stack" *ngIf="vm.hasActivePriorities; else healthyState">
+            <article
+              class="foc-ops__priority"
+              *ngFor="let card of vm.priorities"
+              [ngClass]="priorityClass(card)"
+            >
+              <div class="foc-ops__priority-indicator" aria-hidden="true"></div>
+              <div class="foc-ops__priority-body">
+                <h4>{{ card.title }}</h4>
+                <p class="foc-ops__priority-metric">{{ card.metric }}</p>
+                <p class="foc-ops__priority-detail">{{ card.detail }}</p>
+                <p class="foc-ops__priority-amount" *ngIf="card.expectedAmount">
+                  Expected amount: <strong>{{ card.expectedAmount }}</strong>
+                </p>
+                <button type="button" class="foc-ops__priority-cta" (click)="navigate(card.route)">
+                  {{ card.actionLabel }}
+                </button>
+              </div>
+            </article>
+          </div>
+
+          <ng-template #healthyState>
+            <div class="foc-ops__empty-state">
+              <div class="foc-ops__empty-icon" aria-hidden="true">✓</div>
+              <h4>Everything looks good</h4>
+              <p>No outstanding collections or operational issues require attention.</p>
+              <button type="button" class="foc-ops__empty-cta" (click)="close()">View Dashboard</button>
+            </div>
+          </ng-template>
+        </section>
+
+        <section class="foc-ops__section" aria-labelledby="foc-ops-workflows">
+          <div class="foc-ops__section-head">
+            <h3 id="foc-ops-workflows">Quick Workflows</h3>
+            <p>Launch common stewardship operations</p>
+          </div>
+
+          <div class="foc-ops__workflow-stack">
+            <article class="foc-ops__workflow-group" *ngFor="let group of vm.workflowGroups">
+              <header class="foc-ops__workflow-head">
+                <span class="foc-ops__workflow-icon foc-ops__workflow-icon--{{ group.icon }}" aria-hidden="true"></span>
+                <div>
+                  <h4>{{ group.title }}</h4>
+                  <p>{{ group.description }}</p>
+                </div>
+              </header>
+              <div class="foc-ops__workflow-tiles">
+                <button
+                  type="button"
+                  class="foc-ops__workflow-tile"
+                  *ngFor="let item of group.items"
+                  (click)="onWorkflowItem(item)"
+                >
+                  <strong>{{ item.label }}</strong>
+                  <small>{{ item.description }}</small>
+                </button>
+              </div>
+            </article>
+          </div>
+        </section>
+
+        <section class="foc-ops__section" aria-labelledby="foc-ops-insights" *ngIf="vm.insights.length">
+          <div class="foc-ops__section-head">
+            <h3 id="foc-ops-insights">Operational Insights</h3>
+            <p>Intelligent summaries from live parish data</p>
+          </div>
+          <div class="foc-ops__insight-stack">
+            <button
+              type="button"
+              class="foc-ops__insight"
+              *ngFor="let insight of vm.insights"
+              [ngClass]="insightClass(insight)"
+              (click)="navigate(insight.route)"
+            >
+              <p>{{ insight.message }}</p>
+            </button>
+          </div>
+        </section>
+
+        <section class="foc-ops__section" aria-labelledby="foc-ops-activity">
+          <div class="foc-ops__section-head">
+            <h3 id="foc-ops-activity">Recent Activity</h3>
+            <p>Timeline of collections, expenses, and updates</p>
+          </div>
+
+          <ol class="foc-ops__timeline" *ngIf="vm.timeline.length; else emptyTimeline">
+            <li class="foc-ops__timeline-item" *ngFor="let item of vm.timeline">
+              <span class="foc-ops__timeline-dot" [ngClass]="timelineDotClass(item)" aria-hidden="true"></span>
+              <button type="button" class="foc-ops__timeline-card" (click)="navigate(item.route)">
+                <div class="foc-ops__timeline-top">
+                  <strong>{{ item.action }}</strong>
+                  <span>{{ item.timeLabel }}</span>
+                </div>
+                <p class="foc-ops__timeline-record">{{ item.record }}</p>
+                <div class="foc-ops__timeline-meta">
+                  <span>{{ item.actor }}</span>
+                  <span *ngIf="item.amount" class="foc-ops__timeline-amount">{{ item.amount }}</span>
+                </div>
+              </button>
+            </li>
+          </ol>
+
+          <ng-template #emptyTimeline>
+            <p class="foc-ops__muted-empty">No recent activity recorded yet.</p>
+          </ng-template>
+        </section>
+      </div>
+    </aside>
+  </div>
+</div>

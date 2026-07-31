@@ -1,0 +1,37 @@
+<a
+  class="foc-health-kpi"
+  [routerLink]="health.action_route"
+  [attr.data-status]="health.status"
+  [attr.aria-label]="'Collection health score ' + health.score + ' out of 100. ' + health.primary_reason + '. Open collection health center.'"
+  title="Score combines participation, overdue balances, project funding, and collection growth."
+>
+  <div class="foc-health-kpi__top">
+    <span class="foc-health-kpi__label">Collection Health Score</span>
+    <span class="foc-health-kpi__badge" [attr.data-status]="health.status">{{ health.status_label }}</span>
+  </div>
+
+  <div class="foc-health-kpi__score-row">
+    <strong class="foc-health-kpi__score">{{ health.score | number:'1.0-0' }}</strong>
+    <span class="foc-health-kpi__max">/ {{ health.max_score }}</span>
+    <span class="foc-health-kpi__trend" [class.is-down]="health.trend_direction === 'down'">
+      {{ health.trend_direction === 'up' ? '↑' : '↓' }} {{ health.trend_pct | number:'1.1-1' }}%
+    </span>
+  </div>
+
+  <p class="foc-health-kpi__status">{{ health.label }}</p>
+
+  <div class="foc-health-kpi__reasons">
+    <p>{{ health.primary_reason }}</p>
+    <p *ngIf="health.secondary_reason">{{ health.secondary_reason }}</p>
+  </div>
+
+  <div class="foc-health-kpi__factors" aria-label="Score factors">
+    <span class="foc-health-kpi__factor" *ngFor="let factor of health.factors | slice:0:3" [attr.data-status]="factor.status">
+      {{ factor.label }}
+    </span>
+  </div>
+
+  <span class="foc-health-kpi__cta">
+    {{ health.action_label }} →
+  </span>
+</a>

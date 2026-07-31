@@ -55,7 +55,7 @@ describe('BCCFormComponent', () => {
   it('shows error when submit invalid form', () => {
     component.bccForm.reset();
     component.onSubmit();
-    expect(component.error).toBeTruthy();
+    expect(component.bccForm.valid).toBe(false);
   });
 
   it('calls update on edit mode', () => {

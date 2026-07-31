@@ -37,6 +37,7 @@ export class UsersService {
    * prefix no longer exists, so point to /users to avoid 404s.
    */
   private apiUrl = `${environment.apiUrl}/users`;
+  private tenantApiUrl = `${environment.apiUrl}/tenant/users`;
 
   /**
    * Get all users for the current tenant
@@ -190,8 +191,8 @@ export class UsersService {
    * @param roleIds Array of role IDs to assign
    * @returns Observable of UserResponse
    */
-  assignRoles(userId: number, roleIds: number[]): Observable<UserResponse> {
-    return this.http.post<UserResponse>(`${this.apiUrl}/${userId}/roles`, { role_ids: roleIds }).pipe(
+  assignRoles(userId: number, roleIds: number[], options?: { tenantMode?: boolean }): Observable<UserResponse> {
+    return this.resolveAssignRolesRequest(userId, roleIds, options?.tenantMode).pipe(
       map(response => {
         // Ensure response.data has the updated user with roles
         if (response.data && response.success) {
@@ -204,6 +205,32 @@ export class UsersService {
         return throwError(() => error);
       })
     );
+  }
+
+  getTenantUserRoles(userId: number): Observable<UserResponse> {
+    return this.http.get<UserResponse>(`${this.tenantApiUrl}/${userId}/roles`).pipe(
+      catchError(error => {
+        console.error('Error fetching tenant user roles:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  syncTenantUserRoles(userId: number, roleIds: number[]): Observable<UserResponse> {
+    return this.http.put<UserResponse>(`${this.tenantApiUrl}/${userId}/roles`, { role_ids: roleIds }).pipe(
+      catchError(error => {
+        console.error('Error syncing tenant user roles:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  private resolveAssignRolesRequest(userId: number, roleIds: number[], tenantMode = false): Observable<UserResponse> {
+    if (tenantMode) {
+      return this.http.put<UserResponse>(`${this.tenantApiUrl}/${userId}/roles`, { role_ids: roleIds });
+    }
+
+    return this.http.post<UserResponse>(`${this.apiUrl}/${userId}/roles`, { role_ids: roleIds });
   }
 
   /**

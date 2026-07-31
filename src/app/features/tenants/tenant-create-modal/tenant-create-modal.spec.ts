@@ -3,6 +3,7 @@ import { TenantCreateModalComponent } from './tenant-create-modal';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { GeographyService } from '@core/services/geography.service';
+import { PhoneCodeService } from '@core/services/phone-code.service';
 import { of, throwError } from 'rxjs';
 
 describe('TenantCreateModalComponent', () => {
@@ -11,20 +12,29 @@ describe('TenantCreateModalComponent', () => {
 
   beforeEach(async () => {
     const tenantService = {
-      createTenant: jest.fn().mockReturnValue(of({ success: true, message: 'ok' }))
+      createTenant: jest.fn().mockReturnValue(of({ success: true, message: 'ok' })),
+      getChurchProfile: jest.fn().mockReturnValue(of({ success: true, data: { address: {} } }))
     } as unknown as TenantService;
     const toastService = { success: jest.fn(), error: jest.fn() } as unknown as ToastService;
     const geographyService = {
       getCountries: jest.fn().mockReturnValue(of({ success: true, data: [], count: 0 })),
       getStatesByCountry: jest.fn().mockReturnValue(of({ success: true, data: [], count: 0 }))
     } as unknown as GeographyService;
+    const phoneCodeService = {
+      initializeFromApiOnce: jest.fn().mockReturnValue(of({ success: true, countryCode: 'IN', phoneCode: '+91' })),
+      updatePhoneCodeByCountryId: jest.fn().mockReturnValue(of({ success: true, phoneCode: '+91', countryName: 'India' })),
+      getPhoneCodeSync: jest.fn().mockReturnValue('+91'),
+      currentPhoneCode: jest.fn().mockReturnValue('+91'),
+      resetToDefault: jest.fn()
+    } as unknown as PhoneCodeService;
 
     await TestBed.configureTestingModule({
       imports: [TenantCreateModalComponent],
       providers: [
         { provide: TenantService, useValue: tenantService },
         { provide: ToastService, useValue: toastService },
-        { provide: GeographyService, useValue: geographyService }
+        { provide: GeographyService, useValue: geographyService },
+        { provide: PhoneCodeService, useValue: phoneCodeService }
       ]
     }).compileComponents();
 

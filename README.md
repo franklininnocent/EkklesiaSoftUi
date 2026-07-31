@@ -83,6 +83,13 @@ npm test
 npm run e2e
 ```
 
+### Tenant RBAC Frontend
+
+Frontend rollout and QA checklist for tenant roles/permissions UI:
+
+- `TENANT_RBAC_FRONTEND_RUNBOOK.md`
+- `TENANT_RBAC_UAT_TEMPLATE.md`
+
 ## 📝 License
 
 Proprietary - EkklesiaSoft

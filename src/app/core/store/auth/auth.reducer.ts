@@ -27,12 +27,21 @@ function getStoredUser(): User | null {
   return null;
 }
 
+export function createEmptyAuthState(): AuthState {
+  return {
+    user: null,
+    token: null,
+    isAuthenticated: false,
+    loading: false,
+    error: null,
+  };
+}
+
 export const initialState: AuthState = {
+  ...createEmptyAuthState(),
   user: getStoredUser(),
   token: getStoredToken(),
   isAuthenticated: !!getStoredToken(),
-  loading: false,
-  error: null
 };
 
 export const authReducer = createReducer(
@@ -83,12 +92,9 @@ export const authReducer = createReducer(
   })),
   
   // Logout
-  on(AuthActions.logout, (state) => ({
-    ...state,
-    loading: true
-  })),
-  
-  on(AuthActions.logoutSuccess, () => initialState),
+  on(AuthActions.logout, () => createEmptyAuthState()),
+
+  on(AuthActions.logoutSuccess, () => createEmptyAuthState()),
   
   on(AuthActions.logoutFailure, (state, { error }) => ({
     ...state,

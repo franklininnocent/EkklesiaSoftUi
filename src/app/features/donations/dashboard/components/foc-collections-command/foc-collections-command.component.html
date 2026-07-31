@@ -1,0 +1,13 @@
+<section class="foc-panel foc-collections-command" aria-label="Collections command center">
+  <h3>Collections Command</h3>
+  <div class="foc-command-stats">
+    <div><span>Today</span><strong>{{ formatCurrency(command.today_collected) }}</strong></div>
+    <div><span>Transactions</span><strong>{{ command.today_count }}</strong></div>
+    <div><span>Target</span><strong>{{ formatCurrency(command.target) }}</strong></div>
+    <div><span>Completion</span><strong>{{ command.completion_pct }}%</strong></div>
+  </div>
+  <div class="foc-progress foc-progress--lg">
+    <div class="foc-progress__fill" [style.width.%]="command.completion_pct"></div>
+  </div>
+  <a routerLink="/donations/collection-day" class="foc-btn foc-btn--primary">Open Collection Day</a>
+</section>
