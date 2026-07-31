@@ -1,0 +1,303 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="124" failures="0" errors="0" time="10.868">
+  <testsuite name="TenantCreateModalComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:07" time="1.347" tests="5">
+    <testcase classname="TenantCreateModalComponent invalid by default with required errors" name="TenantCreateModalComponent invalid by default with required errors" time="0.207">
+    </testcase>
+    <testcase classname="TenantCreateModalComponent valid when required fields are provided correctly" name="TenantCreateModalComponent valid when required fields are provided correctly" time="0.063">
+    </testcase>
+    <testcase classname="TenantCreateModalComponent onSubmit sets serverError when invalid" name="TenantCreateModalComponent onSubmit sets serverError when invalid" time="0.058">
+    </testcase>
+    <testcase classname="TenantCreateModalComponent onSubmit calls service and clears serverError when valid" name="TenantCreateModalComponent onSubmit calls service and clears serverError when valid" time="0.052">
+    </testcase>
+    <testcase classname="TenantCreateModalComponent sameAsTenantAddress copies address fields" name="TenantCreateModalComponent sameAsTenantAddress copies address fields" time="0.064">
+    </testcase>
+  </testsuite>
+  <testsuite name="RoleFormModalComponent safeguards" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:09" time="1.215" tests="12">
+    <testcase classname="RoleFormModalComponent safeguards locks name and level for protected tenant role in edit mode" name="RoleFormModalComponent safeguards locks name and level for protected tenant role in edit mode" time="0.076">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards keeps name and level editable for non-protected tenant role" name="RoleFormModalComponent safeguards keeps name and level editable for non-protected tenant role" time="0.004">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards preserves protected role identity on submit even if form is tampered" name="RoleFormModalComponent safeguards preserves protected role identity on submit even if form is tampered" time="0.005">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards keeps permission selection isolated per checkbox" name="RoleFormModalComponent safeguards keeps permission selection isolated per checkbox" time="0.004">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards normalizes grouped permission response defensively in component" name="RoleFormModalComponent safeguards normalizes grouped permission response defensively in component" time="0.004">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards maps legacy Authentication module users.* permissions into Users group" name="RoleFormModalComponent safeguards maps legacy Authentication module users.* permissions into Users group" time="0.002">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards renders human-readable permission text without raw permission code" name="RoleFormModalComponent safeguards renders human-readable permission text without raw permission code" time="0.041">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards hides tenant-specific info box in tenant mode" name="RoleFormModalComponent safeguards hides tenant-specific info box in tenant mode" time="0.018">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards shows tenant-specific info box for non-tenant mode" name="RoleFormModalComponent safeguards shows tenant-specific info box for non-tenant mode" time="0.017">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards skips permission sync when user cannot assign permissions" name="RoleFormModalComponent safeguards skips permission sync when user cannot assign permissions" time="0.004">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards does not show partial failure when permission sync returns 403" name="RoleFormModalComponent safeguards does not show partial failure when permission sync returns 403" time="0.004">
+    </testcase>
+    <testcase classname="RoleFormModalComponent safeguards computes sticky footer summary counts" name="RoleFormModalComponent safeguards computes sticky footer summary counts" time="0.003">
+    </testcase>
+  </testsuite>
+  <testsuite name="SacramentListComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:10" time="0.787" tests="7">
+    <testcase classname="SacramentListComponent should create" name="SacramentListComponent should create" time="0.29">
+    </testcase>
+    <testcase classname="SacramentListComponent should load types and sacraments on init" name="SacramentListComponent should load types and sacraments on init" time="0.052">
+    </testcase>
+    <testcase classname="SacramentListComponent applyFilters should reset to page 1 and reload" name="SacramentListComponent applyFilters should reset to page 1 and reload" time="0.048">
+    </testcase>
+    <testcase classname="SacramentListComponent onQuickSearch should reset page and reload when typing" name="SacramentListComponent onQuickSearch should reset page and reload when typing" time="0.049">
+    </testcase>
+    <testcase classname="SacramentListComponent clearFilters should reset all filters and reload" name="SacramentListComponent clearFilters should reset all filters and reload" time="0.047">
+    </testcase>
+    <testcase classname="SacramentListComponent page and pageSize handlers should trigger reload" name="SacramentListComponent page and pageSize handlers should trigger reload" time="0.045">
+    </testcase>
+    <testcase classname="SacramentListComponent getActiveFilterCount reflects active filters and chips render" name="SacramentListComponent getActiveFilterCount reflects active filters and chips render" time="0.043">
+    </testcase>
+  </testsuite>
+  <testsuite name="BCCListComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:11" time="0.554" tests="7">
+    <testcase classname="BCCListComponent loads initial list and statistics" name="BCCListComponent loads initial list and statistics" time="0.176">
+    </testcase>
+    <testcase classname="BCCListComponent applies quick search and triggers debounced load" name="BCCListComponent applies quick search and triggers debounced load" time="0.028">
+    </testcase>
+    <testcase classname="BCCListComponent applies advanced search filters and resets to page 1" name="BCCListComponent applies advanced search filters and resets to page 1" time="0.026">
+    </testcase>
+    <testcase classname="BCCListComponent clears all filters and reloads" name="BCCListComponent clears all filters and reloads" time="0.029">
+    </testcase>
+    <testcase classname="BCCListComponent handles pagination pageChange event" name="BCCListComponent handles pagination pageChange event" time="0.025">
+    </testcase>
+    <testcase classname="BCCListComponent handles pagination pageSizeChange event" name="BCCListComponent handles pagination pageSizeChange event" time="0.029">
+    </testcase>
+    <testcase classname="BCCListComponent sorts by column toggling sort order" name="BCCListComponent sorts by column toggling sort order" time="0.027">
+    </testcase>
+  </testsuite>
+  <testsuite name="TenantManagerComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:11" time="0.292" tests="4">
+    <testcase classname="TenantManagerComponent loads tenants successfully and populates list" name="TenantManagerComponent loads tenants successfully and populates list" time="0.109">
+    </testcase>
+    <testcase classname="TenantManagerComponent sets error on load failure" name="TenantManagerComponent sets error on load failure" time="0.007">
+    </testcase>
+    <testcase classname="TenantManagerComponent retryLoad triggers loadTenants" name="TenantManagerComponent retryLoad triggers loadTenants" time="0.005">
+    </testcase>
+    <testcase classname="TenantManagerComponent open/close modal toggles flag" name="TenantManagerComponent open/close modal toggles flag" time="0.007">
+    </testcase>
+  </testsuite>
+  <testsuite name="SacramentFormModalComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:12" time="0.484" tests="7">
+    <testcase classname="SacramentFormModalComponent should create" name="SacramentFormModalComponent should create" time="0.182">
+    </testcase>
+    <testcase classname="SacramentFormModalComponent should load sacrament types on init" name="SacramentFormModalComponent should load sacrament types on init" time="0.025">
+    </testcase>
+    <testcase classname="SacramentFormModalComponent requiresParents should depend on type BAPTISM" name="SacramentFormModalComponent requiresParents should depend on type BAPTISM" time="0.027">
+    </testcase>
+    <testcase classname="SacramentFormModalComponent requiresGodparents should depend on types BAPTISM and CONFIRMATION" name="SacramentFormModalComponent requiresGodparents should depend on types BAPTISM and CONFIRMATION" time="0.023">
+    </testcase>
+    <testcase classname="SacramentFormModalComponent validateForm should enforce required fields" name="SacramentFormModalComponent validateForm should enforce required fields" time="0.033">
+    </testcase>
+    <testcase classname="SacramentFormModalComponent should call create on save when not in edit mode" name="SacramentFormModalComponent should call create on save when not in edit mode" time="0.025">
+    </testcase>
+    <testcase classname="SacramentFormModalComponent should call update on save when in edit mode" name="SacramentFormModalComponent should call update on save when in edit mode" time="0.029">
+    </testcase>
+  </testsuite>
+  <testsuite name="UsersComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:12" time="0.535" tests="6">
+    <testcase classname="UsersComponent should create" name="UsersComponent should create" time="0.163">
+    </testcase>
+    <testcase classname="UsersComponent should show loading UI when loading is true" name="UsersComponent should show loading UI when loading is true" time="0.005">
+    </testcase>
+    <testcase classname="UsersComponent should load users and statistics on init" name="UsersComponent should load users and statistics on init" time="0.036">
+    </testcase>
+    <testcase classname="UsersComponent onPageChange should update page and slice users" name="UsersComponent onPageChange should update page and slice users" time="0.055">
+    </testcase>
+    <testcase classname="UsersComponent onPageSizeChange should reset to page 1 and apply new size" name="UsersComponent onPageSizeChange should reset to page 1 and apply new size" time="0.056">
+    </testcase>
+    <testcase classname="UsersComponent should hide edit for users with can_edit === false and hide deactivate for primary active admin" name="UsersComponent should hide edit for users with can_edit === false and hide deactivate for primary active admin" time="0.039">
+    </testcase>
+  </testsuite>
+  <testsuite name="AssignPermissionsModalComponent safeguards" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:13" time="0.273" tests="5">
+    <testcase classname="AssignPermissionsModalComponent safeguards detects missing required admin permissions for protected tenant role" name="AssignPermissionsModalComponent safeguards detects missing required admin permissions for protected tenant role" time="0.101">
+    </testcase>
+    <testcase classname="AssignPermissionsModalComponent safeguards passes safeguard check when protected role has all required permissions" name="AssignPermissionsModalComponent safeguards passes safeguard check when protected role has all required permissions" time="0.008">
+    </testcase>
+    <testcase classname="AssignPermissionsModalComponent safeguards returns expected risk level for key modules" name="AssignPermissionsModalComponent safeguards returns expected risk level for key modules" time="0.005">
+    </testcase>
+    <testcase classname="AssignPermissionsModalComponent safeguards normalizes grouped permission response and keeps isolated selection" name="AssignPermissionsModalComponent safeguards normalizes grouped permission response and keeps isolated selection" time="0.021">
+    </testcase>
+    <testcase classname="AssignPermissionsModalComponent safeguards maps legacy Authentication module users.* permissions into Users group" name="AssignPermissionsModalComponent safeguards maps legacy Authentication module users.* permissions into Users group" time="0.013">
+    </testcase>
+  </testsuite>
+  <testsuite name="UserFormModalComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:13" time="0.378" tests="6">
+    <testcase classname="UserFormModalComponent should create" name="UserFormModalComponent should create" time="0.112">
+    </testcase>
+    <testcase classname="UserFormModalComponent should load roles on init" name="UserFormModalComponent should load roles on init" time="0.03">
+    </testcase>
+    <testcase classname="UserFormModalComponent should validate required fields for create mode" name="UserFormModalComponent should validate required fields for create mode" time="0.027">
+    </testcase>
+    <testcase classname="UserFormModalComponent should require strong password and matching confirmation" name="UserFormModalComponent should require strong password and matching confirmation" time="0.03">
+    </testcase>
+    <testcase classname="UserFormModalComponent should not require password in edit mode" name="UserFormModalComponent should not require password in edit mode" time="0.026">
+    </testcase>
+    <testcase classname="UserFormModalComponent should require at least one role" name="UserFormModalComponent should require at least one role" time="0.028">
+    </testcase>
+  </testsuite>
+  <testsuite name="FamilyListComponent (list + stats)" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:13" time="0.464" tests="2">
+    <testcase classname="FamilyListComponent (list + stats) loads statistics on init and stores them" name="FamilyListComponent (list + stats) loads statistics on init and stores them" time="0.201">
+    </testcase>
+    <testcase classname="FamilyListComponent (list + stats) computes active filter count from form values" name="FamilyListComponent (list + stats) computes active filter count from form values" time="0.02">
+    </testcase>
+  </testsuite>
+  <testsuite name="RolesPermissionsComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:14" time="0.488" tests="5">
+    <testcase classname="RolesPermissionsComponent blocks permission CRUD in tenant mode" name="RolesPermissionsComponent blocks permission CRUD in tenant mode" time="0.001">
+    </testcase>
+    <testcase classname="RolesPermissionsComponent protects Administrator and Church Administrator in tenant mode" name="RolesPermissionsComponent protects Administrator and Church Administrator in tenant mode" time="0.001">
+    </testcase>
+    <testcase classname="RolesPermissionsComponent prevents editing/deleting protected role rows" name="RolesPermissionsComponent prevents editing/deleting protected role rows" time="0">
+    </testcase>
+    <testcase classname="RolesPermissionsComponent allows manage roles for tenant administrators and platform admins" name="RolesPermissionsComponent allows manage roles for tenant administrators and platform admins" time="0">
+    </testcase>
+    <testcase classname="RolesPermissionsComponent returns friendly validation message for 422 API errors" name="RolesPermissionsComponent returns friendly validation message for 422 API errors" time="0.001">
+    </testcase>
+  </testsuite>
+  <testsuite name="MainLayoutComponent (RBAC visibility)" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:14" time="0.215" tests="3">
+    <testcase classname="MainLayoutComponent (RBAC visibility) shows tenant management only for platform admins" name="MainLayoutComponent (RBAC visibility) shows tenant management only for platform admins" time="0.077">
+    </testcase>
+    <testcase classname="MainLayoutComponent (RBAC visibility) shows roles management for tenant admins" name="MainLayoutComponent (RBAC visibility) shows roles management for tenant admins" time="0.012">
+    </testcase>
+    <testcase classname="MainLayoutComponent (RBAC visibility) shows roles management for users with explicit RBAC view permissions" name="MainLayoutComponent (RBAC visibility) shows roles management for users with explicit RBAC view permissions" time="0.012">
+    </testcase>
+  </testsuite>
+  <testsuite name="RolePermissionWorkspaceComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:15" time="0.428" tests="12">
+    <testcase classname="RolePermissionWorkspaceComponent filters permissions by global search" name="RolePermissionWorkspaceComponent filters permissions by global search" time="0.087">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent applies view-only template" name="RolePermissionWorkspaceComponent applies view-only template" time="0.01">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent marks high-risk permissions in analytics" name="RolePermissionWorkspaceComponent marks high-risk permissions in analytics" time="0.011">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent never displays raw permission keys when label exists" name="RolePermissionWorkspaceComponent never displays raw permission keys when label exists" time="0.01">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent supports keyboard selection for permission cards" name="RolePermissionWorkspaceComponent supports keyboard selection for permission cards" time="0.01">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent loads more permissions incrementally for large datasets" name="RolePermissionWorkspaceComponent loads more permissions incrementally for large datasets" time="0.01">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent tracks selected template state and clear behavior" name="RolePermissionWorkspaceComponent tracks selected template state and clear behavior" time="0.014">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent supports module dropdown selection" name="RolePermissionWorkspaceComponent supports module dropdown selection" time="0.01">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent supports keyboard navigation for module tabs" name="RolePermissionWorkspaceComponent supports keyboard navigation for module tabs" time="0.009">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent switches to dropdown mode for large module catalogs" name="RolePermissionWorkspaceComponent switches to dropdown mode for large module catalogs" time="0.009">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent provides contextual empty messages for search state" name="RolePermissionWorkspaceComponent provides contextual empty messages for search state" time="0.009">
+    </testcase>
+    <testcase classname="RolePermissionWorkspaceComponent uses updated module navigation empty-state hint" name="RolePermissionWorkspaceComponent uses updated module navigation empty-state hint" time="0.015">
+    </testcase>
+  </testsuite>
+  <testsuite name="Router + tenantAdminGuard integration for Tenants" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:15" time="0.229" tests="3">
+    <testcase classname="Router + tenantAdminGuard integration for Tenants allows navigation for SuperAdmin" name="Router + tenantAdminGuard integration for Tenants allows navigation for SuperAdmin" time="0.012">
+    </testcase>
+    <testcase classname="Router + tenantAdminGuard integration for Tenants redirects tenant user to /dashboard" name="Router + tenantAdminGuard integration for Tenants redirects tenant user to /dashboard" time="0.007">
+    </testcase>
+    <testcase classname="Router + tenantAdminGuard integration for Tenants redirects missing user to /auth/login" name="Router + tenantAdminGuard integration for Tenants redirects missing user to /auth/login" time="0.005">
+    </testcase>
+  </testsuite>
+  <testsuite name="FamilyMemberFormModalComponent (basics)" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:15" time="0.337" tests="1">
+    <testcase classname="FamilyMemberFormModalComponent (basics) validates phone and emits save on valid form" name="FamilyMemberFormModalComponent (basics) validates phone and emits save on valid form" time="0.078">
+    </testcase>
+  </testsuite>
+  <testsuite name="Roles &amp; Permissions accessibility" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:16" time="0.318" tests="2">
+    <testcase classname="Roles &amp; Permissions accessibility renders modal with dialog semantics and accessible close control" name="Roles &amp; Permissions accessibility renders modal with dialog semantics and accessible close control" time="0.161">
+    </testcase>
+    <testcase classname="Roles &amp; Permissions accessibility announces inline and safeguard errors as alerts" name="Roles &amp; Permissions accessibility announces inline and safeguard errors as alerts" time="0.014">
+    </testcase>
+  </testsuite>
+  <testsuite name="FamilyFormComponent (tabs + phone validators)" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:16" time="0.285" tests="1">
+    <testcase classname="FamilyFormComponent (tabs + phone validators) switchTab() changes activeTab and triggers scroll without crashing" name="FamilyFormComponent (tabs + phone validators) switchTab() changes activeTab and triggers scroll without crashing" time="0.127">
+    </testcase>
+  </testsuite>
+  <testsuite name="rbacGuard" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:16" time="0.11" tests="5">
+    <testcase classname="rbacGuard redirects to login when user is missing" name="rbacGuard redirects to login when user is missing" time="0.008">
+    </testcase>
+    <testcase classname="rbacGuard allows platform admin users" name="rbacGuard allows platform admin users" time="0.002">
+    </testcase>
+    <testcase classname="rbacGuard allows tenant admin with view permission" name="rbacGuard allows tenant admin with view permission" time="0.002">
+    </testcase>
+    <testcase classname="rbacGuard allows tenant admin without explicit view permission" name="rbacGuard allows tenant admin without explicit view permission" time="0.002">
+    </testcase>
+    <testcase classname="rbacGuard allows Church Administrator role even without explicit permission payload" name="rbacGuard allows Church Administrator role even without explicit permission payload" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="SettingsComponent (role-based visibility)" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:16" time="0.303" tests="10">
+    <testcase classname="SettingsComponent (role-based visibility) hasEkklesiaRole() should be false for any user with tenant_id" name="SettingsComponent (role-based visibility) hasEkklesiaRole() should be false for any user with tenant_id" time="0.073">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) hasEkklesiaRole() should be true for ekklesia roles without tenant" name="SettingsComponent (role-based visibility) hasEkklesiaRole() should be true for ekklesia roles without tenant" time="0.016">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) canManageRoles() allows EkklesiaAdmin and tenant Administrator with view permission" name="SettingsComponent (role-based visibility) canManageRoles() allows EkklesiaAdmin and tenant Administrator with view permission" time="0.01">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) canManageRoles() allows tenant admin role even without explicit permission payload" name="SettingsComponent (role-based visibility) canManageRoles() allows tenant admin role even without explicit permission payload" time="0.01">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) canManageRoles() supports multi-role user payload" name="SettingsComponent (role-based visibility) canManageRoles() supports multi-role user payload" time="0.014">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) isSuperAdmin() true for is_admin or is_super_admin flags and ekklesia admin role" name="SettingsComponent (role-based visibility) isSuperAdmin() true for is_admin or is_super_admin flags and ekklesia admin role" time="0.009">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) shouldDisplaySection() gates Ekklesia-only sections for tenant users" name="SettingsComponent (role-based visibility) shouldDisplaySection() gates Ekklesia-only sections for tenant users" time="0.015">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) getVisibleSections() returns different sets for tenant vs ekklesia admin" name="SettingsComponent (role-based visibility) getVisibleSections() returns different sets for tenant vs ekklesia admin" time="0.01">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) shows Roles &amp; Permissions card for tenant admin with RBAC view permission" name="SettingsComponent (role-based visibility) shows Roles &amp; Permissions card for tenant admin with RBAC view permission" time="0.02">
+    </testcase>
+    <testcase classname="SettingsComponent (role-based visibility) hides Roles &amp; Permissions card for tenant non-admin without RBAC view permission" name="SettingsComponent (role-based visibility) hides Roles &amp; Permissions card for tenant non-admin without RBAC view permission" time="0.013">
+    </testcase>
+  </testsuite>
+  <testsuite name="authGuard" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:17" time="0.109" tests="2">
+    <testcase classname="authGuard returns true when user is authenticated" name="authGuard returns true when user is authenticated" time="0.004">
+    </testcase>
+    <testcase classname="authGuard navigates to /auth/login with returnUrl when not authenticated" name="authGuard navigates to /auth/login with returnUrl when not authenticated" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="SETTINGS_ROUTES + rbacGuard integration" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:17" time="0.36" tests="3">
+    <testcase classname="SETTINGS_ROUTES + rbacGuard integration registers rbacGuard on roles-permissions route" name="SETTINGS_ROUTES + rbacGuard integration registers rbacGuard on roles-permissions route" time="0.001">
+    </testcase>
+    <testcase classname="SETTINGS_ROUTES + rbacGuard integration allows navigation to roles-permissions for tenant admin" name="SETTINGS_ROUTES + rbacGuard integration allows navigation to roles-permissions for tenant admin" time="0.009">
+    </testcase>
+    <testcase classname="SETTINGS_ROUTES + rbacGuard integration denies navigation for tenant non-admin without permissions" name="SETTINGS_ROUTES + rbacGuard integration denies navigation for tenant non-admin without permissions" time="0.005">
+    </testcase>
+  </testsuite>
+  <testsuite name="BCCFormComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:17" time="0.231" tests="5">
+    <testcase classname="BCCFormComponent requires only name and status fields after removals" name="BCCFormComponent requires only name and status fields after removals" time="0.051">
+    </testcase>
+    <testcase classname="BCCFormComponent emits save on successful create with minimal fields" name="BCCFormComponent emits save on successful create with minimal fields" time="0.015">
+    </testcase>
+    <testcase classname="BCCFormComponent shows error when submit invalid form" name="BCCFormComponent shows error when submit invalid form" time="0.015">
+    </testcase>
+    <testcase classname="BCCFormComponent calls update on edit mode" name="BCCFormComponent calls update on edit mode" time="0.02">
+    </testcase>
+    <testcase classname="BCCFormComponent handles API error gracefully" name="BCCFormComponent handles API error gracefully" time="0.016">
+    </testcase>
+  </testsuite>
+  <testsuite name="BreadcrumbComponent" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:17" time="0.105" tests="1">
+    <testcase classname="BreadcrumbComponent should create" name="BreadcrumbComponent should create" time="0.017">
+    </testcase>
+  </testsuite>
+  <testsuite name="tenantGuard" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:17" time="0.109" tests="5">
+    <testcase classname="tenantGuard returns true when tenant exists and is active" name="tenantGuard returns true when tenant exists and is active" time="0.003">
+    </testcase>
+    <testcase classname="tenantGuard navigates to login with inactive error when tenant is inactive" name="tenantGuard navigates to login with inactive error when tenant is inactive" time="0.002">
+    </testcase>
+    <testcase classname="tenantGuard navigates to login with invalid tenant when response not successful" name="tenantGuard navigates to login with invalid tenant when response not successful" time="0.001">
+    </testcase>
+    <testcase classname="tenantGuard navigates to login with invalid tenant on error" name="tenantGuard navigates to login with invalid tenant on error" time="0.002">
+    </testcase>
+    <testcase classname="tenantGuard navigates to login immediately when tenantId is missing" name="tenantGuard navigates to login immediately when tenantId is missing" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="tenantAdminGuard" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:18" time="0.107" tests="4">
+    <testcase classname="tenantAdminGuard allows SuperAdmin via role_name" name="tenantAdminGuard allows SuperAdmin via role_name" time="0.008">
+    </testcase>
+    <testcase classname="tenantAdminGuard allows EkklesiaAdmin via nested role.name" name="tenantAdminGuard allows EkklesiaAdmin via nested role.name" time="0.002">
+    </testcase>
+    <testcase classname="tenantAdminGuard denies tenant user and redirects to /dashboard" name="tenantAdminGuard denies tenant user and redirects to /dashboard" time="0.002">
+    </testcase>
+    <testcase classname="tenantAdminGuard redirects to login when user missing (edge case)" name="tenantAdminGuard redirects to login when user missing (edge case)" time="0.002">
+    </testcase>
+  </testsuite>
+  <testsuite name="PermissionsService" errors="0" failures="0" skipped="0" timestamp="2026-06-11T18:52:18" time="0.083" tests="1">
+    <testcase classname="PermissionsService flattens grouped tenant permission payloads into response.data" name="PermissionsService flattens grouped tenant permission payloads into response.data" time="0.005">
+    </testcase>
+  </testsuite>
+</testsuites>

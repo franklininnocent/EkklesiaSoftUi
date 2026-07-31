@@ -1,0 +1,12 @@
+<button
+  [type]="type"
+  [class]="buttonClasses"
+  [disabled]="disabled || loading"
+  (click)="onClick()"
+  [attr.aria-label]="ariaLabel || (iconOnly ? getActionLabel() : null)"
+  [attr.aria-busy]="loading"
+>
+  <span *ngIf="loading" class="btn-spinner" aria-hidden="true"></span>
+  <ng-content></ng-content>
+</button>
+

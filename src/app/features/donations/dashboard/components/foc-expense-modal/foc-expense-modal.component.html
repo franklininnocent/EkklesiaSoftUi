@@ -1,0 +1,266 @@
+<div
+  class="foc-disb-backdrop"
+  *ngIf="open"
+  (click)="onBackdropClick($event)"
+  role="presentation"
+></div>
+
+<section
+  class="foc-disb"
+  *ngIf="open"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="foc-disb-title"
+>
+  <!-- Success workspace -->
+  <ng-container *ngIf="showSuccess; else disbursementForm">
+    <header class="foc-disb__header foc-disb__header--success">
+      <div>
+        <p class="foc-disb__eyebrow">Transaction complete</p>
+        <h2 id="foc-disb-title">Disbursement recorded successfully</h2>
+        <p class="foc-disb__subtitle">The parish expense has been saved to the financial register.</p>
+      </div>
+      <button type="button" class="foc-disb__close" (click)="close.emit()" aria-label="Close dialog">×</button>
+    </header>
+
+    <div class="foc-disb__success">
+      <div class="foc-disb__success-icon" aria-hidden="true">✓</div>
+      <div class="foc-disb__success-grid">
+        <div><span>Transaction ID</span><strong>{{ submittedRecord?.id }}</strong></div>
+        <div><span>Amount</span><strong>{{ formatCurrency(submittedRecord?.amount ?? 0) }}</strong></div>
+        <div><span>Payee</span><strong>{{ submittedRecord?.payee || '—' }}</strong></div>
+        <div><span>Category</span><strong>{{ submittedRecord?.category }}</strong></div>
+        <div><span>Recorded by</span><strong>{{ operatorName }}</strong></div>
+        <div><span>Recorded at</span><strong>{{ recordedAt | date:'medium' }}</strong></div>
+      </div>
+    </div>
+
+    <footer class="foc-disb__footer">
+      <div class="foc-disb__footer-left">
+        <button type="button" class="foc-disb__btn foc-disb__btn--ghost" (click)="close.emit()">Close</button>
+      </div>
+      <div class="foc-disb__footer-right">
+        <a routerLink="/donations/expenses" class="foc-disb__btn">View Transaction</a>
+        <button type="button" class="foc-disb__btn" (click)="printVoucher()">Print Voucher</button>
+        <button type="button" class="foc-disb__btn" disabled title="Attachments coming soon">Add Attachment</button>
+        <button type="button" class="foc-disb__btn foc-disb__btn--primary" (click)="recordAnother.emit()">Record Another</button>
+      </div>
+    </footer>
+  </ng-container>
+
+  <!-- Entry workspace -->
+  <ng-template #disbursementForm>
+    <header class="foc-disb__header">
+      <div class="foc-disb__header-copy">
+        <p class="foc-disb__eyebrow">Disbursement Entry Workspace</p>
+        <h2 id="foc-disb-title">Record Parish Disbursement</h2>
+        <p class="foc-disb__subtitle">Create and record an official parish expense transaction.</p>
+      </div>
+      <div class="foc-disb__header-meta">
+        <span class="foc-disb__badge foc-disb__badge--draft">Draft Transaction</span>
+        <span class="foc-disb__meta-line">{{ form.expense_date | date:'mediumDate' }} · {{ financialYearLabel }}</span>
+        <span class="foc-disb__meta-line">{{ operatorRole }}</span>
+        <button type="button" class="foc-disb__close" (click)="close.emit()" aria-label="Close dialog">×</button>
+      </div>
+    </header>
+
+    <div class="foc-disb__body">
+      <div class="foc-disb__main">
+        <article class="foc-disb__card">
+          <header class="foc-disb__card-head">
+            <h3>Expense Details</h3>
+            <p>Select the category, amount, date, and payment method for this disbursement.</p>
+          </header>
+
+          <label class="foc-disb__field">
+            <span>Category <em>*</em></span>
+            <div class="foc-disb__category-grid" role="listbox" aria-label="Expense category">
+              <button
+                type="button"
+                class="foc-disb__category"
+                role="option"
+                *ngFor="let category of categories"
+                [class.is-selected]="form.category === category.value"
+                [attr.aria-selected]="form.category === category.value"
+                (click)="selectCategory(category.value)"
+              >
+                <span class="foc-disb__category-icon" [attr.data-icon]="category.icon" aria-hidden="true"></span>
+                <span>{{ category.label }}</span>
+              </button>
+            </div>
+          </label>
+
+          <label class="foc-disb__field foc-disb__field--amount">
+            <span>Amount <em>*</em></span>
+            <div class="foc-disb__amount-input">
+              <span class="foc-disb__currency">{{ currencyCode === 'INR' ? '₹' : currencyCode }}</span>
+              <input
+                type="number"
+                min="0.01"
+                step="0.01"
+                [(ngModel)]="form.amount"
+                name="amount"
+                placeholder="0.00"
+                (ngModelChange)="onFieldChange()"
+              />
+            </div>
+            <p class="foc-disb__amount-preview">{{ formattedAmount }}</p>
+          </label>
+
+          <label class="foc-disb__field foc-disb__field--date">
+            <span>Transaction Date <em>*</em></span>
+            <div class="foc-disb__date-input">
+              <input type="date" [(ngModel)]="form.expense_date" name="expense_date" (ngModelChange)="onFieldChange()" />
+              <span class="foc-disb__date-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+              </span>
+            </div>
+          </label>
+
+          <div class="foc-disb__field">
+            <span>Payment Method <em>*</em></span>
+            <div class="foc-disb__method-grid" role="radiogroup" aria-label="Payment method">
+              <button
+                type="button"
+                class="foc-disb__method"
+                *ngFor="let method of paymentMethods"
+                [class.is-selected]="form.method === method.value"
+                [attr.aria-pressed]="form.method === method.value"
+                (click)="selectMethod(method.value)"
+              >
+                <span class="foc-disb__method-icon" [attr.data-icon]="method.icon" aria-hidden="true"></span>
+                <span>{{ method.label }}</span>
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <article class="foc-disb__card">
+          <header class="foc-disb__card-head">
+            <h3>Recipient Details</h3>
+            <p>Identify who is receiving this parish disbursement.</p>
+          </header>
+
+          <label class="foc-disb__field">
+            <span>Payee Name <em>*</em></span>
+            <input
+              type="text"
+              [(ngModel)]="form.payee"
+              name="payee"
+              placeholder="Vendor / person / organization"
+              (ngModelChange)="onFieldChange()"
+            />
+          </label>
+
+          <div class="foc-disb__dynamic-fields">
+            <label class="foc-disb__field" *ngIf="showPhoneField">
+              <span>Phone Number</span>
+              <input type="tel" [(ngModel)]="form.phone" name="phone" placeholder="Contact number" (ngModelChange)="onFieldChange()" />
+            </label>
+            <label class="foc-disb__field" *ngIf="showReferenceField">
+              <span>Reference Number</span>
+              <input type="text" [(ngModel)]="form.reference_number" name="reference_number" placeholder="Transaction / UTR reference" (ngModelChange)="onFieldChange()" />
+            </label>
+            <label class="foc-disb__field" *ngIf="showInvoiceField">
+              <span>Invoice Number</span>
+              <input type="text" [(ngModel)]="form.invoice_number" name="invoice_number" placeholder="Invoice or bill number" (ngModelChange)="onFieldChange()" />
+            </label>
+            <label class="foc-disb__field" *ngIf="showChequeField">
+              <span>Cheque Number</span>
+              <input type="text" [(ngModel)]="form.cheque_number" name="cheque_number" placeholder="Cheque number" (ngModelChange)="onFieldChange()" />
+            </label>
+          </div>
+        </article>
+
+        <article class="foc-disb__card">
+          <header class="foc-disb__card-head">
+            <h3>Notes &amp; Supporting Context</h3>
+            <p>Capture purpose, approval remarks, or invoice details for audit readiness.</p>
+          </header>
+          <label class="foc-disb__field">
+            <span>Notes</span>
+            <textarea
+              rows="4"
+              [(ngModel)]="form.notes"
+              name="notes"
+              placeholder="Enter purpose, supporting information, invoice details, approval remarks, or additional context."
+              (ngModelChange)="onFieldChange()"
+            ></textarea>
+          </label>
+        </article>
+      </div>
+
+      <aside class="foc-disb__aside">
+        <article class="foc-disb__card foc-disb__card--summary">
+          <header class="foc-disb__card-head">
+            <h3>Transaction Summary</h3>
+            <p>Live preview of this disbursement.</p>
+          </header>
+          <dl class="foc-disb__summary-list">
+            <div><dt>Category</dt><dd>{{ form.category || 'Not selected' }}</dd></div>
+            <div><dt>Amount</dt><dd>{{ amountEntered ? formattedAmount : '—' }}</dd></div>
+            <div><dt>Payment Method</dt><dd>{{ methodSelected ? methodLabel : '—' }}</dd></div>
+            <div><dt>Payee</dt><dd>{{ form.payee || '—' }}</dd></div>
+            <div><dt>Date</dt><dd>{{ form.expense_date ? (form.expense_date | date:'mediumDate') : '—' }}</dd></div>
+            <div><dt>Status</dt><dd><span class="foc-disb__badge foc-disb__badge--draft">Draft</span></dd></div>
+          </dl>
+        </article>
+
+        <article class="foc-disb__card foc-disb__card--budget">
+          <header class="foc-disb__card-head">
+            <h3>Budget Impact</h3>
+            <p>Estimated effect on parish disbursements this month.</p>
+          </header>
+          <div class="foc-disb__budget-metrics">
+            <div><span>Current Month Expenses</span><strong>{{ formatCurrency(monthExpenses) }}</strong></div>
+            <div><span>After This Transaction</span><strong>{{ formatCurrency(projectedMonthExpenses) }}</strong></div>
+            <div><span>Today's Expenses</span><strong>{{ formatCurrency(todayExpenses) }}</strong></div>
+            <div><span>Remaining vs Collections</span><strong>{{ formatCurrency(remainingBudget) }}</strong></div>
+          </div>
+          <div class="foc-disb__budget-bar">
+            <div class="foc-disb__budget-bar-head">
+              <span>Monthly Budget Used</span>
+              <strong>{{ budgetUtilizationPct }}%</strong>
+            </div>
+            <div class="foc-disb__budget-track" role="progressbar" [attr.aria-valuenow]="budgetUtilizationPct" aria-valuemin="0" aria-valuemax="100">
+              <div class="foc-disb__budget-fill" [style.width.%]="budgetUtilizationPct"></div>
+            </div>
+            <p class="foc-disb__budget-note">Based on disbursements relative to collections this month.</p>
+          </div>
+        </article>
+
+        <article class="foc-disb__card foc-disb__card--checklist">
+          <header class="foc-disb__card-head">
+            <h3>Validation Checklist</h3>
+          </header>
+          <ul class="foc-disb__checklist">
+            <li [class.is-done]="categorySelected"><span aria-hidden="true">{{ categorySelected ? '✓' : '○' }}</span> Category selected</li>
+            <li [class.is-done]="amountEntered"><span aria-hidden="true">{{ amountEntered ? '✓' : '○' }}</span> Amount entered</li>
+            <li [class.is-done]="payeeEntered"><span aria-hidden="true">{{ payeeEntered ? '✓' : '○' }}</span> Payee entered</li>
+            <li [class.is-done]="methodSelected"><span aria-hidden="true">{{ methodSelected ? '✓' : '○' }}</span> Payment method selected</li>
+            <li [class.is-done]="dateSelected"><span aria-hidden="true">{{ dateSelected ? '✓' : '○' }}</span> Date selected</li>
+          </ul>
+        </article>
+      </aside>
+    </div>
+
+    <footer class="foc-disb__footer">
+      <div class="foc-disb__footer-left">
+        <button type="button" class="foc-disb__btn foc-disb__btn--ghost" (click)="close.emit()">Cancel</button>
+        <button type="button" class="foc-disb__btn" [disabled]="saving || !categorySelected" (click)="saveDraft()">
+          {{ saving ? 'Saving…' : 'Save as Draft' }}
+        </button>
+      </div>
+      <div class="foc-disb__footer-right">
+        <button
+          type="button"
+          class="foc-disb__btn foc-disb__btn--primary"
+          [disabled]="saving || !formComplete"
+          (click)="recordDisbursement()"
+        >
+          {{ saving ? 'Recording…' : 'Record Disbursement' }}
+        </button>
+      </div>
+    </footer>
+  </ng-template>
+</section>

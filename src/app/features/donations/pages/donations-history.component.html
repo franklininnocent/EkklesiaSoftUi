@@ -1,0 +1,164 @@
+<section class="history-page cf-page cf-split-page" [class.history-page--comfortable]="density === 'comfortable'">
+  <header class="cf-split-page__hero cf-hero">
+    <div class="cf-split-page__hero-copy">
+      <h1>Activity History</h1>
+      <p>Stewardship timeline — filter and scan recent parish activity side by side.</p>
+    </div>
+    <div class="cf-split-page__hero-actions" *ngIf="activitiesLoaded && !loadError">
+      <span class="history-count" *ngIf="totalCount">{{ visibleActivities.length }} of {{ totalCount }}</span>
+      <button type="button" class="cf-btn" (click)="reload()">Refresh</button>
+    </div>
+  </header>
+
+  <div class="cf-split-loading cf-split-card" *ngIf="!activitiesLoaded" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-split-loading__label">Loading activity history…</p>
+    <app-loading-skeleton type="table" [rows]="8" [columns]="1"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="activitiesLoaded">
+    <div class="cf-split-banner cf-split-banner--error" *ngIf="loadError" role="alert">
+      <p class="history-load-error__text">{{ loadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Try again</button>
+    </div>
+
+    <div class="cf-split-workspace" *ngIf="!loadError">
+      <aside class="cf-split-panel">
+        <article class="cf-split-card">
+          <header class="cf-split-card__header">
+            <div class="cf-split-card__header-copy">
+              <h2>Filters</h2>
+              <p>Narrow the timeline by category or time period.</p>
+            </div>
+          </header>
+
+          <div class="cf-split-side-body history-filters">
+            <div class="cf-split-field">
+              <label for="history-category">Category</label>
+              <select id="history-category" [(ngModel)]="categoryFilter" (change)="reload()">
+                <option *ngFor="let option of filterOptions" [value]="option.value">{{ option.label }}</option>
+              </select>
+            </div>
+
+            <div class="history-filters__group">
+              <span class="cf-split-section__title">Quick filters</span>
+              <div class="history-filters__chips" role="toolbar" aria-label="Quick filters">
+                <button
+                  type="button"
+                  *ngFor="let chip of quickFilters"
+                  class="history-chip"
+                  [class.history-chip--active]="isQuickFilterActive(chip)"
+                  (click)="applyQuickFilter(chip)"
+                >
+                  {{ chip.label }}
+                </button>
+              </div>
+            </div>
+
+            <div class="history-filters__group">
+              <span class="cf-split-section__title">Timeline density</span>
+              <div class="density-toggle" role="group" aria-label="Timeline density">
+                <button
+                  type="button"
+                  class="density-toggle__btn"
+                  [class.density-toggle__btn--active]="density === 'compact'"
+                  (click)="setDensity('compact')"
+                >
+                  Compact
+                </button>
+                <button
+                  type="button"
+                  class="density-toggle__btn"
+                  [class.density-toggle__btn--active]="density === 'comfortable'"
+                  (click)="setDensity('comfortable')"
+                >
+                  Comfortable
+                </button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </aside>
+
+      <main class="cf-split-panel">
+        <article class="cf-split-card cf-split-card--list">
+          <header class="cf-split-card__header cf-split-card__header--list">
+            <div class="cf-split-card__header-copy">
+              <h2>Activity timeline</h2>
+              <p>{{ groupedActivities.length ? groupedActivities.length + ' period groups' : 'No activity yet' }}</p>
+            </div>
+          </header>
+
+          <div class="cf-split-list-body history-timeline-body">
+            <div class="history-timeline-scroll" *ngIf="groupedActivities.length">
+              <div class="enterprise-timeline">
+                <section class="timeline-group" *ngFor="let group of groupedActivities; let lastGroup = last">
+                  <h3 class="timeline-group__label">{{ group.label }}</h3>
+                  <ol class="timeline-list">
+                    <li
+                      *ngFor="let item of group.items; let last = last"
+                      class="timeline-row"
+                      [class.timeline-row--attention]="item.requires_attention"
+                      [class.timeline-row--last]="last && lastGroup"
+                    >
+                      <div class="timeline-rail" aria-hidden="true">
+                        <span class="timeline-node">{{ iconFor(item) }}</span>
+                        <span class="timeline-line" *ngIf="!last || !lastGroup"></span>
+                      </div>
+
+                      <div class="timeline-body">
+                        <div class="timeline-row-top">
+                          <strong class="timeline-title">{{ item.title }}</strong>
+                          <time class="timeline-time" [attr.datetime]="item.created_at" [title]="exactTime(item.created_at)">
+                            {{ timelineClock(item, group.label) }}
+                          </time>
+                        </div>
+                        <p class="timeline-summary">
+                          {{ compactSummary(item) }}
+                          <span class="timeline-amount" *ngIf="item.amount != null">
+                            • {{ item.amount | number:'1.2-2' }}<ng-container *ngIf="item.currency"> {{ item.currency }}</ng-container>
+                          </span>
+                        </p>
+                      </div>
+
+                      <div class="timeline-actions" *ngIf="item.action_path">
+                        <button
+                          type="button"
+                          class="timeline-menu-btn"
+                          [attr.aria-label]="'Actions for ' + item.title"
+                          (click)="toggleMenu(item.id, $event)"
+                        >
+                          ⋯
+                        </button>
+                        <div class="timeline-menu" *ngIf="openMenuId === item.id">
+                          <a [routerLink]="item.action_path!" class="timeline-menu__item">View</a>
+                          <a [routerLink]="item.action_path!" class="timeline-menu__item">Open</a>
+                          <button type="button" class="timeline-menu__item" (click)="copyLink(item)">Copy link</button>
+                        </div>
+                        <a [routerLink]="item.action_path!" class="timeline-view-link" [attr.aria-label]="'View ' + item.title">View</a>
+                      </div>
+                    </li>
+                  </ol>
+                </section>
+              </div>
+            </div>
+
+            <div class="history-pagination" *ngIf="hasMore">
+              <button type="button" class="cf-btn" (click)="loadMore()" [disabled]="loadingMore">
+                {{ loadingMore ? 'Loading…' : 'Load more activity' }}
+              </button>
+            </div>
+
+            <div class="cf-split-list-empty-state" *ngIf="!groupedActivities.length">
+              <div class="history-empty">
+                <div class="history-empty__graphic" aria-hidden="true">◴</div>
+                <h3>No recent activity</h3>
+                <p>Contribution, donor, family, and stewardship activities will appear here.</p>
+                <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Refresh</button>
+              </div>
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+  </ng-container>
+</section>

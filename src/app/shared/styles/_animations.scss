@@ -1,0 +1,178 @@
+/**
+ * Standardized Animation System
+ * 
+ * Provides consistent animations and transitions across the application
+ */
+
+// Transition Durations
+$transition-fast: 150ms;
+$transition-normal: 200ms;
+$transition-slow: 300ms;
+$transition-slower: 500ms;
+
+// Transition Easing
+$ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+$ease-out: cubic-bezier(0, 0, 0.2, 1);
+$ease-in: cubic-bezier(0.4, 0, 1, 1);
+
+// Standard Transitions
+@mixin transition($properties: all, $duration: $transition-normal, $easing: $ease-in-out) {
+  transition: $properties $duration $easing;
+}
+
+// Fade In Animation
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+// Fade Out Animation
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+// Slide In From Top
+@keyframes slideInDown {
+  from {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// Slide In From Bottom
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+// Slide In From Left
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+// Slide In From Right
+@keyframes slideInRight {
+  from {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+// Scale In Animation
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+// Scale Out Animation
+@keyframes scaleOut {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+}
+
+// Pulse Animation
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+// Shake Animation
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70%, 90% {
+    transform: translateX(-4px);
+  }
+  20%, 40%, 60%, 80% {
+    transform: translateX(4px);
+  }
+}
+
+// Utility Classes
+.animate-fade-in {
+  animation: fadeIn $transition-normal $ease-out;
+}
+
+.animate-fade-out {
+  animation: fadeOut $transition-normal $ease-in;
+}
+
+.animate-slide-in-down {
+  animation: slideInDown $transition-slow $ease-out;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp $transition-slow $ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn $transition-normal $ease-out;
+}
+
+.animate-pulse {
+  animation: pulse 2s $ease-in-out infinite;
+}
+
+// Accessibility: Reduce motion
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-fade-out,
+  .animate-slide-in-down,
+  .animate-slide-in-up,
+  .animate-scale-in,
+  .animate-pulse {
+    animation: none;
+  }
+  
+  * {
+    transition-duration: 0.01ms !important;
+  }
+}
+

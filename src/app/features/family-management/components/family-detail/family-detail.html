@@ -1,0 +1,124 @@
+<div class="family-detail-container" *ngIf="!loading && !error && family">
+  <div class="family-360-layout">
+    <aside class="family-360-nav" aria-label="Family relationship navigator">
+      <app-family-relationship-navigator
+        [family]="family"
+        [parishName]="homeParishName || ''"
+        [headMemberId]="getHeadMemberId()"
+        [headImageUrl]="family.head_profile_image_full_url ?? null"
+        [sacramentTypes]="sacramentTypesDisplay"
+        [selectedMemberId]="selectedMemberId"
+        [searchQuery]="searchQuery"
+        [activeFilters]="navigatorFilters"
+        (selectMember)="onNavigatorSelectMember($event)"
+        (editFamily)="openEdit()"
+        (addMember)="onNavigatorAddMember()"
+        (searchQueryChange)="onNavigatorSearchChange($event)"
+        (filterToggle)="onNavigatorFilterToggle($event)"
+      />
+    </aside>
+
+    <main class="family-360-detail" aria-label="Family profile workspace">
+      <div
+        class="family-360-workspace"
+        role="tablist"
+        aria-label="Family profile views"
+      >
+        <button
+          *ngFor="let tab of workspaceTabs"
+          type="button"
+          class="family-360-workspace__tab"
+          role="tab"
+          [id]="workspaceTabId(tab)"
+          [class.active]="workspaceView === tab"
+          [attr.aria-selected]="workspaceView === tab"
+          [attr.aria-controls]="workspacePanelId(tab)"
+          [attr.tabindex]="workspaceView === tab ? 0 : -1"
+          (click)="setWorkspaceView(tab)"
+          (keydown)="handleWorkspaceTabKeydown($event, tab)"
+        >
+          {{ workspaceTabLabels[tab] }}
+        </button>
+      </div>
+
+      <div
+        *ngIf="workspaceView === 'members'"
+        role="tabpanel"
+        [id]="workspacePanelId('members')"
+        [attr.aria-labelledby]="workspaceTabId('members')"
+      >
+        <app-family-member-detail-panel
+          [family]="family"
+          [selectedMemberIndex]="getSelectedMemberIndex()"
+          [isHeadSelected]="isSelectedMemberHead()"
+          [sacramentTypesDisplay]="sacramentTypesDisplay"
+          [headSacramentsExpanded]="headSacramentsExpanded"
+          [editingHeadImage]="editingHeadImage"
+          [showHeadWithoutMember]="showHeadWithoutMemberPanel()"
+          (editHead)="openAddOrEditHeadMember()"
+          (editMember)="openEditMember($event)"
+          (addHead)="openAddOrEditHeadMember()"
+          (toggleHeadSacraments)="toggleHeadSacraments()"
+          (toggleHeadImageEdit)="editingHeadImage = !editingHeadImage"
+          (headProfileImageSelected)="onHeadProfileImageSelected($event)"
+          (deleteHeadProfileImage)="deleteHeadProfileImage()"
+          (openSacramentModal)="onPanelSacramentModal($event)"
+          (openHeadSacramentModal)="onPanelHeadSacramentModal($event)"
+        />
+      </div>
+
+      <div
+        *ngIf="workspaceView === 'financial'"
+        role="tabpanel"
+        [id]="workspacePanelId('financial')"
+        [attr.aria-labelledby]="workspaceTabId('financial')"
+      >
+        <app-family-financial-dashboard
+          *ngIf="familyFinancialProfile"
+          [profile]="familyFinancialProfile"
+          (refresh)="reloadFamilyFinancialSummary()"
+        ></app-family-financial-dashboard>
+      </div>
+    </main>
+              </div>
+              
+            </div>
+            
+<!-- Modals outside loading gate so they close reliably and stay interactive -->
+  <app-family-form
+  *ngIf="showEdit && family"
+    [family]="family"
+    (save)="onEditSave($event)"
+    (cancel)="onEditCancel()"
+  ></app-family-form>
+
+  <app-family-member-form-modal
+    *ngIf="showMemberModal"
+    [member]="memberToEdit"
+    [isHeadOnly]="isHeadMemberMode"
+  [saving]="memberModalSaving"
+  [error]="memberModalError"
+    (save)="onMemberModalSave($event)"
+  (cancel)="onMemberModalCancel()"
+></app-family-member-form-modal>
+
+  <app-sacrament-edit-modal
+    *ngIf="showSacramentModal && sacramentModalMember && family?.id"
+    [familyId]="family!.id"
+    [member]="sacramentModalMember"
+    [sacrament]="sacramentModalType"
+    [homeParishName]="homeParishName"
+    [homeParishAddress]="homeParishAddress"
+    [homeParishPriest]="homeParishPriest"
+    (close)="closeSacramentModal()"
+  (saved)="onSacramentSaved($event)"
+></app-sacrament-edit-modal>
+
+<div class="loading-container" *ngIf="loading" role="status" aria-live="polite">
+  <div class="spinner"></div>
+  <p>Loading family...</p>
+</div>
+
+<div class="error-container" *ngIf="!loading && error" role="alert">
+  <div class="error-message">{{ error }}</div>
+</div>

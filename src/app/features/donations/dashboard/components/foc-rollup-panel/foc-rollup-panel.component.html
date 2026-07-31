@@ -1,0 +1,38 @@
+<section class="foc-rollup" aria-label="Diocese rollup">
+  <header>
+    <h2>{{ rollup.root?.name }} Diocese Overview</h2>
+    <p>{{ rollup.scope?.parish_count || 0 }} parishes under this scope</p>
+  </header>
+  <div class="foc-executive-grid">
+    <article class="foc-exec-card">
+      <span class="foc-exec-card__label">Total Collected</span>
+      <strong>{{ formatCurrency(rollup.consolidated?.total_collected) }}</strong>
+    </article>
+    <article class="foc-exec-card">
+      <span class="foc-exec-card__label">This Month</span>
+      <strong>{{ formatCurrency(rollup.consolidated?.current_month_collected) }}</strong>
+    </article>
+    <article class="foc-exec-card">
+      <span class="foc-exec-card__label">Outstanding</span>
+      <strong>{{ formatCurrency(rollup.consolidated?.pending_dues) }}</strong>
+    </article>
+    <article class="foc-exec-card">
+      <span class="foc-exec-card__label">Overdue</span>
+      <strong>{{ formatCurrency(rollup.consolidated?.overdue_amount) }}</strong>
+    </article>
+  </div>
+  <article class="foc-panel" *ngIf="rollup.parishes?.length">
+    <h3>Parish Comparison</h3>
+    <table class="foc-table">
+      <thead><tr><th>Parish</th><th>Health</th><th>Participation</th><th>Collected</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let parish of rollup.parishes ?? []">
+          <td>{{ parish.name }}</td>
+          <td>{{ parish.health_score }} · {{ parish.health_status }}</td>
+          <td>{{ parish.participation_rate }}%</td>
+          <td>{{ formatCurrency(parish.metrics.total_collected) }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </article>
+</section>

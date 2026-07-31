@@ -1,0 +1,96 @@
+/**
+ * 3D Status Indicator Dot
+ * 
+ * Provides a professional 3D-style status indicator dot
+ * for use in list tables to show record status visually
+ */
+
+// 3D Status Dot Base
+.status-indicator-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-left: 8px;
+  position: relative;
+  vertical-align: middle;
+  flex-shrink: 0;
+  
+  // 3D Effect - Base shadow
+  box-shadow: 
+    0 2px 4px rgba(0, 0, 0, 0.2),
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+  
+  // 3D Effect - Highlight
+  &::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 2px;
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.6);
+    pointer-events: none;
+  }
+  
+  // 3D Effect - Depth shadow
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    right: -1px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.2);
+    pointer-events: none;
+    filter: blur(1px);
+  }
+}
+
+// Active Status - No dot displayed (implicitly active)
+.status-indicator-dot-active {
+  display: none;
+}
+
+// Inactive Status - Red 3D Dot (only show for inactive records)
+.status-indicator-dot-inactive {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 
+    0 2px 4px rgba(239, 68, 68, 0.3),
+    0 1px 2px rgba(239, 68, 68, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4),
+    inset 0 -1px 1px rgba(220, 38, 38, 0.3);
+  
+  &::before {
+    background: rgba(255, 255, 255, 0.7);
+  }
+  
+  &::after {
+    background: rgba(220, 38, 38, 0.4);
+  }
+}
+
+// Container for first column with status dot
+.first-column-with-status {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  flex-wrap: nowrap;
+}
+
+// Accessibility: Screen reader text
+.status-indicator-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+

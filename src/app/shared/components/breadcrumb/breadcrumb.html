@@ -1,0 +1,26 @@
+<nav class="breadcrumb" *ngIf="breadcrumbs.length > 0" aria-label="Breadcrumb">
+  <ol class="breadcrumb-list">
+    <li *ngFor="let breadcrumb of breadcrumbs; let i = index" class="breadcrumb-item">
+      <a 
+        *ngIf="!isLast(i)" 
+        (click)="navigateTo(breadcrumb.url)"
+        class="breadcrumb-link"
+        [attr.aria-current]="isLast(i) ? 'page' : null"
+      >
+        <span *ngIf="breadcrumb.icon" class="breadcrumb-icon">{{ breadcrumb.icon }}</span>
+        <span class="breadcrumb-label">{{ breadcrumb.label }}</span>
+      </a>
+      
+      <span *ngIf="isLast(i)" class="breadcrumb-current">
+        <span *ngIf="breadcrumb.icon" class="breadcrumb-icon">{{ breadcrumb.icon }}</span>
+        <span class="breadcrumb-label">{{ breadcrumb.label }}</span>
+      </span>
+      
+      <span *ngIf="!isLast(i)" class="breadcrumb-separator" aria-hidden="true">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M6 4L10 8L6 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </span>
+    </li>
+  </ol>
+</nav>

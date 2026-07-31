@@ -1,0 +1,23 @@
+<div class="empty-state" role="status" aria-live="polite">
+  <div class="empty-state-icon" aria-hidden="true">
+    {{ icon }}
+  </div>
+  
+  <h3 class="empty-state-title">{{ title }}</h3>
+  
+  <p *ngIf="description" class="empty-state-description">
+    {{ description }}
+  </p>
+  
+  <button 
+    *ngIf="showButton && buttonText"
+    type="button"
+    class="empty-state-button"
+    [class.button-primary]="buttonVariant === 'primary'"
+    [class.button-secondary]="buttonVariant === 'secondary'"
+    (click)="onAction()"
+    [attr.aria-label]="buttonText">
+    {{ buttonText }}
+  </button>
+</div>
+

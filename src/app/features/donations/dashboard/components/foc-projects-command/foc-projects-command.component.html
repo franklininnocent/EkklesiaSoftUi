@@ -1,0 +1,15 @@
+<section class="foc-panel" aria-label="Project funding command">
+  <h3>Project Funding Command</h3>
+  <div class="foc-project-cards" *ngIf="projects.length; else emptyProjectCommand">
+    <article *ngFor="let project of projects" [attr.data-risk]="project.risk_level">
+      <strong>{{ project.name }}</strong>
+      <span>{{ project.funding_percentage }}% · Gap {{ formatCurrency(project.funding_gap) }}</span>
+      <div class="foc-progress">
+        <div class="foc-progress__fill" [style.width.%]="project.funding_percentage"></div>
+      </div>
+    </article>
+  </div>
+  <ng-template #emptyProjectCommand>
+    <p class="foc-empty">No active projects in command view.</p>
+  </ng-template>
+</section>

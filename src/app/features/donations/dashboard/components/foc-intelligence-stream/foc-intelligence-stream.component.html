@@ -1,0 +1,16 @@
+<section class="foc-panel foc-intelligence" aria-label="Operational intelligence">
+  <h3>Operational Intelligence</h3>
+  <ul class="foc-feed" *ngIf="events.length; else emptyIntelligence">
+    <li *ngFor="let event of events">
+      <div>
+        <strong>{{ event.title }}</strong>
+        <span>{{ event.subtitle }}</span>
+        <small>{{ event.date | date:'mediumDate' }}</small>
+      </div>
+      <strong *ngIf="event.amount != null">{{ formatCurrency(event.amount) }}</strong>
+    </li>
+  </ul>
+  <ng-template #emptyIntelligence>
+    <p class="foc-empty">No operational events yet. Collections and disbursements will appear here.</p>
+  </ng-template>
+</section>

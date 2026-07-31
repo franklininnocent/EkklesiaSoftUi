@@ -1,0 +1,87 @@
+<div class="auth-container">
+  <div class="auth-box">
+    <div class="auth-header">
+      <h1 class="auth-title">Create Account</h1>
+      <p class="auth-subtitle">Sign up to get started</p>
+    </div>
+
+    <app-card>
+      <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
+        <div class="form-group">
+          <app-input
+            type="text"
+            label="Full Name"
+            placeholder="Enter your full name"
+            formControlName="name"
+            [error]="getErrorMessage('name')"
+            [required]="true"
+            aria-label="Full name"
+            aria-describedby="name-error"
+          ></app-input>
+        </div>
+
+        <div class="form-group">
+          <app-input
+            type="email"
+            label="Email Address"
+            placeholder="Enter your email"
+            formControlName="email"
+            [error]="getErrorMessage('email')"
+            [required]="true"
+            aria-label="Email address"
+            aria-describedby="email-error"
+          ></app-input>
+        </div>
+
+        <div class="form-group">
+          <app-input
+            type="password"
+            label="Password"
+            placeholder="Enter your password"
+            formControlName="password"
+            [error]="getErrorMessage('password')"
+            [required]="true"
+            aria-label="Password"
+            aria-describedby="password-error"
+          ></app-input>
+        </div>
+
+        <div class="form-group">
+          <app-input
+            type="password"
+            label="Confirm Password"
+            placeholder="Confirm your password"
+            formControlName="password_confirmation"
+            [error]="getErrorMessage('password_confirmation')"
+            [required]="true"
+            aria-label="Confirm password"
+            aria-describedby="password-confirmation-error"
+          ></app-input>
+        </div>
+
+        <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
+          {{ error }}
+        </div>
+
+        <app-button
+          type="submit"
+          variant="primary"
+          size="lg"
+          [fullWidth]="true"
+          [loading]="(loading$ | async) ?? false"
+          aria-label="Create new account"
+        >
+          Create Account
+        </app-button>
+
+        <div class="auth-footer">
+          <p>
+            Already have an account?
+            <a routerLink="/auth/login" class="auth-link">Sign in</a>
+          </p>
+        </div>
+      </form>
+    </app-card>
+  </div>
+</div>
+

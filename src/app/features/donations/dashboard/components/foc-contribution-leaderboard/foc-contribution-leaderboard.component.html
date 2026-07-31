@@ -1,0 +1,33 @@
+<section class="foc-panel" aria-label="Contribution intelligence">
+  <h3>Contribution Intelligence</h3>
+  <table class="foc-table" *ngIf="intelligence.top_contributors.length">
+    <thead><tr><th>Family</th><th>12-mo Total</th></tr></thead>
+    <tbody>
+      <tr *ngFor="let row of intelligence.top_contributors">
+        <td>{{ row.family_name || row.family_code }}</td>
+        <td>{{ formatCurrency(row.total_paid) }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p class="foc-empty" *ngIf="!intelligence.top_contributors.length">No contributor history yet for this period.</p>
+  <h4 *ngIf="intelligence.largest_gifts?.length">Largest Gifts</h4>
+  <ul class="foc-metric-list" *ngIf="intelligence.largest_gifts?.length">
+    <li *ngFor="let gift of intelligence.largest_gifts">
+      <span>{{ gift.family_name || gift.family_code }}</span>
+      <strong>{{ formatCurrency(gift.amount) }}</strong>
+    </li>
+  </ul>
+  <h4 *ngIf="intelligence.returning_families?.length">Returning Families</h4>
+  <p *ngIf="intelligence.returning_families?.length" class="foc-chip-row">
+    <span class="foc-chip" *ngFor="let family of intelligence.returning_families">
+      {{ family.family_name || family.family_code }}
+    </span>
+  </p>
+  <h4 *ngIf="intelligence.giving_streaks?.length">Giving Streaks</h4>
+  <ul class="foc-metric-list" *ngIf="intelligence.giving_streaks?.length">
+    <li *ngFor="let streak of intelligence.giving_streaks">
+      <span>{{ streak.family_name || streak.family_code }}</span>
+      <strong>{{ streak.consecutive_months }} months</strong>
+    </li>
+  </ul>
+</section>

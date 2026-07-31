@@ -1,0 +1,175 @@
+<div class="modal-overlay" (click)="onCancel()">
+  <div class="modal-dialog" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h3 class="modal-title">
+        {{ isEditMode ? 'Edit Sacrament Type' : 'Create Sacrament Type' }}
+      </h3>
+      <button class="close-button" (click)="onCancel()">&times;</button>
+    </div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()">
+      <div class="modal-body">
+        <!-- Name -->
+        <div class="form-group">
+          <label class="form-label required">Name</label>
+          <input
+            type="text"
+            formControlName="name"
+            class="form-control"
+            [class.error]="isFieldInvalid('name')"
+            placeholder="e.g., Baptism"
+          />
+          <span class="field-error" *ngIf="isFieldInvalid('name')">
+            {{ getFieldError('name') }}
+          </span>
+        </div>
+
+        <!-- Code -->
+        <div class="form-group">
+          <label class="form-label required">Code</label>
+          <input
+            type="text"
+            formControlName="code"
+            class="form-control"
+            [class.error]="isFieldInvalid('code')"
+            placeholder="e.g., BAPT"
+          />
+          <span class="field-error" *ngIf="isFieldInvalid('code')">
+            {{ getFieldError('code') }}
+          </span>
+          <small class="form-text">Unique identifier for this sacrament type</small>
+        </div>
+
+        <!-- Category -->
+        <div class="form-group">
+          <label class="form-label required">Category</label>
+          <select
+            formControlName="category"
+            class="form-control"
+            [class.error]="isFieldInvalid('category')"
+          >
+            <option value="">Select a category</option>
+            <option *ngFor="let cat of categories" [value]="cat.value">
+              {{ cat.label }}
+            </option>
+          </select>
+          <span class="field-error" *ngIf="isFieldInvalid('category')">
+            {{ getFieldError('category') }}
+          </span>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea
+            formControlName="description"
+            class="form-control"
+            rows="3"
+            placeholder="Brief description of the sacrament"
+          ></textarea>
+        </div>
+
+        <!-- Theological Significance -->
+        <div class="form-group">
+          <label class="form-label">Theological Significance</label>
+          <textarea
+            formControlName="theological_significance"
+            class="form-control"
+            rows="3"
+            placeholder="Theological meaning and significance"
+          ></textarea>
+        </div>
+
+        <!-- Requires Minister -->
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="requires_minister" />
+            <span>Requires Minister</span>
+          </label>
+        </div>
+
+        <!-- Minister Type (conditional) -->
+        <div class="form-group" *ngIf="form.get('requires_minister')?.value">
+          <label class="form-label">Minister Type</label>
+          <select formControlName="minister_type" class="form-control">
+            <option value="">Select minister type</option>
+            <option *ngFor="let type of ministerTypes" [value]="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+        </div>
+
+        <!-- Repeatable -->
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="repeatable" />
+            <span>Repeatable</span>
+          </label>
+          <small class="form-text">Can this sacrament be received multiple times?</small>
+        </div>
+
+        <!-- Age Requirements -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Minimum Age (years)</label>
+            <input
+              type="number"
+              formControlName="min_age_years"
+              class="form-control"
+              min="0"
+              placeholder="0"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Typical Age (years)</label>
+            <input
+              type="number"
+              formControlName="typical_age_years"
+              class="form-control"
+              min="0"
+              placeholder="7"
+            />
+          </div>
+        </div>
+
+        <!-- Display Order -->
+        <div class="form-group">
+          <label class="form-label required">Display Order</label>
+          <input
+            type="number"
+            formControlName="display_order"
+            class="form-control"
+            [class.error]="isFieldInvalid('display_order')"
+            min="1"
+          />
+          <span class="field-error" *ngIf="isFieldInvalid('display_order')">
+            {{ getFieldError('display_order') }}
+          </span>
+          <small class="form-text">Order in which this type appears in lists</small>
+        </div>
+
+        <!-- Active Status -->
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input type="checkbox" formControlName="active" />
+            <span>Active</span>
+          </label>
+          <small class="form-text">Inactive types will not be available for selection</small>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="loading">
+          Cancel
+        </button>
+        <button type="submit" class="btn btn-primary" [disabled]="loading || form.invalid">
+          <span *ngIf="!loading">{{ isEditMode ? 'Update' : 'Create' }}</span>
+          <span *ngIf="loading">Saving...</span>
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+

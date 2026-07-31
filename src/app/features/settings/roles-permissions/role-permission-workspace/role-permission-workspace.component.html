@@ -1,0 +1,184 @@
+<div class="permission-workspace" role="region" aria-label="Permission assignment workspace">
+  <div class="workspace-toolbar">
+    <div class="toolbar-search">
+      <label class="search-label" for="permission-search">Permission Search</label>
+      <input
+        id="permission-search"
+        type="search"
+        class="search-input"
+        placeholder="Search permissions (e.g. edit, approve, users)"
+        [ngModel]="permissionSearch"
+        (ngModelChange)="onPermissionSearchInput($event)"
+        [disabled]="disabled"
+        aria-controls="permission-grid"
+      />
+    </div>
+    <div class="toolbar-templates">
+      <button
+        *ngFor="let template of templateOptions"
+        type="button"
+        class="template-btn"
+        [class.active]="isTemplateActive(template.key)"
+        (click)="applyTemplate(template.key)"
+        [disabled]="disabled"
+        [attr.title]="template.description"
+        [attr.aria-pressed]="isTemplateActive(template.key)"
+      >
+        <span class="template-label">{{ template.label }}</span>
+        <span class="template-description">{{ template.description }}</span>
+      </button>
+      <button type="button" class="template-btn template-btn--clear" (click)="clearAllSelections()" [disabled]="disabled">
+        Clear All
+      </button>
+    </div>
+  </div>
+
+  <div class="workspace-module-nav" role="navigation" aria-label="Permission modules">
+    <div class="module-search">
+      <label for="module-search" class="search-label">Module Search</label>
+      <input
+        id="module-search"
+        type="search"
+        class="search-input"
+        placeholder="Search modules"
+        [ngModel]="moduleSearch"
+        (ngModelChange)="onModuleSearchInput($event)"
+        [disabled]="disabled"
+      />
+    </div>
+
+    <div class="module-nav-body" *ngIf="hasModuleResults; else noModulesState">
+      <div class="module-dropdown" *ngIf="useModuleDropdown; else moduleTabs">
+        <label for="module-selector" class="search-label">Selected Module</label>
+        <select
+          id="module-selector"
+          class="module-select"
+          [ngModel]="activeModule"
+          (ngModelChange)="onModuleDropdownChange($event)"
+          [disabled]="disabled"
+        >
+          <option *ngFor="let module of filteredModules; trackBy: trackByModule" [ngValue]="module">
+            {{ module }} ({{ getModuleSelectedCount(module) }}/{{ (permissionsByModule.get(module) || []).length }})
+          </option>
+        </select>
+      </div>
+
+      <ng-template #moduleTabs>
+        <div class="module-tabs" role="tablist" aria-label="Module tabs">
+          <button
+            type="button"
+            class="module-tab"
+            *ngFor="let module of filteredModules; trackBy: trackByModule"
+            [class.active]="module === activeModule"
+            [attr.aria-selected]="module === activeModule"
+            [attr.aria-current]="module === activeModule ? 'true' : null"
+            role="tab"
+            (click)="selectModule(module)"
+            (keydown)="handleModuleKeydown($event, module)"
+          >
+            <span class="module-name">{{ module }}</span>
+            <span class="module-meta">{{ getModuleSelectedCount(module) }}/{{ (permissionsByModule.get(module) || []).length }}</span>
+          </button>
+        </div>
+      </ng-template>
+    </div>
+    <ng-template #noModulesState>
+      <div class="module-empty-state">
+        <p class="module-empty-state__title">No modules found</p>
+        <p class="module-empty-state__hint">Adjust module search to discover available permission groups.</p>
+      </div>
+    </ng-template>
+  </div>
+
+  <div class="workspace-layout">
+    <section class="permission-panel" role="region" aria-labelledby="workspace-permissions-title">
+      <div class="permission-panel-header">
+        <div class="permission-panel-heading">
+          <h4 id="workspace-permissions-title">{{ rightPanelTitle }}</h4>
+          <p class="permission-panel-subtitle" aria-live="polite">{{ visibleResultsSummary }}</p>
+        </div>
+        <div class="panel-actions">
+          <button type="button" class="action-btn" (click)="selectAllVisible()" [disabled]="disabled">Select All</button>
+          <button type="button" class="action-btn" (click)="clearAllVisible()" [disabled]="disabled">Clear All</button>
+        </div>
+      </div>
+
+      <div id="permission-grid" class="permission-grid" role="list" *ngIf="rightPanelPermissions.length > 0; else noPermissions">
+        <label
+          class="permission-card"
+          *ngFor="let permission of visiblePermissions; let i = index; trackBy: trackByPermission"
+          [class.selected]="isPermissionSelected(permission.id)"
+          [class.high-risk]="getPermissionMeta(permission) === 'High Risk'"
+          role="listitem"
+          [attr.tabindex]="focusedPermissionIndex === i ? 0 : -1"
+          (focus)="focusedPermissionIndex = i"
+          (keydown)="handlePermissionCardKeydown($event, permission, i)"
+          [attr.aria-checked]="isPermissionSelected(permission.id)"
+        >
+          <input
+            type="checkbox"
+            [checked]="isPermissionSelected(permission.id)"
+            (change)="togglePermission(permission.id)"
+            [disabled]="disabled"
+            [attr.aria-label]="'Toggle permission ' + getPermissionLabel(permission)"
+            tabindex="-1"
+          />
+          <div class="permission-card-content">
+            <span class="permission-title">{{ getPermissionLabel(permission) }}</span>
+            <span class="permission-badge" *ngIf="getPermissionMeta(permission) !== 'Standard'">
+              {{ getPermissionMeta(permission) }}
+            </span>
+          </div>
+        </label>
+      </div>
+      <div class="permission-grid-more" *ngIf="hasMorePermissions">
+        <button type="button" class="action-btn" (click)="loadMorePermissions()" [disabled]="disabled">
+          Load More ({{ rightPanelPermissions.length - visiblePermissions.length }} remaining)
+        </button>
+      </div>
+      <ng-template #noPermissions>
+        <div class="empty-state">
+          <p class="empty-state__title">{{ permissionEmptyTitle }}</p>
+          <p class="empty-state__hint">{{ permissionEmptyHint }}</p>
+        </div>
+      </ng-template>
+    </section>
+  </div>
+
+  <div class="workspace-summary" aria-live="polite" *ngIf="showSummary">
+    <div class="summary-risk-banner" *ngIf="highRiskSelectedCount > 0">
+      <span class="summary-risk-icon">⚠</span>
+      <span>
+        {{ highRiskSelectedCount }} high-risk permission{{ highRiskSelectedCount > 1 ? 's are' : ' is' }} selected.
+        Review delete, financial approval, role assignment, and system configuration access before saving.
+      </span>
+    </div>
+    <div class="summary-cards">
+      <div class="summary-card">
+        <span class="summary-card__label">Selected Permissions</span>
+        <strong class="summary-card__value">{{ selectedCount }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-card__label">Module Coverage</span>
+        <strong class="summary-card__value">{{ selectedModulesCount }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-card__label">Coverage Percentage</span>
+        <strong class="summary-card__value">{{ selectedCoveragePercentage }}%</strong>
+      </div>
+      <div class="summary-card summary-card--risk">
+        <span class="summary-card__label">High Risk</span>
+        <strong class="summary-card__value">{{ highRiskSelectedCount }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-card__label">Administrative</span>
+        <strong class="summary-card__value">{{ administrativeSelectedCount }}</strong>
+      </div>
+      <div class="summary-card">
+        <span class="summary-card__label">Sensitive</span>
+        <strong class="summary-card__value">{{ sensitiveSelectedCount }}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+

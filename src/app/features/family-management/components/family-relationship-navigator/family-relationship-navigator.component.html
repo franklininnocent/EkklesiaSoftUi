@@ -1,0 +1,96 @@
+<nav class="family-relationship-navigator" aria-label="Family members">
+  <app-family-summary-card [summary]="summary" (editFamily)="editFamily.emit()" />
+
+  <app-family-nav-search
+    [searchQuery]="searchQuery"
+    [activeFilters]="activeFilters"
+    (searchQueryChange)="searchQueryChange.emit($event)"
+    (filterToggle)="onFilterToggle($event)"
+  />
+
+  <div class="family-relationship-navigator__list-header">
+    <span class="family-relationship-navigator__list-title">Members</span>
+    <app-add-member-icon-button
+      ariaLabel="Add family member"
+      title="Add family member"
+      (clicked)="addMember.emit()"
+    />
+  </div>
+
+  <div
+    #listbox
+    class="family-relationship-navigator__list"
+    role="listbox"
+    aria-label="Family member list"
+    tabindex="0"
+  >
+    <ng-container *ngIf="!useVirtualScroll; else virtualList">
+      <ng-container *ngFor="let group of groups">
+        <app-family-hierarchy-group
+          [group]="group"
+          [expanded]="isGroupExpanded(group.key)"
+          [selectedMemberId]="selectedMemberId"
+          [focusedMemberIndex]="focusedMemberIndex"
+          (expandedChange)="onGroupExpandedChange(group.key, $event)"
+          (selectMember)="onMemberSelect($event)"
+        />
+      </ng-container>
+      <p *ngIf="groups.length === 0" class="family-relationship-navigator__empty">No members match your search.</p>
+    </ng-container>
+
+    <ng-template #virtualList>
+      <div
+        #virtualViewport
+        class="family-relationship-navigator__viewport"
+        (scroll)="onVirtualScroll($event)"
+      >
+        <div [style.height.px]="virtualPaddingTop"></div>
+        <ng-container *ngFor="let row of visibleFlatRows; trackBy: trackFlatRow">
+          <div
+            *ngIf="row.type === 'group-header'"
+            class="family-relationship-navigator__group-header hierarchy-group"
+            [class.is-expanded]="row.expanded"
+            [class.is-collapsed]="!row.expanded"
+            [style.height.px]="groupHeaderHeight"
+          >
+            <button
+              type="button"
+              class="hierarchy-group__header"
+              [attr.aria-expanded]="row.expanded"
+              (click)="onGroupExpandedChange(row.groupKey, !row.expanded)"
+            >
+              <span class="hierarchy-group__chevron-wrap" aria-hidden="true">
+                <svg
+                  class="hierarchy-group__chevron-icon"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2.25"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </span>
+              <span class="hierarchy-group__label">{{ row.label }}</span>
+              <span class="hierarchy-group__count" [attr.aria-label]="row.memberCount + ' members'">{{
+                row.memberCount
+              }}</span>
+            </button>
+          </div>
+          <app-member-nav-row
+            *ngIf="isMemberRow(row)"
+            [vm]="row.vm"
+            [selected]="selectedMemberId === row.vm.member.id"
+            [focused]="focusedMemberIndex === row.vm.memberIndex"
+            [optionId]="'nav-member-' + row.vm.memberIndex"
+            (selectMember)="onMemberSelect($event)"
+          />
+        </ng-container>
+        <div [style.height.px]="virtualPaddingBottom"></div>
+      </div>
+      <p *ngIf="flatRows.length === 0" class="family-relationship-navigator__empty">No members match your search.</p>
+    </ng-template>
+  </div>
+</nav>

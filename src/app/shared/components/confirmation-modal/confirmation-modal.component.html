@@ -1,0 +1,91 @@
+<!-- Confirmation Modal -->
+<div class="modal-backdrop" *ngIf="show" (click)="onBackdropClick($event)" [@fadeIn]>
+  <div #modalContainer class="modal-container" [@slideIn] role="dialog" 
+       aria-labelledby="modal-title" 
+       aria-describedby="modal-message"
+       aria-modal="true">
+    
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h2 id="modal-title" class="modal-title">{{ title }}</h2>
+      <button 
+        type="button"
+        class="modal-close"
+        (click)="onCancel()"
+        aria-label="Close modal"
+        [disabled]="isSubmitting"
+      >
+        <span class="close-icon">×</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <p id="modal-message" class="modal-message">{{ message }}</p>
+
+      <!-- Optional Description Input -->
+      <div class="form-group" *ngIf="showDescriptionInput">
+        <label for="description" class="form-label">
+          {{ descriptionLabel }}
+        </label>
+        <textarea
+          id="description"
+          name="description"
+          class="form-control"
+          [(ngModel)]="description"
+          [placeholder]="descriptionPlaceholder"
+          [maxlength]="descriptionMaxLength"
+          [disabled]="isSubmitting"
+          rows="4"
+          aria-describedby="char-count"
+        ></textarea>
+        <div class="char-count" id="char-count">
+          <span [class.text-warning]="remainingCharacters < 50" 
+                [class.text-danger]="isDescriptionTooLong">
+            {{ remainingCharacters }} characters remaining
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <button
+        type="button"
+        class="btn-cancel"
+        (click)="onCancel()"
+        [disabled]="isSubmitting"
+        title="Cancel action"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+        <span>{{ cancelText }}</span>
+      </button>
+      <button
+        type="button"
+        [class.btn-save]="!confirmButtonClass || confirmButtonClass === 'btn-primary'"
+        [class.btn-delete]="confirmButtonClass === 'btn-danger'"
+        [class.btn-warning]="confirmButtonClass === 'btn-warning'"
+        (click)="onConfirm()"
+        [disabled]="isSubmitting || isDescriptionTooLong"
+        title="Confirm action"
+      >
+        <span *ngIf="!isSubmitting">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>{{ confirmText }}</span>
+        </span>
+        <span *ngIf="isSubmitting" class="spinner"></span>
+      </button>
+    </div>
+
+    <!-- Keyboard Shortcut Hint -->
+    <div class="modal-hint" *ngIf="!isSubmitting">
+      <small>Press <kbd>Esc</kbd> to cancel, <kbd>Ctrl+Enter</kbd> to confirm</small>
+    </div>
+  </div>
+</div>
+

@@ -1,0 +1,474 @@
+<section class="projects-page cf-page">
+  <!-- Page header -->
+  <header class="proj-page-header">
+    <div class="proj-page-header__main">
+      <div class="proj-page-header__icon" aria-hidden="true">▣</div>
+      <div>
+        <h1 class="proj-page-header__title">{{ pageTitle }}</h1>
+        <p class="proj-page-header__subtitle">{{ pageSubtitle }}</p>
+      </div>
+    </div>
+    <div class="proj-page-header__actions" *ngIf="!showForm">
+      <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
+      <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
+      <a routerLink="/donations/project-installments" class="cf-btn">Installments</a>
+    </div>
+    <div class="proj-page-header__actions" *ngIf="showForm">
+      <button type="button" class="cf-btn" (click)="closeForm()">Back to projects</button>
+    </div>
+  </header>
+
+  <!-- Success / save error alerts -->
+  <div class="proj-alert proj-alert--success" *ngIf="message" role="status">
+    <span class="proj-alert__icon" aria-hidden="true">✓</span>
+    <span>{{ message }}</span>
+  </div>
+  <div class="proj-alert proj-alert--error" *ngIf="error" role="alert">
+    <span class="proj-alert__icon" aria-hidden="true">!</span>
+    <span>{{ error }}</span>
+  </div>
+
+  <!-- Stats (list view) -->
+  <div class="proj-stats" *ngIf="!showForm && projectsLoaded && projects.length">
+    <article class="proj-stat">
+      <span>Total projects</span>
+      <strong>{{ projects.length }}</strong>
+    </article>
+    <article class="proj-stat">
+      <span>Active</span>
+      <strong>{{ activeProjectCount }}</strong>
+    </article>
+    <article class="proj-stat">
+      <span>Need attention</span>
+      <strong>{{ atRiskProjectCount }}</strong>
+    </article>
+  </div>
+
+  <!-- Create / Edit form card -->
+  <article id="project-form-card" class="proj-form-card" *ngIf="showForm && canManage">
+    <form [formGroup]="projectForm" (ngSubmit)="saveProject()" novalidate>
+      <div class="proj-form-card__body">
+        <p class="proj-form-card__intro">
+          Fields marked with <span class="cf-form-field__required" aria-hidden="true">*</span> are required.
+        </p>
+
+        <p class="cf-form-field__error proj-form-field--full" *ngIf="submitAttempted && projectForm.invalid" role="alert">
+          Please complete all required fields before saving.
+        </p>
+
+        <!-- Section 1: Basic Information -->
+        <section class="proj-form-section" aria-labelledby="proj-section-basic">
+          <div class="proj-form-section__head">
+            <span class="proj-form-section__number">1</span>
+            <h2 id="proj-section-basic" class="proj-form-section__title">Basic Information</h2>
+          </div>
+          <div class="proj-form-section__grid">
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-name">
+                Project name
+                <span class="cf-form-field__required" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="project-name"
+                formControlName="name"
+                placeholder="e.g., Building Fund 2026"
+                autocomplete="off"
+                aria-required="true"
+                [class.cf-form-field__control--invalid]="isFieldInvalid('name')"
+              />
+              <p class="cf-form-field__error" *ngIf="isFieldInvalid('name')">{{ fieldError('name') }}</p>
+            </div>
+
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-code">
+                Project code
+                <span class="cf-form-field__required" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="project-code"
+                formControlName="code"
+                placeholder="e.g., BF2026"
+                autocomplete="off"
+                aria-required="true"
+                [class.cf-form-field__control--invalid]="isFieldInvalid('code')"
+              />
+              <p class="cf-form-field__error" *ngIf="isFieldInvalid('code')">{{ fieldError('code') }}</p>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 2: Financial Details -->
+        <section class="proj-form-section" aria-labelledby="proj-section-financial">
+          <div class="proj-form-section__head">
+            <span class="proj-form-section__number">2</span>
+            <h2 id="proj-section-financial" class="proj-form-section__title">Financial Details</h2>
+          </div>
+          <div class="proj-form-section__grid">
+            <div class="cf-form-field proj-form-field--full">
+              <label class="cf-form-field__label" for="project-assignment-mode">
+                Assignment mode
+                <button
+                  type="button"
+                  class="cf-form-field__tooltip"
+                  title="Fixed amount applies the same target to every family. Per-family mode lets you set individual targets."
+                  aria-label="Help: assignment mode"
+                >?</button>
+              </label>
+              <select id="project-assignment-mode" formControlName="assignment_mode">
+                <option value="uniform">Fixed amount for all families</option>
+                <option value="individual">Family-specific targets</option>
+                <option value="uniform_with_exceptions">Fixed amount with exceptions</option>
+              </select>
+            </div>
+
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-family-target">
+                {{ familyTargetLabel }}
+                <span class="cf-form-field__required" aria-hidden="true">*</span>
+              </label>
+              <div class="cf-amount-input">
+                <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
+                <input
+                  id="project-family-target"
+                  formControlName="default_family_target"
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="e.g., 5000"
+                  aria-required="true"
+                  [class.cf-form-field__control--invalid]="isFieldInvalid('default_family_target')"
+                />
+              </div>
+              <p class="cf-form-field__error" *ngIf="isFieldInvalid('default_family_target')">{{ fieldError('default_family_target') }}</p>
+            </div>
+
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-installment-count">
+                Number of installments
+                <span class="cf-form-field__required" aria-hidden="true">*</span>
+              </label>
+              <input
+                id="project-installment-count"
+                formControlName="installment_count"
+                type="number"
+                min="1"
+                step="1"
+                placeholder="e.g., 12"
+                aria-required="true"
+                [class.cf-form-field__control--invalid]="isFieldInvalid('installment_count')"
+              />
+              <p class="cf-form-field__error" *ngIf="isFieldInvalid('installment_count')">{{ fieldError('installment_count') }}</p>
+            </div>
+
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-target-amount">
+                Overall project target
+                <span class="cf-form-field__optional">optional</span>
+                <button
+                  type="button"
+                  class="cf-form-field__tooltip"
+                  title="Total fundraising goal across all families for progress tracking."
+                  aria-label="Help: overall project target"
+                >?</button>
+              </label>
+              <div class="cf-amount-input">
+                <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
+                <input
+                  id="project-target-amount"
+                  formControlName="target_amount"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="e.g., 250000"
+                />
+              </div>
+            </div>
+
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-installment-frequency">
+                Installment frequency
+                <button
+                  type="button"
+                  class="cf-form-field__tooltip"
+                  title="How often installments are due. Choose 'No schedule' to manage dates manually."
+                  aria-label="Help: installment frequency"
+                >?</button>
+              </label>
+              <select id="project-installment-frequency" formControlName="installment_frequency">
+                <option value="">No schedule</option>
+                <option value="monthly">Monthly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="half_yearly">Half-yearly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 3: Schedule -->
+        <section class="proj-form-section" aria-labelledby="proj-section-schedule">
+          <div class="proj-form-section__head">
+            <span class="proj-form-section__number">3</span>
+            <h2 id="proj-section-schedule" class="proj-form-section__title">Schedule</h2>
+          </div>
+          <div class="proj-form-section__grid">
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-start-date">Start date</label>
+              <div class="proj-date-input">
+                <input
+                  id="project-start-date"
+                  formControlName="start_date"
+                  type="date"
+                  aria-label="Select project start date"
+                  [class.cf-form-field__control--invalid]="isFieldInvalid('start_date')"
+                />
+                <span class="proj-date-input__icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </span>
+              </div>
+              <p class="cf-form-field__error" *ngIf="isFieldInvalid('start_date')">{{ fieldError('start_date') }}</p>
+            </div>
+
+            <div class="cf-form-field">
+              <label class="cf-form-field__label" for="project-end-date">End date</label>
+              <div class="proj-date-input">
+                <input
+                  id="project-end-date"
+                  formControlName="end_date"
+                  type="date"
+                  aria-label="Select project end date"
+                  [class.cf-form-field__control--invalid]="isFieldInvalid('end_date')"
+                />
+                <span class="proj-date-input__icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                  </svg>
+                </span>
+              </div>
+              <p class="cf-form-field__error" *ngIf="isFieldInvalid('end_date')">{{ fieldError('end_date') }}</p>
+            </div>
+
+            <div class="cf-form-field proj-form-field--full">
+              <div class="proj-toggle-row">
+                <div class="proj-toggle-row__copy">
+                  <strong>Auto-generate installments</strong>
+                  <span>Automatically create installment schedules based on amount and installment count.</span>
+                </div>
+                <label class="proj-toggle" aria-label="Auto-generate installments">
+                  <input
+                    type="checkbox"
+                    [checked]="isAutoInstallmentsEnabled"
+                    (change)="setAutoInstallments($any($event.target).checked)"
+                  />
+                  <span class="proj-toggle__track"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Section 4: Status -->
+        <section class="proj-form-section" aria-labelledby="proj-section-status">
+          <div class="proj-form-section__head">
+            <span class="proj-form-section__number">4</span>
+            <h2 id="proj-section-status" class="proj-form-section__title">Status</h2>
+          </div>
+          <div class="proj-form-section__grid proj-form-section__grid--single">
+            <div class="cf-form-field">
+              <div class="proj-toggle-row">
+                <div class="proj-toggle-row__copy">
+                  <strong>{{ isStatusActive ? 'Active' : 'Inactive' }}</strong>
+                  <span>Active projects are available for contribution tracking.</span>
+                </div>
+                <label class="proj-toggle" [attr.aria-label]="isStatusActive ? 'Set project inactive' : 'Set project active'">
+                  <input
+                    type="checkbox"
+                    [checked]="isStatusActive"
+                    (change)="setStatusActive($any($event.target).checked)"
+                  />
+                  <span class="proj-toggle__track"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Family assignments (conditional) -->
+        <section class="proj-assignments" *ngIf="needsAssignments">
+          <h3>Family assignments & exceptions</h3>
+          <div class="assignment-toolbar cf-form-grid">
+            <select [(ngModel)]="selectedFamilyId" [ngModelOptions]="{standalone: true}" aria-label="Select family">
+              <option value="">Select family</option>
+              <option *ngFor="let family of families" [value]="family.id">{{ family.family_name }}</option>
+            </select>
+            <input [(ngModel)]="assignmentAmount" [ngModelOptions]="{standalone: true}" type="number" placeholder="Target amount" aria-label="Target amount" />
+            <label class="checkbox"><input [(ngModel)]="assignmentExempt" [ngModelOptions]="{standalone: true}" type="checkbox" /> Exempt</label>
+            <input [(ngModel)]="assignmentEffectiveFrom" [ngModelOptions]="{standalone: true}" type="date" aria-label="Effective from" />
+            <button type="button" class="cf-btn" (click)="addAssignment()">Add</button>
+          </div>
+          <table *ngIf="draftAssignments.length" class="table cf-table">
+            <thead><tr><th>Family</th><th>Target</th><th>Exempt</th><th>From</th><th></th></tr></thead>
+            <tbody>
+              <tr *ngFor="let row of draftAssignments; let i = index">
+                <td>{{ familyName(row.family_id) }}</td>
+                <td>{{ row.is_exempt ? '—' : (row.target_amount | number:'1.2-2') }}</td>
+                <td>{{ row.is_exempt ? 'Yes' : 'No' }}</td>
+                <td>{{ row.effective_from }}</td>
+                <td><button type="button" class="cf-btn" (click)="removeAssignment(i)">Remove</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+
+      <!-- Sticky footer -->
+      <footer class="proj-form-footer">
+        <span class="proj-form-footer__hint">Review details before saving.</span>
+        <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+        <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
+          {{ saving ? 'Saving…' : (editingProjectId ? 'Update Project' : 'Create Project') }}
+        </button>
+      </footer>
+    </form>
+  </article>
+
+  <!-- Projects list (when not in form mode) -->
+  <ng-container *ngIf="!showForm">
+    <!-- Loading -->
+    <div class="proj-loading" *ngIf="!projectsLoaded" role="status" aria-live="polite" aria-busy="true">
+      <p class="proj-loading__label">Loading projects…</p>
+      <app-loading-skeleton type="list" [rows]="3"></app-loading-skeleton>
+    </div>
+
+    <!-- Load error -->
+    <div class="proj-alert proj-alert--error" *ngIf="projectsLoaded && projectsLoadError" role="alert">
+      <span class="proj-alert__icon" aria-hidden="true">!</span>
+      <span>{{ projectsLoadError }}</span>
+      <button type="button" class="cf-btn proj-alert__retry" (click)="loadProjects()">Retry</button>
+    </div>
+
+    <ng-container *ngIf="projectsLoaded && !projectsLoadError">
+      <!-- Search -->
+      <div class="proj-list-toolbar" *ngIf="projects.length">
+        <input type="search" [(ngModel)]="tableSearch" placeholder="Search by name, code, or status…" aria-label="Search projects" />
+        <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
+      </div>
+
+      <!-- Project cards -->
+      <div class="proj-cards" *ngIf="filteredProjects.length">
+        <article
+          class="proj-card"
+          *ngFor="let project of filteredProjects"
+          [class.proj-card--at-risk]="isProjectAtRisk(project)"
+        >
+          <header class="proj-card__head">
+            <div class="proj-card__icon" aria-hidden="true">▣</div>
+            <div class="proj-card__meta">
+              <h3>{{ project.name }}</h3>
+              <span>{{ project.code }}</span>
+            </div>
+            <span class="proj-status-badge" [class.proj-status-badge--active]="project.status === 'active'" [class.proj-status-badge--draft]="project.status === 'draft'">
+              {{ project.status }}
+            </span>
+          </header>
+
+          <div class="proj-card__metrics">
+            <div class="proj-card__metric">
+              <span>Family target</span>
+              <strong>{{ project.default_family_target | number:'1.0-0' }}</strong>
+            </div>
+            <div class="proj-card__metric">
+              <span>Collected</span>
+              <strong>{{ project.raised_amount | number:'1.0-0' }}</strong>
+            </div>
+            <div class="proj-card__metric">
+              <span>Mode</span>
+              <strong>{{ modeLabel(project.assignment_mode) }}</strong>
+            </div>
+          </div>
+
+          <div class="proj-card__progress">
+            <div class="proj-card__progress-label">
+              <span>Progress</span>
+              <span>{{ project.collection_percentage || 0 }}%</span>
+            </div>
+            <div class="proj-card__progress-bar" [class.proj-card__progress-bar--risk]="isProjectAtRisk(project)">
+              <span [style.width.%]="project.collection_percentage || 0"></span>
+            </div>
+          </div>
+
+          <footer class="proj-card__actions">
+            <button type="button" class="cf-btn cf-btn-primary" (click)="viewDashboard(project)">Track</button>
+            <button type="button" class="cf-btn" *ngIf="canManage" (click)="editProject(project)">Edit</button>
+            <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateInstallments(project)">Installments</button>
+          </footer>
+        </article>
+      </div>
+
+      <p class="cf-state" *ngIf="projects.length && !filteredProjects.length">No projects match your search.</p>
+
+      <!-- Empty state -->
+      <app-cf-empty-state
+        *ngIf="!projects.length"
+        icon="▣"
+        title="No projects created yet."
+        description="Create your first project to start tracking family contributions."
+      >
+        <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
+        <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
+      </app-cf-empty-state>
+    </ng-container>
+  </ng-container>
+
+  <!-- Project dashboard drawer -->
+  <section *ngIf="dashboard" class="dashboard-panel cf-panel">
+    <header>
+      <h2>{{ dashboard.project.name }} — Funding Progress</h2>
+      <div class="dashboard-actions">
+        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect</button>
+        <button type="button" class="cf-btn" (click)="dashboard = null">Close</button>
+      </div>
+    </header>
+    <div class="cf-attention-callout" *ngIf="dashboard.totals.collection_percentage < 50">
+      <p>{{ dashboard.totals.outstanding | number:'1.2-2' }} still needed — {{ 100 - dashboard.totals.collection_percentage }}% of target remaining.</p>
+    </div>
+    <div class="stats cf-kpi-grid">
+      <article class="cf-kpi"><span>Overall Target</span><strong>{{ dashboard.totals.overall_target | number:'1.2-2' }}</strong></article>
+      <article class="cf-kpi"><span>Collected</span><strong>{{ dashboard.totals.collected | number:'1.2-2' }}</strong></article>
+      <article class="cf-kpi"><span>Outstanding</span><strong>{{ dashboard.totals.outstanding | number:'1.2-2' }}</strong></article>
+      <article class="cf-kpi"><span>Collection %</span><strong>{{ dashboard.totals.collection_percentage }}%</strong></article>
+    </div>
+    <div class="stats cf-kpi-grid">
+      <article class="cf-kpi"><span>Families Enrolled</span><strong>{{ dashboard.families.enrolled }}</strong></article>
+      <article class="cf-kpi"><span>Completed</span><strong>{{ dashboard.families.completed }}</strong></article>
+      <article class="cf-kpi"><span>Partial</span><strong>{{ dashboard.families.partial }}</strong></article>
+      <article class="cf-kpi"><span>Exempt</span><strong>{{ dashboard.families.exempt }}</strong></article>
+    </div>
+    <table *ngIf="dashboard.family_progress.length" class="table cf-table">
+      <thead><tr><th>Family ID</th><th>Target</th><th>Collected</th><th>Outstanding</th><th>%</th></tr></thead>
+      <tbody>
+        <tr *ngFor="let row of dashboard.family_progress">
+          <td>{{ row.family_id }}</td>
+          <td>{{ row.target_amount | number:'1.2-2' }}</td>
+          <td>{{ row.amount_collected | number:'1.2-2' }}</td>
+          <td>{{ row.outstanding_amount | number:'1.2-2' }}</td>
+          <td>{{ row.completion_percentage }}%</td>
+        </tr>
+      </tbody>
+    </table>
+    <app-financial-activity-timeline
+      *ngIf="selectedProjectId"
+      subjectType="project"
+      [subjectId]="selectedProjectId"
+      title="Project Activity"
+    ></app-financial-activity-timeline>
+  </section>
+</section>

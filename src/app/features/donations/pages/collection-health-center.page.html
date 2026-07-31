@@ -1,0 +1,101 @@
+<section class="chc cf-page" *ngIf="!loading && health">
+  <header class="chc-hero cf-panel">
+    <div>
+      <p class="chc-hero__eyebrow">Collection Performance Center</p>
+      <h1>Collection Health Center</h1>
+      <p class="chc-hero__subtitle">Operational workspace for collection score transparency, issues, and recommended follow-up.</p>
+    </div>
+    <a routerLink="/donations" class="cf-btn">Back to Command Center</a>
+  </header>
+
+  <section class="chc-overview cf-panel" [attr.data-status]="health.status">
+    <div class="chc-overview__score">
+      <span>Collection Health Score</span>
+      <strong>{{ health.score | number:'1.0-0' }} <small>/ {{ health.max_score }}</small></strong>
+      <p>{{ health.status_label }} · {{ health.label }}</p>
+    </div>
+    <div class="chc-overview__meta">
+      <div>
+        <span>Status</span>
+        <strong>{{ health.label }}</strong>
+      </div>
+      <div>
+        <span>Trend</span>
+        <strong [class.is-down]="health.trend_direction === 'down'">
+          {{ health.trend_direction === 'up' ? 'Improving' : 'Declining' }} {{ health.trend_pct | number:'1.1-1' }}% this month
+        </strong>
+      </div>
+      <div>
+        <span>Issues</span>
+        <strong>{{ health.issue_count }} require attention</strong>
+      </div>
+    </div>
+    <p class="chc-overview__summary">{{ health.summary }}</p>
+  </section>
+
+  <div class="chc-grid">
+    <section class="cf-panel chc-card">
+      <header class="chc-card__head">
+        <h2>Health Breakdown</h2>
+        <p>How the collection health score is calculated.</p>
+      </header>
+      <div class="chc-factor" *ngFor="let factor of health.factors" [attr.data-status]="factor.status">
+        <div>
+          <strong>{{ factor.label }}</strong>
+          <span>Weight {{ factor.weight_pct }}%</span>
+        </div>
+        <div class="chc-factor__score">
+          <strong>{{ factor.score | number:'1.0-1' }}</strong>
+          <span *ngIf="factor.trend_pct != null" [class.is-down]="factor.trend_direction === 'down'">
+            {{ factor.trend_direction === 'up' ? '↑' : '↓' }} {{ factor.trend_pct | number:'1.1-1' }}%
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-panel chc-card">
+      <header class="chc-card__head">
+        <h2>Issues Requiring Attention</h2>
+        <p>Operational blockers affecting collection health.</p>
+      </header>
+      <ul class="chc-issues" *ngIf="health.issues.length; else noIssues">
+        <li *ngFor="let issue of health.issues" [attr.data-severity]="issue.severity">
+          <div>
+            <span class="chc-issue__badge">{{ severityLabel(issue.severity) }}</span>
+            <strong>{{ issue.message }}</strong>
+            <p *ngIf="issue.detail">{{ issue.detail }}</p>
+          </div>
+          <a [routerLink]="issue.cta_route" class="cf-btn cf-btn--subtle">Review</a>
+        </li>
+      </ul>
+      <ng-template #noIssues>
+        <p class="chc-empty">No active collection issues. Continue monitoring participation and project funding.</p>
+      </ng-template>
+    </section>
+
+    <section class="cf-panel chc-card">
+      <header class="chc-card__head">
+        <h2>Recommended Actions</h2>
+        <p>Next steps for parish finance operators.</p>
+      </header>
+      <div class="chc-actions">
+        <a *ngFor="let action of health.recommended_actions" [routerLink]="action.route" class="chc-action">
+          {{ action.label }} →
+        </a>
+      </div>
+    </section>
+
+    <section class="cf-panel chc-card chc-card--wide">
+      <header class="chc-card__head">
+        <h2>Collection Intelligence</h2>
+        <p>AI-assisted insights based on current parish collection signals.</p>
+      </header>
+      <ul class="chc-insights">
+        <li *ngFor="let insight of health.insights">{{ insight }}</li>
+      </ul>
+    </section>
+  </div>
+</section>
+
+<p class="chc-loading" *ngIf="loading">Loading collection health center…</p>
+<p class="chc-error" *ngIf="error" role="alert">{{ error }}</p>

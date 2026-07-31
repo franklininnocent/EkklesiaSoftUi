@@ -1,0 +1,143 @@
+<section class="settings-page cf-page cf-split-page">
+  <header class="cf-split-page__hero cf-hero">
+    <div class="cf-split-page__hero-copy">
+      <h1>Stewardship Settings</h1>
+      <p>Receipts, UPI collection, tax acknowledgements, and AI outreach — configure once.</p>
+    </div>
+    <div class="cf-split-page__hero-actions" *ngIf="canEditSettings && settingsLoaded">
+      <button type="submit" form="settings-form" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
+        {{ saving ? 'Saving…' : 'Save settings' }}
+      </button>
+    </div>
+  </header>
+
+  <div class="cf-split-loading cf-split-card" *ngIf="!settingsLoaded" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-split-loading__label">Loading stewardship settings…</p>
+    <app-loading-skeleton type="table" [rows]="4" [columns]="2"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="settingsLoaded">
+    <p *ngIf="!canEditSettings" class="cf-state">You do not have permission to edit donation settings.</p>
+
+    <div class="cf-split-workspace" *ngIf="canEditSettings">
+      <aside class="cf-split-panel">
+        <article class="cf-split-card" id="settings-form-card">
+          <header class="cf-split-card__header">
+            <div class="cf-split-card__header-copy">
+              <h2>Parish settings</h2>
+              <p>Receipts, collection, and outreach configuration.</p>
+            </div>
+          </header>
+
+          <form id="settings-form" [formGroup]="form" (ngSubmit)="save()" class="cf-split-form-body" novalidate>
+            <section class="cf-split-section" aria-labelledby="settings-section-receipt">
+              <h3 id="settings-section-receipt" class="cf-split-section__title">Receipts & tax</h3>
+              <div class="cf-split-grid">
+                <div class="cf-split-field">
+                  <label for="settings-currency">Default currency</label>
+                  <input id="settings-currency" formControlName="default_currency" placeholder="INR" />
+                </div>
+                <div class="cf-split-field">
+                  <label for="settings-receipt-prefix">Receipt prefix</label>
+                  <input id="settings-receipt-prefix" formControlName="receipt_prefix" placeholder="RCPT" />
+                </div>
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="settings-tax-reg">Tax registration number</label>
+                  <input id="settings-tax-reg" formControlName="tax_registration_number" placeholder="Tax registration number" />
+                </div>
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="settings-tax-note">Tax acknowledgement note</label>
+                  <textarea id="settings-tax-note" formControlName="tax_acknowledgement_note" rows="2" placeholder="Note printed on tax receipts"></textarea>
+                </div>
+              </div>
+            </section>
+
+            <section class="cf-split-section" aria-labelledby="settings-section-upi">
+              <h3 id="settings-section-upi" class="cf-split-section__title">UPI collection</h3>
+              <div class="cf-split-grid">
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="settings-upi-vpa">UPI VPA</label>
+                  <input id="settings-upi-vpa" formControlName="upi_vpa" placeholder="church@upi" />
+                </div>
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="settings-upi-name">UPI payee name</label>
+                  <input id="settings-upi-name" formControlName="upi_payee_name" placeholder="Parish name on UPI" />
+                </div>
+              </div>
+            </section>
+
+            <section class="cf-split-section" aria-labelledby="settings-section-ai">
+              <h3 id="settings-section-ai" class="cf-split-section__title">Intelligence & outreach</h3>
+              <label class="cf-split-toggle cf-split-toggle--block">
+                <input type="checkbox" formControlName="financial_ai_llm_enabled" />
+                <span>
+                  Enable LLM-enhanced answers for this parish
+                  <small>Uses semantic search with optional LLM responses for financial assistant queries.</small>
+                </span>
+              </label>
+            </section>
+
+            <div class="cf-split-form-actions">
+              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
+                {{ saving ? 'Saving…' : 'Save settings' }}
+              </button>
+            </div>
+          </form>
+        </article>
+      </aside>
+
+      <main class="cf-split-panel">
+        <article class="cf-split-card cf-split-card--list">
+          <header class="cf-split-card__header">
+            <div class="cf-split-card__header-copy">
+              <h2>Configuration status</h2>
+              <p>Live status and guidance for your parish setup.</p>
+            </div>
+          </header>
+
+          <div class="cf-split-side-body settings-status">
+            <p class="cf-split-form-alert cf-split-form-alert--success" *ngIf="message === 'Settings saved.'" role="status">{{ message }}</p>
+            <p class="cf-split-form-alert cf-split-form-alert--error" *ngIf="message && message !== 'Settings saved.'" role="alert">{{ message }}</p>
+
+            <article class="cf-split-status-card">
+              <h3>Next recommended step</h3>
+              <p>{{ settingsDecisionHint }}</p>
+            </article>
+
+            <article class="cf-split-status-card">
+              <h3>UPI collection</h3>
+              <span class="cf-split-status-pill" [class.cf-split-status-pill--ok]="!!form.value.upi_vpa">
+                {{ form.value.upi_vpa ? 'Configured' : 'Not configured' }}
+              </span>
+              <p *ngIf="form.value.upi_vpa">VPA: {{ form.value.upi_vpa }}</p>
+              <p *ngIf="!form.value.upi_vpa">Add a UPI VPA to enable QR collection in Quick Collect and Collection Day.</p>
+            </article>
+
+            <article class="cf-split-status-card" *ngIf="aiStatus">
+              <h3>AI engine</h3>
+              <span class="cf-split-status-pill" [class.cf-split-status-pill--ok]="aiStatus.llm_active">
+                {{ aiStatus.llm_active ? 'Semantic + LLM' : 'Semantic only' }}
+              </span>
+              <p>LLM enhancement is {{ form.value.financial_ai_llm_enabled ? 'enabled' : 'disabled' }} for this parish.</p>
+            </article>
+
+            <article class="cf-split-status-card" *ngIf="aiStatus">
+              <h3>WhatsApp outreach</h3>
+              <span class="cf-split-status-pill" [class.cf-split-status-pill--ok]="aiStatus.whatsapp_business_enabled" [class.cf-split-status-pill--warn]="!aiStatus.whatsapp_business_enabled">
+                {{ aiStatus.whatsapp_business_enabled ? 'Business API configured' : 'Manual wa.me mode' }}
+              </span>
+              <p *ngIf="!aiStatus.whatsapp_business_enabled">
+                Set <code>WHATSAPP_BUSINESS_ENABLED=true</code> and Meta credentials in the API environment to enable automatic delivery.
+              </p>
+            </article>
+
+            <article class="cf-split-status-card">
+              <h3>Receipt defaults</h3>
+              <p>Currency: {{ form.value.default_currency || '—' }} · Prefix: {{ form.value.receipt_prefix || '—' }}</p>
+            </article>
+          </div>
+        </article>
+      </main>
+    </div>
+  </ng-container>
+</section>

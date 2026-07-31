@@ -1,0 +1,60 @@
+<div class="phone-input-wrapper">
+  <label *ngIf="label" [for]="id" class="phone-input-label">
+    {{ label }}
+    <span *ngIf="required" class="required-indicator">*</span>
+  </label>
+  
+  <div class="phone-input-group" [class.disabled]="disabled" [class.error]="hasError()">
+    <span class="phone-prefix" [attr.aria-label]="'Country code: ' + phoneCode()">
+      {{ phoneCode() }}
+    </span>
+    <input
+      type="tel"
+      [id]="id"
+      [name]="name"
+      [formControl]="phoneControl"
+      [placeholder]="placeholder || (phoneCode() + ' 1234567890')"
+      [disabled]="disabled"
+      [maxlength]="maxLength"
+      [attr.aria-label]="label || 'Phone number'"
+      [attr.aria-required]="required"
+      [attr.aria-invalid]="hasError()"
+      [attr.aria-describedby]="hasError() ? (id + '-error') : null"
+      (input)="onInput($event)"
+      (paste)="onPaste($event)"
+      (keydown)="onKeyDown($event)"
+      (blur)="onBlur()"
+      (focus)="onFocus()"
+      class="phone-input"
+      [class.input-error]="hasError()"
+    />
+  </div>
+  
+  <span 
+    *ngIf="hasError()" 
+    [id]="id + '-error'"
+    class="error-message" 
+    [attr.aria-live]="'polite'"
+  >
+    {{ getErrorMessage() }}
+  </span>
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,41 @@
+<section class="family-summary-card" aria-label="Family summary">
+  <div class="family-summary-card__surface">
+    <div class="family-summary-card__header">
+      <div class="family-summary-card__title-row">
+        <h2 class="family-summary-card__title">{{ summary.familyName }}</h2>
+        <span class="family-summary-card__status" [ngClass]="statusClass">{{ statusLabel }}</span>
+      </div>
+      <app-edit-icon-button
+        ariaLabel="Edit family details"
+        (clicked)="editFamily.emit()"
+      />
+    </div>
+
+    <dl class="family-summary-card__facts">
+      <div class="family-summary-card__fact">
+        <dt>Family Code:</dt>
+        <dd>{{ summary.familyCode }}</dd>
+      </div>
+      <div class="family-summary-card__fact">
+        <dt>Total Members:</dt>
+        <dd>{{ summary.memberCount }}</dd>
+      </div>
+      <div class="family-summary-card__fact" *ngIf="summary.familyAddress">
+        <dt>Address:</dt>
+        <dd>{{ summary.familyAddress }}</dd>
+      </div>
+      <div class="family-summary-card__fact">
+        <dt>BCC:</dt>
+        <dd>{{ summary.bccName }}</dd>
+      </div>
+      <div class="family-summary-card__fact" *ngIf="summary.bccCode">
+        <dt>BCC Code:</dt>
+        <dd>{{ summary.bccCode }}</dd>
+      </div>
+      <div class="family-summary-card__fact" *ngIf="summary.parishName">
+        <dt>Parish:</dt>
+        <dd>{{ summary.parishName }}</dd>
+      </div>
+    </dl>
+  </div>
+</section>

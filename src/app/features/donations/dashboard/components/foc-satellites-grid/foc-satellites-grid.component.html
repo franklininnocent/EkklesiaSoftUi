@@ -1,0 +1,35 @@
+<div class="foc-bottom-grid">
+  <app-foc-collections-command
+    *ngIf="show('collections_command')"
+    [command]="data.collections_command"
+    [currencyCode]="currencyCode"
+  ></app-foc-collections-command>
+
+  <app-foc-ai-advisor
+    *ngIf="show('ai_advisor')"
+    [advisor]="data.ai_advisor"
+  ></app-foc-ai-advisor>
+
+  <app-foc-contribution-leaderboard
+    *ngIf="show('contribution_intelligence')"
+    [intelligence]="data.contribution_intelligence"
+    [currencyCode]="currencyCode"
+  ></app-foc-contribution-leaderboard>
+
+  <app-foc-communication-center
+    *ngIf="show('communication_center')"
+    [communication]="data.communication_center"
+  ></app-foc-communication-center>
+
+  <app-foc-intelligence-stream
+    *ngIf="show('operational_intelligence')"
+    [events]="data.intelligence"
+    [currencyCode]="currencyCode"
+  ></app-foc-intelligence-stream>
+
+  <app-foc-projects-command
+    *ngIf="show('projects_command')"
+    [projects]="data.projects_command"
+    [currencyCode]="currencyCode"
+  ></app-foc-projects-command>
+</div>

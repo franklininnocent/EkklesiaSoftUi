@@ -1,0 +1,323 @@
+<section class="plans-page cf-page">
+  <header class="plans-page__hero cf-hero">
+    <div class="plans-page__hero-copy">
+      <h1>Contribution Plans</h1>
+      <p>Define what families owe and how often — create and manage plans side by side.</p>
+    </div>
+    <div class="plans-page__hero-actions" *ngIf="canManage && plansLoaded && !showForm">
+      <a routerLink="/donations/dues" class="cf-btn" *ngIf="plans.length">Outstanding</a>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">New plan</button>
+    </div>
+  </header>
+
+  <div class="plan-loading plans-card" *ngIf="!plansLoaded" role="status" aria-live="polite" aria-busy="true">
+    <p class="plan-loading__label">Loading contribution plans…</p>
+    <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="plansLoaded">
+    <div class="plan-success-banner plans-banner" *ngIf="lastCreatedPlan && !showForm" role="status">
+      <span><strong>{{ lastCreatedPlan.name }}</strong> created.</span>
+      <div class="plan-success-banner__actions">
+        <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Create another</button>
+        <button type="button" class="cf-btn" (click)="scrollToPlan(lastCreatedPlan.id)">View plan</button>
+      </div>
+    </div>
+
+    <div class="plan-load-error plans-banner plans-banner--error" *ngIf="plansLoadError" role="alert">
+      <p class="plan-load-error__text">{{ plansLoadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="loadPlans()">Try again</button>
+    </div>
+
+    <div
+      class="plans-workspace"
+      *ngIf="!plansLoadError"
+      [class.plans-workspace--single]="!canManage"
+    >
+      <!-- Left panel: form -->
+      <aside class="plans-panel plans-panel--form" *ngIf="canManage">
+        <article class="plans-card plans-card--form" id="plan-form-card">
+          <header class="plans-card__header">
+            <div class="plans-card__header-copy">
+              <h2>{{ editingPlanId ? 'Edit plan' : 'New plan' }}</h2>
+              <p *ngIf="!showForm">Set up dues, frequencies, and automation rules.</p>
+            </div>
+            <button
+              type="button"
+              class="cf-btn plans-card__close"
+              *ngIf="showForm"
+              (click)="closeForm()"
+              aria-label="Close form"
+            >×</button>
+          </header>
+
+          <div class="plans-form-cta" *ngIf="!showForm">
+            <div class="plans-form-cta__icon" aria-hidden="true">◎</div>
+            <p class="plans-form-cta__title">Create a contribution plan</p>
+            <p class="plans-form-cta__text">Monthly dues, building funds, festival collections, and more.</p>
+            <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">New plan</button>
+          </div>
+
+          <form
+            *ngIf="showForm"
+            [formGroup]="planForm"
+            (ngSubmit)="savePlan()"
+            class="plan-sheet__form"
+            novalidate
+          >
+            <p class="plan-form-alert plan-form-alert--error" *ngIf="submitAttempted && planForm.invalid" role="alert">
+              {{ formValidationSummary }}
+            </p>
+            <p class="plan-form-alert plan-form-alert--error" *ngIf="formError" role="alert">{{ formError }}</p>
+
+            <section class="plan-section" aria-labelledby="plan-section-details">
+              <h3 id="plan-section-details" class="plan-section__title">Plan details</h3>
+              <div class="plan-field plan-field--full">
+                <label for="plan-name">Plan name <span class="req" aria-hidden="true">*</span></label>
+                <input
+                  id="plan-name"
+                  formControlName="name"
+                  placeholder="Monthly family dues"
+                  [class.is-invalid]="isFieldInvalid('name')"
+                  autocomplete="off"
+                  aria-required="true"
+                />
+                <span class="plan-field__error" *ngIf="isFieldInvalid('name')">{{ fieldError('name') }}</span>
+              </div>
+
+              <div class="plan-field">
+                <label for="plan-fund">Collection purpose <span class="req" aria-hidden="true">*</span></label>
+                <p class="plan-field__hint" *ngIf="!fundsLoaded">Loading collection purposes…</p>
+                <p class="plan-field__hint plan-field__hint--error" *ngIf="fundsLoaded && fundsLoadError">{{ fundsLoadError }}</p>
+                <select
+                  *ngIf="fundsLoaded && funds.length"
+                  id="plan-fund"
+                  formControlName="fund_id"
+                  [class.is-invalid]="isFieldInvalid('fund_id')"
+                  aria-required="true"
+                >
+                  <option value="">Choose purpose</option>
+                  <option *ngFor="let fund of funds" [value]="fund.id">{{ fund.name }}</option>
+                </select>
+                <span class="plan-field__error" *ngIf="fundsLoaded && funds.length && isFieldInvalid('fund_id')">{{ fieldError('fund_id') }}</span>
+
+                <div class="plan-purpose-empty" *ngIf="fundsLoaded && !fundsLoadError && !funds.length" role="status">
+                  <p class="plan-purpose-empty__title">No collection purposes yet.</p>
+                  <p class="plan-purpose-empty__hint">Add one to continue — e.g. Building fund, Mission fund.</p>
+                  <div class="plan-purpose-create">
+                    <input
+                      [(ngModel)]="newPurposeName"
+                      [ngModelOptions]="{ standalone: true }"
+                      placeholder="Building fund"
+                      aria-label="New collection purpose"
+                      (keydown.enter)="$event.preventDefault(); createPurpose()"
+                    />
+                    <button type="button" class="cf-btn cf-btn-primary" (click)="createPurpose()" [disabled]="creatingPurpose || !newPurposeName.trim()">
+                      {{ creatingPurpose ? 'Adding…' : 'Add purpose' }}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            <section class="plan-section" aria-labelledby="plan-section-rules">
+              <h3 id="plan-section-rules" class="plan-section__title">Contribution rules</h3>
+              <div class="plan-grid">
+                <div class="plan-field">
+                  <label for="plan-amount">Amount per family <span class="req" aria-hidden="true">*</span></label>
+                  <div class="plan-amount" [class.is-invalid]="isFieldInvalid('default_amount')">
+                    <span aria-hidden="true">₹</span>
+                    <input
+                      id="plan-amount"
+                      formControlName="default_amount"
+                      type="number"
+                      min="0.01"
+                      step="0.01"
+                      placeholder="500"
+                      aria-required="true"
+                    />
+                  </div>
+                  <span class="plan-field__error" *ngIf="isFieldInvalid('default_amount')">{{ fieldError('default_amount') }}</span>
+                </div>
+
+                <div class="plan-field">
+                  <label for="plan-frequency">Frequency <span class="req" aria-hidden="true">*</span></label>
+                  <select id="plan-frequency" formControlName="frequency" (change)="onFrequencyChange()" aria-required="true">
+                    <option value="one_time">One time</option>
+                    <option value="monthly">Monthly</option>
+                    <option value="quarterly">Quarterly</option>
+                    <option value="half_yearly">Half-yearly</option>
+                    <option value="yearly">Yearly</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="custom">Custom</option>
+                  </select>
+                </div>
+
+                <div class="plan-field" *ngIf="planForm.value.frequency === 'custom'">
+                  <label for="plan-custom-days">Every (days) <span class="req" aria-hidden="true">*</span></label>
+                  <input
+                    id="plan-custom-days"
+                    formControlName="custom_interval_days"
+                    type="number"
+                    min="1"
+                    placeholder="30"
+                    [class.is-invalid]="isFieldInvalid('custom_interval_days')"
+                  />
+                  <span class="plan-field__error" *ngIf="isFieldInvalid('custom_interval_days')">{{ fieldError('custom_interval_days') }}</span>
+                </div>
+              </div>
+
+              <label class="plan-toggle">
+                <input type="checkbox" [checked]="sameAmountForAll" (change)="onSameAmountToggle($event)" />
+                <span>Same amount for every family</span>
+              </label>
+            </section>
+
+            <section class="plan-section" aria-labelledby="plan-section-schedule">
+              <h3 id="plan-section-schedule" class="plan-section__title">Schedule</h3>
+              <div class="plan-grid plan-grid--2">
+                <div class="plan-field">
+                  <label for="plan-start">Starts on <span class="req" aria-hidden="true">*</span></label>
+                  <input
+                    id="plan-start"
+                    formControlName="start_date"
+                    type="date"
+                    [class.is-invalid]="isFieldInvalid('start_date')"
+                    (change)="onStartDateChange()"
+                    aria-required="true"
+                  />
+                  <span class="plan-field__error" *ngIf="isFieldInvalid('start_date')">{{ fieldError('start_date') }}</span>
+                </div>
+                <div class="plan-field">
+                  <label for="plan-end">Ends on <span class="plan-optional">optional</span></label>
+                  <input id="plan-end" formControlName="end_date" type="date" [class.is-invalid]="isFieldInvalid('end_date')" />
+                  <span class="plan-field__error" *ngIf="isFieldInvalid('end_date')">{{ fieldError('end_date') }}</span>
+                </div>
+              </div>
+            </section>
+
+            <section class="plan-section" aria-labelledby="plan-section-automation">
+              <h3 id="plan-section-automation" class="plan-section__title">Automation</h3>
+              <label class="plan-toggle plan-toggle--block">
+                <input type="checkbox" formControlName="auto_generate" />
+                <span>
+                  Automatically generate dues
+                  <small>The system will create due records automatically.</small>
+                </span>
+              </label>
+            </section>
+
+            <details class="plan-more">
+              <summary>More options</summary>
+              <div class="plan-field">
+                <label for="plan-code">Reference code</label>
+                <input id="plan-code" formControlName="code" placeholder="Auto-generated if blank" />
+              </div>
+            </details>
+
+            <details class="plan-more" *ngIf="planForm.value.plan_type === 'individual'" open>
+              <summary>Family amounts</summary>
+              <p class="plan-field__error" *ngIf="submitAttempted && !draftAssignments.length" role="alert">Add at least one family amount.</p>
+              <div class="plan-assign cf-form-grid">
+                <select [(ngModel)]="selectedFamilyId" [ngModelOptions]="{standalone: true}" aria-label="Family">
+                  <option value="">Family</option>
+                  <option *ngFor="let family of families" [value]="family.id">{{ family.family_name }}</option>
+                </select>
+                <input [(ngModel)]="assignmentAmount" [ngModelOptions]="{standalone: true}" type="number" min="0.01" step="0.01" placeholder="₹ amount" aria-label="Amount" />
+                <input [(ngModel)]="assignmentEffectiveFrom" [ngModelOptions]="{standalone: true}" type="date" aria-label="Effective from" />
+                <button type="button" class="cf-btn" (click)="addAssignment()">Add</button>
+              </div>
+              <table *ngIf="draftAssignments.length" class="cf-table plan-assign-table">
+                <tbody>
+                  <tr *ngFor="let row of draftAssignments; let i = index">
+                    <td>{{ familyName(row.family_id) }}</td>
+                    <td>₹{{ row.amount | number:'1.0-0' }}</td>
+                    <td>{{ row.effective_from }}</td>
+                    <td><button type="button" class="plan-link" (click)="removeAssignment(i)">Remove</button></td>
+                  </tr>
+                </tbody>
+              </table>
+            </details>
+
+            <div class="plan-actions">
+              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving || creatingPurpose || !fundsLoaded">
+                <span *ngIf="!saving">{{ editingPlanId ? 'Save changes' : 'Create plan' }}</span>
+                <span *ngIf="saving">Creating plan…</span>
+              </button>
+              <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+            </div>
+          </form>
+        </article>
+      </aside>
+
+      <!-- Right panel: plan list -->
+      <main class="plans-panel plans-panel--list">
+        <article class="plans-card plans-card--list">
+          <header class="plans-card__header plans-card__header--list">
+            <div class="plans-card__header-copy">
+              <h2>Plan list</h2>
+              <p>{{ activePlanCount }} active · {{ plans.length }} total</p>
+            </div>
+            <div class="plans-list-toolbar">
+              <input
+                type="search"
+                [(ngModel)]="tableSearch"
+                placeholder="Search plans…"
+                aria-label="Search plans"
+                class="plans-list-search"
+              />
+            </div>
+          </header>
+
+          <div class="plans-list-body">
+            <div class="plans-table-scroll" *ngIf="filteredPlans.length">
+              <table class="cf-table plans-table">
+                <thead>
+                  <tr>
+                    <th>Plan</th>
+                    <th>Frequency</th>
+                    <th>Amount</th>
+                    <th>Families</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    *ngFor="let plan of filteredPlans"
+                    [id]="'plan-row-' + plan.id"
+                    [class.plan-row--highlight]="plan.id === highlightPlanId"
+                  >
+                    <td>
+                      <strong>{{ plan.name }}</strong>
+                      <span class="plan-meta">{{ plan.code }} · {{ plan.plan_type === 'individual' ? 'Varies' : 'Uniform' }}</span>
+                    </td>
+                    <td>{{ frequencyLabel(plan.frequency) }}</td>
+                    <td>₹{{ plan.default_amount | number:'1.0-0' }}</td>
+                    <td>{{ plan.assignments_count || '—' }}</td>
+                    <td class="row-actions">
+                      <button type="button" class="plan-link" *ngIf="canManage" (click)="editPlan(plan)">Edit</button>
+                      <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateDues(plan)">Generate dues</button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <p *ngIf="plans.length && !filteredPlans.length" class="plans-list-empty">No plans match your search.</p>
+
+            <div class="plans-list-empty-state" *ngIf="!plans.length">
+              <app-cf-empty-state
+                icon="◎"
+                title="No contribution plans yet"
+                description="Create monthly dues, building funds, festival collections, or other contribution plans for your parish."
+                [hasActions]="canManage"
+              >
+                <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create contribution plan</button>
+              </app-cf-empty-state>
+            </div>
+          </div>
+        </article>
+      </main>
+    </div>
+  </ng-container>
+</section>

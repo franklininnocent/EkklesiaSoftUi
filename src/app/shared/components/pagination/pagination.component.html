@@ -1,0 +1,96 @@
+<div class="pagination-container" *ngIf="totalItems > 0">
+  <!-- Page Info -->
+  <div class="pagination-info" *ngIf="showPageInfo">
+    <span class="info-text">
+      Showing <strong>{{ startItem }}</strong> to <strong>{{ endItem }}</strong> of <strong>{{ totalItems }}</strong> entries
+    </span>
+  </div>
+
+  <!-- Pagination Controls -->
+  <div class="pagination-controls">
+    <!-- Page Size Selector -->
+    <div class="page-size-selector" *ngIf="showPageSizeSelector">
+      <label for="pageSize" class="page-size-label">Show:</label>
+      <select 
+        id="pageSize" 
+        [ngModel]="pageSize" 
+        (ngModelChange)="onPageSizeChange($event)"
+        class="page-size-select">
+        <option *ngFor="let size of pageSizeOptions" [ngValue]="size">
+          {{ size }}
+        </option>
+      </select>
+      <span class="page-size-suffix">per page</span>
+    </div>
+
+    <!-- Page Navigation -->
+    <div class="page-navigation">
+      <!-- First Page -->
+      <button 
+        class="page-btn page-btn-first"
+        [disabled]="isFirstPage()"
+        (click)="goToFirstPage()"
+        title="First Page"
+        aria-label="Go to first page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="11 17 6 12 11 7"></polyline>
+          <polyline points="18 17 13 12 18 7"></polyline>
+        </svg>
+      </button>
+
+      <!-- Previous Page -->
+      <button 
+        class="page-btn page-btn-prev"
+        [disabled]="isFirstPage()"
+        (click)="goToPreviousPage()"
+        title="Previous Page"
+        aria-label="Go to previous page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+
+      <!-- Page Numbers -->
+      <div class="page-numbers">
+        <ng-container *ngFor="let page of pages">
+          <button 
+            *ngIf="page !== -1"
+            class="page-number"
+            [class.active]="page === currentPage"
+            (click)="goToPage(page)"
+            [attr.aria-label]="'Go to page ' + page"
+            [attr.aria-current]="page === currentPage ? 'page' : null">
+            {{ page }}
+          </button>
+          <span *ngIf="page === -1" class="page-ellipsis">...</span>
+        </ng-container>
+      </div>
+
+      <!-- Next Page -->
+      <button 
+        class="page-btn page-btn-next"
+        [disabled]="isLastPage()"
+        (click)="goToNextPage()"
+        title="Next Page"
+        aria-label="Go to next page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="9 18 15 12 9 6"></polyline>
+        </svg>
+      </button>
+
+      <!-- Last Page -->
+      <button 
+        class="page-btn page-btn-last"
+        [disabled]="isLastPage()"
+        (click)="goToLastPage()"
+        title="Last Page"
+        aria-label="Go to last page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="13 17 18 12 13 7"></polyline>
+          <polyline points="6 17 11 12 6 7"></polyline>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+

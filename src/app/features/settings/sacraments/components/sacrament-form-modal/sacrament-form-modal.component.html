@@ -1,0 +1,496 @@
+<div class="modal-overlay" (click)="onBackdropClick()">
+  <div class="modal-dialog modal-xl" (click)="onModalClick($event)">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <div class="modal-title-wrapper">
+        <h2 class="modal-title">
+          {{ isEditMode ? 'Edit' : 'Add' }}
+        </h2>
+        <p class="modal-subtitle">
+          {{ isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information' }}
+        </p>
+      </div>
+      <button type="button" class="modal-close-btn" (click)="onCancel()" [disabled]="saving">
+        ×
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <!-- Loading State -->
+      <div *ngIf="loading" class="loading-container">
+        <div class="spinner"></div>
+        <p>Loading...</p>
+      </div>
+
+      <!-- Form -->
+      <form *ngIf="!loading" class="sacrament-form" (ngSubmit)="onSave()">
+        <!-- Sacrament Information -->
+        <div class="form-section">
+          <h3 class="section-title">✝️ Sacrament Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="required">Sacrament Type</label>
+              <select 
+                [(ngModel)]="formData['sacrament_type_id']" 
+                (ngModelChange)="onSacramentTypeChange()"
+                name="sacrament_type_id" 
+                class="form-control" 
+                required>
+                <option [ngValue]="undefined">Select a sacrament...</option>
+                <option *ngFor="let type of sacramentTypes" [ngValue]="type.id">
+                  {{ type.name }}
+                </option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label class="required">Date Administered</label>
+              <input
+                type="date"
+                [(ngModel)]="formData['date_administered']"
+                name="date_administered"
+                class="form-control"
+                required>
+            </div>
+
+            <div class="form-group">
+              <label>Place Administered</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['place_administered']"
+                name="place_administered"
+                class="form-control"
+                placeholder="Church name or location">
+            </div>
+
+            <div class="form-group">
+              <label>Status</label>
+              <select [(ngModel)]="formData['status']" name="status" class="form-control">
+                <option value="active">Active</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="conditional">Conditional</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Recipient Information -->
+        <div class="form-section">
+          <h3 class="section-title">👤 Recipient Information</h3>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label class="required">Full Name</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['recipient_name']"
+                name="recipient_name"
+                class="form-control"
+                placeholder="Enter full name"
+                required>
+            </div>
+
+            <div class="form-group">
+              <label>Date of Birth</label>
+              <input
+                type="date"
+                [(ngModel)]="formData['recipient_birth_date']"
+                name="recipient_birth_date"
+                class="form-control">
+            </div>
+
+            <div class="form-group">
+              <label>Place of Birth</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['recipient_birth_place']"
+                name="recipient_birth_place"
+                class="form-control"
+                placeholder="City, State">
+            </div>
+
+            <div class="form-group">
+              <label>Gender</label>
+              <select
+                [(ngModel)]="formData['recipient_gender']"
+                name="recipient_gender"
+                class="form-control">
+                <option [ngValue]="undefined">Select gender...</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <!-- Family Selection -->
+            <div class="form-group full-width" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
+              <label>Family Association</label>
+              <div class="family-selection-container">
+                <div class="family-type-selection">
+                  <label class="radio-label">
+                    <input 
+                      type="radio" 
+                      name="familySelectionType" 
+                      [value]="null"
+                      [checked]="familySelectionType === null"
+                      (change)="clearFamilySelection()">
+                    <span>No Family Association</span>
+                  </label>
+                  <label class="radio-label">
+                    <input 
+                      type="radio" 
+                      name="familySelectionType" 
+                      value="existing"
+                      [checked]="familySelectionType === 'existing'"
+                      (change)="onFamilySelectionTypeChange('existing')">
+                    <span>Existing Family</span>
+                  </label>
+                  <label class="radio-label">
+                    <input 
+                      type="radio" 
+                      name="familySelectionType" 
+                      value="new"
+                      [checked]="familySelectionType === 'new'"
+                      (change)="onFamilySelectionTypeChange('new')">
+                    <span>New Family</span>
+                  </label>
+                </div>
+
+                <!-- Existing Family Selection -->
+                <div *ngIf="familySelectionType === 'existing'" class="family-selection-fields">
+                  <div class="form-group">
+                    <label>BCC</label>
+                    <select 
+                      [(ngModel)]="selectedBccId" 
+                      (ngModelChange)="onBCCChange()"
+                      name="bcc_id" 
+                      class="form-control"
+                      [disabled]="loadingBCCs">
+                      <option [ngValue]="null">Select a BCC...</option>
+                      <option *ngFor="let bcc of bccs" [ngValue]="bcc.id">
+                        {{ bcc.bcc_code }} - {{ bcc.name }}
+                      </option>
+                    </select>
+                    <small *ngIf="loadingBCCs" class="text-muted">Loading BCCs...</small>
+                  </div>
+
+                  <div class="form-group" *ngIf="selectedBccId">
+                    <label>Family</label>
+                    <select 
+                      [(ngModel)]="selectedFamilyId" 
+                      (ngModelChange)="onFamilyChange()"
+                      name="family_id" 
+                      class="form-control"
+                      [disabled]="loadingFamilies">
+                      <option [ngValue]="null">Select a family...</option>
+                      <option *ngFor="let family of families" [ngValue]="family.id">
+                        {{ family.family_name }} ({{ family.family_code }})
+                      </option>
+                    </select>
+                    <small *ngIf="loadingFamilies" class="text-muted">Loading families...</small>
+                    <small *ngIf="!loadingFamilies && families.length === 0 && selectedBccId" class="text-warning">
+                      No families found for this BCC.
+                    </small>
+                  </div>
+                </div>
+
+                <!-- New Family Form -->
+                <div *ngIf="familySelectionType === 'new' && showFamilyForm" class="new-family-form-container">
+                  <app-family-form
+                    [family]="null"
+                    (save)="onFamilyCreated($event)"
+                    (cancel)="onFamilyFormCancel()">
+                  </app-family-form>
+                </div>
+
+                <!-- After New Family Created -->
+                <div *ngIf="familySelectionType === 'new' && newlyCreatedFamily && !showFamilyForm" class="newly-created-family-info">
+                  <div class="alert alert-success">
+                    <strong>Family Created:</strong> {{ newlyCreatedFamily.family_name }} ({{ newlyCreatedFamily.family_code }})
+                  </div>
+                  <div class="form-group" *ngIf="!newlyCreatedFamily.bcc_id">
+                    <label>BCC (Optional)</label>
+                    <select 
+                      [(ngModel)]="selectedBccId" 
+                      (ngModelChange)="onBCCChange()"
+                      name="bcc_id_new" 
+                      class="form-control"
+                      [disabled]="loadingBCCs">
+                      <option [ngValue]="null">Select a BCC (optional)...</option>
+                      <option *ngFor="let bcc of bccs" [ngValue]="bcc.id">
+                        {{ bcc.bcc_code }} - {{ bcc.name }}
+                      </option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Godparent Fields (for Baptism only) -->
+            <div class="form-group" *ngIf="isBaptism()">
+              <label>Primary Godparent</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['godparent1_name']"
+                name="godparent1_name"
+                class="form-control"
+                placeholder="Enter primary godparent's name">
+            </div>
+
+            <div class="form-group" *ngIf="isBaptism()">
+              <label>Secondary Godparent</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['godparent2_name']"
+                name="godparent2_name"
+                class="form-control"
+                placeholder="Enter secondary godparent's name">
+            </div>
+          </div>
+        </div>
+
+        <!-- Minister Information -->
+        <div class="form-section">
+          <h3 class="section-title">⛪ Minister Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Minister Name</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['minister_name']"
+                name="minister_name"
+                class="form-control"
+                placeholder="Rev. John Doe">
+            </div>
+
+            <div class="form-group">
+              <label>Minister Title</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['minister_title']"
+                name="minister_title"
+                class="form-control"
+                placeholder="Parish Priest, Bishop, etc.">
+            </div>
+          </div>
+        </div>
+
+        <!-- Parents Information (for Baptism) -->
+        <div class="form-section" *ngIf="requiresParents()">
+          <h3 class="section-title">👨‍👩‍👧 Parents Information <span class="required-indicator">*</span></h3>
+          
+          <!-- Toggle between dropdown and manual entry (only show when family is selected) -->
+          <div *ngIf="familySelectionType === 'existing' && selectedFamilyId && familyMembers.length > 0" class="parent-selection-mode-toggle">
+            <label class="toggle-label">
+              <input 
+                type="radio" 
+                name="parentSelectionMode" 
+                value="dropdown"
+                [checked]="parentSelectionMode === 'dropdown'"
+                (change)="parentSelectionMode = 'dropdown'; autoPopulateParents();">
+              <span>Select from Family Members</span>
+            </label>
+            <label class="toggle-label">
+              <input 
+                type="radio" 
+                name="parentSelectionMode" 
+                value="manual"
+                [checked]="parentSelectionMode === 'manual'"
+                (change)="parentSelectionMode = 'manual'; selectedFatherId = null; selectedMotherId = null;">
+              <span>Enter Manually</span>
+            </label>
+          </div>
+
+          <div class="form-grid">
+            <!-- Dropdown Selection Mode -->
+            <ng-container *ngIf="parentSelectionMode === 'dropdown' && familySelectionType === 'existing' && selectedFamilyId && familyMembers.length > 0">
+              <div class="form-group">
+                <label class="required">Father's Name</label>
+                <select
+                  [(ngModel)]="selectedFatherId"
+                  (ngModelChange)="onFatherSelect()"
+                  name="selectedFatherId"
+                  class="form-control"
+                  [class.input-error]="hasFieldError('father_name')"
+                  required>
+                  <option [ngValue]="null">Select father from family...</option>
+                  <option *ngFor="let father of getAvailableFathers()" [ngValue]="father.id">
+                    {{ getMemberFullName(father) }}
+                  </option>
+                </select>
+                <span *ngIf="hasFieldError('father_name')" class="error-message">
+                  {{ getFieldError('father_name') }}
+                </span>
+                <small class="form-hint" *ngIf="getAvailableFathers().length === 0">
+                  No father found in family members. Please enter manually.
+                </small>
+              </div>
+
+              <div class="form-group">
+                <label class="required">Mother's Name</label>
+                <select
+                  [(ngModel)]="selectedMotherId"
+                  (ngModelChange)="onMotherSelect()"
+                  name="selectedMotherId"
+                  class="form-control"
+                  [class.input-error]="hasFieldError('mother_name')"
+                  required>
+                  <option [ngValue]="null">Select mother from family...</option>
+                  <option *ngFor="let mother of getAvailableMothers()" [ngValue]="mother.id">
+                    {{ getMemberFullName(mother) }}
+                  </option>
+                </select>
+                <span *ngIf="hasFieldError('mother_name')" class="error-message">
+                  {{ getFieldError('mother_name') }}
+                </span>
+                <small class="form-hint" *ngIf="getAvailableMothers().length === 0">
+                  No mother found in family members. Please enter manually.
+                </small>
+              </div>
+            </ng-container>
+
+            <!-- Manual Entry Mode -->
+            <ng-container *ngIf="parentSelectionMode === 'manual' || !selectedFamilyId || familyMembers.length === 0 || familySelectionType !== 'existing'">
+              <div class="form-group">
+                <label class="required">Father's Name</label>
+                <input
+                  type="text"
+                  [(ngModel)]="formData['father_name']"
+                  name="father_name"
+                  class="form-control"
+                  [class.input-error]="hasFieldError('father_name')"
+                  (blur)="validateField('father_name', formData['father_name'])"
+                  placeholder="Enter father's full name"
+                  required>
+                <span *ngIf="hasFieldError('father_name')" class="error-message">
+                  {{ getFieldError('father_name') }}
+                </span>
+              </div>
+
+              <div class="form-group">
+                <label class="required">Mother's Name</label>
+                <input
+                  type="text"
+                  [(ngModel)]="formData['mother_name']"
+                  name="mother_name"
+                  class="form-control"
+                  [class.input-error]="hasFieldError('mother_name')"
+                  (blur)="validateField('mother_name', formData['mother_name'])"
+                  placeholder="Enter mother's full name"
+                  required>
+                <span *ngIf="hasFieldError('mother_name')" class="error-message">
+                  {{ getFieldError('mother_name') }}
+                </span>
+              </div>
+            </ng-container>
+          </div>
+        </div>
+
+        <!-- Godparents/Sponsors (for Confirmation only - Baptism godparents shown in Recipient Information) -->
+        <div class="form-section" *ngIf="requiresGodparents() && !isBaptism()">
+          <h3 class="section-title">🤝 Godparents / Sponsors</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Godparent / Sponsor 1</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['godparent1_name']"
+                name="godparent1_name"
+                class="form-control"
+                placeholder="Enter first godparent's name">
+            </div>
+
+            <div class="form-group">
+              <label>Godparent / Sponsor 2</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['godparent2_name']"
+                name="godparent2_name"
+                class="form-control"
+                placeholder="Enter second godparent's name">
+            </div>
+          </div>
+        </div>
+
+        <!-- Witnesses -->
+        <div class="form-section">
+          <h3 class="section-title">👥 Witnesses</h3>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>Witnesses</label>
+              <textarea
+                [(ngModel)]="formData['witnesses']"
+                name="witnesses"
+                class="form-control"
+                rows="2"
+                placeholder="Enter witness names (separate with commas if multiple)"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <!-- Record Information -->
+        <div class="form-section">
+          <h3 class="section-title">📋 Record Information</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Certificate Number</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['certificate_number']"
+                name="certificate_number"
+                class="form-control"
+                placeholder="e.g., CERT-2024-001">
+            </div>
+
+            <div class="form-group">
+              <label>Book Number</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['book_number']"
+                name="book_number"
+                class="form-control"
+                placeholder="e.g., BOOK-5">
+            </div>
+
+            <div class="form-group">
+              <label>Page Number</label>
+              <input
+                type="text"
+                [(ngModel)]="formData['page_number']"
+                name="page_number"
+                class="form-control"
+                placeholder="e.g., 123">
+            </div>
+          </div>
+        </div>
+
+        <!-- Additional Notes -->
+        <div class="form-section">
+          <h3 class="section-title">📝 Additional Notes</h3>
+          <div class="form-grid">
+            <div class="form-group full-width">
+              <label>Notes</label>
+              <textarea
+                [(ngModel)]="formData['notes']"
+                name="notes"
+                class="form-control"
+                rows="3"
+                placeholder="Any additional information or special notes about this sacrament"></textarea>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="modal-footer">
+      <app-button variant="cancel" (clicked)="onCancel()" [disabled]="saving">
+        Cancel
+      </app-button>
+      <app-button type="submit" variant="save" (clicked)="onSave()" [loading]="saving || loading">
+        {{ isEditMode ? 'Update' : 'Create' }} Record
+      </app-button>
+    </div>
+  </div>
+</div>
+

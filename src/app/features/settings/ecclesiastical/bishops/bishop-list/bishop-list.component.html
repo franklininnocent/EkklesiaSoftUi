@@ -1,0 +1,201 @@
+<div class="bishop-list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <div class="header-left">
+      <h2 class="list-title">Bishops & Archbishops</h2>
+      <p class="list-subtitle">Manage church leadership and hierarchy</p>
+    </div>
+    <div class="header-right">
+      <div class="search-box-header">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onQuickSearch()"
+          placeholder="Quick search..."
+          class="search-input-header"
+          aria-label="Quick search bishops">
+        <button 
+          *ngIf="searchTerm" 
+          class="clear-search-btn"
+          (click)="clearSearch()"
+          aria-label="Clear search">
+          ✕
+        </button>
+      </div>
+      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+        <span class="btn-icon">🔍</span>
+        Filters
+        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
+      </button>
+      <button class="btn btn-primary" (click)="onCreateBishop()">
+        <span class="btn-icon">➕</span>
+        Add Bishop
+      </button>
+    </div>
+  </div>
+
+  <!-- Active Filter Chips - Inline Compact Design -->
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
+    <div class="chips-inline-wrapper">
+      <span class="chips-label">
+        <span class="filter-icon">🔍</span>
+        Active Filters ({{ getActiveFilters().length }}):
+      </span>
+      <div class="chips-list">
+        <div 
+          *ngFor="let filter of getActiveFilters()" 
+          class="filter-chip animate-scale-in"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
+          <span class="chip-content">
+            <span class="chip-label">{{ filter.label }}:</span>
+            <span class="chip-value">{{ filter.displayValue }}</span>
+          </span>
+          <button 
+            type="button"
+            class="chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label">
+            ✕
+          </button>
+        </div>
+      </div>
+      <button 
+        type="button"
+        class="btn-clear-all-chips"
+        (click)="clearAllFilters()"
+        aria-label="Clear all filters">
+        Clear All
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <app-loading-skeleton 
+      type="table" 
+      [rows]="10" 
+      [columns]="7">
+    </app-loading-skeleton>
+  </div>
+
+  <!-- Empty State -->
+  <app-empty-state
+    *ngIf="!loading && bishops.length === 0"
+    icon="👤"
+    [title]="searchTerm || selectedDiocese || selectedTitle ? 'No bishops match your filters' : 'No bishops found'"
+    [description]="searchTerm || selectedDiocese || selectedTitle ? 'Try adjusting your search or filters to find what you\'re looking for.' : 'Get started by adding your first bishop to the system.'"
+    [buttonText]="searchTerm || selectedDiocese || selectedTitle ? 'Clear Filters' : 'Add First Bishop'"
+    (action)="searchTerm || selectedDiocese || selectedTitle ? clearFilters() : onCreateBishop()">
+  </app-empty-state>
+
+  <!-- Table -->
+  <div *ngIf="!loading && bishops.length > 0" class="table-container">
+    <table class="bishop-table">
+      <thead>
+        <tr>
+          <th style="width: 60px;">Photo</th>
+          <th (click)="onSort('full_name')" class="sortable" tabindex="0" role="button"
+              [attr.aria-sort]="sortBy === 'full_name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Name {{ getSortIcon('full_name') }}
+          </th>
+          <th>Diocese/Archdiocese</th>
+          <th>Title</th>
+          <th>Status</th>
+          <th (click)="onSort('ordained_bishop_date')" class="sortable" tabindex="0" role="button"
+              [attr.aria-sort]="sortBy === 'ordained_bishop_date' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Ordained {{ getSortIcon('ordained_bishop_date') }}
+          </th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let bishop of bishops; trackBy: trackByBishopId" class="data-row">
+          <td class="photo-cell">
+            <div class="photo-wrapper">
+              <img 
+                *ngIf="hasPhoto(bishop)" 
+                [src]="getPhotoUrl(bishop)" 
+                [alt]="bishop.full_name"
+                class="bishop-photo">
+              <div *ngIf="!hasPhoto(bishop)" class="photo-placeholder">
+                {{ getInitials(bishop) }}
+              </div>
+            </div>
+          </td>
+          <td class="name-cell">
+            <strong>{{ bishop.full_name }}</strong>
+            <small *ngIf="bishop.religious_name" class="religious-name">
+              {{ bishop.religious_name }}
+            </small>
+          </td>
+          <td>{{ bishop.archdiocese?.name || 'N/A' }}</td>
+          <td>{{ bishop.ecclesiastical_title?.name || 'N/A' }}</td>
+          <td>
+            <span [class]="getStatusBadgeClass(bishop.status)">
+              {{ getStatusLabel(bishop.status) }}
+            </span>
+          </td>
+          <td>
+            {{ bishop.ordained_bishop_date ? (bishop.ordained_bishop_date | date: 'MMM d, y') : 'N/A' }}
+          </td>
+          <td class="actions-cell">
+            <button (click)="onViewBishop(bishop)" class="action-btn view" title="View Details">
+              👁️
+            </button>
+            <button (click)="onEditBishop(bishop)" class="action-btn edit" title="Edit">
+              ✏️
+            </button>
+            <button (click)="onDeleteBishop(bishop)" class="action-btn delete" title="Delete">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <app-pagination
+    *ngIf="!loading && totalItems > 0"
+    [currentPage]="currentPage"
+    [pageSize]="perPage"
+    [totalItems]="totalItems"
+    [pageSizeOptions]="[10, 20, 30, 50, 100]"
+    [showPageSizeSelector]="true"
+    [showPageInfo]="true"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)">
+  </app-pagination>
+
+  <!-- Delete Confirmation Modal -->
+  <app-confirmation-modal
+    *ngIf="showDeleteModal"
+    [show]="showDeleteModal"
+    [title]="'Delete Bishop'"
+    [message]="'Are you sure you want to delete ' + bishopToDelete?.full_name + '? This action cannot be undone.'"
+    [confirmText]="'Delete'"
+    [confirmButtonClass]="'btn-danger'"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()">
+  </app-confirmation-modal>
+
+  <!-- Bishop Form Modal -->
+  <app-bishop-form-modal
+    [show]="showFormModal"
+    [bishop]="selectedBishop"
+    (saved)="onFormSaved($event)"
+    (cancelled)="onFormCancelled()">
+  </app-bishop-form-modal>
+
+  <!-- Advanced Search Side Panel -->
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false">
+  </app-advanced-search-panel>
+</div>
+

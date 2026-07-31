@@ -1,0 +1,307 @@
+@use '../../shared/styles/loading-states' as *;
+@use '../../shared/styles/animations' as *;
+@use '../../shared/styles/status-indicator' as *;
+@use '../../shared/styles/standardized-list' as *;
+
+.users {
+  @extend %standard-list-container;
+}
+
+.users-header {
+  @extend %standard-list-header;
+  margin-top: 1.5rem;
+  margin-bottom: 1.25rem;
+
+  .header-left {
+    @extend %standard-header-left;
+  }
+
+  .header-right {
+    @extend %standard-header-right;
+  }
+
+  h1 {
+    @extend %standard-list-title;
+  }
+
+  p {
+    @extend %standard-list-subtitle;
+  }
+}
+
+// Standard Button Styles
+.btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  font-weight: 500;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  height: 42px;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  line-height: 1;
+}
+
+.btn-primary {
+  @extend %standard-btn-primary;
+}
+
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+}
+
+.table-container {
+  @extend %standard-table-container;
+  margin-top: 0;
+}
+
+.users-table {
+  @extend %standard-table;
+}
+
+.user-name {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.user-email {
+  color: var(--text-secondary);
+}
+
+// Multi-Role Badge Container
+.user-roles {
+  .roles-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    align-items: center;
+  }
+}
+
+// Role Badges (Multi-Role Support)
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.25rem 0.75rem;
+  background-color: var(--gray-100);
+  color: var(--text-primary);
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+
+  // Primary role (first role in the list)
+  &.role-badge-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 4px rgba(102, 126, 234, 0.2);
+  }
+
+  // Secondary roles
+  &.role-badge-secondary {
+    background-color: var(--primary-50);
+    color: var(--primary-700);
+    border: 1px solid var(--primary-200);
+  }
+
+  // Empty state (no roles assigned)
+  &.role-badge-empty {
+    background-color: var(--gray-100);
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 500;
+
+  &.status-active {
+    background-color: #d1fae5;
+    color: #065f46;
+  }
+
+  &.status-inactive {
+    background-color: #fee2e2;
+    color: #991b1b;
+  }
+}
+
+// Primary Admin Badge
+.badge-primary-admin {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  margin-left: 0.5rem;
+  border-radius: var(--radius-md);
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
+  cursor: help;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: scale(1.05);
+    box-shadow: 0 3px 6px rgba(102, 126, 234, 0.4);
+  }
+}
+
+.actions {
+  .action-buttons {
+    @extend %standard-action-buttons;
+    min-height: 44px; // Maintain consistent row height
+    
+    .btn-delete {
+      @extend %standard-btn-delete;
+    }
+  }
+}
+
+.no-actions {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  font-style: italic;
+  padding: 0.5rem 0;
+}
+
+.btn-edit {
+  @extend %standard-btn-edit;
+}
+
+.btn-activate,
+.btn-deactivate {
+  @extend %standard-btn-edit;
+  
+  &.btn-activate {
+    background: #d1fae5;
+    color: #065f46;
+    border-color: #a7f3d0;
+    
+    &:hover {
+      background: #a7f3d0;
+      border-color: #6ee7b7;
+    }
+  }
+  
+  &.btn-deactivate {
+    background: #fee2e2;
+    color: #991b1b;
+    border-color: #fecaca;
+    
+    &:hover {
+      background: #fecaca;
+      border-color: #fca5a5;
+    }
+  }
+}
+
+.user-contact {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+// Loading State - Using standardized mixin
+.loading-container {
+  @include loading-container(400px);
+}
+
+// Error State - Using standardized mixin
+.error-container {
+  @include error-container(400px);
+  
+  h3 {
+    font-size: var(--font-size-2xl);
+    font-weight: var(--font-weight-semibold);
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+  }
+
+  p {
+    color: var(--text-secondary);
+    font-size: var(--font-size-base);
+    margin-bottom: var(--spacing-lg);
+  }
+
+  .btn-retry {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: 0.75rem 1.5rem;
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    border-radius: var(--radius-md);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+
+    &:hover {
+      background-color: var(--primary-dark);
+      transform: translateY(-1px);
+    }
+  }
+}
+
+// Empty State - Using standardized mixin
+.empty-state {
+  @include empty-state(400px);
+  
+  h3 {
+    font-size: var(--font-size-2xl);
+    font-weight: 600;
+    margin-bottom: var(--spacing-sm);
+    color: var(--text-primary);
+  }
+
+  p {
+    color: var(--text-secondary);
+  }
+  
+  // Standard button styles for empty state buttons
+  .btn,
+  button.btn {
+    @extend %standard-btn;
+  }
+  
+  .btn-primary,
+  button.btn-primary {
+    @extend %standard-btn-primary;
+  }
+}
+
+@media (max-width: 768px) {
+  .users-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-md);
+    margin-top: 1.25rem; /* Slightly reduced for mobile but still maintains good spacing */
+  }
+
+  .users-table {
+    font-size: 0.75rem;
+
+    th,
+    td {
+      padding: var(--spacing-sm) var(--spacing-md);
+    }
+  }
+}
+

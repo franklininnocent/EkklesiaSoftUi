@@ -1,0 +1,185 @@
+<div class="users">
+  <div class="users-header">
+    <div class="header-left">
+      <h1 class="list-title">Users</h1>
+      <p class="list-subtitle">Manage your team members and their permissions ({{ totalUsers }} users)</p>
+    </div>
+    <div class="header-right">
+      <button class="btn btn-primary" (click)="openCreateUserModal()" type="button" title="Create new user">
+        <span class="btn-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+        </span>
+        <span>Add User</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="loading-spinner"></div>
+    <p>Loading users...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="error && !loading" class="error-container" role="alert" aria-live="polite">
+    <div class="error-icon">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+        <line x1="12" y1="9" x2="12" y2="13"></line>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </div>
+    <h3>Failed to Load Users</h3>
+    <p>{{ error }}</p>
+    <button class="btn-refresh" (click)="loadUsers()" type="button" title="Retry loading users" aria-label="Retry loading users">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"></polyline>
+        <polyline points="1 20 1 14 7 14"></polyline>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+      </svg>
+      <span>Retry</span>
+    </button>
+  </div>
+
+  <!-- Users Table -->
+  <div *ngIf="!loading && !error" class="table-container">
+    <table class="users-table" *ngIf="users.length > 0">
+        <thead>
+          <tr>
+            <th [appSortable]="'name'" [direction]="sortColumn === 'name' ? sortDirection : null" (sort)="onSort($event)">Name</th>
+            <th [appSortable]="'email'" [direction]="sortColumn === 'email' ? sortDirection : null" (sort)="onSort($event)">Email</th>
+            <th [appSortable]="'contact_number'" [direction]="sortColumn === 'contact_number' ? sortDirection : null" (sort)="onSort($event)">Contact</th>
+            <th [appSortable]="'role'" [direction]="sortColumn === 'role' ? sortDirection : null" (sort)="onSort($event)">Role</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td class="user-name first-column-with-status">
+              {{ user.name }}
+              <span 
+                *ngIf="user.active === 0"
+                class="status-indicator-dot status-indicator-dot-inactive"
+                [attr.aria-label]="'Inactive'"
+                title="Inactive">
+                <span class="status-indicator-sr-only">Inactive</span>
+              </span>
+            </td>
+            <td class="user-email">{{ user.email }}</td>
+            <td class="user-contact">{{ user.contact_number || 'N/A' }}</td>
+            <td class="user-roles">
+              <div class="roles-container">
+                <span 
+                  *ngFor="let role of getRoles(user); let i = index" 
+                  class="role-badge"
+                  [class.role-badge-primary]="i === 0"
+                  [class.role-badge-secondary]="i > 0"
+                >
+                  {{ role }}
+                </span>
+                <span 
+                  *ngIf="getRoleCount(user) === 0" 
+                  class="role-badge role-badge-empty"
+                >
+                  No Role
+                </span>
+              </div>
+            </td>
+            <td class="actions">
+              <div class="action-buttons">
+                <!-- Only show Edit button if user has permission -->
+                <button 
+                  *ngIf="user.can_edit !== false"
+                  class="btn-edit" 
+                  (click)="openEditUserModal(user)"
+                  type="button"
+                  title="Edit user"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                  </svg>
+                  <span>Edit</span>
+                </button>
+                
+                <!-- Only show Activate/Deactivate button if not primary admin (when active) -->
+                <button 
+                  *ngIf="!(user.is_primary_admin && user.active === 1)"
+                  [class.btn-activate]="user.active === 0"
+                  [class.btn-deactivate]="user.active === 1"
+                  (click)="toggleUserStatus(user)"
+                  type="button"
+                  [title]="user.active === 1 ? 'Deactivate user' : 'Activate user'"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <span>{{ user.active === 1 ? 'Deactivate' : 'Activate' }}</span>
+                </button>
+
+                <!-- Delete button - Only for Tenant Admins -->
+                <button 
+                  *ngIf="isTenantAdmin && !user.is_primary_admin"
+                  class="btn-delete" 
+                  (click)="deleteUser(user)"
+                  type="button"
+                  title="Delete user"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    <line x1="10" y1="11" x2="10" y2="17"></line>
+                    <line x1="14" y1="11" x2="14" y2="17"></line>
+                  </svg>
+                  <span>Delete</span>
+                </button>
+
+                <!-- Show placeholder message if no actions available -->
+                <span *ngIf="user.can_edit === false && (user.is_primary_admin && user.active === 1) && !(isTenantAdmin && !user.is_primary_admin)" class="no-actions">
+                  No actions available
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+    <!-- Pagination -->
+    <app-pagination
+      *ngIf="users.length > 0"
+      [currentPage]="currentPage"
+      [pageSize]="pageSize"
+      [totalItems]="totalUsers"
+      [pageSizeOptions]="pageSizeOptions"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)"
+    ></app-pagination>
+
+    <!-- Empty State -->
+    <div *ngIf="users.length === 0 && !loading" class="empty-state" role="status" aria-live="polite">
+        <div class="empty-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="64" height="64">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </div>
+        <h3>No Users Found</h3>
+        <p>There are no users in your organization yet</p>
+      </div>
+    </div>
+
+  <!-- User Form Modal -->
+  <app-user-form-modal
+    [show]="showUserModal"
+    [user]="selectedUser"
+    (closed)="closeUserModal()"
+    (saved)="onUserSaved($event)"
+  ></app-user-form-modal>
+</div>

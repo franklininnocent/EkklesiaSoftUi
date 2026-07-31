@@ -1,0 +1,175 @@
+<div class="pope-settings-container">
+  <div class="header">
+    <h1>Pope Details Settings</h1>
+    <p class="description">Manage the global Pope's image and details displayed in the General Information section for all churches</p>
+  </div>
+
+  <div class="content" *ngIf="canManage">
+    <!-- Loading State -->
+    <div *ngIf="loading" class="loading-state">
+      <div class="spinner"></div>
+      <p>Loading pope details...</p>
+    </div>
+
+    <!-- Main Content -->
+    <div *ngIf="!loading" class="settings-form">
+      <!-- Image Upload Section -->
+      <div class="section">
+        <div class="section-header">
+          <h2>Pope Image</h2>
+          <p class="section-description">Upload a portrait image of the Pope. Supported formats: JPG, PNG, WebP (Max 3MB)</p>
+        </div>
+
+        <div class="image-upload-area">
+          <div class="image-preview-container">
+            <div class="image-preview" *ngIf="imagePreview">
+              <img [src]="imagePreview" alt="Pope Image Preview" />
+              <div class="image-overlay">
+                <button 
+                  type="button" 
+                  class="btn btn-danger btn-sm" 
+                  (click)="deleteImage()"
+                  [disabled]="uploading || !popeDetails?.pope_image_url"
+                  title="Delete current image">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polyline points="3 6 5 6 21 6"></polyline>
+                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                  </svg>
+                  Delete
+                </button>
+              </div>
+            </div>
+            <div class="image-placeholder" *ngIf="!imagePreview">
+              <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <p>No image uploaded</p>
+            </div>
+          </div>
+
+          <div class="upload-actions">
+            <input 
+              type="file" 
+              id="pope-image-input"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              (change)="onFileSelected($event)"
+              [disabled]="uploading"
+              class="file-input"
+            />
+            <label for="pope-image-input" class="btn btn-primary">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              {{ selectedFile ? 'Change Image' : 'Upload Image' }}
+            </label>
+            
+            <button 
+              *ngIf="selectedFile" 
+              type="button" 
+              class="btn btn-secondary"
+              (click)="removeImage()"
+              [disabled]="uploading">
+              Cancel
+            </button>
+
+            <button 
+              *ngIf="selectedFile" 
+              type="button" 
+              class="btn btn-success"
+              (click)="uploadImage()"
+              [disabled]="uploading">
+              <span *ngIf="!uploading">Save Image</span>
+              <span *ngIf="uploading">Uploading...</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Details Form Section -->
+      <div class="section">
+        <div class="section-header">
+          <h2>Pope Details</h2>
+          <p class="section-description">Enter the Pope's name and optional information</p>
+        </div>
+
+        <form [formGroup]="popeForm" (ngSubmit)="savePopeDetails()">
+          <div class="form-group">
+            <label for="pope_name" class="required">
+              Pope Name
+            </label>
+            <input 
+              type="text" 
+              id="pope_name"
+              formControlName="pope_name"
+              class="form-control"
+              [class.error]="hasFieldError('pope_name')"
+              placeholder="Enter Pope's full name"
+              [disabled]="saving"
+            />
+            <div class="error-message" *ngIf="hasFieldError('pope_name')">
+              {{ getFieldError('pope_name') }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pope_title">
+              Pope Title (Optional)
+            </label>
+            <input 
+              type="text" 
+              id="pope_title"
+              formControlName="pope_title"
+              class="form-control"
+              [class.error]="hasFieldError('pope_title')"
+              placeholder="e.g., Pope Francis"
+              [disabled]="saving"
+            />
+            <div class="error-message" *ngIf="hasFieldError('pope_title')">
+              {{ getFieldError('pope_title') }}
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="pope_effective_from">
+              Effective From (Optional)
+            </label>
+            <input 
+              type="date" 
+              id="pope_effective_from"
+              formControlName="pope_effective_from"
+              class="form-control"
+              [disabled]="saving"
+            />
+            <small class="form-help">Date when this pope became effective</small>
+          </div>
+
+          <div class="form-actions">
+            <button 
+              type="submit" 
+              class="btn btn-primary btn-lg"
+              [disabled]="popeForm.invalid || saving">
+              <span *ngIf="!saving">Save Details</span>
+              <span *ngIf="saving">Saving...</span>
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- No Permission Message -->
+  <div *ngIf="!canManage" class="no-permission">
+    <div class="no-permission-content">
+      <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+      </svg>
+      <h2>Access Denied</h2>
+      <p>You do not have permission to manage pope details. Please contact your administrator.</p>
+    </div>
+  </div>
+</div>
+

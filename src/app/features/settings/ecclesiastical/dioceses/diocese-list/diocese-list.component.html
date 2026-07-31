@@ -1,0 +1,187 @@
+<div class="diocese-list-container">
+  <!-- Header -->
+  <div class="list-header">
+    <div class="header-left">
+      <h2 class="list-title">Dioceses & Archdioceses</h2>
+      <p class="list-subtitle">Manage ecclesiastical territories and hierarchies</p>
+    </div>
+    <div class="header-right">
+      <div class="search-box-header">
+        <span class="search-icon">🔍</span>
+        <input 
+          type="text" 
+          [(ngModel)]="searchTerm"
+          (input)="onQuickSearch()"
+          placeholder="Quick search..."
+          class="search-input-header"
+          aria-label="Quick search dioceses">
+        <button 
+          *ngIf="searchTerm" 
+          class="clear-search-btn"
+          (click)="clearSearch()"
+          aria-label="Clear search">
+          ✕
+        </button>
+      </div>
+      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+        <span class="btn-icon">🔍</span>
+        Filters
+        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
+      </button>
+      <button class="btn btn-primary" (click)="onCreateDiocese()">
+        <span class="btn-icon">➕</span>
+        Add Diocese
+      </button>
+    </div>
+  </div>
+
+  <!-- Active Filter Chips - Inline Compact Design -->
+  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
+    <div class="chips-inline-wrapper">
+      <span class="chips-label">
+        <span class="filter-icon">🔍</span>
+        Active Filters ({{ getActiveFilters().length }}):
+      </span>
+      <div class="chips-list">
+        <div 
+          *ngFor="let filter of getActiveFilters()" 
+          class="filter-chip animate-scale-in"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
+          <span class="chip-content">
+            <span class="chip-label">{{ filter.label }}:</span>
+            <span class="chip-value">{{ filter.displayValue }}</span>
+          </span>
+          <button 
+            type="button"
+            class="chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label">
+            ✕
+          </button>
+        </div>
+      </div>
+      <button 
+        type="button"
+        class="btn-clear-all-chips"
+        (click)="clearAllFilters()"
+        aria-label="Clear all filters">
+        Clear All
+      </button>
+    </div>
+  </div>
+
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <app-loading-skeleton 
+      type="table" 
+      [rows]="10" 
+      [columns]="6">
+    </app-loading-skeleton>
+  </div>
+
+  <!-- Empty State -->
+  <app-empty-state
+    *ngIf="!loading && dioceses.length === 0"
+    icon="⛪"
+    [title]="searchTerm || selectedCountry || selectedDenomination ? 'No dioceses match your filters' : 'No dioceses found'"
+    [description]="searchTerm || selectedCountry || selectedDenomination ? 'Try adjusting your search or filters to find what you\'re looking for.' : 'Get started by adding your first diocese to the system.'"
+    [buttonText]="searchTerm || selectedCountry || selectedDenomination ? 'Clear Filters' : 'Add First Diocese'"
+    (action)="searchTerm || selectedCountry || selectedDenomination ? clearFilters() : onCreateDiocese()">
+  </app-empty-state>
+
+  <!-- Table -->
+  <div *ngIf="!loading && dioceses.length > 0" class="table-container" style="display: block !important; visibility: visible !important;">
+    <table class="diocese-table" style="display: table !important; visibility: visible !important;">
+      <thead>
+        <tr>
+          <th (click)="onSort('name')" class="sortable" tabindex="0" role="button" 
+              [attr.aria-sort]="sortBy === 'name' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Name {{ getSortIcon('name') }}
+          </th>
+          <th (click)="onSort('country_id')" class="sortable" tabindex="0" role="button"
+              [attr.aria-sort]="sortBy === 'country_id' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Country {{ getSortIcon('country_id') }}
+          </th>
+          <th>State/Province</th>
+          <th>Denomination</th>
+          <th>Status</th>
+          <th (click)="onSort('established_date')" class="sortable" tabindex="0" role="button"
+              [attr.aria-sort]="sortBy === 'established_date' ? (sortOrder === 'asc' ? 'ascending' : 'descending') : 'none'">
+            Established {{ getSortIcon('established_date') }}
+          </th>
+          <th class="actions-col">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let diocese of dioceses; trackBy: trackByDioceseId" class="data-row">
+          <td class="name-cell">
+            <strong>{{ diocese.name }}</strong>
+          </td>
+          <td>{{ diocese.country?.name || 'N/A' }}</td>
+          <td>{{ diocese.state?.name || 'N/A' }}</td>
+          <td>{{ diocese.denomination?.name || 'N/A' }}</td>
+          <td>
+            <span [class]="getStatusBadgeClass(diocese.active)">
+              {{ diocese.active ? 'Active' : 'Inactive' }}
+            </span>
+          </td>
+          <td>{{ diocese.established_date ? (diocese.established_date | date: 'MMM d, y') : 'N/A' }}</td>
+          <td class="actions-cell">
+            <button (click)="onViewDiocese(diocese)" class="action-btn view" title="View Details">
+              👁️
+            </button>
+            <button (click)="onEditDiocese(diocese)" class="action-btn edit" title="Edit">
+              ✏️
+            </button>
+            <button (click)="onDeleteDiocese(diocese)" class="action-btn delete" title="Delete">
+              🗑️
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Traditional Pagination -->
+  <app-pagination
+    *ngIf="!loading && dioceses.length > 0"
+    [currentPage]="currentPage"
+    [totalItems]="totalItems"
+    [pageSize]="perPage"
+    [pageSizeOptions]="perPageOptions"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPerPageChange($event)">
+  </app-pagination>
+
+  <!-- Delete Confirmation Modal -->
+  <app-confirmation-modal
+    *ngIf="showDeleteModal"
+    [show]="showDeleteModal"
+    [title]="'Delete Diocese'"
+    [message]="'Are you sure you want to delete ' + (dioceseToDelete?.name || '') + '? This action cannot be undone.'"
+    [confirmText]="'Delete'"
+    [confirmButtonClass]="'btn-danger'"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()">
+  </app-confirmation-modal>
+
+  <!-- Diocese Form Modal -->
+  <app-diocese-form-modal
+    [show]="showFormModal"
+    [diocese]="selectedDiocese"
+    (saved)="onFormSaved($event)"
+    (cancelled)="onFormCancelled()">
+  </app-diocese-form-modal>
+
+  <!-- Advanced Search Side Panel -->
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false">
+  </app-advanced-search-panel>
+</div>
+

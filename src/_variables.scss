@@ -1,0 +1,240 @@
+/* ========================================================================
+   PROFESSIONAL ADMIN PANEL - CSS VARIABLES & THEME SYSTEM
+   Inspired by: AdminLTE, NGX Admin, CoreUI, Material Dashboard
+   ======================================================================== */
+
+:root {
+  /* ========================================================================
+     PRIMARY COLOR PALETTE - Professional Blue/Purple Gradient
+     ======================================================================== */
+  
+  /* Primary Colors (Purple-Blue gradient theme) */
+  --primary-50: #f5f3ff;
+  --primary-100: #ede9fe;
+  --primary-200: #ddd6fe;
+  --primary-300: #c4b5fd;
+  --primary-400: #a78bfa;
+  --primary-500: #8b5cf6;
+  --primary-600: #7c3aed;
+  --primary-700: #6d28d9;
+  --primary-800: #5b21b6;
+  --primary-900: #4c1d95;
+  
+  --primary-color: #667eea;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+  --primary-color-rgb: 102, 126, 234;
+  
+  /* Secondary Colors (Indigo) */
+  --secondary-color: #764ba2;
+  --secondary-light: #9c6bc4;
+  --secondary-dark: #5e3c82;
+  
+  /* ========================================================================
+     SEMANTIC COLORS - Status & Feedback
+     ======================================================================== */
+  
+  /* Success (Green) */
+  --success-50: #f0fdf4;
+  --success-100: #dcfce7;
+  --success-500: #22c55e;
+  --success-600: #16a34a;
+  --success-700: #15803d;
+  --success-color: #10b981;
+  --success-light: #34d399;
+  --success-dark: #059669;
+  
+  /* Warning (Amber/Orange) */
+  --warning-50: #fffbeb;
+  --warning-100: #fef3c7;
+  --warning-500: #f59e0b;
+  --warning-600: #d97706;
+  --warning-700: #b45309;
+  --warning-color: #f59e0b;
+  --warning-light: #fbbf24;
+  --warning-dark: #d97706;
+  
+  /* Error/Danger (Red) */
+  --error-50: #fef2f2;
+  --error-100: #fee2e2;
+  --error-500: #ef4444;
+  --error-600: #dc2626;
+  --error-700: #b91c1c;
+  --error-color: #ef4444;
+  --danger-color: #ef4444;
+  --error-light: #f87171;
+  --error-dark: #dc2626;
+  
+  /* Info (Blue) */
+  --info-50: #eff6ff;
+  --info-100: #dbeafe;
+  --info-500: #3b82f6;
+  --info-600: #2563eb;
+  --info-700: #1d4ed8;
+  --info-color: #3b82f6;
+  --info-light: #60a5fa;
+  --info-dark: #2563eb;
+  
+  /* ========================================================================
+     NEUTRAL COLORS - Grays & Backgrounds
+     ======================================================================== */
+  
+  /* Gray Scale (Slate) */
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-850: #1a2332;
+  --gray-900: #0f172a;
+  --gray-950: #020617;
+  
+  /* ========================================================================
+     BACKGROUND COLORS
+     ======================================================================== */
+  
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-dark: #1e293b;
+  --bg-darker: #0f172a;
+  
+  /* Sidebar */
+  --sidebar-bg: linear-gradient(180deg, #2c3e50 0%, #34495e 100%);
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+  --sidebar-active: rgba(102, 126, 234, 0.2);
+  
+  /* Topbar */
+  --topbar-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  /* Card */
+  --card-bg: #ffffff;
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --card-shadow-hover: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  
+  /* ========================================================================
+     TEXT COLORS
+     ======================================================================== */
+  
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --text-tertiary: #94a3b8;
+  --text-inverse: #ffffff;
+  --text-muted: #94a3b8;
+  --text-disabled: #cbd5e1;
+  
+  /* ========================================================================
+     BORDER COLORS
+     ======================================================================== */
+  
+  --border-light: #f1f5f9;
+  --border-normal: #e2e8f0;
+  --border-dark: #cbd5e1;
+  --border-primary: #667eea;
+  
+  /* ========================================================================
+     SPACING SYSTEM (8px base)
+     ======================================================================== */
+  
+  --spacing-xs: 0.25rem;    /* 4px */
+  --spacing-sm: 0.5rem;     /* 8px */
+  --spacing-md: 1rem;       /* 16px */
+  --spacing-lg: 1.5rem;     /* 24px */
+  --spacing-xl: 2rem;       /* 32px */
+  --spacing-2xl: 2.5rem;    /* 40px */
+  --spacing-3xl: 3rem;      /* 48px */
+  --spacing-4xl: 4rem;      /* 64px */
+  
+  /* ========================================================================
+     BORDER RADIUS
+     ======================================================================== */
+  
+  --radius-sm: 0.25rem;     /* 4px */
+  --radius-md: 0.375rem;    /* 6px */
+  --radius-lg: 0.5rem;      /* 8px */
+  --radius-xl: 0.75rem;     /* 12px */
+  --radius-2xl: 1rem;       /* 16px */
+  --radius-full: 9999px;
+  
+  /* ========================================================================
+     SHADOWS
+     ======================================================================== */
+  
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.1), 0 4px 6px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.1), 0 10px 10px rgba(0, 0, 0, 0.04);
+  --shadow-2xl: 0 25px 50px rgba(0, 0, 0, 0.25);
+  
+  /* ========================================================================
+     TRANSITIONS
+     ======================================================================== */
+  
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  
+  /* ========================================================================
+     Z-INDEX LAYERS
+     ======================================================================== */
+  
+  --z-dropdown: 1000;
+  --z-sticky: 1020;
+  --z-fixed: 1030;
+  --z-modal-backdrop: 1040;
+  --z-modal: 1050;
+  --z-popover: 1060;
+  --z-tooltip: 1070;
+  
+  /* ========================================================================
+     COMPONENT SPECIFIC COLORS
+     ======================================================================== */
+  
+  /* Modal */
+  --modal-bg: #ffffff;
+  --modal-header-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --modal-title-color: #1e293b;  /* Dark gray-blue for visibility on light backgrounds */
+  --modal-overlay-bg: rgba(15, 23, 42, 0.75);
+  
+  /* Button */
+  --btn-primary-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: linear-gradient(135deg, #5a72d8 0%, #6a4290 100%);
+  
+  /* Badge */
+  --badge-success-bg: #dcfce7;
+  --badge-success-text: #15803d;
+  --badge-warning-bg: #fef3c7;
+  --badge-warning-text: #b45309;
+  --badge-error-bg: #fee2e2;
+  --badge-error-text: #b91c1c;
+  --badge-info-bg: #dbeafe;
+  --badge-info-text: #1d4ed8;
+  
+  /* Table */
+  --table-header-bg: #f8fafc;
+  --table-row-hover: #f1f5f9;
+  --table-border: #e2e8f0;
+  
+  /* Form */
+  --input-bg: #ffffff;
+  --input-border: #e2e8f0;
+  --input-border-focus: #667eea;
+  --input-placeholder: #94a3b8;
+}
+
+/* ========================================================================
+   DARK MODE SUPPORT (Future Enhancement)
+   ======================================================================== */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode variables can be added here */
+  }
+}
+

@@ -1,0 +1,27 @@
+<div class="family-nav-search">
+  <label class="family-nav-search__label" for="family-member-search">Search members</label>
+  <div class="family-nav-search__input-wrap">
+    <span class="family-nav-search__icon" aria-hidden="true">⌕</span>
+    <input
+      id="family-member-search"
+      type="search"
+      class="family-nav-search__input"
+      placeholder="Name, relationship, ID…"
+      [ngModel]="searchQuery"
+      (ngModelChange)="onSearchInput($event)"
+      autocomplete="off"
+    />
+  </div>
+  <div class="family-nav-search__filters" role="group" aria-label="Member filters">
+    <button
+      type="button"
+      *ngFor="let opt of filterOptions"
+      class="family-nav-search__chip"
+      [class.is-active]="isFilterActive(opt.key)"
+      [attr.aria-pressed]="isFilterActive(opt.key)"
+      (click)="toggleFilter(opt.key)"
+    >
+      {{ opt.label }}
+    </button>
+  </div>
+</div>

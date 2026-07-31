@@ -1,0 +1,57 @@
+<section class="cf-page donations-expenses">
+  <header class="cf-panel donations-expenses__header">
+    <div>
+      <p class="donations-expenses__eyebrow">Stewardship</p>
+      <h1>Parish Disbursements</h1>
+      <p>Lightweight record of parish expenses and disbursements — not full accounting.</p>
+    </div>
+    <div class="donations-expenses__actions">
+      <a routerLink="/donations" class="cf-btn">Back to Command Center</a>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="showForm = !showForm">
+        {{ showForm ? 'Close Form' : 'Record Disbursement' }}
+      </button>
+    </div>
+  </header>
+
+  <form class="cf-panel donations-expenses__form" *ngIf="showForm" (ngSubmit)="submit()">
+    <h2>New Disbursement</h2>
+    <div class="donations-expenses__grid">
+      <label><span>Category</span><input [(ngModel)]="form.category" name="category" required /></label>
+      <label><span>Amount</span><input type="number" min="0.01" step="0.01" [(ngModel)]="form.amount" name="amount" required /></label>
+      <label><span>Date</span><input type="date" [(ngModel)]="form.expense_date" name="expense_date" required /></label>
+      <label><span>Payee</span><input [(ngModel)]="form.payee" name="payee" /></label>
+      <label><span>Method</span>
+        <select [(ngModel)]="form.method" name="method">
+          <option value="cash">Cash</option>
+          <option value="bank_transfer">Bank Transfer</option>
+          <option value="cheque">Cheque</option>
+        </select>
+      </label>
+      <label class="donations-expenses__notes"><span>Notes</span><textarea rows="2" [(ngModel)]="form.notes" name="notes"></textarea></label>
+    </div>
+    <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Save Disbursement' }}</button>
+  </form>
+
+  <p *ngIf="loading" class="donations-expenses__status">Loading disbursements…</p>
+  <p *ngIf="error" class="donations-expenses__error" role="alert">{{ error }}</p>
+
+  <section class="cf-panel" *ngIf="!loading && !error">
+    <table class="donations-expenses__table" *ngIf="expenses.length; else emptyState">
+      <thead>
+        <tr><th>Date</th><th>Category</th><th>Payee</th><th>Method</th><th>Amount</th></tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of expenses">
+          <td>{{ row.expense_date | date:'mediumDate' }}</td>
+          <td>{{ row.category }}</td>
+          <td>{{ row.payee || '—' }}</td>
+          <td>{{ row.method }}</td>
+          <td>{{ row.amount | number:'1.2-2' }}</td>
+        </tr>
+      </tbody>
+    </table>
+    <ng-template #emptyState>
+      <p class="donations-expenses__empty">No disbursements recorded yet. Use Record Disbursement to log parish expenses.</p>
+    </ng-template>
+  </section>
+</section>

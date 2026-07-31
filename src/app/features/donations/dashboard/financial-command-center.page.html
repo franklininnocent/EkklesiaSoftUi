@@ -1,0 +1,51 @@
+<section class="foc" *ngIf="!loading && data">
+  <app-foc-command-bar
+    [data]="data"
+    [rollup]="rollup"
+    [dashboardView]="dashboardView"
+    [period]="period"
+    (periodChange)="onPeriodChange($event)"
+    (dashboardViewChange)="setDashboardView($event)"
+    (quickCollect)="openQuickCollect()"
+    (recordExpense)="showExpenseForm = true"
+    (refresh)="reload()"
+    (scrollToAdvisor)="scrollToAdvisor()"
+    (quickAction)="runQuickAction($event)"
+  ></app-foc-command-bar>
+
+  <app-foc-rollup-panel
+    *ngIf="dashboardView === 'rollup' && rollup?.available && showLayer('diocese_rollup')"
+    [rollup]="rollup!"
+    [currencyCode]="currencyCode"
+  ></app-foc-rollup-panel>
+
+  <ng-container *ngIf="dashboardView === 'local'">
+    <app-foc-health-zone *ngIf="showLayer('health_overview')" [data]="data"></app-foc-health-zone>
+    <app-foc-action-center *ngIf="showLayer('action_center')" [data]="data" [currencyCode]="currencyCode"></app-foc-action-center>
+    <app-foc-analytics-center *ngIf="showLayer('analytics')" [data]="data"></app-foc-analytics-center>
+    <app-foc-satellites-grid [data]="data" [sections]="data.persona?.sections"></app-foc-satellites-grid>
+  </ng-container>
+</section>
+
+<div class="foc-loading" *ngIf="loading">
+  <p>Loading financial command center…</p>
+</div>
+<p class="foc-error" *ngIf="error" role="alert">{{ error }}</p>
+
+<app-foc-expense-modal
+  [open]="showExpenseForm"
+  [saving]="expenseSaving"
+  [form]="expenseForm"
+  [currencyCode]="currencyCode"
+  [operatorName]="operatorName"
+  [operatorRole]="operatorRole"
+  [financialYear]="financialYear"
+  [monthExpenses]="monthExpenses"
+  [monthCollected]="monthCollected"
+  [expenseRatioPct]="expenseRatioPct"
+  [submittedRecord]="expenseSubmittedRecord"
+  [recordedAt]="expenseRecordedAt"
+  (close)="closeExpenseModal()"
+  (submitExpense)="submitExpense($event)"
+  (recordAnother)="recordAnotherExpense()"
+></app-foc-expense-modal>

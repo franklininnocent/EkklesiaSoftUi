@@ -1,0 +1,556 @@
+// Breadcrumb Navigation (shared with diocese-detail)
+.breadcrumb {
+  padding: 1rem 0;
+  margin-bottom: 1.5rem;
+}
+
+.breadcrumb-list {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.breadcrumb-item {
+  display: flex;
+  align-items: center;
+  font-size: 0.875rem;
+
+  &:not(:last-child)::after {
+    content: '›';
+    margin-left: 0.5rem;
+    color: #9ca3af;
+    font-weight: 600;
+  }
+
+  &.active {
+    color: #374151;
+    font-weight: 500;
+  }
+}
+
+.breadcrumb-link {
+  color: #667eea;
+  text-decoration: none;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #764ba2;
+    text-decoration: underline;
+  }
+}
+
+// Loading Container
+.loading-container {
+  padding: 2rem;
+}
+
+// Detail Header
+.detail-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 2.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 2rem;
+  align-items: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.header-photo-section {
+  display: flex;
+  align-items: center;
+}
+
+.photo-container {
+  position: relative;
+}
+
+.bishop-photo,
+.bishop-photo-placeholder {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+}
+
+.bishop-photo-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.2);
+  backdrop-filter: blur(10px);
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: white;
+}
+
+.header-info {
+  flex: 1;
+}
+
+.detail-title {
+  font-size: 2.25rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  line-height: 1.2;
+}
+
+.bishop-title {
+  font-size: 1.25rem;
+  margin: 0 0 1rem 0;
+  opacity: 0.95;
+  font-weight: 500;
+}
+
+.header-badges {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.info-badge {
+  display: inline-block;
+  padding: 0.375rem 0.875rem;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  font-size: 0.813rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+.badge-active,
+.badge-retired,
+.badge-deceased,
+.badge-inactive {
+  display: inline-block;
+  padding: 0.375rem 0.875rem;
+  border-radius: 20px;
+  font-size: 0.813rem;
+  font-weight: 600;
+}
+
+.badge-active {
+  background: rgba(16, 185, 129, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.badge-retired {
+  background: rgba(245, 158, 11, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.badge-deceased {
+  background: rgba(107, 114, 128, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.badge-inactive {
+  background: rgba(239, 68, 68, 0.25);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.header-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+// Buttons
+.btn {
+  padding: 0.625rem 1.25rem;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
+
+  &:hover:not(:disabled) {
+    background: #ffffff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+}
+
+.btn-primary {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+  }
+}
+
+.btn-danger {
+  background: #ef4444;
+  color: white;
+
+  &:hover:not(:disabled) {
+    background: #dc2626;
+    transform: translateY(-2px);
+  }
+}
+
+.btn-outline {
+  background: transparent;
+  color: #667eea;
+  border: 2px solid #667eea;
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+
+  &:hover:not(:disabled) {
+    background: #667eea;
+    color: white;
+    transform: translateY(-2px);
+  }
+}
+
+// Detail Grid
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+// Detail Cards
+.detail-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+
+  &.full-width {
+    grid-column: 1 / -1;
+  }
+}
+
+.card-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 1.25rem 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 2px solid #f3f4f6;
+}
+
+// Info Grid
+.info-grid {
+  display: grid;
+  gap: 1.25rem;
+}
+
+.info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.info-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.info-value {
+  font-size: 0.938rem;
+  color: #111827;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+
+  &.deceased {
+    color: #6b7280;
+  }
+}
+
+.age-badge,
+.service-badge {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  background: #f3f4f6;
+  color: #6b7280;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.order-abbrev {
+  color: #667eea;
+  font-weight: 600;
+}
+
+// Diocese Card Content
+.diocese-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.diocese-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+}
+
+.diocese-icon {
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.diocese-info {
+  flex: 1;
+}
+
+.diocese-name {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 0.25rem 0;
+}
+
+.diocese-type {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin: 0;
+}
+
+// Biography
+.biography-content {
+  line-height: 1.7;
+  color: #374151;
+
+  p {
+    margin: 0;
+  }
+}
+
+// Contact Grid
+.contact-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border-radius: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: #f3f4f6;
+  }
+}
+
+.contact-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  flex: 1;
+}
+
+.contact-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.contact-link {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.2s;
+
+  &:hover {
+    color: #764ba2;
+    text-decoration: underline;
+  }
+}
+
+// Timeline
+.timeline {
+  position: relative;
+  padding-left: 2rem;
+}
+
+.timeline::before {
+  content: '';
+  position: absolute;
+  left: 0.5rem;
+  top: 0.5rem;
+  bottom: 0.5rem;
+  width: 2px;
+  background: linear-gradient(to bottom, #667eea, #764ba2);
+}
+
+.timeline-item {
+  position: relative;
+  padding-bottom: 1.5rem;
+  display: flex;
+  gap: 1rem;
+
+  &:last-child {
+    padding-bottom: 0;
+  }
+}
+
+.timeline-marker {
+  position: absolute;
+  left: -1.75rem;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: white;
+  border: 3px solid #667eea;
+  z-index: 1;
+
+  &.highlight {
+    width: 18px;
+    height: 18px;
+    left: -1.875rem;
+    border-width: 4px;
+    border-color: #764ba2;
+    box-shadow: 0 0 0 4px rgba(118, 75, 162, 0.1);
+  }
+
+  &.deceased {
+    border-color: #6b7280;
+  }
+}
+
+.timeline-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.timeline-date {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #667eea;
+}
+
+.timeline-event {
+  font-size: 0.938rem;
+  color: #374151;
+}
+
+// Responsive
+@media (max-width: 1024px) {
+  .detail-header {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 2rem;
+  }
+
+  .header-photo-section {
+    justify-content: center;
+  }
+
+  .header-info {
+    text-align: center;
+  }
+
+  .header-badges {
+    justify-content: center;
+  }
+
+  .header-actions {
+    flex-direction: row;
+    width: 100%;
+
+    .btn {
+      flex: 1;
+    }
+  }
+}
+
+@media (max-width: 768px) {
+  .detail-header {
+    padding: 1.5rem;
+  }
+
+  .bishop-photo,
+  .bishop-photo-placeholder {
+    width: 100px;
+    height: 100px;
+  }
+
+  .detail-title {
+    font-size: 1.75rem;
+  }
+
+  .bishop-title {
+    font-size: 1rem;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .header-actions {
+    flex-direction: column;
+
+    .btn {
+      width: 100%;
+    }
+  }
+
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+

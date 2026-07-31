@@ -1,0 +1,30 @@
+<div class="toast-container">
+  @for (toast of (toasts$ | async); track toast.id) {
+    <div
+      class="toast"
+      [ngClass]="getToastClass(toast.type)"
+      [@slideIn]
+    >
+      <div class="toast-content">
+        <div class="toast-icon">{{ getToastIcon(toast.type) }}</div>
+        <div class="toast-message">
+          @if (toast.title) {
+            <div class="toast-title">{{ toast.title }}</div>
+          }
+          <div class="toast-text">{{ toast.message }}</div>
+        </div>
+        <button
+          class="toast-close"
+          (click)="removeToast(toast.id)"
+          aria-label="Close notification"
+        >
+          <span class="close-icon">×</span>
+        </button>
+      </div>
+      @if (toast.duration) {
+        <div class="toast-progress"></div>
+      }
+    </div>
+  }
+</div>
+

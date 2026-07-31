@@ -1,0 +1,548 @@
+<div class="modal-backdrop" (click)="onBackdropClick($event)" role="dialog" aria-modal="true" aria-labelledby="create-tenant-title">
+  <div #modalContainer class="modal-container">
+    <!-- Modal Header -->
+    <div class="modal-header">
+      <h2 class="modal-title" id="create-tenant-title">Create New Tenant</h2>
+      <button class="modal-close" (click)="onClose()" [disabled]="isSubmitting" aria-label="Close modal" type="button">
+        <span class="close-icon">×</span>
+      </button>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="modal-body">
+      <!-- Success Message -->
+      <div class="alert alert-success" *ngIf="successMessage">
+        <span class="alert-icon">✓</span>
+        <span class="alert-message">{{ successMessage }}</span>
+      </div>
+
+      <!-- Error Message -->
+      <div class="alert alert-error" *ngIf="serverError">
+        <span class="alert-icon">⚠</span>
+        <span class="alert-message">{{ serverError }}</span>
+      </div>
+
+      <form (ngSubmit)="onSubmit()">
+        <!-- =================================== -->
+        <!-- SECTION 1: Tenant Information -->
+        <!-- =================================== -->
+        <div class="form-section">
+          <h3 class="section-title">Tenant Information</h3>
+          
+          <!-- Tenant Name -->
+          <div class="form-group">
+            <label for="tenantName" class="form-label">
+              Tenant Name <span class="required">*</span>
+            </label>
+            <input
+              type="text"
+              id="tenantName"
+              name="tenantName"
+              class="form-input"
+              [class.input-error]="isFieldInvalid('tenant_name')"
+              [(ngModel)]="formData.tenant_name"
+              (blur)="markAsTouched('tenant_name')"
+              placeholder="Enter tenant name (e.g., First Baptist Church)"
+              required
+              autofocus
+              [disabled]="isSubmitting"
+            />
+            <span class="form-error" *ngIf="isFieldInvalid('tenant_name')">
+              {{ getFieldError('tenant_name') }}
+            </span>
+          </div>
+
+          <!-- Slogan/Tagline -->
+          <div class="form-group">
+            <label for="slogan" class="form-label">
+              Slogan/Tagline <span class="optional">(Optional)</span>
+            </label>
+            <input
+              type="text"
+              id="slogan"
+              name="slogan"
+              class="form-input"
+              [(ngModel)]="formData.slogan"
+              placeholder="Enter a slogan or tagline (e.g., Where Faith Meets Community)"
+              [disabled]="isSubmitting"
+              maxlength="500"
+            />
+            <p class="form-hint">A short phrase that describes your organization (max 500 characters)</p>
+          </div>
+
+          <!-- Logo Upload -->
+          <div class="form-group">
+            <label class="form-label">
+              Tenant Logo <span class="optional">(Optional)</span>
+            </label>
+            <div class="logo-upload-container">
+              <!-- Hidden file input -->
+              <input
+                type="file"
+                id="tenantLogo"
+                name="tenantLogo"
+                class="logo-input-hidden"
+                accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+                (change)="onLogoSelected($event)"
+                [disabled]="isSubmitting"
+              />
+
+              <!-- Preview area -->
+              <div class="logo-preview-area" *ngIf="!logoPreviewUrl" (click)="triggerFileInput()">
+                <div class="logo-upload-icon">📷</div>
+                <div class="logo-upload-text">Click to upload logo</div>
+                <div class="logo-upload-hint">JPG, PNG, GIF or WebP (Max 5MB)</div>
+              </div>
+
+              <!-- Image preview -->
+              <div class="logo-preview-container" *ngIf="logoPreviewUrl">
+                <img [src]="logoPreviewUrl" alt="Tenant Logo Preview" class="logo-preview-image" />
+                <div class="logo-preview-overlay">
+                  <button
+                    type="button"
+                    class="btn-remove-logo"
+                    (click)="removeLogo()"
+                    [disabled]="isSubmitting"
+                    title="Remove logo"
+                  >
+                    <span class="remove-icon">×</span>
+                  </button>
+                </div>
+                <div class="logo-file-name">{{ logoFileName }}</div>
+              </div>
+            </div>
+            <span class="form-error" *ngIf="formErrors['tenant_logo']">
+              {{ formErrors['tenant_logo'] }}
+            </span>
+            <p class="form-hint">Upload your organization's logo for better branding</p>
+          </div>
+
+          <!-- Tenant Official Address -->
+          <h3 class="subsection-title">Tenant Official Address</h3>
+          
+          <!-- Address Line 1 and Line 2 -->
+          <div class="form-row">
+            <!-- Address Line 1 -->
+            <div class="form-group">
+              <label for="tenantAddressLine1" class="form-label">
+                Address Line 1 <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="tenantAddressLine1"
+                name="tenantAddressLine1"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('tenant_official_address.line1')"
+                [(ngModel)]="formData.tenant_official_address.line1"
+                (blur)="markAsTouched('tenant_official_address.line1')"
+                placeholder="Enter street address"
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('tenant_official_address.line1')">
+                {{ getFieldError('tenant_official_address.line1') }}
+              </span>
+            </div>
+
+            <!-- Address Line 2 -->
+            <div class="form-group">
+              <label for="tenantAddressLine2" class="form-label">
+                Address Line 2 <span class="optional">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                id="tenantAddressLine2"
+                name="tenantAddressLine2"
+                class="form-input"
+                [(ngModel)]="formData.tenant_official_address.line2"
+                placeholder="Apartment, suite, unit, etc."
+                [disabled]="isSubmitting"
+              />
+            </div>
+          </div>
+
+          <!-- Country and State/Province Dropdowns -->
+          <div class="form-row">
+            <!-- Country Dropdown -->
+            <div class="form-group">
+              <label for="tenantCountry" class="form-label">
+                Country <span class="required">*</span>
+              </label>
+              <ng-select
+                id="tenantCountry"
+                name="tenantCountry"
+                [items]="countries"
+                bindLabel="name"
+                bindValue="id"
+                [(ngModel)]="formData.tenant_official_address.country_id"
+                (ngModelChange)="onTenantCountryChange($event)"
+                (blur)="markAsTouched('tenant_official_address.country_id')"
+                [disabled]="isSubmitting || loadingCountries"
+                [loading]="loadingCountries"
+                [searchable]="true"
+                [clearable]="false"
+                placeholder="Select Country"
+                [class.ng-select-error]="isFieldInvalid('tenant_official_address.country_id')"
+                required
+              >
+                <ng-template ng-option-tmp let-item="item">
+                  {{ item.emoji }} {{ item.name }}
+                </ng-template>
+                <ng-template ng-label-tmp let-item="item">
+                  {{ item.emoji }} {{ item.name }}
+                </ng-template>
+              </ng-select>
+              <span class="form-error" *ngIf="isFieldInvalid('tenant_official_address.country_id')">
+                {{ getFieldError('tenant_official_address.country_id') }}
+              </span>
+            </div>
+
+            <!-- State/Province Dropdown -->
+            <div class="form-group">
+              <label for="tenantState" class="form-label">
+                State/Province <span class="required">*</span>
+              </label>
+              <ng-select
+                id="tenantState"
+                name="tenantState"
+                [items]="tenantStates"
+                bindLabel="name"
+                bindValue="id"
+                [(ngModel)]="formData.tenant_official_address.state_id"
+                (blur)="markAsTouched('tenant_official_address.state_id')"
+                [disabled]="isSubmitting || !formData.tenant_official_address.country_id || loadingTenantStates"
+                [loading]="loadingTenantStates"
+                [searchable]="true"
+                [clearable]="false"
+                [placeholder]="loadingTenantStates ? 'Loading...' : 'Select State/Province'"
+                [class.ng-select-error]="isFieldInvalid('tenant_official_address.state_id')"
+                required
+              >
+              </ng-select>
+              <span class="form-error" *ngIf="isFieldInvalid('tenant_official_address.state_id')">
+                {{ getFieldError('tenant_official_address.state_id') }}
+              </span>
+            </div>
+          </div>
+
+          <!-- District/City and PIN/ZIP Code -->
+          <div class="form-row">
+            <!-- District/City (Text Input) -->
+            <div class="form-group">
+              <label for="tenantDistrict" class="form-label">
+                District/City <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="tenantDistrict"
+                name="tenantDistrict"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('tenant_official_address.district')"
+                [(ngModel)]="formData.tenant_official_address.district"
+                (blur)="markAsTouched('tenant_official_address.district')"
+                placeholder="Enter district or city name"
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('tenant_official_address.district')">
+                {{ getFieldError('tenant_official_address.district') }}
+              </span>
+            </div>
+
+            <div class="form-group">
+              <label for="tenantPinZipCode" class="form-label">
+                PIN/ZIP Code <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="tenantPinZipCode"
+                name="tenantPinZipCode"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('tenant_official_address.pin_zip_code')"
+                [(ngModel)]="formData.tenant_official_address.pin_zip_code"
+                (blur)="markAsTouched('tenant_official_address.pin_zip_code')"
+                placeholder="Enter PIN/ZIP code"
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('tenant_official_address.pin_zip_code')">
+                {{ getFieldError('tenant_official_address.pin_zip_code') }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- =================================== -->
+        <!-- SECTION 2: Primary User Information -->
+        <!-- =================================== -->
+        <div class="form-section">
+          <h3 class="section-title">Primary User Information</h3>
+          
+          <div class="form-row">
+            <!-- Primary User Name -->
+            <div class="form-group">
+              <label for="primaryUserName" class="form-label">
+                Name <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="primaryUserName"
+                name="primaryUserName"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('primary_user_name')"
+                [(ngModel)]="formData.primary_user_name"
+                (blur)="markAsTouched('primary_user_name')"
+                placeholder="Enter primary user name"
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('primary_user_name')">
+                {{ getFieldError('primary_user_name') }}
+              </span>
+            </div>
+
+            <!-- Primary User Email -->
+            <div class="form-group">
+              <label for="primaryUserEmail" class="form-label">
+                Email <span class="required">*</span>
+              </label>
+              <input
+                type="email"
+                id="primaryUserEmail"
+                name="primaryUserEmail"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('primary_user_email')"
+                [(ngModel)]="formData.primary_user_email"
+                (blur)="markAsTouched('primary_user_email')"
+                placeholder="user@example.com"
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('primary_user_email')">
+                {{ getFieldError('primary_user_email') }}
+              </span>
+            </div>
+          </div>
+
+          <!-- Primary Contact Number -->
+          <div class="form-group">
+            <app-phone-input
+              [label]="'Contact Number'"
+              [id]="'primaryContactNumber'"
+              [name]="'primaryContactNumber'"
+              [required]="true"
+              [disabled]="isSubmitting"
+              [maxLength]="15"
+              [minLength]="6"
+              [errorMessage]="isFieldInvalid('primary_contact_number') ? getFieldError('primary_contact_number') : ''"
+              [(ngModel)]="formData.primary_contact_number"
+              ngDefaultControl
+            ></app-phone-input>
+          </div>
+
+          <!-- Primary User Address (moved here from official address) -->
+          <div class="address-header-with-checkbox">
+            <h4 class="subsection-title">Address <span class="required">*</span></h4>
+            <label class="checkbox-label">
+              <input 
+                type="checkbox" 
+                class="checkbox-input"
+                [(ngModel)]="sameAsTenantAddress"
+                (change)="onSameAsTenantAddressChange()"
+                name="sameAsTenantAddress"
+                [disabled]="isSubmitting"
+              />
+              <span class="checkbox-text">Same as Tenant Address</span>
+            </label>
+          </div>
+          
+          <!-- Address Line 1 and Line 2 -->
+          <div class="form-row">
+            <!-- Address Line 1 -->
+            <div class="form-group">
+              <label for="primaryAddressLine1" class="form-label">
+                Address Line 1 <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="primaryAddressLine1"
+                name="primaryAddressLine1"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('primary_user_address.line1')"
+                [(ngModel)]="formData.primary_user_address.line1"
+                (blur)="markAsTouched('primary_user_address.line1')"
+                placeholder="Street address, building, floor, etc."
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('primary_user_address.line1')">
+                {{ getFieldError('primary_user_address.line1') }}
+              </span>
+            </div>
+
+            <!-- Address Line 2 -->
+            <div class="form-group">
+              <label for="primaryAddressLine2" class="form-label">
+                Address Line 2 <span class="optional">(Optional)</span>
+              </label>
+              <input
+                type="text"
+                id="primaryAddressLine2"
+                name="primaryAddressLine2"
+                class="form-input"
+                [(ngModel)]="formData.primary_user_address.line2"
+                placeholder="Apartment, suite, unit, etc."
+                [disabled]="isSubmitting"
+              />
+            </div>
+          </div>
+
+          <!-- Country and State/Province Dropdowns -->
+          <div class="form-row">
+            <!-- Country Dropdown -->
+            <div class="form-group">
+              <label for="primaryCountry" class="form-label">
+                Country <span class="required">*</span>
+              </label>
+              <ng-select
+                id="primaryCountry"
+                name="primaryCountry"
+                [items]="countries"
+                bindLabel="name"
+                bindValue="id"
+                [(ngModel)]="formData.primary_user_address.country_id"
+                (ngModelChange)="onPrimaryCountryChange($event)"
+                (blur)="markAsTouched('primary_user_address.country_id')"
+                [disabled]="isSubmitting || loadingCountries"
+                [loading]="loadingCountries"
+                [searchable]="true"
+                [clearable]="false"
+                placeholder="Select Country"
+                [class.ng-select-error]="isFieldInvalid('primary_user_address.country_id')"
+                required
+              >
+                <ng-template ng-option-tmp let-item="item">
+                  {{ item.emoji }} {{ item.name }}
+                </ng-template>
+                <ng-template ng-label-tmp let-item="item">
+                  {{ item.emoji }} {{ item.name }}
+                </ng-template>
+              </ng-select>
+              <span class="form-error" *ngIf="isFieldInvalid('primary_user_address.country_id')">
+                {{ getFieldError('primary_user_address.country_id') }}
+              </span>
+            </div>
+
+            <!-- State/Province Dropdown -->
+            <div class="form-group">
+              <label for="primaryState" class="form-label">
+                State/Province <span class="required">*</span>
+              </label>
+              <ng-select
+                id="primaryState"
+                name="primaryState"
+                [items]="primaryStates"
+                bindLabel="name"
+                bindValue="id"
+                [(ngModel)]="formData.primary_user_address.state_id"
+                (blur)="markAsTouched('primary_user_address.state_id')"
+                [disabled]="isSubmitting || !formData.primary_user_address.country_id || loadingPrimaryStates"
+                [loading]="loadingPrimaryStates"
+                [searchable]="true"
+                [clearable]="false"
+                [placeholder]="loadingPrimaryStates ? 'Loading...' : 'Select State/Province'"
+                [class.ng-select-error]="isFieldInvalid('primary_user_address.state_id')"
+                required
+              >
+              </ng-select>
+              <span class="form-error" *ngIf="isFieldInvalid('primary_user_address.state_id')">
+                {{ getFieldError('primary_user_address.state_id') }}
+              </span>
+            </div>
+          </div>
+
+          <!-- District/City and PIN/ZIP Code -->
+          <div class="form-row">
+            <!-- District/City (Text Input) -->
+            <div class="form-group">
+              <label for="primaryDistrict" class="form-label">
+                District/City <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="primaryDistrict"
+                name="primaryDistrict"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('primary_user_address.district')"
+                [(ngModel)]="formData.primary_user_address.district"
+                (blur)="markAsTouched('primary_user_address.district')"
+                placeholder="Enter district or city name"
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('primary_user_address.district')">
+                {{ getFieldError('primary_user_address.district') }}
+              </span>
+            </div>
+
+            <!-- Pin/Zip Code -->
+            <div class="form-group">
+              <label for="primaryPinZipCode" class="form-label">
+                Pin/Zip Code <span class="required">*</span>
+              </label>
+              <input
+                type="text"
+                id="primaryPinZipCode"
+                name="primaryPinZipCode"
+                class="form-input"
+                [class.input-error]="isFieldInvalid('primary_user_address.pin_zip_code')"
+                [(ngModel)]="formData.primary_user_address.pin_zip_code"
+                (blur)="markAsTouched('primary_user_address.pin_zip_code')"
+                placeholder="Enter pin/zip code"
+                required
+                [disabled]="isSubmitting"
+              />
+              <span class="form-error" *ngIf="isFieldInvalid('primary_user_address.pin_zip_code')">
+                {{ getFieldError('primary_user_address.pin_zip_code') }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Modal Footer / Actions -->
+        <div class="modal-actions">
+          <button
+            type="button"
+            class="btn-cancel"
+            (click)="onClose()"
+            [disabled]="isSubmitting"
+            title="Cancel and close"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+            <span>Cancel</span>
+          </button>
+          <button
+            type="submit"
+            class="btn-save"
+            [disabled]="isSubmitting"
+            title="Create tenant"
+          >
+            <span *ngIf="!isSubmitting">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+              <span>Submit</span>
+            </span>
+            <span *ngIf="isSubmitting" class="loading-spinner">
+              <span class="spinner"></span>
+              <span>Submitting...</span>
+            </span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
