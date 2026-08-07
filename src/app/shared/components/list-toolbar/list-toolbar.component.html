@@ -1,0 +1,28 @@
+<div class="cf-list-toolbar">
+  <input
+    *ngIf="showSearch"
+    type="search"
+    class="cf-list-toolbar__search"
+    [placeholder]="searchPlaceholder"
+    [ngModel]="searchValue"
+    (ngModelChange)="onSearchInput($event)"
+    [attr.aria-label]="searchPlaceholder"
+  />
+
+  <button
+    *ngIf="showFilters"
+    type="button"
+    class="cf-btn cf-list-toolbar__filters"
+    (click)="filtersOpened.emit()"
+  >
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cf-icon-sm" aria-hidden="true">
+      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+    </svg>
+    Filters
+    <span *ngIf="filterCount > 0" class="cf-list-toolbar__filter-badge">{{ filterCount }}</span>
+  </button>
+
+  <div class="cf-list-toolbar__primary">
+    <ng-content></ng-content>
+  </div>
+</div>

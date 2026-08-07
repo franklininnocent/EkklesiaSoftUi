@@ -1,0 +1,29 @@
+<section class="taxonomy-settings-page cf-page">
+  <app-page-header
+    title="Ministry settings"
+    subtitle="Set up categories, types, and leadership positions used across organizations."
+  ></app-page-header>
+
+  <div class="cf-nav-cluster">
+    <app-ministries-sub-nav></app-ministries-sub-nav>
+
+    <app-tab-strip
+      ariaLabel="Taxonomy settings"
+      [tabs]="tabStripItems"
+      [activeId]="activeTab"
+      (tabChange)="onTabChange($event)"
+    ></app-tab-strip>
+  </div>
+
+  <div
+    class="taxonomy-settings-page__panel"
+    role="tabpanel"
+    [id]="panelId(activeTab)"
+    [attr.aria-labelledby]="tabId(activeTab)"
+  >
+    <app-taxonomy-crud-panel
+      [kind]="activeTab"
+      [canConfigure]="canConfigure"
+    ></app-taxonomy-crud-panel>
+  </div>
+</section>

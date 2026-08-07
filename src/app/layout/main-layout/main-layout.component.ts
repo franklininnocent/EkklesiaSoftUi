@@ -1,6 +1,6 @@
 import { Component, inject, OnInit, OnDestroy, HostListener, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable, Subject } from 'rxjs';
 import { filter, take, takeUntil } from 'rxjs/operators';
@@ -18,11 +18,21 @@ import { QuickCollectDrawerComponent } from '@features/donations/components/quic
 import { QuickCollectService } from '@features/donations/services/quick-collect.service';
 import { CommandPaletteComponent } from '@shared/components/command-palette/command-palette.component';
 import { GlobalFamilySearchComponent } from '@shared/components/global-family-search/global-family-search.component';
+import { SupportSessionBannerComponent } from '@features/support-center/components/support-session-banner/support-session-banner.component';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, BreadcrumbComponent, QuickCollectDrawerComponent, CommandPaletteComponent, GlobalFamilySearchComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    BreadcrumbComponent,
+    QuickCollectDrawerComponent,
+    CommandPaletteComponent,
+    GlobalFamilySearchComponent,
+    SupportSessionBannerComponent,
+  ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -56,6 +66,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   public themeService = inject(ThemeService);
   private destroy$ = new Subject<void>();
   private quickCollectService = inject(QuickCollectService);
+  private supportSessions = inject(SupportSessionService);
 
   currentUser$: Observable<User | null>;
   currentTenant$: Observable<Tenant | null>;
@@ -85,6 +96,28 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       }
       this.cdr.markForCheck();
     });
+
+    // Breadcrumb audit: when a support session is active, log navigations.
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((event) => {
+        if (!this.supportSessions.sessionId) {
+          return;
+        }
+        const url = event.urlAfterRedirects || event.url;
+        const module = this.moduleFromUrl(url);
+        this.supportSessions
+          .recordEvent({
+            event_type: 'page_view',
+            module,
+            page: url,
+            action: 'navigate',
+          })
+          .subscribe({ error: () => undefined });
+      });
   }
 
   ngOnDestroy(): void {
@@ -219,8 +252,18 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     return this.authService.canAccessDonations(user);
   }
 
+  canAccessMinistries(user: User | null): boolean {
+    return this.authService.canAccessMinistries(user);
+  }
+
   openQuickCollect(): void {
     this.quickCollectService.open();
+  }
+
+  private moduleFromUrl(url: string): string {
+    const path = url.split('?')[0].replace(/^\//, '');
+    const first = path.split('/')[0] || 'app';
+    return first;
   }
 }
 

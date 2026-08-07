@@ -1,0 +1,20 @@
+.organization-form__error {
+  margin: 0;
+  color: var(--cf-critical);
+  font-size: var(--cf-text-sm);
+}
+
+.organization-form__form {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.organization-form__form .cf-form-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  padding-top: var(--cf-space-3);
+  padding-bottom: var(--cf-space-2);
+  background: var(--cf-panel-bg);
+  border-top: 1px solid var(--cf-panel-border);
+}

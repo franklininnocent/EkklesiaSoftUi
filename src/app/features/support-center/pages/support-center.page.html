@@ -1,0 +1,1305 @@
+<section class="support-center cf-page">
+  <app-page-header
+    title="Support Center"
+    subtitle="Enter a tenant for diagnostics without changing your support identity."
+  ></app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!canAccess" role="alert">
+    <p>You do not have permission to use Support Center.</p>
+  </div>
+
+  <ng-container *ngIf="canAccess">
+    <div class="support-center__metrics" *ngIf="metrics as m" aria-label="Support ops summary">
+      <div class="support-center__metric">
+        <span class="support-center__metric-value">{{ m.active_count }}</span>
+        <span class="support-center__metric-label">Active</span>
+      </div>
+      <div class="support-center__metric">
+        <span class="support-center__metric-value">{{ m.pending_approvals }}</span>
+        <span class="support-center__metric-label">Pending approvals</span>
+      </div>
+      <div class="support-center__metric">
+        <span class="support-center__metric-value">{{ m.expiring_soon_count }}</span>
+        <span class="support-center__metric-label">Expiring ≤{{ m.expiring_within_minutes }}m</span>
+      </div>
+    </div>
+
+    <div class="cf-attention-callout" *ngIf="myActive as a" role="status">
+      <p>
+        Your active session:
+        <strong>{{ a.tenant?.name || ('#' + a.tenant_id) }}</strong>
+        <app-status-badge [label]="a.mode" [tone]="modeTone(a.mode)"></app-status-badge>
+        — {{ a.reason_code }}
+      </p>
+      <button type="button" class="cf-btn cf-btn-danger" (click)="endMine()">Exit session</button>
+    </div>
+
+    <div class="cf-inline-alert" *ngIf="error" role="alert">
+      <p>{{ error }}</p>
+    </div>
+    <div class="cf-inline-alert" *ngIf="success" role="status">
+      <p>{{ success }}</p>
+    </div>
+
+    <app-tab-strip
+      ariaLabel="Support Center sections"
+      [tabs]="tabs"
+      [activeId]="activeTab"
+      (tabChange)="onTabChange($event)"
+    ></app-tab-strip>
+
+    <div class="support-center__grid" *ngIf="activeTab === 'start'">
+      <section class="cf-panel support-center__panel">
+        <h2 class="cf-form-section__title">Find tenant</h2>
+        <label class="cf-form-field">
+          <span class="cf-form-field__label">Search</span>
+          <input type="search" [formControl]="searchControl" placeholder="Name, slug, or domain" />
+        </label>
+        <p class="cf-state" *ngIf="loadingSearch">Searching…</p>
+        <app-cf-empty-state
+          *ngIf="!loadingSearch && !tenants.length"
+          title="No tenants found"
+          description="Try another name, slug, or domain."
+        ></app-cf-empty-state>
+        <ul class="support-center__list" *ngIf="!loadingSearch && tenants.length">
+          <li *ngFor="let tenant of tenants">
+            <button
+              type="button"
+              class="support-center__tenant"
+              [class.is-selected]="selected?.id === tenant.id"
+              [attr.aria-pressed]="selected?.id === tenant.id"
+              (click)="selectTenant(tenant)"
+            >
+              <strong>{{ tenant.name }}</strong>
+              <span>{{ tenant.slug }} · {{ tenant.tenant_tier || 'tenant' }}</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+
+      <section class="cf-panel support-center__panel">
+        <h2 class="cf-form-section__title">Start session</h2>
+        <p class="cf-form-section__intro" *ngIf="!selected">Select a tenant to continue.</p>
+        <ng-container *ngIf="selected as tenant">
+          <div class="cf-context-card support-center__tenant-summary" *ngIf="selectedDetail as detail">
+            <p><strong>{{ detail.name }}</strong></p>
+            <p>
+              {{ detail.slug }}
+              · {{ detail.tenant_tier || 'tenant' }}
+              · <app-status-badge
+                [label]="detail.active ? 'Active' : 'Inactive'"
+                [tone]="detail.active ? 'success' : 'critical'"
+              ></app-status-badge>
+            </p>
+            <p *ngIf="detail.domain">Domain: {{ detail.domain }}</p>
+            <p *ngIf="detail.plan">Plan: {{ detail.plan }}</p>
+            <p *ngIf="detail.hierarchy_path">Path: {{ detail.hierarchy_path }}</p>
+          </div>
+          <form
+            id="start-session-form"
+            class="cf-form-grid"
+            [formGroup]="startForm"
+            (ngSubmit)="startSession()"
+            novalidate
+          >
+            <app-form-field
+              label="Mode"
+              fieldId="start-mode"
+              [required]="true"
+              [errorText]="startFieldError('mode')"
+            >
+              <select id="start-mode" formControlName="mode">
+                <option value="readonly">Read only</option>
+                <option value="standard">Standard</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </app-form-field>
+
+            <div class="cf-inline-alert support-center__emergency" *ngIf="isEmergencyMode" role="alert">
+              <p>
+                <strong>Emergency mode</strong> is for break-glass support only. It is fully audited and may require
+                a second approver.
+              </p>
+            </div>
+
+            <app-form-field
+              *ngIf="isEmergencyMode"
+              label="Emergency confirmation"
+              fieldId="start-confirm-emergency"
+              [required]="true"
+              [wide]="true"
+              [errorText]="startFieldError('confirm_emergency')"
+            >
+              <label class="support-center__check" for="start-confirm-emergency">
+                <input id="start-confirm-emergency" type="checkbox" formControlName="confirm_emergency" />
+                I understand emergency mode elevates access and will be audited.
+              </label>
+            </app-form-field>
+
+            <app-form-field
+              *ngIf="needsApprovalForStart"
+              label="Approved emergency request"
+              fieldId="start-approval-request"
+              [required]="true"
+              [wide]="true"
+              [errorText]="startFieldError('approval_request_id')"
+              helpText="No approved request? Use Request approval on the Approvals tab."
+            >
+              <select id="start-approval-request" formControlName="approval_request_id">
+                <option value="">Select approved request…</option>
+                <option *ngFor="let req of approvedForStart" [value]="req.id">
+                  {{ req.reason_code }} · expires {{ req.expires_at | date: 'short' }}
+                </option>
+              </select>
+            </app-form-field>
+
+            <app-form-field
+              label="Reason"
+              fieldId="start-reason"
+              [required]="true"
+              [errorText]="startFieldError('reason_code')"
+            >
+              <select id="start-reason" formControlName="reason_code">
+                <option *ngFor="let opt of reasonOptions" [value]="opt.value">{{ opt.label }}</option>
+              </select>
+            </app-form-field>
+
+            <app-form-field
+              label="Description"
+              fieldId="start-description"
+              [optionalLabel]="true"
+              [wide]="true"
+              [errorText]="startFieldError('reason_description')"
+            >
+              <textarea id="start-description" formControlName="reason_description" rows="3" maxlength="2000"></textarea>
+            </app-form-field>
+
+            <app-form-field
+              label="Ticket"
+              fieldId="start-ticket"
+              [required]="!!settings?.require_ticket_ref"
+              [optionalLabel]="!settings?.require_ticket_ref"
+              [errorText]="startFieldError('ticket_ref')"
+            >
+              <input id="start-ticket" type="text" formControlName="ticket_ref" maxlength="128" />
+            </app-form-field>
+
+            <app-form-field
+              label="Confirm password"
+              fieldId="start-password"
+              [required]="true"
+              [errorText]="startFieldError('password')"
+            >
+              <input
+                id="start-password"
+                type="password"
+                formControlName="password"
+                autocomplete="current-password"
+              />
+            </app-form-field>
+
+            <div class="cf-form-actions">
+              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="starting">
+                {{ starting ? 'Starting…' : 'Start support session' }}
+              </button>
+            </div>
+          </form>
+        </ng-container>
+      </section>
+    </div>
+
+    <section class="cf-panel support-center__panel" *ngIf="activeTab === 'active'">
+      <div class="support-center__panel-head">
+        <h2 class="cf-form-section__title">Active sessions</h2>
+        <button type="button" class="cf-btn" (click)="loadMonitor()" [disabled]="loadingMonitor">Refresh</button>
+      </div>
+
+      <div
+        class="cf-loading-block"
+        *ngIf="loadingMonitor && !monitorRows.length"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="cf-loading-block__label">Loading active sessions…</p>
+        <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+      </div>
+
+      <app-cf-empty-state
+        *ngIf="!loadingMonitor && !monitorRows.length"
+        title="No active sessions"
+        description="When a support engineer enters a tenant, it will show here."
+      ></app-cf-empty-state>
+
+      <app-data-table *ngIf="monitorRows.length" [ariaBusy]="loadingMonitor">
+        <thead>
+          <tr>
+            <th scope="col">Tenant</th>
+            <th scope="col">Engineer</th>
+            <th scope="col">Mode</th>
+            <th scope="col">Reason</th>
+            <th scope="col">Expires</th>
+            <th scope="col" *ngIf="canForceEnd" class="cf-table__actions-col">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of monitorRows">
+            <td><strong>{{ row.tenant?.name || ('#' + row.tenant_id) }}</strong></td>
+            <td>{{ actorLabel(row) }}</td>
+            <td>
+              <app-status-badge [label]="row.mode" [tone]="modeTone(row.mode)"></app-status-badge>
+            </td>
+            <td>{{ row.reason_code }}</td>
+            <td>{{ row.expires_at | date: 'medium' }}</td>
+            <td *ngIf="canForceEnd" class="cf-table__actions-cell">
+              <button type="button" class="cf-btn cf-btn-danger" (click)="forceEnd(row)">Force end</button>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+    </section>
+
+    <section class="cf-panel support-center__panel" *ngIf="activeTab === 'history'">
+      <div class="support-center__panel-head">
+        <h2 class="cf-form-section__title">Session history</h2>
+        <button
+          *ngIf="canExport"
+          type="button"
+          class="cf-btn"
+          (click)="exportHistory()"
+          [disabled]="exporting"
+        >
+          {{ exporting ? 'Exporting…' : 'Export CSV' }}
+        </button>
+      </div>
+
+      <form
+        id="history-filters-form"
+        class="cf-filters support-center__history-filters"
+        [formGroup]="historyForm"
+        (ngSubmit)="applyHistoryFilters()"
+        novalidate
+      >
+        <input
+          type="search"
+          class="support-center__history-filters__search"
+          formControlName="q"
+          placeholder="Search tenant, user, ticket…"
+          aria-label="Search history"
+          maxlength="100"
+        />
+        <select
+          class="support-center__history-filters__status"
+          formControlName="status"
+          aria-label="Status"
+        >
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="ended">Ended</option>
+          <option value="expired">Expired</option>
+        </select>
+        <select
+          class="support-center__history-filters__mode"
+          formControlName="mode"
+          aria-label="Mode"
+        >
+          <option value="">All modes</option>
+          <option value="readonly">Read only</option>
+          <option value="standard">Standard</option>
+          <option value="emergency">Emergency</option>
+        </select>
+        <input
+          type="date"
+          class="support-center__history-filters__date"
+          formControlName="from"
+          aria-label="From date"
+        />
+        <div class="support-center__filter-to">
+          <input
+            type="date"
+            class="support-center__history-filters__date"
+            formControlName="to"
+            aria-label="To date"
+            [attr.aria-invalid]="!!historyToError()"
+            [attr.aria-describedby]="historyToError() ? 'history-to-error' : null"
+          />
+          <p
+            *ngIf="historyToError() as toErr"
+            id="history-to-error"
+            class="cf-form-field__error"
+            role="alert"
+          >
+            {{ toErr }}
+          </p>
+        </div>
+        <button
+          type="submit"
+          class="cf-btn cf-btn-primary support-center__history-filters__apply"
+          [disabled]="loadingHistory"
+        >
+          {{ loadingHistory ? 'Applying…' : 'Apply' }}
+        </button>
+      </form>
+
+      <div
+        class="cf-loading-block"
+        *ngIf="loadingHistory && !historyRows.length"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="cf-loading-block__label">Loading history…</p>
+        <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+      </div>
+      <app-cf-empty-state
+        *ngIf="!loadingHistory && !historyRows.length"
+        title="No matching sessions"
+        description="Adjust filters or expand the date range."
+      ></app-cf-empty-state>
+      <app-data-table *ngIf="historyRows.length" [ariaBusy]="loadingHistory">
+        <thead>
+          <tr>
+            <th scope="col">Tenant</th>
+            <th scope="col">Engineer</th>
+            <th scope="col">Mode</th>
+            <th scope="col">Status</th>
+            <th scope="col">Reason</th>
+            <th scope="col">Started</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of historyRows">
+            <td><strong>{{ row.tenant?.name || ('#' + row.tenant_id) }}</strong></td>
+            <td>{{ actorLabel(row) }}</td>
+            <td>
+              <app-status-badge [label]="row.mode" [tone]="modeTone(row.mode)"></app-status-badge>
+            </td>
+            <td>
+              <app-status-badge [label]="row.status" [tone]="statusTone(row.status)"></app-status-badge>
+            </td>
+            <td>{{ row.reason_code }}</td>
+            <td>{{ row.started_at | date: 'medium' }}</td>
+          </tr>
+        </tbody>
+      </app-data-table>
+      <app-pagination
+        *ngIf="!loadingHistory && historyTotal > 0"
+        [currentPage]="historyPage"
+        [pageSize]="historyPageSize"
+        [totalItems]="historyTotal"
+        [showPageSizeSelector]="true"
+        (pageChange)="onHistoryPageChange($event)"
+        (pageSizeChange)="onHistoryPageSizeChange($event)"
+      ></app-pagination>
+    </section>
+
+    <section class="cf-panel support-center__panel" *ngIf="activeTab === 'approvals'">
+      <div class="support-center__panel-head">
+        <h2 class="cf-form-section__title">Emergency approvals</h2>
+        <button type="button" class="cf-btn" (click)="loadApprovals()" [disabled]="loadingApprovals">Refresh</button>
+      </div>
+
+      <div class="cf-decision-strip" *ngIf="!selected" role="status">
+        <div class="cf-decision-strip__copy">
+          <strong>Choose a tenant first</strong>
+          <span>Select a tenant on the Start tab, then request emergency approval here.</span>
+        </div>
+        <div class="cf-decision-strip__actions">
+          <button type="button" class="cf-btn cf-btn-primary" (click)="onTabChange('start')">
+            Choose tenant on Start
+          </button>
+        </div>
+      </div>
+
+      <form
+        id="approval-request-form"
+        class="cf-form-grid"
+        [formGroup]="approvalForm"
+        (ngSubmit)="requestEmergencyApproval()"
+        *ngIf="selected"
+        novalidate
+      >
+        <p class="support-center__selected">
+          Request for: <strong>{{ selected.name }}</strong>
+        </p>
+        <app-form-field
+          label="Reason"
+          fieldId="approval-reason"
+          [required]="true"
+          [errorText]="approvalFieldError('reason_code')"
+        >
+          <select id="approval-reason" formControlName="reason_code">
+            <option *ngFor="let opt of reasonOptions" [value]="opt.value">{{ opt.label }}</option>
+          </select>
+        </app-form-field>
+        <app-form-field
+          label="Ticket"
+          fieldId="approval-ticket"
+          [optionalLabel]="true"
+          [errorText]="approvalFieldError('ticket_ref')"
+        >
+          <input id="approval-ticket" type="text" formControlName="ticket_ref" maxlength="128" />
+        </app-form-field>
+        <app-form-field
+          label="Description"
+          fieldId="approval-description"
+          [optionalLabel]="true"
+          [wide]="true"
+          [errorText]="approvalFieldError('reason_description')"
+        >
+          <textarea
+            id="approval-description"
+            formControlName="reason_description"
+            rows="2"
+            maxlength="2000"
+          ></textarea>
+        </app-form-field>
+        <div class="cf-form-actions">
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="requestingApproval">
+            {{ requestingApproval ? 'Requesting…' : 'Request emergency approval' }}
+          </button>
+        </div>
+      </form>
+
+      <div
+        class="cf-loading-block"
+        *ngIf="loadingApprovals && !approvalRows.length"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="cf-loading-block__label">Loading approvals…</p>
+        <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+      </div>
+
+      <app-data-table *ngIf="approvalRows.length" [ariaBusy]="loadingApprovals">
+        <thead>
+          <tr>
+            <th scope="col">Tenant</th>
+            <th scope="col">Status</th>
+            <th scope="col">Reason</th>
+            <th scope="col">Requester</th>
+            <th scope="col">Expires</th>
+            <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of approvalRows">
+            <td><strong>{{ row.tenant?.name || ('#' + row.tenant_id) }}</strong></td>
+            <td>
+              <app-status-badge [label]="row.status" [tone]="statusTone(row.status)"></app-status-badge>
+            </td>
+            <td>{{ row.reason_code }}</td>
+            <td>{{ row.requester?.email || ('#' + row.requester_user_id) }}</td>
+            <td>{{ row.expires_at | date: 'short' }}</td>
+            <td class="cf-table__actions-cell">
+              <div class="support-center__row-actions" role="group" aria-label="Approval actions">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-primary"
+                  *ngIf="canApprove && row.status === 'pending'"
+                  (click)="approveRequest(row)"
+                >
+                  Approve
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-danger"
+                  *ngIf="canApprove && row.status === 'pending'"
+                  (click)="rejectRequest(row)"
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-danger"
+                  *ngIf="row.status === 'pending' || row.status === 'approved'"
+                  (click)="cancelRequest(row)"
+                >
+                  Cancel
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <app-cf-empty-state
+        *ngIf="!loadingApprovals && !approvalRows.length"
+        title="No approval requests"
+        description="Pending emergency approvals for your team will appear here."
+      ></app-cf-empty-state>
+    </section>
+
+    <section class="grants-page" *ngIf="activeTab === 'grants'">
+      <div class="support-center__panel-head">
+        <div>
+          <h2 class="cf-form-section__title">Customer Access Grants</h2>
+          <p class="cf-form-section__intro">
+            Grant tenants a timed window to allow EkklesiaSoft support to enter their account.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="cf-btn"
+          (click)="loadGrants()"
+          [disabled]="loadingGrants"
+        >
+          Refresh
+        </button>
+      </div>
+
+      <div class="cf-inline-alert" *ngIf="!canViewGrants" role="alert">
+        <p>You do not have permission to view support grants.</p>
+      </div>
+
+      <!-- ② Create grant card (managers only) -->
+      <app-section-card
+        *ngIf="canManageGrants"
+        title="Issue new grant"
+      >
+        <p class="grants-page__card-intro">
+          Define the window, mode, and scope. The tenant will be notified once the grant is saved.
+        </p>
+        <form
+          id="grants-create-form"
+          class="grants-page__form"
+          [formGroup]="grantForm"
+          (ngSubmit)="createGrant()"
+          novalidate
+        >
+          <div class="grants-page__form-grid">
+            <app-form-field
+              label="Tenant"
+              fieldId="grant-tenant"
+              [required]="true"
+              [errorText]="grantFieldError('tenant_id')"
+              [helpText]="selected ? 'Prefilled from Start tab selection.' : undefined"
+            >
+              <select id="grant-tenant" formControlName="tenant_id">
+                <option [ngValue]="null">Select tenant…</option>
+                <option *ngFor="let tenant of tenants" [ngValue]="tenant.id">
+                  {{ tenant.name }} ({{ tenant.slug }})
+                </option>
+              </select>
+            </app-form-field>
+
+            <app-form-field
+              label="Allowed mode"
+              fieldId="grant-mode"
+              [required]="true"
+              [errorText]="grantFieldError('allowed_mode')"
+            >
+              <select id="grant-mode" formControlName="allowed_mode">
+                <option value="any">Any</option>
+                <option value="readonly">Read only</option>
+                <option value="standard">Standard</option>
+                <option value="emergency">Emergency</option>
+              </select>
+            </app-form-field>
+
+            <app-form-field
+              label="Starts"
+              fieldId="grant-starts"
+              [required]="true"
+              [errorText]="grantFieldError('starts_at')"
+            >
+              <input id="grant-starts" type="datetime-local" formControlName="starts_at" />
+            </app-form-field>
+
+            <app-form-field
+              label="Ends"
+              fieldId="grant-ends"
+              [required]="true"
+              [errorText]="grantEndsError()"
+            >
+              <input id="grant-ends" type="datetime-local" formControlName="ends_at" />
+            </app-form-field>
+
+            <app-form-field
+              label="Max sessions"
+              fieldId="grant-max-sessions"
+              [optionalLabel]="true"
+              [errorText]="grantFieldError('max_sessions')"
+              helpText="Leave blank for no limit."
+            >
+              <input
+                id="grant-max-sessions"
+                class="grants-page__max-sessions-input"
+                type="number"
+                formControlName="max_sessions"
+                min="1"
+                max="1000"
+                placeholder="No limit"
+              />
+            </app-form-field>
+
+            <app-form-field
+              label="Note"
+              fieldId="grant-note"
+              [optionalLabel]="true"
+              [wide]="true"
+              [errorText]="grantFieldError('note')"
+            >
+              <input
+                id="grant-note"
+                type="text"
+                formControlName="note"
+                maxlength="2000"
+                placeholder="Reason for access (optional)"
+              />
+            </app-form-field>
+          </div>
+
+          <div class="cf-form-actions">
+            <button
+              type="submit"
+              class="cf-btn cf-btn-primary"
+              [disabled]="creatingGrant"
+            >
+              {{ creatingGrant ? 'Creating…' : 'Create grant' }}
+            </button>
+          </div>
+        </form>
+      </app-section-card>
+
+      <!-- ③ Grants table -->
+      <app-section-card *ngIf="canViewGrants" title="Active &amp; recent grants">
+        <div
+          class="cf-loading-block"
+          *ngIf="loadingGrants && !grantRows.length"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <p class="cf-loading-block__label">Loading grants…</p>
+          <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+        </div>
+        <app-cf-empty-state
+          *ngIf="!loadingGrants && !grantRows.length"
+          title="No grants yet"
+          description="Issue a new grant using the form above. Active grants will appear here."
+        ></app-cf-empty-state>
+
+        <app-data-table *ngIf="grantRows.length" [ariaBusy]="loadingGrants">
+          <thead>
+            <tr>
+              <th scope="col">Tenant</th>
+              <th scope="col">Mode</th>
+              <th scope="col">Status</th>
+              <th scope="col">Sessions used</th>
+              <th scope="col">Window</th>
+              <th scope="col" *ngIf="canManageGrants" class="cf-table__actions-col">
+                <span class="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of grantRows">
+              <td>
+                <strong>{{ row.tenant?.name || ('#' + row.tenant_id) }}</strong>
+                <span class="grants-page__row-by" *ngIf="row.granted_by">
+                  by {{ row.granted_by.name || row.granted_by.email }}
+                </span>
+              </td>
+              <td>
+                <app-status-badge
+                  [label]="row.allowed_mode"
+                  [tone]="modeTone(row.allowed_mode)"
+                ></app-status-badge>
+              </td>
+              <td>
+                <app-status-badge
+                  [label]="row.status"
+                  [tone]="statusTone(row.status)"
+                ></app-status-badge>
+              </td>
+              <td class="grants-page__sessions-cell">
+                {{ row.sessions_used }}{{ row.max_sessions ? (' / ' + row.max_sessions) : '' }}
+              </td>
+              <td class="grants-page__window-cell">
+                <span>{{ row.starts_at | date: 'short' }}</span>
+                <span class="grants-page__window-arrow">→</span>
+                <span>{{ row.ends_at | date: 'short' }}</span>
+              </td>
+              <td *ngIf="canManageGrants" class="cf-table__actions-cell">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-danger"
+                  *ngIf="row.status === 'active'"
+                  (click)="revokeGrant(row)"
+                >
+                  Revoke
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+      </app-section-card>
+    </section>
+
+    <section class="cf-panel support-center__panel" *ngIf="activeTab === 'audit'">
+      <div class="support-center__panel-head">
+        <h2 class="cf-form-section__title">Audit events</h2>
+        <button
+          *ngIf="canExport"
+          type="button"
+          class="cf-btn"
+          (click)="exportAudit()"
+          [disabled]="exportingAudit"
+        >
+          {{ exportingAudit ? 'Exporting…' : 'Export CSV' }}
+        </button>
+      </div>
+
+      <div class="cf-inline-alert" *ngIf="!canExport" role="alert">
+        <p>You do not have permission to view support audit events.</p>
+      </div>
+
+      <ng-container *ngIf="canExport">
+        <form
+          id="audit-filters-form"
+          class="cf-filters support-center__audit-filters"
+          [formGroup]="auditForm"
+          (ngSubmit)="applyAuditFilters()"
+          novalidate
+        >
+          <input
+            type="search"
+            class="support-center__audit-filters__search"
+            formControlName="q"
+            placeholder="Search page, module, action…"
+            aria-label="Search events"
+            maxlength="100"
+          />
+          <input
+            type="text"
+            class="support-center__audit-filters__event"
+            formControlName="event_type"
+            placeholder="Event type"
+            aria-label="Event type"
+            maxlength="64"
+          />
+          <input
+            type="text"
+            class="support-center__audit-filters__module"
+            formControlName="module"
+            placeholder="Module"
+            aria-label="Module"
+            maxlength="64"
+          />
+          <input
+            type="date"
+            class="support-center__audit-filters__date"
+            formControlName="from"
+            aria-label="From date"
+          />
+          <div class="support-center__filter-to support-center__audit-filters__date">
+            <input
+              type="date"
+              formControlName="to"
+              aria-label="To date"
+              [attr.aria-invalid]="!!auditToError()"
+              [attr.aria-describedby]="auditToError() ? 'audit-to-error' : null"
+            />
+            <p
+              *ngIf="auditToError() as toErr"
+              id="audit-to-error"
+              class="cf-form-field__error"
+              role="alert"
+            >
+              {{ toErr }}
+            </p>
+          </div>
+          <button
+            type="submit"
+            class="cf-btn cf-btn-primary support-center__audit-filters__apply"
+            [disabled]="loadingAudit"
+          >
+            {{ loadingAudit ? 'Applying…' : 'Apply' }}
+          </button>
+        </form>
+
+        <div
+          class="cf-loading-block"
+          *ngIf="loadingAudit && !auditRows.length"
+          role="status"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <p class="cf-loading-block__label">Loading events…</p>
+          <app-loading-skeleton type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
+        </div>
+        <app-cf-empty-state
+          *ngIf="!loadingAudit && !auditRows.length"
+          title="No matching events"
+          description="Adjust filters or expand the date range."
+        ></app-cf-empty-state>
+        <app-data-table *ngIf="auditRows.length" [ariaBusy]="loadingAudit">
+          <thead>
+            <tr>
+              <th scope="col">Event</th>
+              <th scope="col">Module / page</th>
+              <th scope="col">Tenant</th>
+              <th scope="col">When</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of auditRows">
+              <td><strong>{{ row.event_type }} · {{ row.action || '—' }}</strong></td>
+              <td>{{ row.module || '—' }} · {{ row.page || '—' }}</td>
+              <td>#{{ row.effective_tenant_id }}</td>
+              <td>{{ row.created_at | date: 'medium' }}</td>
+            </tr>
+          </tbody>
+        </app-data-table>
+      </ng-container>
+    </section>
+
+    <section class="support-center__settings-page" *ngIf="activeTab === 'settings'">
+      <header class="support-center__settings-header">
+        <h2 class="cf-form-section__title">Operations settings</h2>
+        <p class="cf-form-section__intro">
+          Platform-wide defaults for session length, notifications, security gates, and helpdesk rules.
+        </p>
+      </header>
+
+      <div class="cf-inline-alert" *ngIf="!canManageSettings" role="alert">
+        <p>You do not have permission to change support configuration.</p>
+      </div>
+      <p class="cf-state" *ngIf="canManageSettings && loadingSettings">Loading settings…</p>
+
+      <form
+        *ngIf="canManageSettings && !loadingSettings"
+        id="settings-form"
+        class="support-center__settings"
+        [formGroup]="settingsForm"
+        (ngSubmit)="saveSettings()"
+        novalidate
+      >
+        <div class="support-center__settings-grid">
+          <app-section-card title="Session Management">
+            <p class="support-center__settings-card-intro">
+              Limits that keep concurrent support work predictable and safe.
+            </p>
+            <div class="support-center__setting-list" role="group" aria-label="Session Management">
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-timeout">Session timeout</label>
+                  <p class="support-center__setting-desc">Default minutes before an idle session ends.</p>
+                </div>
+                <div class="support-center__setting-control">
+                  <select
+                    id="settings-timeout"
+                    formControlName="timeout_minutes"
+                    aria-label="Session timeout (minutes)"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('timeout_minutes')"
+                    [attr.aria-invalid]="!!settingsFieldError('timeout_minutes')"
+                    [attr.aria-describedby]="settingsFieldError('timeout_minutes') ? 'settings-timeout-error' : null"
+                  >
+                    <option *ngFor="let mins of settings?.allowed_timeouts || [15, 30, 60, 120]" [ngValue]="mins">
+                      {{ mins }} min
+                    </option>
+                  </select>
+                  <p
+                    *ngIf="settingsFieldError('timeout_minutes') as err"
+                    id="settings-timeout-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-max-concurrent">Max concurrent sessions</label>
+                  <p class="support-center__setting-desc">Platform-wide cap on sessions open at once.</p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--number">
+                  <input
+                    id="settings-max-concurrent"
+                    type="number"
+                    formControlName="max_concurrent_sessions"
+                    min="1"
+                    max="500"
+                    aria-label="Max concurrent sessions"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('max_concurrent_sessions')"
+                    [attr.aria-invalid]="!!settingsFieldError('max_concurrent_sessions')"
+                    [attr.aria-describedby]="
+                      settingsFieldError('max_concurrent_sessions') ? 'settings-max-concurrent-error' : null
+                    "
+                  />
+                  <p
+                    *ngIf="settingsFieldError('max_concurrent_sessions') as err"
+                    id="settings-max-concurrent-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-max-per-user">Max sessions per support user</label>
+                  <p class="support-center__setting-desc">How many sessions one support user may hold.</p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--number">
+                  <input
+                    id="settings-max-per-user"
+                    type="number"
+                    formControlName="max_sessions_per_user"
+                    min="1"
+                    max="20"
+                    aria-label="Max sessions per support user"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('max_sessions_per_user')"
+                    [attr.aria-invalid]="!!settingsFieldError('max_sessions_per_user')"
+                    [attr.aria-describedby]="
+                      settingsFieldError('max_sessions_per_user') ? 'settings-max-per-user-error' : null
+                    "
+                  />
+                  <p
+                    *ngIf="settingsFieldError('max_sessions_per_user') as err"
+                    id="settings-max-per-user-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-starts-per-hour">Starts allowed per hour</label>
+                  <p class="support-center__setting-desc">Per-user rate limit for starting new sessions.</p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--number">
+                  <input
+                    id="settings-starts-per-hour"
+                    type="number"
+                    formControlName="start_rate_limit_per_hour"
+                    min="1"
+                    max="1000"
+                    aria-label="Starts allowed per user per hour"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('start_rate_limit_per_hour')"
+                    [attr.aria-invalid]="!!settingsFieldError('start_rate_limit_per_hour')"
+                    [attr.aria-describedby]="
+                      settingsFieldError('start_rate_limit_per_hour') ? 'settings-starts-per-hour-error' : null
+                    "
+                  />
+                  <p
+                    *ngIf="settingsFieldError('start_rate_limit_per_hour') as err"
+                    id="settings-starts-per-hour-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </app-section-card>
+
+          <app-section-card title="Customer Notifications">
+            <p class="support-center__settings-card-intro">
+              How and when parish administrators hear about support activity.
+            </p>
+            <div class="support-center__setting-list" role="group" aria-label="Customer Notifications">
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-notification-mode">Notification mode</label>
+                  <p class="support-center__setting-desc">Never, immediate, or digest delivery.</p>
+                </div>
+                <div class="support-center__setting-control">
+                  <select
+                    id="settings-notification-mode"
+                    formControlName="notification_mode"
+                    aria-label="Tenant notification mode"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('notification_mode')"
+                    [attr.aria-invalid]="!!settingsFieldError('notification_mode')"
+                    [attr.aria-describedby]="
+                      settingsFieldError('notification_mode') ? 'settings-notification-mode-error' : null
+                    "
+                  >
+                    <option value="never">Never</option>
+                    <option value="immediate">Immediate</option>
+                    <option value="digest">Digest</option>
+                  </select>
+                  <p
+                    *ngIf="settingsFieldError('notification_mode') as err"
+                    id="settings-notification-mode-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-disclosure">
+                    Email parish administrators
+                  </label>
+                  <p class="support-center__setting-desc">
+                    Send mail when a support session starts or ends.
+                  </p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--toggle">
+                  <input
+                    id="settings-disclosure"
+                    type="checkbox"
+                    formControlName="customer_disclosure_enabled"
+                    aria-label="Email parish administrators when a support session starts or ends"
+                  />
+                </div>
+              </div>
+            </div>
+          </app-section-card>
+
+          <app-section-card title="Security &amp; Access">
+            <p class="support-center__settings-card-intro">
+              Gates that control emergency entry, customer grants, and IP checks.
+            </p>
+            <div class="support-center__setting-list" role="group" aria-label="Security and Access">
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-emergency-approval">
+                    Emergency approval
+                  </label>
+                  <p class="support-center__setting-desc">
+                    Require four-eyes approval before emergency sessions.
+                  </p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--toggle">
+                  <input
+                    id="settings-emergency-approval"
+                    type="checkbox"
+                    formControlName="emergency_requires_approval"
+                    aria-label="Require four-eyes approval before emergency sessions"
+                  />
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-grant-gate">Customer grant gate</label>
+                  <p class="support-center__setting-desc">
+                    Require an active customer access grant to start any session.
+                  </p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--toggle">
+                  <input
+                    id="settings-grant-gate"
+                    type="checkbox"
+                    formControlName="require_customer_grant"
+                    aria-label="Require an active customer access grant to start any session"
+                  />
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-ip-binding">IP binding</label>
+                  <p class="support-center__setting-desc">Off, soft log, or strict block on IP mismatch.</p>
+                </div>
+                <div class="support-center__setting-control">
+                  <select
+                    id="settings-ip-binding"
+                    formControlName="ip_binding_mode"
+                    aria-label="IP binding"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('ip_binding_mode')"
+                    [attr.aria-invalid]="!!settingsFieldError('ip_binding_mode')"
+                    [attr.aria-describedby]="settingsFieldError('ip_binding_mode') ? 'settings-ip-binding-error' : null"
+                  >
+                    <option value="off">Off</option>
+                    <option value="soft">Soft (log mismatch)</option>
+                    <option value="strict">Strict (block mismatch)</option>
+                  </select>
+                  <p
+                    *ngIf="settingsFieldError('ip_binding_mode') as err"
+                    id="settings-ip-binding-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </app-section-card>
+
+          <app-section-card title="Just-In-Time Access">
+            <p class="support-center__settings-card-intro">
+              Shorter elevated windows and how long approval requests stay open.
+            </p>
+            <div class="support-center__setting-list" role="group" aria-label="Just-In-Time Access">
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-jit-enabled">JIT elevated timeout</label>
+                  <p class="support-center__setting-desc">
+                    Use a shorter timeout for standard and emergency modes.
+                  </p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--toggle">
+                  <input
+                    id="settings-jit-enabled"
+                    type="checkbox"
+                    formControlName="jit_enabled"
+                    aria-label="Use shorter timeout for standard and emergency modes"
+                  />
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-jit-timeout">JIT timeout</label>
+                  <p class="support-center__setting-desc">Minutes for elevated JIT sessions (5–120).</p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--number">
+                  <input
+                    id="settings-jit-timeout"
+                    type="number"
+                    formControlName="jit_timeout_minutes"
+                    min="5"
+                    max="120"
+                    aria-label="JIT timeout (minutes)"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('jit_timeout_minutes')"
+                    [attr.aria-invalid]="!!settingsFieldError('jit_timeout_minutes')"
+                    [attr.aria-describedby]="
+                      settingsFieldError('jit_timeout_minutes') ? 'settings-jit-timeout-error' : null
+                    "
+                  />
+                  <p
+                    *ngIf="settingsFieldError('jit_timeout_minutes') as err"
+                    id="settings-jit-timeout-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-approval-ttl">Approval request TTL</label>
+                  <p class="support-center__setting-desc">Minutes an approval request remains valid (5–240).</p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--number">
+                  <input
+                    id="settings-approval-ttl"
+                    type="number"
+                    formControlName="approval_request_ttl_minutes"
+                    min="5"
+                    max="240"
+                    aria-label="Approval request TTL (minutes)"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('approval_request_ttl_minutes')"
+                    [attr.aria-invalid]="!!settingsFieldError('approval_request_ttl_minutes')"
+                    [attr.aria-describedby]="
+                      settingsFieldError('approval_request_ttl_minutes') ? 'settings-approval-ttl-error' : null
+                    "
+                  />
+                  <p
+                    *ngIf="settingsFieldError('approval_request_ttl_minutes') as err"
+                    id="settings-approval-ttl-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </app-section-card>
+
+          <app-section-card title="Helpdesk Integration">
+            <p class="support-center__settings-card-intro">
+              Ticket references and validation, including the external adapter path.
+            </p>
+            <div class="support-center__setting-list" role="group" aria-label="Helpdesk Integration">
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-require-ticket">
+                    Ticket reference required
+                  </label>
+                  <p class="support-center__setting-desc">
+                    Require a helpdesk ticket when starting a session.
+                  </p>
+                </div>
+                <div class="support-center__setting-control support-center__setting-control--toggle">
+                  <input
+                    id="settings-require-ticket"
+                    type="checkbox"
+                    formControlName="require_ticket_ref"
+                    aria-label="Require a helpdesk ticket when starting a session"
+                  />
+                </div>
+              </div>
+
+              <div class="support-center__setting-row">
+                <div class="support-center__setting-meta">
+                  <label class="support-center__setting-title" for="settings-ticket-validation">
+                    Ticket validation
+                  </label>
+                  <p class="support-center__setting-desc">
+                    Off, required format, or external adapter (fail-closed stub).
+                  </p>
+                </div>
+                <div class="support-center__setting-control">
+                  <select
+                    id="settings-ticket-validation"
+                    formControlName="ticket_validation_mode"
+                    aria-label="Ticket validation"
+                    [class.cf-form-field__control--invalid]="!!settingsFieldError('ticket_validation_mode')"
+                    [attr.aria-invalid]="!!settingsFieldError('ticket_validation_mode')"
+                    [attr.aria-describedby]="
+                      settingsFieldError('ticket_validation_mode') ? 'settings-ticket-validation-error' : null
+                    "
+                  >
+                    <option value="off">Off</option>
+                    <option value="required_format">Required format</option>
+                    <option value="adapter">External adapter (fail-closed stub)</option>
+                  </select>
+                  <p
+                    *ngIf="settingsFieldError('ticket_validation_mode') as err"
+                    id="settings-ticket-validation-error"
+                    class="cf-form-field__error"
+                    role="alert"
+                  >
+                    {{ err }}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </app-section-card>
+        </div>
+
+        <div class="cf-form-actions support-center__settings-actions">
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="savingSettings">
+            {{ savingSettings ? 'Saving…' : 'Save settings' }}
+          </button>
+        </div>
+      </form>
+    </section>
+  </ng-container>
+
+  <app-confirmation-modal
+    [show]="confirmOpen"
+    [title]="confirmTitle"
+    [message]="confirmMessage"
+    [confirmText]="confirmText"
+    [confirmButtonClass]="confirmButtonClass"
+    [showDescriptionInput]="showDecisionNote"
+    descriptionLabel="Decision note (optional)"
+    (confirmed)="onConfirm($event)"
+    (cancelled)="confirmOpen = false"
+    (closed)="confirmOpen = false"
+  ></app-confirmation-modal>
+</section>

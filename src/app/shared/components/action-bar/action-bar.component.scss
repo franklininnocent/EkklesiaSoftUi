@@ -1,0 +1,41 @@
+:host {
+  display: block;
+}
+
+.cf-action-bar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: nowrap;
+  gap: var(--cf-space-1);
+  white-space: nowrap;
+}
+
+.cf-action-bar--stacked {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  white-space: normal;
+}
+
+/* Dense table row actions — keep labels, shrink chrome only. */
+.cf-action-bar--sm {
+  gap: var(--cf-space-1);
+
+  .cf-btn,
+  .cf-btn-primary,
+  .cf-btn-danger,
+  .cf-btn-text {
+    box-sizing: border-box;
+    padding: var(--cf-btn-sm-pad-y) var(--cf-btn-sm-pad-x);
+    font-size: var(--cf-btn-sm-font-size);
+    line-height: 1.25;
+    white-space: nowrap;
+  }
+
+  .cf-btn-text {
+    padding: var(--cf-btn-sm-pad-y) var(--cf-space-1);
+  }
+}

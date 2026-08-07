@@ -1,0 +1,88 @@
+@import '../../../../styles/church-financial-os-mixins';
+
+:host {
+  display: contents;
+}
+
+.cf-modal-shell__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--cf-space-4);
+  background: var(--cf-overlay-bg);
+}
+
+.cf-modal-shell__dialog {
+  width: min(36rem, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  background: var(--cf-panel-bg);
+  border-radius: var(--cf-radius);
+  box-shadow: var(--cf-shadow-modal);
+}
+
+.cf-modal-shell__dialog--sm {
+  width: min(32rem, 100%);
+}
+
+.cf-modal-shell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cf-space-3);
+  padding: var(--cf-space-3) var(--cf-space-4);
+  border-bottom: 1px solid var(--cf-panel-border);
+}
+
+.cf-modal-shell__title {
+  margin: 0;
+  font-size: var(--cf-text-xl);
+  font-weight: 600;
+  color: var(--cf-slate-900);
+}
+
+.cf-modal-shell__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: var(--cf-space-1);
+  display: inline-flex;
+  cursor: pointer;
+  color: var(--cf-muted);
+  border-radius: var(--cf-radius-sm);
+
+  &:hover:not(:disabled) {
+    color: var(--cf-slate-900);
+    background: var(--cf-slate-100);
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.cf-modal-shell__body {
+  padding: var(--cf-space-4);
+}
+
+.cf-modal-shell__footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--cf-space-2);
+  padding: 0 var(--cf-space-4) var(--cf-space-4);
+
+  &:empty {
+    display: none;
+  }
+}

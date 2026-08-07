@@ -1,0 +1,50 @@
+<app-modal-shell
+  title="Link to parishioner"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <form
+    id="link-parishioner-form"
+    class="link-parishioner-modal__body"
+    (ngSubmit)="onSubmit()"
+  >
+    <div class="link-parishioner-modal__guest cf-context-card">
+      <strong>{{ guestDisplayName }}</strong>
+      <span *ngIf="guest.phone">{{ guest.phone }}</span>
+      <span *ngIf="guest.email">{{ guest.email }}</span>
+    </div>
+
+    <p class="link-parishioner-modal__help">
+      Link this guest to an existing parish family member to avoid duplicates.
+    </p>
+
+    <app-parishioner-lookup-typeahead
+      *ngIf="!alreadyLinked"
+      [organizationId]="lookupOrganizationId"
+      [selected]="selectedParishioner"
+      (selectedChange)="onParishionerSelected($event)"
+    ></app-parishioner-lookup-typeahead>
+
+    <p
+      class="cf-form-field__error"
+      *ngIf="submitted && !alreadyLinked && !selectedParishioner && !formError"
+      role="alert"
+    >
+      Select a parishioner to link.
+    </p>
+
+    <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button
+      type="submit"
+      form="link-parishioner-form"
+      class="cf-btn cf-btn-primary"
+      [disabled]="saving || alreadyLinked"
+    >
+      {{ submitLabel }}
+    </button>
+  </ng-container>
+</app-modal-shell>

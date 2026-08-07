@@ -1,0 +1,63 @@
+<div class="parishioner-lookup">
+  <label class="parishioner-lookup__label" for="parishioner-lookup-input">Parish member</label>
+
+  <div class="parishioner-lookup__selected cf-context-card" *ngIf="selected; else searchField">
+    <div>
+      <strong>{{ selected.full_name }}</strong>
+      <span>{{ selected.family_name }}</span>
+    </div>
+    <button type="button" class="cf-btn" (click)="clearSelection()">Change</button>
+  </div>
+
+  <ng-template #searchField>
+    <div class="parishioner-lookup__control">
+      <input
+        id="parishioner-lookup-input"
+        type="search"
+        [(ngModel)]="query"
+        (ngModelChange)="onQueryInput()"
+        (focus)="onFocus()"
+        (blur)="onBlur()"
+        placeholder="Type at least 2 letters…"
+        autocomplete="off"
+        aria-autocomplete="list"
+        [attr.aria-expanded]="showResults"
+      />
+
+      <p class="parishioner-lookup__hint" *ngIf="searching">Searching…</p>
+      <p class="cf-form-field__error" *ngIf="searchError" role="alert">{{ searchError }}</p>
+
+      <ul
+        class="parishioner-lookup__results"
+        *ngIf="showResults && results.length"
+        role="listbox"
+      >
+        <li
+          *ngFor="let result of results"
+          role="option"
+          [attr.aria-disabled]="!result.eligible"
+          [class.parishioner-lookup__result--disabled]="!result.eligible"
+          (mousedown)="selectResult(result)"
+        >
+          <div class="parishioner-lookup__result-main">
+            <strong>{{ result.full_name }}</strong>
+            <span>{{ result.family_name }}</span>
+          </div>
+          <div class="parishioner-lookup__result-meta">
+            <span>{{ censusLabel(result.census_status) }}</span>
+            <span *ngIf="!result.eligible" class="parishioner-lookup__warn">
+              Not eligible (deceased, transferred, or removed)
+            </span>
+          </div>
+        </li>
+      </ul>
+
+      <p
+        class="parishioner-lookup__hint"
+        *ngIf="showResults && !searching && query.trim().length >= 2 && !results.length && !searchError"
+      >
+        No matching parishioners found.
+      </p>
+    </div>
+  </ng-template>
+</div>

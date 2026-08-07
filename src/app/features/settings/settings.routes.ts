@@ -26,6 +26,13 @@ export const SETTINGS_ROUTES: Routes = [
   {
     path: 'subscription',
     loadComponent: () => import('./subscription/subscription-management.component').then(m => m.SubscriptionManagementComponent)
+  },
+  {
+    path: 'support-access',
+    loadComponent: () =>
+      import('./support-access-windows/support-access-windows.page').then(
+        (m) => m.SupportAccessWindowsPage
+      ),
   }
 ];
 

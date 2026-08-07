@@ -1,0 +1,12 @@
+:host ::ng-deep .cf-nav-cluster {
+  gap: 0;
+}
+
+/* Module strip + taxonomy strip read as one band */
+:host ::ng-deep .cf-nav-cluster > app-ministries-sub-nav .cf-tab-strip {
+  border-bottom: 0;
+}
+
+.taxonomy-settings-page__panel {
+  min-height: 0;
+}

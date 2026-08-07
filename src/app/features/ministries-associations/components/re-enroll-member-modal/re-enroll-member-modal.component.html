@@ -1,0 +1,66 @@
+<app-modal-shell
+  title="Re-enroll member"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <form
+    id="re-enroll-member-form"
+    class="re-enroll-member-modal__body"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+  >
+    <div class="re-enroll-member-modal__member cf-context-card">
+      <strong>{{ membership.display_name }}</strong>
+      <span>Prior interval: {{ membership.interval_label }}</span>
+      <span>Prior exit: {{ formatDate(membership.exit_date) }}</span>
+    </div>
+
+    <p class="re-enroll-member-modal__note">
+      This creates a new enrollment interval. The previous interval stays closed.
+    </p>
+
+    <div class="re-enroll-member-modal__grid cf-form-grid">
+      <app-form-field
+        label="Joined date"
+        [required]="true"
+        fieldId="re-enroll-joined-date"
+        [errorText]="
+          submitted && form.controls.joined_date.hasError('required')
+            ? 'Joined date is required.'
+            : submitted && form.controls.joined_date.hasError('afterExit')
+              ? 'Joined date must be after the prior exit date.'
+              : null
+        "
+      >
+        <input
+          id="re-enroll-joined-date"
+          type="date"
+          formControlName="joined_date"
+          [attr.min]="minJoinedDate"
+        />
+      </app-form-field>
+
+      <app-form-field label="Member type" fieldId="re-enroll-member-type">
+        <select id="re-enroll-member-type" formControlName="member_type">
+          <option value="regular">Regular</option>
+          <option value="honorary">Honorary</option>
+          <option value="life">Life</option>
+          <option value="junior">Junior</option>
+        </select>
+      </app-form-field>
+    </div>
+
+    <app-form-field label="Remarks" fieldId="re-enroll-remarks">
+      <textarea id="re-enroll-remarks" formControlName="remarks" rows="2"></textarea>
+    </app-form-field>
+
+    <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="re-enroll-member-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+      {{ saving ? 'Re-enrolling…' : 'Re-enroll member' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

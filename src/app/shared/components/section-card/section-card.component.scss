@@ -1,0 +1,28 @@
+:host {
+  display: block;
+}
+
+.cf-section-card {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cf-section-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.cf-section-card__title {
+  margin: 0;
+  font-size: var(--cf-text-lg);
+  color: var(--cf-slate-900);
+}
+
+.cf-section-card__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}

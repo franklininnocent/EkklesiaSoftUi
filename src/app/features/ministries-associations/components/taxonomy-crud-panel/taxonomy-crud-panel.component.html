@@ -1,0 +1,273 @@
+<div class="taxonomy-crud-panel">
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="!loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading {{ listTitle.toLowerCase() }}…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="loaded">
+    <div class="cf-inline-alert cf-panel" *ngIf="loadError" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+    </div>
+
+    <div class="taxonomy-crud-panel__content" *ngIf="!loadError">
+      <div class="cf-inline-alert cf-panel" *ngIf="statusError" role="alert">
+        <p>{{ statusError }}</p>
+        <button type="button" class="cf-btn" (click)="clearStatusError()">Dismiss</button>
+      </div>
+
+      <app-list-toolbar
+        [searchPlaceholder]="'Search ' + listTitle.toLowerCase() + '…'"
+        [searchValue]="tableSearch"
+        [showFilters]="false"
+        (searchChange)="onSearchChange($event)"
+      >
+        <button
+          *ngIf="canConfigure"
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="openCreateForm()"
+        >
+          Add {{ singularLabel }}
+        </button>
+        <button
+          *ngIf="canConfigure"
+          type="button"
+          class="cf-btn"
+          (click)="seedDefaults()"
+          [disabled]="seeding"
+        >
+          {{ seeding ? 'Seeding…' : 'Seed defaults' }}
+        </button>
+      </app-list-toolbar>
+
+      <ng-container *ngIf="filteredItems.length; else emptyList">
+        <app-data-table>
+          <thead>
+            <tr>
+              <th scope="col">Code</th>
+              <th scope="col">Name</th>
+              <th scope="col">Description</th>
+              <th scope="col">Order</th>
+              <th scope="col" *ngIf="isPositionsKind">Occupancy</th>
+              <th scope="col">Status</th>
+              <th scope="col" *ngIf="canConfigure" class="cf-table__actions-col">
+                <span class="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let item of filteredItems"
+              [class.taxonomy-crud-panel__row--inactive]="!item.is_active"
+            >
+              <td>{{ item.code }}</td>
+              <td><strong>{{ item.name }}</strong></td>
+              <td>
+                <span
+                  class="taxonomy-crud-panel__desc"
+                  [attr.title]="item.description || null"
+                >
+                  {{ item.description || '—' }}
+                </span>
+              </td>
+              <td>{{ item.display_order }}</td>
+              <td *ngIf="isPositionsKind">{{ occupancyLabel(item) }}</td>
+              <td>
+                <app-status-badge
+                  [label]="statusLabel(item)"
+                  [tone]="statusTone(item)"
+                ></app-status-badge>
+              </td>
+              <td *ngIf="canConfigure" class="cf-table__actions-cell">
+                <app-action-bar
+                  [actions]="rowActions(item)"
+                  size="sm"
+                  (actionClicked)="onRowAction($event, item)"
+                ></app-action-bar>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+      </ng-container>
+
+      <ng-template #emptyList>
+        <app-cf-empty-state
+          *ngIf="items.length && !filteredItems.length"
+          icon="◇"
+          [title]="'No ' + listTitle.toLowerCase() + ' match your search'"
+          description="Try a different search term."
+          [hasActions]="false"
+        ></app-cf-empty-state>
+
+        <app-cf-empty-state
+          *ngIf="!items.length"
+          icon="◇"
+          [title]="'No ' + listTitle.toLowerCase()"
+          [description]="
+            kind === 'positions'
+              ? 'Seed default positions or add the offices your organizations use.'
+              : 'Seed parish defaults or add custom labels before creating organizations.'
+          "
+          [hasActions]="canConfigure"
+        >
+          <button
+            type="button"
+            class="cf-btn cf-btn-primary"
+            *ngIf="canConfigure"
+            (click)="seedDefaults()"
+            [disabled]="seeding"
+          >
+            {{ seeding ? 'Adding defaults…' : 'Seed defaults' }}
+          </button>
+          <button
+            type="button"
+            class="cf-btn"
+            *ngIf="canConfigure"
+            (click)="openCreateForm()"
+          >
+            Add {{ singularLabel }}
+          </button>
+        </app-cf-empty-state>
+      </ng-template>
+    </div>
+  </ng-container>
+
+  <app-modal-shell
+    *ngIf="showForm"
+    [title]="formTitle"
+    [isSubmitting]="saving"
+    (closeRequested)="closeForm()"
+  >
+    <form
+      id="taxonomy-crud-form"
+      class="taxonomy-crud-panel__form"
+      [formGroup]="form"
+      (ngSubmit)="save()"
+      novalidate
+    >
+      <div class="cf-form-grid">
+        <app-form-field
+          label="Name"
+          [required]="true"
+          fieldId="taxonomy-name"
+          [errorText]="nameErrorText()"
+        >
+          <input
+            id="taxonomy-name"
+            formControlName="name"
+            [placeholder]="
+              kind === 'positions'
+                ? 'President'
+                : kind === 'types'
+                  ? 'Standing'
+                  : 'Parish Council'
+            "
+            maxlength="100"
+            autocomplete="off"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Code"
+          [required]="true"
+          fieldId="taxonomy-code"
+          [helpText]="editingId ? 'Code cannot be changed after create.' : undefined"
+          [errorText]="codeErrorText()"
+        >
+          <input
+            id="taxonomy-code"
+            formControlName="code"
+            [placeholder]="
+              kind === 'positions'
+                ? 'president'
+                : kind === 'types'
+                  ? 'standing'
+                  : 'parish-council'
+            "
+            maxlength="50"
+            autocomplete="off"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Order"
+          fieldId="taxonomy-order"
+          [optionalLabel]="true"
+          [errorText]="orderErrorText()"
+        >
+          <input
+            id="taxonomy-order"
+            type="number"
+            formControlName="display_order"
+            min="0"
+            step="1"
+          />
+        </app-form-field>
+
+        <app-form-field
+          *ngIf="!isPositionsKind"
+          label="Description"
+          fieldId="taxonomy-description"
+          [optionalLabel]="true"
+          [errorText]="fieldError('description')"
+          [wide]="true"
+        >
+          <textarea
+            id="taxonomy-description"
+            formControlName="description"
+            rows="3"
+            placeholder="Brief note for volunteers"
+          ></textarea>
+        </app-form-field>
+      </div>
+
+      <label class="cf-switch-field">
+        <input type="checkbox" formControlName="is_active" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">Active</span>
+          <small>Inactive items are hidden from new organization and leadership forms.</small>
+        </span>
+      </label>
+
+      <label class="cf-switch-field" *ngIf="isPositionsKind">
+        <input type="checkbox" formControlName="single_occupancy" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">Single occupancy</span>
+          <small>Only one active holder allowed for this position in an organization.</small>
+        </span>
+      </label>
+
+      <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+    </form>
+
+    <ng-container modalFooter>
+      <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+      <button
+        type="submit"
+        form="taxonomy-crud-form"
+        class="cf-btn cf-btn-primary"
+        [disabled]="saving"
+      >
+        {{ submitLabel }}
+      </button>
+    </ng-container>
+  </app-modal-shell>
+
+  <app-confirmation-modal
+    *ngIf="showSeedConfirm"
+    [show]="showSeedConfirm"
+    title="Seed defaults"
+    [message]="seedConfirmMessage"
+    confirmText="Seed defaults"
+    cancelText="Cancel"
+    (confirmed)="confirmSeedDefaults()"
+    (cancelled)="cancelSeedDefaults()"
+  ></app-confirmation-modal>
+</div>

@@ -1,0 +1,107 @@
+.enroll-from-family-modal__overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.enroll-from-family-modal__dialog {
+  width: min(32rem, 100%);
+  max-height: 90vh;
+  overflow: auto;
+  background: #fff;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+}
+
+.enroll-from-family-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--cf-border, #e2e8f0);
+}
+
+.enroll-from-family-modal__header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.enroll-from-family-modal__close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  font-size: 1.1rem;
+  cursor: pointer;
+  color: var(--cf-muted, #64748b);
+}
+
+.enroll-from-family-modal__body {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem;
+}
+
+.enroll-from-family-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.85rem;
+}
+
+.enroll-from-family-modal__grid label,
+.enroll-from-family-modal__block {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.enroll-from-family-modal__grid input,
+.enroll-from-family-modal__grid select,
+.enroll-from-family-modal__block input,
+.enroll-from-family-modal__block select,
+.enroll-from-family-modal__block textarea {
+  width: 100%;
+  font-weight: 400;
+}
+
+.enroll-from-family-modal__muted {
+  margin: 0;
+  color: var(--cf-muted, #64748b);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.enroll-from-family-modal__retry {
+  margin-left: 0.5rem;
+}
+
+.enroll-from-family-modal__grid small,
+.enroll-from-family-modal__field-error,
+.enroll-from-family-modal__error {
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.enroll-from-family-modal__field-error,
+.enroll-from-family-modal__error {
+  margin: 0;
+}
+
+.enroll-from-family-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+abbr {
+  text-decoration: none;
+}

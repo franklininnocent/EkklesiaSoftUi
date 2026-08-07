@@ -1,0 +1,15 @@
+<div
+  class="cf-action-bar"
+  [class.cf-action-bar--stacked]="layout === 'stacked'"
+  [class.cf-action-bar--sm]="size === 'sm'"
+>
+  <button
+    *ngFor="let action of visibleActions"
+    type="button"
+    [ngClass]="buttonClass(action)"
+    [disabled]="action.disabled"
+    (click)="onClick(action)"
+  >
+    {{ action.label }}
+  </button>
+</div>

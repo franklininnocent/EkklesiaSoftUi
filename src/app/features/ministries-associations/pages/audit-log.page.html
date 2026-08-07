@@ -1,0 +1,13 @@
+<section class="audit-log cf-page">
+  <app-page-header title="Audit log" subtitle="Recent changes across ministries and associations.">
+    <app-list-toolbar
+      [showSearch]="false"
+      [filterCount]="panel.drawerFilterCount"
+      (filtersOpened)="panel.openFilters()"
+    ></app-list-toolbar>
+  </app-page-header>
+
+  <app-ministries-sub-nav></app-ministries-sub-nav>
+
+  <app-audit-log-panel #panel [showToolbar]="false"></app-audit-log-panel>
+</section>

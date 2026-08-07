@@ -1,0 +1,328 @@
+<section class="organization-detail cf-page">
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading organization…</p>
+    <app-loading-skeleton type="card" [rows]="3" [columns]="4"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!loading && loadError" role="alert">
+    <p>{{ loadError }}</p>
+    <div class="organization-detail__error-actions">
+      <a routerLink="/ministries" class="cf-btn">Back to list</a>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+    </div>
+  </div>
+
+  <ng-container *ngIf="!loading && !loadError && organization">
+    <header class="organization-detail__header cf-panel">
+      <div class="organization-detail__identity">
+        <app-page-header
+          [title]="organization.name"
+          backLink="/ministries"
+          backLabel="Ministries &amp; Associations"
+          [statusLabel]="headerStatusLabel"
+          [statusTone]="headerStatusTone"
+        >
+          <button
+            *ngIf="canEdit && !isArchived && !editingProfile"
+            type="button"
+            class="cf-btn"
+            (click)="startEditProfile()"
+          >
+            Edit profile
+          </button>
+          <button
+            *ngIf="canEdit && !isArchived"
+            type="button"
+            class="cf-btn"
+            [disabled]="statusBusy || archiveBusy"
+            (click)="toggleStatus()"
+          >
+            {{ organization.status === 'active' ? 'Deactivate' : 'Activate' }}
+          </button>
+          <button
+            *ngIf="canArchive && !isArchived"
+            type="button"
+            class="cf-btn-danger"
+            [disabled]="archiveBusy || statusBusy"
+            (click)="openArchiveConfirm()"
+          >
+            Archive
+          </button>
+          <button
+            *ngIf="canArchive && isArchived"
+            type="button"
+            class="cf-btn cf-btn-primary"
+            [disabled]="restoreBusy"
+            (click)="restoreOrganization()"
+          >
+            Restore
+          </button>
+        </app-page-header>
+
+        <p class="organization-detail__code">{{ organization.code }}</p>
+        <div class="organization-detail__chips" *ngIf="organization.category || organization.type">
+          <app-status-badge *ngIf="organization.category" [label]="organization.category.name" tone="neutral"></app-status-badge>
+          <app-status-badge *ngIf="organization.type" [label]="organization.type.name" tone="neutral"></app-status-badge>
+        </div>
+      </div>
+
+      <dl class="organization-detail__summary" *ngIf="summary">
+        <div>
+          <dt>Total members</dt>
+          <dd>{{ summary.total_members }}</dd>
+        </div>
+        <div>
+          <dt>Active members</dt>
+          <dd>{{ summary.active_members }}</dd>
+        </div>
+        <div>
+          <dt>Office bearers</dt>
+          <dd>{{ summary.active_office_bearers }}</dd>
+        </div>
+        <div>
+          <dt>Leadership vacancies</dt>
+          <dd>{{ summary.leadership_vacancies }}</dd>
+        </div>
+      </dl>
+    </header>
+
+    <app-tab-strip
+      ariaLabel="Organization sections"
+      [tabs]="tabStripItems"
+      [activeId]="activeTab"
+      (tabChange)="onTabChange($event)"
+    ></app-tab-strip>
+
+    <div
+      class="organization-detail__panel cf-panel"
+      role="tabpanel"
+      [id]="panelId('profile')"
+      [attr.aria-labelledby]="tabId('profile')"
+      [hidden]="activeTab !== 'profile'"
+    >
+      <form
+        *ngIf="editingProfile; else profileReadonly"
+        class="organization-profile-form"
+        [formGroup]="form"
+        (ngSubmit)="saveProfile()"
+        [attr.aria-busy]="savingProfile ? true : null"
+      >
+        <app-organization-form-fields
+          [form]="form"
+          [categories]="categories"
+          [types]="types"
+          [submitted]="submitted"
+          [fieldErrors]="fieldErrors"
+          [maxEstablishedDate]="maxEstablishedDate"
+          [columns]="true"
+        ></app-organization-form-fields>
+
+        <p class="organization-profile-form__error" *ngIf="formError" role="alert">{{ formError }}</p>
+
+        <footer class="cf-form-actions">
+          <button type="button" class="cf-btn" (click)="cancelEditProfile()" [disabled]="savingProfile">
+            Cancel
+          </button>
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="savingProfile">
+            {{ savingProfile ? 'Saving…' : 'Save changes' }}
+          </button>
+        </footer>
+      </form>
+
+      <ng-template #profileReadonly>
+        <div class="organization-profile">
+          <section class="organization-profile__section" aria-labelledby="org-profile-basic">
+            <h2 id="org-profile-basic">Basic Details</h2>
+            <dl class="organization-profile__fields">
+              <div>
+                <dt>Code</dt>
+                <dd>{{ organization.code }}</dd>
+              </div>
+              <div>
+                <dt>Name</dt>
+                <dd>{{ organization.name }}</dd>
+              </div>
+              <div>
+                <dt>Short name</dt>
+                <dd>{{ displayValue(organization.short_name) }}</dd>
+              </div>
+              <div>
+                <dt>Category</dt>
+                <dd>{{ displayValue(organization.category?.name) }}</dd>
+              </div>
+              <div>
+                <dt>Type</dt>
+                <dd>{{ displayValue(organization.type?.name) }}</dd>
+              </div>
+              <div>
+                <dt>Status</dt>
+                <dd>{{ statusLabel(organization.status) }}</dd>
+              </div>
+              <div>
+                <dt>Patron saint</dt>
+                <dd>{{ displayValue(organization.patron_saint) }}</dd>
+              </div>
+              <div>
+                <dt>Established date</dt>
+                <dd>{{ formatDate(organization.established_date) }}</dd>
+              </div>
+              <div>
+                <dt>Theme color</dt>
+                <dd class="organization-profile__color">
+                  <ng-container *ngIf="organization.theme_color; else noThemeColor">
+                    <span
+                      class="organization-profile__swatch"
+                      [style.backgroundColor]="organization.theme_color"
+                      aria-hidden="true"
+                    ></span>
+                    {{ organization.theme_color }}
+                  </ng-container>
+                  <ng-template #noThemeColor>—</ng-template>
+                </dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="organization-profile__section" aria-labelledby="org-profile-about">
+            <h2 id="org-profile-about">About</h2>
+            <dl class="organization-profile__fields organization-profile__fields--stacked">
+              <div>
+                <dt>Description</dt>
+                <dd>{{ displayValue(organization.description) }}</dd>
+              </div>
+              <div>
+                <dt>Vision</dt>
+                <dd>{{ displayValue(organization.vision) }}</dd>
+              </div>
+              <div>
+                <dt>Mission</dt>
+                <dd>{{ displayValue(organization.mission) }}</dd>
+              </div>
+              <div>
+                <dt>Objectives</dt>
+                <dd>{{ displayValue(organization.objectives) }}</dd>
+              </div>
+            </dl>
+          </section>
+
+          <section class="organization-profile__section" aria-labelledby="org-profile-contact">
+            <h2 id="org-profile-contact">Contact</h2>
+            <dl class="organization-profile__fields">
+              <div>
+                <dt>Email</dt>
+                <dd>
+                  <a *ngIf="organization.email; else noEmail" [href]="'mailto:' + organization.email">
+                    {{ organization.email }}
+                  </a>
+                  <ng-template #noEmail>—</ng-template>
+                </dd>
+              </div>
+              <div>
+                <dt>Phone</dt>
+                <dd>{{ displayValue(organization.phone) }}</dd>
+              </div>
+              <div>
+                <dt>Website</dt>
+                <dd>
+                  <a
+                    *ngIf="organization.website; else noWebsite"
+                    [href]="organization.website"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {{ organization.website }}
+                  </a>
+                  <ng-template #noWebsite>—</ng-template>
+                </dd>
+              </div>
+            </dl>
+
+            <h3 class="organization-profile__subtitle">Social links</h3>
+            <ul class="organization-profile__social" *ngIf="profileSocialLinks.length; else noSocial">
+              <li *ngFor="let link of profileSocialLinks">
+                <span>{{ link.label }}</span>
+                <a [href]="link.value" target="_blank" rel="noopener noreferrer">{{ link.value }}</a>
+              </li>
+            </ul>
+            <ng-template #noSocial>
+              <p class="organization-profile__empty">—</p>
+            </ng-template>
+          </section>
+
+          <section class="organization-profile__section" aria-labelledby="org-profile-settings">
+            <h2 id="org-profile-settings">Settings</h2>
+            <dl class="organization-profile__fields">
+              <div>
+                <dt>Allow multi-role holding</dt>
+                <dd>{{ yesNo(organization.settings?.allow_multi_role_holding) }}</dd>
+              </div>
+              <div>
+                <dt>Guests can hold office</dt>
+                <dd>{{ yesNo(organization.settings?.guests_can_hold_office) }}</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+      </ng-template>
+    </div>
+
+    <div
+      class="organization-detail__panel cf-panel"
+      role="tabpanel"
+      [id]="panelId('members')"
+      [attr.aria-labelledby]="tabId('members')"
+      [hidden]="activeTab !== 'members'"
+    >
+      <app-organization-members-tab
+        *ngIf="activeTab === 'members'"
+        [organizationId]="organization.id"
+        [organizationStatus]="organization.status"
+      ></app-organization-members-tab>
+    </div>
+
+    <div
+      class="organization-detail__panel cf-panel"
+      role="tabpanel"
+      [id]="panelId('leadership')"
+      [attr.aria-labelledby]="tabId('leadership')"
+      [hidden]="activeTab !== 'leadership'"
+    >
+      <app-organization-leadership-tab
+        *ngIf="activeTab === 'leadership'"
+        [organizationId]="organization.id"
+        [organizationStatus]="organization.status"
+        (leadershipChanged)="onLeadershipChanged()"
+      ></app-organization-leadership-tab>
+    </div>
+
+    <div
+      class="organization-detail__panel cf-panel"
+      role="tabpanel"
+      [id]="panelId('audit')"
+      [attr.aria-labelledby]="tabId('audit')"
+      [hidden]="activeTab !== 'audit'"
+    >
+      <app-audit-log-panel
+        *ngIf="activeTab === 'audit'"
+        [organizationId]="organization.id"
+      ></app-audit-log-panel>
+    </div>
+  </ng-container>
+
+  <app-confirmation-modal
+    *ngIf="showArchiveConfirm"
+    [show]="showArchiveConfirm"
+    title="Archive organization"
+    message="Archive this organization? You can restore it later if needed."
+    confirmText="Archive"
+    cancelText="Cancel"
+    (confirmed)="confirmArchive()"
+    (cancelled)="cancelArchive()"
+  ></app-confirmation-modal>
+</section>

@@ -1,0 +1,24 @@
+@import '../../../../styles/church-financial-os-mixins';
+
+:host {
+  display: block;
+}
+
+.cf-table-responsive {
+  @include cf-table-scroll-wrapper;
+
+  @media (max-width: $cf-bp-lg) {
+    border: 1px solid var(--cf-panel-border);
+    border-radius: var(--cf-radius-sm);
+  }
+}
+
+/* Clickable rows — chrome only; density comes from global `.cf-table`. */
+.cf-table--clickable tbody tr {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cf-slate-50);
+  }
+}
+

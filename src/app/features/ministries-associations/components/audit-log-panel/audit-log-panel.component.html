@@ -1,0 +1,80 @@
+<div class="audit-log-panel">
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading && !loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading audit log…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
+  </div>
+
+  <div class="audit-log-panel__content" *ngIf="loaded">
+    <app-list-toolbar
+      *ngIf="showToolbar"
+      [showSearch]="false"
+      [filterCount]="drawerFilterCount"
+      (filtersOpened)="openFilters()"
+    ></app-list-toolbar>
+
+    <div class="cf-inline-alert cf-panel" *ngIf="loadError" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+    </div>
+
+    <ng-container *ngIf="!loadError">
+      <ng-container *ngIf="entries.length; else emptyEntries">
+        <app-data-table [ariaBusy]="loading">
+          <thead>
+            <tr>
+              <th scope="col">When</th>
+              <th scope="col">Action</th>
+              <th scope="col">Entity</th>
+              <th scope="col">By</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let entry of entries">
+              <td>{{ formatDateTime(entry.created_at) }}</td>
+              <td><strong>{{ actionLabel(entry) }}</strong></td>
+              <td>{{ entityLabel(entry) }}</td>
+              <td>{{ actorLabel(entry) }}</td>
+            </tr>
+          </tbody>
+        </app-data-table>
+
+        <app-pagination
+          [currentPage]="currentPage"
+          [pageSize]="perPage"
+          [totalItems]="totalItems"
+          [pageSizeOptions]="perPageOptions"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        ></app-pagination>
+      </ng-container>
+
+      <ng-template #emptyEntries>
+        <app-cf-empty-state
+          icon="◇"
+          [title]="hasActiveFilters ? 'No matching audit entries' : 'No audit entries yet'"
+          [description]="
+            hasActiveFilters
+              ? 'Try clearing filters or widening the date range.'
+              : 'Changes to organizations, members, guests, and leadership will appear here.'
+          "
+          [hasActions]="false"
+        ></app-cf-empty-state>
+      </ng-template>
+    </ng-container>
+  </div>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</div>

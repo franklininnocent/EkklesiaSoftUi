@@ -1,0 +1,63 @@
+<app-modal-shell
+  title="Terminate leadership"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <form
+    id="terminate-leadership-form"
+    class="terminate-leadership-modal__body"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+  >
+    <p class="terminate-leadership-modal__summary">
+      End the active term for <strong>{{ positionName }}</strong> held by
+      {{ holderName }}. No replacement will be assigned.
+    </p>
+
+    <div class="terminate-leadership-modal__grid cf-form-grid">
+      <app-form-field
+        label="Effective to"
+        [required]="true"
+        fieldId="terminate-effective-to"
+        [errorText]="submitted && form.controls.effective_to.invalid ? 'Effective to date is required.' : null"
+      >
+        <input id="terminate-effective-to" type="date" formControlName="effective_to" />
+      </app-form-field>
+
+      <app-form-field
+        label="Exit reason"
+        [required]="true"
+        fieldId="terminate-exit-reason"
+        [errorText]="submitted && form.controls.exit_reason.invalid ? 'Exit reason is required.' : null"
+      >
+        <select id="terminate-exit-reason" formControlName="exit_reason">
+          <option value="">Select reason…</option>
+          <option *ngFor="let reason of exitReasons" [value]="reason.value">
+            {{ reason.label }}
+          </option>
+        </select>
+      </app-form-field>
+    </div>
+
+    <p
+      class="cf-form-field__error"
+      *ngIf="submitted && form.hasError('effectiveBeforeTermStart')"
+      role="alert"
+    >
+      End date must be on or after the term start date.
+    </p>
+
+    <app-form-field label="Remarks" fieldId="terminate-remarks">
+      <textarea id="terminate-remarks" formControlName="remarks" rows="2"></textarea>
+    </app-form-field>
+
+    <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="terminate-leadership-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+      {{ saving ? 'Terminating…' : 'Terminate leadership' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

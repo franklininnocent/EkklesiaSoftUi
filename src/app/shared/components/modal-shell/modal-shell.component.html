@@ -1,0 +1,36 @@
+<div class="cf-modal-shell__overlay" (click)="onBackdropClick()">
+  <div
+    #dialogEl
+    class="cf-modal-shell__dialog"
+    [class.cf-modal-shell__dialog--sm]="size === 'sm'"
+    role="dialog"
+    aria-modal="true"
+    [attr.aria-labelledby]="title ? resolvedTitleId : null"
+    [attr.aria-label]="!title ? ariaLabel : null"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="cf-modal-shell__header">
+      <h2 *ngIf="title" [id]="resolvedTitleId" class="cf-modal-shell__title">{{ title }}</h2>
+      <button
+        type="button"
+        class="cf-modal-shell__close"
+        [disabled]="isSubmitting"
+        [attr.aria-label]="closeAriaLabel"
+        (click)="onCloseClick()"
+      >
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cf-icon-sm" aria-hidden="true">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </header>
+
+    <div class="cf-modal-shell__body">
+      <ng-content></ng-content>
+    </div>
+
+    <footer class="cf-modal-shell__footer">
+      <ng-content select="[modalFooter]"></ng-content>
+    </footer>
+  </div>
+</div>

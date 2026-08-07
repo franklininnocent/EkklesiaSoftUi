@@ -1,0 +1,17 @@
+<header class="cf-page-header" [class.cf-hero]="variant === 'page'">
+  <div class="cf-page-header__identity">
+    <a *ngIf="backLink" [routerLink]="backLink" class="cf-page-header__back">← {{ backLabel }}</a>
+
+    <div class="cf-page-header__title-row">
+      <h1 *ngIf="variant === 'page'">{{ title }}</h1>
+      <h2 *ngIf="variant === 'panel'">{{ title }}</h2>
+      <app-status-badge *ngIf="statusLabel" [label]="statusLabel" [tone]="statusTone"></app-status-badge>
+    </div>
+
+    <p *ngIf="subtitle">{{ subtitle }}</p>
+  </div>
+
+  <div class="cf-page-header__actions">
+    <ng-content></ng-content>
+  </div>
+</header>

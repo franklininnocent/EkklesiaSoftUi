@@ -1,0 +1,122 @@
+<section class="organization-list cf-page">
+  <app-page-header title="Ministries &amp; Associations" subtitle="Find and manage parish organizations.">
+    <app-list-toolbar
+      searchPlaceholder="Search name or code…"
+      [searchValue]="search"
+      [filterCount]="drawerFilterCount"
+      (searchChange)="onSearchChange($event)"
+      (filtersOpened)="showFilters = true"
+    >
+      <a *ngIf="canCreate" routerLink="/ministries/new" class="cf-btn cf-btn-primary organization-list__add">
+        Add organization
+      </a>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <app-ministries-sub-nav></app-ministries-sub-nav>
+
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading && !loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading organizations…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="7"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="loaded">
+    <div class="cf-decision-strip" *ngIf="!loadError && !organizations.length && taxonomiesLoaded && !hasTaxonomies">
+      <div class="cf-decision-strip__copy">
+        <strong>Set up categories and types first</strong>
+        <span>Organizations need a category and type before you can add them.</span>
+      </div>
+      <div class="cf-decision-strip__actions">
+        <a routerLink="/ministries/settings" class="cf-btn cf-btn-primary">Go to Settings</a>
+      </div>
+    </div>
+
+    <div class="cf-inline-alert cf-panel" *ngIf="loadError" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+    </div>
+
+    <app-data-table *ngIf="!loadError && organizations.length" [clickableRows]="true">
+      <thead>
+        <tr>
+          <th scope="col">Name</th>
+          <th scope="col">Code</th>
+          <th scope="col">Category</th>
+          <th scope="col">Type</th>
+          <th scope="col">Active members</th>
+          <th scope="col">Status</th>
+          <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr
+          *ngFor="let organization of organizations"
+          tabindex="0"
+          (click)="openOrganization(organization)"
+          (keydown.enter)="openOrganization(organization)"
+        >
+          <td><strong>{{ organization.name }}</strong></td>
+          <td>{{ organization.code }}</td>
+          <td>{{ organization.category?.name || '—' }}</td>
+          <td>{{ organization.type?.name || '—' }}</td>
+          <td>{{ activeMemberCount(organization) }}</td>
+          <td>
+            <app-status-badge [label]="statusLabel(organization.status)" [tone]="statusTone(organization.status)"></app-status-badge>
+          </td>
+          <td class="cf-table__actions-cell">
+            <span class="organization-list__view">View</span>
+          </td>
+        </tr>
+      </tbody>
+    </app-data-table>
+
+    <app-pagination
+      *ngIf="!loadError && organizations.length"
+      [currentPage]="currentPage"
+      [pageSize]="perPage"
+      [totalItems]="totalItems"
+      [pageSizeOptions]="perPageOptions"
+      (pageChange)="onPageChange($event)"
+      (pageSizeChange)="onPageSizeChange($event)"
+    ></app-pagination>
+
+    <app-cf-empty-state
+      *ngIf="!loadError && !organizations.length"
+      icon="◇"
+      [title]="hasActiveFilters ? 'No organizations match your filters' : 'No organizations yet'"
+      [description]="
+        hasActiveFilters
+          ? 'Try clearing search or filters.'
+          : hasTaxonomies
+            ? 'Add your first ministry or association to get started.'
+            : 'Set up categories and types in Settings, then add an organization.'
+      "
+    >
+      <a
+        *ngIf="canCreate && hasTaxonomies && !hasActiveFilters"
+        routerLink="/ministries/new"
+        class="cf-btn cf-btn-primary"
+      >
+        Add organization
+      </a>
+      <a *ngIf="!hasTaxonomies" routerLink="/ministries/settings" class="cf-btn cf-btn-primary">
+        Go to Settings
+      </a>
+    </app-cf-empty-state>
+  </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</section>

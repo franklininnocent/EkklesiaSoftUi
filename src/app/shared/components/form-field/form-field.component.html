@@ -1,0 +1,12 @@
+<div class="cf-form-field" [class.cf-form-field--wide]="wide">
+  <label class="cf-form-field__label" [attr.for]="fieldId">
+    <span>{{ label }}</span>
+    <span *ngIf="required" class="cf-form-field__required" aria-hidden="true">*</span>
+    <span *ngIf="optionalLabel && !required" class="cf-form-field__optional">Optional</span>
+  </label>
+
+  <ng-content></ng-content>
+
+  <p *ngIf="helpText && !errorText" class="cf-form-field__help" [attr.id]="helpId">{{ helpText }}</p>
+  <p *ngIf="errorText" class="cf-form-field__error" role="alert" [attr.id]="errorId">{{ errorText }}</p>
+</div>

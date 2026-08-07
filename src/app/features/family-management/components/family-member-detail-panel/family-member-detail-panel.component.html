@@ -16,20 +16,26 @@
     </div>
   </section>
 
-  <app-family-head-profile-block
-    *ngIf="selectedMember as m"
-    [member]="m"
-    [relationshipEyebrow]="getProfileEyebrow(m)"
-    [isFamilyHead]="isHeadSelected"
-    [avatarImageUrl]="avatarUrl"
-    [sacramentTypesDisplay]="sacramentTypesDisplay"
-    [sacramentsExpanded]="sacramentsExpandedForSelected"
-    [editingHeadImage]="editingHeadImage"
-    (editProfile)="onEditClick()"
-    (toggleSacraments)="toggleSacramentsSection()"
-    (toggleHeadImageEdit)="toggleHeadImageEdit.emit()"
-    (headProfileImageSelected)="headProfileImageSelected.emit($event)"
-    (deleteHeadProfileImage)="deleteHeadProfileImage.emit()"
-    (editSacrament)="onSacramentEdit($event)"
-  />
+  <ng-container *ngIf="selectedMember as m">
+    <app-family-head-profile-block
+      [member]="m"
+      [relationshipEyebrow]="getProfileEyebrow(m)"
+      [isFamilyHead]="isHeadSelected"
+      [avatarImageUrl]="avatarUrl"
+      [sacramentTypesDisplay]="sacramentTypesDisplay"
+      [sacramentsExpanded]="sacramentsExpandedForSelected"
+      [editingHeadImage]="editingHeadImage"
+      (editProfile)="onEditClick()"
+      (toggleSacraments)="toggleSacramentsSection()"
+      (toggleHeadImageEdit)="toggleHeadImageEdit.emit()"
+      (headProfileImageSelected)="headProfileImageSelected.emit($event)"
+      (deleteHeadProfileImage)="deleteHeadProfileImage.emit()"
+      (editSacrament)="onSacramentEdit($event)"
+    />
+
+    <app-family-affiliations-panel
+      *ngIf="m.id"
+      [familyMemberId]="m.id"
+    ></app-family-affiliations-panel>
+  </ng-container>
 </div>

@@ -432,5 +432,47 @@ export class AuthService {
       (user.permissions || []).some((permission) => permission?.name === permissionName)
     );
   }
+
+  canAccessMinistries(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return true;
+    }
+
+    if (!user.tenant_id) {
+      return false;
+    }
+
+    // Align with MinistriesAssociationsPermissionSeeder tenant role sync list.
+    const tenantRoleNames = ['Administrator', 'Parish Priest', 'Church Pastor'];
+    const hasTenantMinistryRole = tenantRoleNames.some((roleName) =>
+      (user.roles || []).some((role) => role?.name === roleName) ||
+      user.role_name === roleName ||
+      user.role?.name === roleName
+    );
+
+    const primaryAdminRaw = (user as any).is_primary_admin;
+    const isPrimaryAdmin = primaryAdminRaw === true || primaryAdminRaw === 1 || primaryAdminRaw === '1';
+    if (isPrimaryAdmin || hasTenantMinistryRole) {
+      return true;
+    }
+
+    const permissionNames = [
+      'ministries.view',
+      'ministries.create',
+      'ministries.edit',
+      'ministries.delete',
+      'ministries.manage_members',
+      'ministries.manage_leadership',
+      'ministries.configure',
+    ];
+
+    return permissionNames.some((permissionName) =>
+      (user.permissions || []).some((permission) => permission?.name === permissionName)
+    );
+  }
 }
 

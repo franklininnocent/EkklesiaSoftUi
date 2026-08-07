@@ -1,0 +1,22 @@
+.membership-status-modal__body.cf-form-grid {
+  grid-template-columns: 1fr;
+  gap: var(--cf-space-3);
+}
+
+.membership-status-modal__member span {
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}
+
+.membership-status-modal__confirm.cf-attention-callout {
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.membership-status-modal__confirm label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+  font-weight: 600;
+  color: var(--cf-amber);
+}

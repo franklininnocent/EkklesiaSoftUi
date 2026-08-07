@@ -1,0 +1,24 @@
+<app-form-field
+  label="Member"
+  [required]="true"
+  [fieldId]="fieldId"
+  [errorText]="showRequiredError ? 'Member is required.' : null"
+>
+  <select
+    [attr.id]="fieldId"
+    [value]="value"
+    [disabled]="disabled"
+    (change)="onSelectChange($event)"
+    (blur)="onBlur()"
+  >
+    <option value="">{{ placeholder }}</option>
+    <option
+      *ngFor="let member of members"
+      [value]="member.id"
+      [disabled]="isGuestDisabled(member)"
+      [attr.title]="guestDisabledTitle(member)"
+    >
+      {{ memberLabel(member) }}
+    </option>
+  </select>
+</app-form-field>

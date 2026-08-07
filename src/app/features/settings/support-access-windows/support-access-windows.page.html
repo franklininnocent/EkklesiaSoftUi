@@ -1,0 +1,174 @@
+<section class="support-access-windows cf-page">
+  <app-page-header
+    title="Support access windows"
+    subtitle="Allow EkklesiaSoft support to help your parish during a time window you choose."
+  ></app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!canView" role="alert">
+    <p>You do not have permission to manage support access windows.</p>
+  </div>
+
+  <ng-container *ngIf="canView">
+    <div class="cf-inline-alert" *ngIf="error" role="alert"><p>{{ error }}</p></div>
+    <div class="cf-inline-alert" *ngIf="success" role="status"><p>{{ success }}</p></div>
+
+    <section class="cf-panel" *ngIf="canManage">
+      <h2 class="cf-form-section__title">Open a window</h2>
+      <p class="cf-form-section__intro">
+        Support can only enter while a window is active. You can revoke it at any time.
+      </p>
+      <form
+        id="parish-grant-form"
+        class="cf-form-grid"
+        [formGroup]="form"
+        (ngSubmit)="create()"
+        novalidate
+      >
+        <app-form-field
+          label="Allowed mode"
+          fieldId="parish-allowed-mode"
+          [required]="true"
+          [errorText]="fieldError('allowed_mode')"
+        >
+          <select id="parish-allowed-mode" formControlName="allowed_mode">
+            <option value="readonly">Read only</option>
+            <option value="standard">Standard</option>
+            <option value="emergency">Emergency</option>
+            <option value="any">Any</option>
+          </select>
+        </app-form-field>
+
+        <app-form-field
+          label="Starts"
+          fieldId="parish-starts"
+          [required]="true"
+          [errorText]="fieldError('starts_at')"
+        >
+          <input id="parish-starts" type="datetime-local" formControlName="starts_at" />
+        </app-form-field>
+
+        <app-form-field
+          label="Ends"
+          fieldId="parish-ends"
+          [required]="true"
+          [errorText]="endsError()"
+        >
+          <input id="parish-ends" type="datetime-local" formControlName="ends_at" />
+        </app-form-field>
+
+        <app-form-field
+          label="Max sessions"
+          fieldId="parish-max-sessions"
+          [optionalLabel]="true"
+          [errorText]="fieldError('max_sessions')"
+        >
+          <input
+            id="parish-max-sessions"
+            type="number"
+            formControlName="max_sessions"
+            min="1"
+            max="1000"
+            placeholder="No limit"
+          />
+        </app-form-field>
+
+        <app-form-field
+          label="Note"
+          fieldId="parish-note"
+          [optionalLabel]="true"
+          [wide]="true"
+          [errorText]="fieldError('note')"
+        >
+          <input
+            id="parish-note"
+            type="text"
+            formControlName="note"
+            maxlength="2000"
+            placeholder="Why support is invited"
+          />
+        </app-form-field>
+
+        <div class="cf-form-actions">
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
+            {{ saving ? 'Saving…' : 'Open window' }}
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="cf-panel">
+      <div class="support-access-windows__head">
+        <h2 class="cf-form-section__title">Your windows</h2>
+        <button type="button" class="cf-btn" (click)="reload()" [disabled]="loading">Refresh</button>
+      </div>
+
+      <div
+        class="cf-loading-block"
+        *ngIf="loading && !loaded"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="cf-loading-block__label">Loading access windows…</p>
+        <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+      </div>
+
+      <app-cf-empty-state
+        *ngIf="loaded && !loading && !rows.length"
+        title="No support access windows yet"
+        description="Open a window above when you want EkklesiaSoft support to help your parish."
+      ></app-cf-empty-state>
+
+      <app-data-table *ngIf="loaded && rows.length" [ariaBusy]="loading">
+        <thead>
+          <tr>
+            <th scope="col">Mode</th>
+            <th scope="col">Status</th>
+            <th scope="col">Window</th>
+            <th scope="col">Sessions used</th>
+            <th scope="col" *ngIf="canManage" class="cf-table__actions-col">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of rows">
+            <td>
+              <app-status-badge [label]="row.allowed_mode" [tone]="modeTone(row.allowed_mode)"></app-status-badge>
+            </td>
+            <td>
+              <app-status-badge [label]="row.status" [tone]="statusTone(row.status)"></app-status-badge>
+            </td>
+            <td>
+              {{ row.starts_at | date: 'short' }} → {{ row.ends_at | date: 'short' }}
+            </td>
+            <td>
+              {{ row.sessions_used }}{{ row.max_sessions ? (' / ' + row.max_sessions) : '' }}
+            </td>
+            <td *ngIf="canManage" class="cf-table__actions-cell">
+              <button
+                type="button"
+                class="cf-btn cf-btn-danger"
+                *ngIf="row.status === 'active'"
+                (click)="requestRevoke(row)"
+              >
+                Revoke
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+    </section>
+  </ng-container>
+
+  <app-confirmation-modal
+    [show]="confirmOpen"
+    title="Revoke access window?"
+    [message]="revokeConfirmMessage"
+    confirmText="Revoke"
+    confirmButtonClass="btn-danger"
+    (confirmed)="onRevokeConfirmed($event)"
+    (cancelled)="confirmOpen = false; pendingRevoke = null"
+    (closed)="confirmOpen = false; pendingRevoke = null"
+  ></app-confirmation-modal>
+</section>

@@ -1,0 +1,202 @@
+<ng-container *ngIf="panelVisible">
+  <section class="family-affiliations" aria-labelledby="family-affiliations-heading">
+    <header class="family-affiliations__header">
+      <div class="family-affiliations__header-main">
+        <h3 id="family-affiliations-heading" class="family-affiliations__title">
+          Ministries &amp; Associations
+        </h3>
+        <p class="family-affiliations__desc" *ngIf="loaded && !loadError">
+          <ng-container *ngIf="affiliations.length; else noAffiliationsDesc">
+            {{ affiliations.length }}
+            {{ affiliations.length === 1 ? 'organization' : 'organizations' }}
+          </ng-container>
+          <ng-template #noAffiliationsDesc>
+            Enrollments and leadership roles for this member
+          </ng-template>
+        </p>
+      </div>
+      <div class="family-affiliations__header-actions" *ngIf="canEnroll">
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary cf-btn--sm"
+          (click)="openEnrollModal()"
+        >
+          Enroll in ministry
+        </button>
+      </div>
+    </header>
+
+    <div class="family-affiliations__body">
+      <div
+        class="family-affiliations__loading"
+        *ngIf="loading && !loaded"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="family-affiliations__loading-label">Loading affiliations…</p>
+        <app-loading-skeleton type="list" [rows]="3"></app-loading-skeleton>
+      </div>
+
+      <div class="family-affiliations__error" *ngIf="loadError" role="alert">
+        <p>{{ loadError }}</p>
+        <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="retryLoad()">
+          Try again
+        </button>
+      </div>
+
+      <ng-container *ngIf="loaded && !loadError">
+        <app-cf-empty-state
+          *ngIf="!affiliations.length; else affiliationList"
+          icon="◇"
+          title="Not enrolled in any ministry or association."
+          description="Enrollments and leadership roles for this member will appear here."
+          [hasActions]="false"
+        ></app-cf-empty-state>
+
+        <ng-template #affiliationList>
+          <ul class="family-affiliations__orgs">
+            <li class="family-affiliations__org" *ngFor="let affiliation of affiliations">
+              <header class="family-affiliations__org-header">
+                <div class="family-affiliations__org-title">
+                  <a
+                    class="family-affiliations__org-name"
+                    [routerLink]="['/ministries', affiliation.organization.id]"
+                  >
+                    {{ affiliation.organization.name }}
+                  </a>
+                  <span class="family-affiliations__org-code" *ngIf="affiliation.organization.code">
+                    {{ affiliation.organization.code }}
+                  </span>
+                </div>
+                <span
+                  class="family-affiliations__status"
+                  [class.family-affiliations__status--active]="affiliation.organization.status === 'active'"
+                  [class.family-affiliations__status--muted]="affiliation.organization.status !== 'active'"
+                >
+                  {{ organizationStatusLabel(affiliation.organization.status) }}
+                </span>
+              </header>
+
+              <div
+                class="family-affiliations__org-body"
+                [class.family-affiliations__org-body--split]="
+                  affiliation.memberships.length > 0 && affiliation.leadership_terms.length > 0
+                "
+              >
+                <section
+                  class="family-affiliations__section"
+                  *ngIf="affiliation.memberships.length"
+                  aria-label="Memberships"
+                >
+                  <h4 class="family-affiliations__section-title">
+                    Memberships
+                    <span class="family-affiliations__section-count">
+                      {{ affiliation.memberships.length }}
+                    </span>
+                  </h4>
+                  <div class="family-affiliations__table-wrap">
+                    <table class="cf-table family-affiliations__table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Status</th>
+                          <th scope="col">Interval</th>
+                          <th scope="col">Joined</th>
+                          <th scope="col">Exited</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          *ngFor="let membership of affiliation.memberships"
+                          [class.family-affiliations__row--active]="isActiveMembership(membership)"
+                          [class.family-affiliations__row--muted]="!isActiveMembership(membership)"
+                        >
+                          <td>
+                            <span
+                              class="family-affiliations__status"
+                              [class.family-affiliations__status--active]="isActiveMembership(membership)"
+                              [class.family-affiliations__status--muted]="!isActiveMembership(membership)"
+                            >
+                              {{ membershipStatusLabel(membership.status) }}
+                            </span>
+                          </td>
+                          <td>
+                            <span class="family-affiliations__interval-label">
+                              {{ membership.interval_label }}
+                            </span>
+                          </td>
+                          <td>{{ formatDate(membership.joined_date) }}</td>
+                          <td>{{ formatDate(membership.exit_date) }}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+
+                <section
+                  class="family-affiliations__section"
+                  *ngIf="affiliation.leadership_terms.length"
+                  aria-label="Leadership"
+                >
+                  <h4 class="family-affiliations__section-title">
+                    Leadership
+                    <span class="family-affiliations__section-count">
+                      {{ affiliation.leadership_terms.length }}
+                    </span>
+                  </h4>
+                  <div class="family-affiliations__table-wrap">
+                    <table class="cf-table family-affiliations__table">
+                      <thead>
+                        <tr>
+                          <th scope="col">Position</th>
+                          <th scope="col">Term</th>
+                          <th scope="col">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr
+                          *ngFor="let term of affiliation.leadership_terms"
+                          [class.family-affiliations__row--active]="isActiveLeadership(term)"
+                          [class.family-affiliations__row--muted]="!isActiveLeadership(term)"
+                        >
+                          <td>
+                            <span
+                              class="family-affiliations__position"
+                              [class.family-affiliations__position--active]="isActiveLeadership(term)"
+                            >
+                              {{ term.position_name }}
+                            </span>
+                            <span class="family-affiliations__interim" *ngIf="term.is_interim">
+                              Interim
+                            </span>
+                          </td>
+                          <td>{{ termRange(term) }}</td>
+                          <td>
+                            <span
+                              class="family-affiliations__status"
+                              [class.family-affiliations__status--active]="isActiveLeadership(term)"
+                              [class.family-affiliations__status--muted]="!isActiveLeadership(term)"
+                            >
+                              {{ leadershipStatusLabel(term.status) }}
+                            </span>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              </div>
+            </li>
+          </ul>
+        </ng-template>
+      </ng-container>
+    </div>
+  </section>
+
+  <app-enroll-from-family-modal
+    *ngIf="showEnrollModal && familyMemberId"
+    [familyMemberId]="familyMemberId"
+    (enrolled)="onMemberEnrolled()"
+    (cancel)="closeEnrollModal()"
+  ></app-enroll-from-family-modal>
+</ng-container>

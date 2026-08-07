@@ -1,0 +1,84 @@
+<app-modal-shell
+  title="Change member status"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <form
+    id="membership-status-form"
+    class="membership-status-modal__body cf-form-grid"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+  >
+    <div class="membership-status-modal__member cf-context-card">
+      <strong>{{ membership.display_name }}</strong>
+      <span>Joined {{ formatDate(membership.joined_date) }}</span>
+      <span>Current status: {{ currentStatusLabel() }}</span>
+    </div>
+
+    <app-form-field label="New status" [required]="true" fieldId="membership-status-select">
+      <select id="membership-status-select" formControlName="status">
+        <option *ngFor="let option of statusOptions" [value]="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </app-form-field>
+
+    <app-form-field
+      *ngIf="closesInterval"
+      label="Exit date"
+      [required]="true"
+      fieldId="membership-exit-date"
+      [errorText]="
+        submitted && form.controls.exit_date.hasError('required')
+          ? 'Exit date is required for this status.'
+          : submitted && form.controls.exit_date.hasError('beforeJoined')
+            ? 'Exit date must be on or after the joined date.'
+            : null
+      "
+    >
+      <input
+        id="membership-exit-date"
+        type="date"
+        formControlName="exit_date"
+        [attr.min]="membership.joined_date"
+      />
+    </app-form-field>
+
+    <app-form-field
+      *ngIf="closesInterval"
+      label="Exit reason"
+      fieldId="membership-exit-reason"
+      [errorText]="
+        submitted && form.controls.exit_reason.hasError('maxlength')
+          ? 'Exit reason must be 500 characters or fewer.'
+          : null
+      "
+    >
+      <textarea id="membership-exit-reason" formControlName="exit_reason" rows="2" maxlength="500"></textarea>
+    </app-form-field>
+
+    <div class="membership-status-modal__confirm cf-attention-callout" *ngIf="closesInterval" role="note">
+      <p>
+        This will close the current enrollment. Closed intervals cannot be edited —
+        use re-enroll later if they return.
+      </p>
+      <label>
+        <input
+          type="checkbox"
+          [checked]="confirmed"
+          (change)="onConfirmToggle($event)"
+        />
+        I understand this enrollment will be closed
+      </label>
+    </div>
+
+    <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="membership-status-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+      {{ submitLabel }}
+    </button>
+  </ng-container>
+</app-modal-shell>

@@ -1,0 +1,222 @@
+<div class="organization-form-fields" [class.organization-form-fields--columns]="columns" [formGroup]="form">
+  <section
+    class="organization-form-fields__section organization-form-fields__section--basic cf-form-section"
+    aria-labelledby="org-fields-basic"
+  >
+    <h2 id="org-fields-basic" class="cf-form-section__title">Basic Details</h2>
+    <div class="organization-form-fields__grid cf-form-grid">
+      <app-form-field
+        label="Code"
+        fieldId="org-field-code"
+        [required]="true"
+        [errorText]="error('code', {
+          required: 'Code is required.',
+          minlength: 'Code must be at least 2 characters.',
+          maxlength: 'Code must be 50 characters or fewer.',
+          pattern: 'Use letters, numbers, and hyphens only.'
+        })"
+      >
+        <input id="org-field-code" type="text" formControlName="code" autocomplete="off" maxlength="50" />
+      </app-form-field>
+
+      <app-form-field
+        label="Name"
+        fieldId="org-field-name"
+        [required]="true"
+        [errorText]="error('name', {
+          required: 'Name is required.',
+          minlength: 'Name must be at least 2 characters.',
+          maxlength: 'Name must be 255 characters or fewer.'
+        })"
+      >
+        <input id="org-field-name" type="text" formControlName="name" maxlength="255" />
+      </app-form-field>
+
+      <app-form-field
+        label="Short name"
+        fieldId="org-field-short-name"
+        [errorText]="error('short_name', { maxlength: 'Short name must be 50 characters or fewer.' })"
+      >
+        <input id="org-field-short-name" type="text" formControlName="short_name" maxlength="50" />
+      </app-form-field>
+
+      <app-form-field
+        label="Category"
+        fieldId="org-field-category"
+        [required]="true"
+        [errorText]="requiredError('category_id', 'Category is required.')"
+      >
+        <select id="org-field-category" formControlName="category_id">
+          <option value="">Select category</option>
+          <option *ngFor="let category of categories" [value]="category.id">{{ category.name }}</option>
+        </select>
+      </app-form-field>
+
+      <app-form-field
+        label="Type"
+        fieldId="org-field-type"
+        [required]="true"
+        [errorText]="requiredError('type_id', 'Type is required.')"
+      >
+        <select id="org-field-type" formControlName="type_id">
+          <option value="">Select type</option>
+          <option *ngFor="let type of types" [value]="type.id">{{ type.name }}</option>
+        </select>
+      </app-form-field>
+
+      <app-form-field label="Status" fieldId="org-field-status" [errorText]="fieldErrors['status']">
+        <select id="org-field-status" formControlName="status">
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+      </app-form-field>
+
+      <app-form-field
+        label="Patron saint"
+        fieldId="org-field-patron-saint"
+        [errorText]="error('patron_saint', { maxlength: 'Patron saint must be 150 characters or fewer.' })"
+      >
+        <input id="org-field-patron-saint" type="text" formControlName="patron_saint" maxlength="150" />
+      </app-form-field>
+
+      <app-form-field
+        label="Established date"
+        fieldId="org-field-established-date"
+        [errorText]="error('established_date', { futureDate: 'Established date cannot be in the future.' })"
+      >
+        <input
+          id="org-field-established-date"
+          type="date"
+          formControlName="established_date"
+          [attr.max]="maxEstablishedDate"
+        />
+      </app-form-field>
+
+      <app-form-field
+        label="Theme color"
+        fieldId="org-field-theme-color"
+        helpText="Used as an accent color for this organization."
+        [errorText]="error('theme_color', { pattern: 'Use a color like #1A73E8.' })"
+      >
+        <input id="org-field-theme-color" type="text" formControlName="theme_color" placeholder="#RRGGBB" maxlength="7" />
+      </app-form-field>
+    </div>
+  </section>
+
+  <section
+    class="organization-form-fields__section organization-form-fields__section--about cf-form-section"
+    aria-labelledby="org-fields-about"
+  >
+    <h2 id="org-fields-about" class="cf-form-section__title">About</h2>
+    <p class="cf-form-section__intro">Purpose and direction (optional).</p>
+    <div class="organization-form-fields__stack cf-form-grid">
+      <app-form-field label="Description" fieldId="org-field-description" [wide]="true">
+        <textarea id="org-field-description" formControlName="description" rows="3"></textarea>
+      </app-form-field>
+      <app-form-field label="Vision" fieldId="org-field-vision" [wide]="true">
+        <textarea id="org-field-vision" formControlName="vision" rows="2"></textarea>
+      </app-form-field>
+      <app-form-field label="Mission" fieldId="org-field-mission" [wide]="true">
+        <textarea id="org-field-mission" formControlName="mission" rows="2"></textarea>
+      </app-form-field>
+      <app-form-field label="Objectives" fieldId="org-field-objectives" [wide]="true">
+        <textarea id="org-field-objectives" formControlName="objectives" rows="2"></textarea>
+      </app-form-field>
+    </div>
+  </section>
+
+  <section
+    class="organization-form-fields__section organization-form-fields__section--contact cf-form-section"
+    aria-labelledby="org-fields-contact"
+  >
+    <h2 id="org-fields-contact" class="cf-form-section__title">Contact</h2>
+    <p class="cf-form-section__intro">How people reach this organization.</p>
+    <div class="organization-form-fields__grid cf-form-grid">
+      <app-form-field
+        label="Email"
+        fieldId="org-field-email"
+        [errorText]="error('email', { email: 'Enter a valid email.', maxlength: 'Email must be 255 characters or fewer.' })"
+      >
+        <input id="org-field-email" type="email" formControlName="email" maxlength="255" />
+      </app-form-field>
+
+      <app-form-field
+        label="Phone"
+        fieldId="org-field-phone"
+        [errorText]="error('phone', { maxlength: 'Phone must be 20 characters or fewer.' })"
+      >
+        <input id="org-field-phone" type="text" formControlName="phone" maxlength="20" />
+      </app-form-field>
+
+      <app-form-field
+        label="Website"
+        fieldId="org-field-website"
+        [errorText]="error('website', { maxlength: 'Website must be 500 characters or fewer.' })"
+      >
+        <input id="org-field-website" type="url" formControlName="website" placeholder="https://" maxlength="500" />
+      </app-form-field>
+
+      <app-form-field
+        label="Facebook"
+        fieldId="org-field-facebook"
+        [errorText]="error('facebook', { maxlength: 'Facebook link must be 500 characters or fewer.' })"
+      >
+        <input id="org-field-facebook" type="text" formControlName="facebook" maxlength="500" />
+      </app-form-field>
+
+      <app-form-field
+        label="Instagram"
+        fieldId="org-field-instagram"
+        [errorText]="error('instagram', { maxlength: 'Instagram link must be 500 characters or fewer.' })"
+      >
+        <input id="org-field-instagram" type="text" formControlName="instagram" maxlength="500" />
+      </app-form-field>
+
+      <app-form-field
+        label="WhatsApp"
+        fieldId="org-field-whatsapp"
+        [errorText]="error('whatsapp', { maxlength: 'WhatsApp link must be 500 characters or fewer.' })"
+      >
+        <input id="org-field-whatsapp" type="text" formControlName="whatsapp" maxlength="500" />
+      </app-form-field>
+
+      <app-form-field
+        label="YouTube"
+        fieldId="org-field-youtube"
+        [errorText]="error('youtube', { maxlength: 'YouTube link must be 500 characters or fewer.' })"
+      >
+        <input id="org-field-youtube" type="text" formControlName="youtube" maxlength="500" />
+      </app-form-field>
+
+      <app-form-field
+        label="Telegram"
+        fieldId="org-field-telegram"
+        [errorText]="error('telegram', { maxlength: 'Telegram link must be 500 characters or fewer.' })"
+      >
+        <input id="org-field-telegram" type="text" formControlName="telegram" maxlength="500" />
+      </app-form-field>
+    </div>
+  </section>
+
+  <section
+    class="organization-form-fields__section organization-form-fields__section--settings cf-form-section"
+    aria-labelledby="org-fields-settings"
+  >
+    <h2 id="org-fields-settings" class="cf-form-section__title">Settings</h2>
+    <p class="cf-form-section__intro">Membership and office rules.</p>
+    <div class="organization-form-fields__settings">
+      <label class="cf-switch-field">
+        <input type="checkbox" formControlName="allow_multi_role_holding" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">Allow multi-role holding</span>
+        </span>
+      </label>
+      <label class="cf-switch-field">
+        <input type="checkbox" formControlName="guests_can_hold_office" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">Guests can hold office</span>
+        </span>
+      </label>
+    </div>
+  </section>
+</div>

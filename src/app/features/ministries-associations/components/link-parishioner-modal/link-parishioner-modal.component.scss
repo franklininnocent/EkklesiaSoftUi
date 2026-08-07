@@ -1,0 +1,15 @@
+.link-parishioner-modal__body {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.link-parishioner-modal__guest span {
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}
+
+.link-parishioner-modal__help {
+  margin: 0;
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}

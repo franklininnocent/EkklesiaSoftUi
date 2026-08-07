@@ -1,0 +1,81 @@
+<div class="support-session-banner" *ngIf="session as s" role="status" aria-live="polite">
+  <div class="support-session-banner__copy">
+    <strong>Support session active</strong>
+    <span>
+      {{ s.tenant?.name || ('Tenant #' + s.tenant_id) }}
+      · {{ s.mode === 'readonly' ? 'Read only' : (s.mode === 'emergency' ? 'Emergency' : 'Standard') }}
+      · {{ s.reason_code }}
+      · {{ remainingLabel }} left
+    </span>
+  </div>
+  <div class="support-session-banner__actions">
+    <a routerLink="/support-center" class="cf-btn">Support Center</a>
+    <button type="button" class="cf-btn" (click)="requestRenew()" [disabled]="renewing || ending">
+      {{ renewing ? 'Renewing…' : 'Extend' }}
+    </button>
+    <button type="button" class="cf-btn cf-btn-danger" (click)="requestExit()" [disabled]="ending">
+      {{ ending ? 'Exiting…' : 'Exit session' }}
+    </button>
+  </div>
+  <p class="support-session-banner__error" *ngIf="error" role="alert">{{ error }}</p>
+  <p class="support-session-banner__success" *ngIf="success" role="status">{{ success }}</p>
+</div>
+
+<app-confirmation-modal
+  [show]="showExitConfirm"
+  title="Exit support session?"
+  message="You will leave this tenant context. Your support identity is unchanged."
+  confirmText="Exit session"
+  cancelText="Stay"
+  confirmButtonClass="btn-danger"
+  (confirmed)="onExitConfirmed($event)"
+  (cancelled)="showExitConfirm = false"
+  (closed)="showExitConfirm = false"
+></app-confirmation-modal>
+
+<app-modal-shell
+  *ngIf="showRenewDialog"
+  title="Extend support session"
+  size="sm"
+  [isSubmitting]="renewing"
+  (closeRequested)="closeRenewDialog()"
+>
+  <p class="support-session-banner__renew-copy">
+    Confirm your password to renew the session timeout.
+  </p>
+  <form
+    id="support-renew-form"
+    [formGroup]="renewForm"
+    (ngSubmit)="submitRenew()"
+    novalidate
+  >
+    <app-form-field
+      label="Password"
+      fieldId="support-renew-password"
+      [required]="true"
+      [errorText]="renewPasswordError()"
+    >
+      <input
+        id="support-renew-password"
+        type="password"
+        formControlName="password"
+        autocomplete="current-password"
+      />
+    </app-form-field>
+    <p class="cf-form-field__error" *ngIf="error && showRenewDialog" role="alert">{{ error }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="closeRenewDialog()" [disabled]="renewing">
+      Cancel
+    </button>
+    <button
+      type="submit"
+      form="support-renew-form"
+      class="cf-btn cf-btn-primary"
+      [disabled]="renewing"
+    >
+      {{ renewing ? 'Renewing…' : 'Extend' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

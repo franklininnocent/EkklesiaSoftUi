@@ -1,0 +1,150 @@
+@import '../../../../styles/church-financial-os-mixins';
+
+.organization-detail__error-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-2);
+}
+
+.organization-detail__header {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.organization-profile-form {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.organization-profile-form__error {
+  color: var(--cf-critical);
+  font-size: var(--cf-text-sm);
+}
+
+@media (min-width: $cf-bp-md) {
+  .organization-detail__header {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+}
+
+.organization-detail__identity {
+  display: grid;
+  gap: var(--cf-space-2);
+}
+
+.organization-detail__code {
+  margin: 0;
+  color: var(--cf-muted);
+  font-size: var(--cf-text-base);
+}
+
+.organization-detail__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-2);
+}
+
+.organization-detail__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(5.5rem, 1fr));
+  gap: var(--cf-space-2) var(--cf-space-4);
+  margin: 0;
+}
+
+.organization-detail__summary dt {
+  margin: 0;
+  color: var(--cf-muted);
+  font-size: var(--cf-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.organization-detail__summary dd {
+  margin: var(--cf-space-1) 0 0;
+  font-size: var(--cf-text-xl);
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.organization-detail__panel {
+  min-height: 0;
+}
+
+.organization-profile {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.organization-profile__section h2 {
+  margin: 0 0 var(--cf-space-2);
+  font-size: var(--cf-text-lg);
+}
+
+.organization-profile__subtitle {
+  margin: var(--cf-space-2) 0;
+  font-size: var(--cf-text-md);
+  font-weight: 600;
+  color: var(--cf-muted);
+}
+
+.organization-profile__fields {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+  gap: var(--cf-space-3) var(--cf-space-4);
+  margin: 0;
+}
+
+.organization-profile__fields--stacked {
+  grid-template-columns: 1fr;
+}
+
+.organization-profile__fields dt {
+  margin: 0;
+  color: var(--cf-muted);
+  font-size: var(--cf-text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.organization-profile__fields dd {
+  margin: var(--cf-space-1) 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.organization-profile__color {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+}
+
+.organization-profile__swatch {
+  width: 1rem;
+  height: 1rem;
+  border-radius: var(--cf-radius-sm);
+  border: 1px solid var(--cf-panel-border);
+  flex-shrink: 0;
+}
+
+.organization-profile__social {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--cf-space-2);
+}
+
+.organization-profile__social li {
+  display: grid;
+  gap: var(--cf-space-1);
+}
+
+.organization-profile__social span {
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}
+
+.organization-profile__empty {
+  margin: 0;
+}

@@ -1,0 +1,231 @@
+<div class="organization-leadership">
+  <div class="cf-attention-callout" *ngIf="isInactiveOrganization" role="status">
+    <p>Activate this organization to manage leadership.</p>
+  </div>
+
+  <section class="organization-leadership__section" aria-labelledby="leadership-current-heading">
+    <app-page-header variant="panel" title="Current office bearers">
+      <button
+        *ngIf="canAssign"
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="openAssignModal()"
+      >
+        Assign
+      </button>
+    </app-page-header>
+
+    <div
+      class="cf-loading-block"
+      *ngIf="currentLoading && !currentLoaded"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <p class="cf-loading-block__label">Loading current leadership…</p>
+      <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+    </div>
+
+    <div class="cf-inline-alert" *ngIf="currentError" role="alert">
+      <p>{{ currentError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryCurrent()">Try again</button>
+    </div>
+
+    <ng-container *ngIf="currentLoaded && !currentError">
+      <app-data-table *ngIf="currentRows.length; else emptyCurrent">
+        <thead>
+          <tr>
+            <th scope="col">Position</th>
+            <th scope="col">Member</th>
+            <th scope="col">Term</th>
+            <th scope="col">Status</th>
+            <th *ngIf="showCurrentActions" scope="col" class="cf-table__actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of currentRows">
+            <ng-container *ngIf="row.type === 'filled'">
+              <td>
+                <strong>{{ positionName(row.term) }}</strong>
+                <app-status-badge *ngIf="row.term.is_interim" label="Interim" tone="info"></app-status-badge>
+              </td>
+              <td>{{ holderName(row.term) }}</td>
+              <td>{{ termRange(row.term) }}</td>
+              <td>
+                <app-status-badge [label]="statusLabel(row.term.status)" [tone]="statusTone(row.term.status)"></app-status-badge>
+              </td>
+              <td *ngIf="showCurrentActions" class="cf-table__actions-cell">
+                <app-action-bar
+                  *ngIf="row.term.status === 'active'"
+                  [actions]="currentRowActions(row.term)"
+                  size="sm"
+                  (actionClicked)="onCurrentRowAction($event, row.term)"
+                ></app-action-bar>
+              </td>
+            </ng-container>
+
+            <ng-container *ngIf="row.type === 'vacant'">
+              <td>
+                <strong>{{ row.position.name }}</strong>
+              </td>
+              <td>Vacant</td>
+              <td>—</td>
+              <td>
+                <app-status-badge label="Vacant" tone="neutral"></app-status-badge>
+              </td>
+              <td *ngIf="showCurrentActions" class="cf-table__actions-cell">
+                <button
+                  *ngIf="canAssign"
+                  type="button"
+                  class="cf-btn cf-btn-primary"
+                  (click)="openAssignModal(row.position.id)"
+                >
+                  Assign
+                </button>
+              </td>
+            </ng-container>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <ng-template #emptyCurrent>
+        <app-cf-empty-state
+          icon="◇"
+          title="No office bearers assigned"
+          description="Assign leaders once positions are configured in Settings."
+          [hasActions]="true"
+        >
+          <a routerLink="/ministries/settings" class="cf-btn cf-btn-primary">Go to Settings</a>
+        </app-cf-empty-state>
+      </ng-template>
+    </ng-container>
+  </section>
+
+  <section class="organization-leadership__section">
+    <app-section-card
+      title="Leadership history"
+      [collapsible]="true"
+      [expanded]="timelineExpanded"
+      expandLabel="Show leadership history"
+      collapseLabel="Hide leadership history"
+      (expandedChange)="onTimelineToggle($event)"
+    >
+      <div class="cf-filters organization-leadership__filters">
+        <select
+          [(ngModel)]="positionFilter"
+          (ngModelChange)="onTimelineFilterChange()"
+          aria-label="Filter by position"
+        >
+          <option value="">All positions</option>
+          <option *ngFor="let position of positions" [value]="position.id">{{ position.name }}</option>
+        </select>
+
+        <select
+          [(ngModel)]="statusFilter"
+          (ngModelChange)="onTimelineFilterChange()"
+          aria-label="Filter by status"
+        >
+          <option value="">All statuses</option>
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="vacated">Vacated</option>
+          <option value="terminated">Terminated</option>
+        </select>
+      </div>
+
+      <div
+        class="cf-loading-block"
+        *ngIf="timelineLoading && !timelineLoaded"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="cf-loading-block__label">Loading history…</p>
+        <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+      </div>
+
+      <div class="cf-inline-alert" *ngIf="timelineError" role="alert">
+        <p>{{ timelineError }}</p>
+        <button type="button" class="cf-btn cf-btn-primary" (click)="retryTimeline()">Try again</button>
+      </div>
+
+      <ng-container *ngIf="timelineLoaded && !timelineError">
+        <div *ngIf="timelineTerms.length; else emptyTimeline">
+          <app-data-table [ariaBusy]="timelineLoading">
+            <thead>
+              <tr>
+                <th scope="col">Position</th>
+                <th scope="col">Member</th>
+                <th scope="col">Start date</th>
+                <th scope="col">End date</th>
+                <th scope="col">Status</th>
+                <th scope="col">Exit reason</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let term of timelineTerms">
+                <td>
+                  <strong>{{ positionName(term) }}</strong>
+                  <app-status-badge *ngIf="term.is_interim" label="Interim" tone="info"></app-status-badge>
+                </td>
+                <td>{{ holderName(term) }}</td>
+                <td>{{ formatDate(term.effective_from) }}</td>
+                <td>{{ term.effective_to ? formatDate(term.effective_to) : 'Open' }}</td>
+                <td>
+                  <app-status-badge [label]="statusLabel(term.status)" [tone]="statusTone(term.status)"></app-status-badge>
+                </td>
+                <td>{{ exitReasonLabel(term.exit_reason) }}</td>
+              </tr>
+            </tbody>
+          </app-data-table>
+
+          <app-pagination
+            [currentPage]="currentPage"
+            [pageSize]="perPage"
+            [totalItems]="totalItems"
+            [pageSizeOptions]="perPageOptions"
+            (pageChange)="onPageChange($event)"
+            (pageSizeChange)="onPageSizeChange($event)"
+          ></app-pagination>
+        </div>
+
+        <ng-template #emptyTimeline>
+          <app-cf-empty-state
+            icon="◇"
+            [title]="hasTimelineFilters ? 'No terms match your filters' : 'No leadership history'"
+            [description]="
+              hasTimelineFilters
+                ? 'Try clearing filters.'
+                : 'Past terms will appear here after assignments end.'
+            "
+            [hasActions]="false"
+          ></app-cf-empty-state>
+        </ng-template>
+      </ng-container>
+    </app-section-card>
+  </section>
+
+  <app-assign-leadership-modal
+    *ngIf="showAssignModal"
+    [organizationId]="organizationId"
+    [positionId]="assignPositionId"
+    (assigned)="onLeadershipAssigned()"
+    (cancel)="closeAssignModal()"
+  ></app-assign-leadership-modal>
+
+  <app-handover-leadership-modal
+    *ngIf="showHandoverModal && handoverTerm"
+    [organizationId]="organizationId"
+    [term]="handoverTerm"
+    (handedOver)="onLeadershipHandedOver()"
+    (cancel)="closeHandoverModal()"
+  ></app-handover-leadership-modal>
+
+  <app-terminate-leadership-modal
+    *ngIf="showTerminateModal && terminateTerm"
+    [organizationId]="organizationId"
+    [term]="terminateTerm"
+    (terminated)="onLeadershipTerminated()"
+    (cancel)="closeTerminateModal()"
+  ></app-terminate-leadership-modal>
+</div>

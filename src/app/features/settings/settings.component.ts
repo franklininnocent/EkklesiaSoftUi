@@ -89,6 +89,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
       icon: 'subscription', 
       route: '/settings/subscription',
       requiresSuperAdmin: true
+    },
+    {
+      title: 'Support access windows',
+      description: 'Open a time window so EkklesiaSoft support can help your parish',
+      icon: 'shield',
+      route: '/settings/support-access',
+      requiresAnyPermission: ['support.grants.parish.view', 'support.grants.parish.manage'],
     }
   ];
 
@@ -245,6 +252,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
     }
     if (section.requiresPermission) {
       return this.authService.hasPermission(section.requiresPermission);
+    }
+    if (section.requiresAnyPermission?.length) {
+      return section.requiresAnyPermission.some((p: string) => this.authService.hasPermission(p));
     }
     return true;
   }

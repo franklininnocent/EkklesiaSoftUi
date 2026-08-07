@@ -1,0 +1,52 @@
+/**
+ * Church Financial OS — shared breakpoints & mixins
+ *
+ * Sass-level primitives (breakpoints must be plain SCSS variables since CSS
+ * custom properties cannot be used inside @media feature queries).
+ *
+ * Usage from a feature component's .scss file:
+ *   @import '../../../../styles/church-financial-os-mixins';
+ *
+ *   @media (min-width: $cf-bp-md) { ... }
+ *   .foo { @include cf-truncate; }
+ */
+
+$cf-bp-sm: 480px;
+$cf-bp-md: 768px;
+$cf-bp-lg: 1024px;
+
+/// Screen-reader-only content — visually hidden but still announced.
+@mixin cf-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/// Standard keyboard focus ring, matching `.cf-btn`/`.cf-workspace-nav__tab`.
+@mixin cf-focus-ring($offset: 2px) {
+  outline: 2px solid var(--cf-primary);
+  outline-offset: $offset;
+}
+
+/// Single-line ellipsis truncation for table cells/badges.
+@mixin cf-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/// Horizontal-scroll wrapper for tables on narrow/tablet viewports.
+@mixin cf-table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  table {
+    min-width: 100%;
+  }
+}

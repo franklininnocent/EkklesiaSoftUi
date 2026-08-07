@@ -1,0 +1,12 @@
+.support-access-windows__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cf-space-2);
+  margin-bottom: var(--cf-space-3);
+}
+
+.support-access-windows__head .cf-form-section__title {
+  margin: 0;
+}

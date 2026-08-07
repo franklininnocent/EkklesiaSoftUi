@@ -1,0 +1,29 @@
+<nav class="cf-tab-strip" role="tablist" [attr.aria-label]="ariaLabel || null">
+  <ng-container *ngFor="let tab of tabs">
+    <a
+      *ngIf="mode === 'router'; else inpageTab"
+      class="cf-tab-strip__tab"
+      [routerLink]="tab.routerLink"
+      routerLinkActive="cf-tab-strip__tab--active"
+      [routerLinkActiveOptions]="{ exact: !!tab.exact }"
+    >
+      {{ tab.label }}
+    </a>
+
+    <ng-template #inpageTab>
+      <button
+        type="button"
+        [id]="tab.domId || null"
+        class="cf-tab-strip__tab"
+        [class.cf-tab-strip__tab--active]="tab.id === activeId"
+        role="tab"
+        [attr.aria-selected]="tab.id === activeId"
+        [attr.aria-controls]="tab.ariaControls || null"
+        [attr.tabindex]="tab.id === activeId ? 0 : -1"
+        (click)="onTabClick(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
+    </ng-template>
+  </ng-container>
+</nav>

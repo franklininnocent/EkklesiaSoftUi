@@ -1,0 +1,12 @@
+.assign-leadership-modal__body {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.assign-leadership-modal__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+  font-size: var(--cf-text-sm);
+  font-weight: 500;
+}

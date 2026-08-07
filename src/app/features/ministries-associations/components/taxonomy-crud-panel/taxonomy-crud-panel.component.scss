@@ -1,0 +1,28 @@
+.taxonomy-crud-panel__content {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.taxonomy-crud-panel__desc {
+  display: inline-block;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.taxonomy-crud-panel__row--inactive td {
+  color: var(--cf-muted);
+}
+
+.taxonomy-crud-panel__form {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.taxonomy-crud-panel__form .cf-switch-field small {
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+  font-weight: 400;
+}

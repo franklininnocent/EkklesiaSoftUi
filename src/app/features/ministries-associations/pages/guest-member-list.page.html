@@ -1,0 +1,136 @@
+<section class="guest-member-list cf-page">
+  <app-page-header title="Guest members" subtitle="People not yet in a parish family record.">
+    <app-list-toolbar
+      searchPlaceholder="Search name, phone, or email…"
+      [searchValue]="search"
+      [filterCount]="drawerFilterCount"
+      (searchChange)="onSearchChange($event)"
+      (filtersOpened)="showFilters = true"
+    >
+      <button
+        *ngIf="canManage"
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="openCreateModal()"
+      >
+        Add guest
+      </button>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <app-ministries-sub-nav></app-ministries-sub-nav>
+
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading && !loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading guest members…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="loaded">
+    <div class="cf-inline-alert cf-panel" *ngIf="loadError" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+    </div>
+
+    <ng-container *ngIf="!loadError">
+      <ng-container *ngIf="guests.length; else emptyGuests">
+        <app-data-table [ariaBusy]="loading">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Phone</th>
+              <th scope="col">Email</th>
+              <th scope="col">Linked parishioner</th>
+              <th scope="col">Created</th>
+              <th scope="col" *ngIf="canManage" class="cf-table__actions-col">
+                <span class="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let guest of guests">
+              <td><strong>{{ displayName(guest) }}</strong></td>
+              <td>{{ guest.phone || '—' }}</td>
+              <td>{{ guest.email || '—' }}</td>
+              <td>
+                <ng-container *ngIf="isLinked(guest); else notLinked">
+                  {{ linkedParishionerLabel(guest) }}
+                </ng-container>
+                <ng-template #notLinked>
+                  <app-status-badge label="Not linked" tone="neutral"></app-status-badge>
+                </ng-template>
+              </td>
+              <td>{{ formatDate(guest.created_at) }}</td>
+              <td *ngIf="canManage" class="cf-table__actions-cell">
+                <app-action-bar
+                  [actions]="rowActions(guest)"
+                  size="sm"
+                  (actionClicked)="onRowAction($event, guest)"
+                ></app-action-bar>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+
+        <app-pagination
+          [currentPage]="currentPage"
+          [pageSize]="perPage"
+          [totalItems]="totalItems"
+          [pageSizeOptions]="perPageOptions"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        ></app-pagination>
+      </ng-container>
+
+      <ng-template #emptyGuests>
+        <app-cf-empty-state
+          icon="◇"
+          [title]="hasActiveFilters ? 'No guests match your filters' : 'No guest members'"
+          [description]="
+            hasActiveFilters
+              ? 'Try clearing search or filters.'
+              : 'Guest members are people not yet in a parish family record.'
+          "
+          [hasActions]="canManage && !hasActiveFilters"
+        >
+          <button
+            *ngIf="canManage && !hasActiveFilters"
+            type="button"
+            class="cf-btn cf-btn-primary"
+            (click)="openCreateModal()"
+          >
+            Add guest
+          </button>
+        </app-cf-empty-state>
+      </ng-template>
+    </ng-container>
+  </ng-container>
+
+  <app-guest-member-form-modal
+    *ngIf="showGuestFormModal"
+    [guestId]="editingGuestId"
+    (saved)="onGuestSaved()"
+    (cancel)="closeGuestFormModal()"
+  ></app-guest-member-form-modal>
+
+  <app-link-parishioner-modal
+    *ngIf="linkingGuest"
+    [guest]="linkingGuest"
+    (linked)="onGuestLinked()"
+    (cancel)="closeLinkModal()"
+  ></app-link-parishioner-modal>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</section>

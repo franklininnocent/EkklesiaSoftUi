@@ -1,0 +1,103 @@
+.parishioner-lookup {
+  display: grid;
+  gap: var(--cf-space-1);
+}
+
+.parishioner-lookup__label {
+  font-size: var(--cf-text-sm);
+  font-weight: 600;
+  color: var(--cf-slate-900);
+}
+
+.parishioner-lookup__control {
+  position: relative;
+}
+
+.parishioner-lookup__control input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: var(--cf-control-height);
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  padding: var(--cf-control-pad-y) var(--cf-control-pad-x);
+  background: var(--cf-panel-bg);
+  font-size: var(--cf-text-base);
+}
+
+.parishioner-lookup__selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--cf-space-2);
+}
+
+.parishioner-lookup__selected div {
+  display: grid;
+  gap: var(--cf-space-1);
+}
+
+.parishioner-lookup__selected span {
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}
+
+.parishioner-lookup__results {
+  position: absolute;
+  z-index: 20;
+  left: 0;
+  right: 0;
+  top: calc(100% + var(--cf-space-1));
+  margin: 0;
+  padding: var(--cf-space-1) 0;
+  list-style: none;
+  max-height: 16rem;
+  overflow: auto;
+  background: var(--cf-panel-bg);
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  box-shadow: var(--cf-shadow-lg);
+}
+
+.parishioner-lookup__results li {
+  padding: var(--cf-space-2) var(--cf-space-3);
+  cursor: pointer;
+}
+
+.parishioner-lookup__results li:hover:not(.parishioner-lookup__result--disabled) {
+  background: var(--cf-slate-50);
+}
+
+.parishioner-lookup__result--disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.parishioner-lookup__result-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-1) var(--cf-space-2);
+}
+
+.parishioner-lookup__result-main span,
+.parishioner-lookup__result-meta {
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}
+
+.parishioner-lookup__result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-1) var(--cf-space-2);
+  margin-top: var(--cf-space-1);
+}
+
+.parishioner-lookup__warn {
+  color: var(--cf-amber);
+}
+
+.parishioner-lookup__hint {
+  margin: var(--cf-space-1) 0 0;
+  font-size: var(--cf-text-sm);
+  color: var(--cf-muted);
+}

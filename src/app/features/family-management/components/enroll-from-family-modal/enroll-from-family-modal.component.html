@@ -1,0 +1,99 @@
+<div class="enroll-from-family-modal__overlay" (click)="onCancel()" role="presentation">
+  <div
+    class="enroll-from-family-modal__dialog"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="enroll-from-family-title"
+    (click)="$event.stopPropagation()"
+  >
+    <header class="enroll-from-family-modal__header">
+      <h2 id="enroll-from-family-title">Enroll in ministry</h2>
+      <button
+        type="button"
+        class="enroll-from-family-modal__close"
+        (click)="onCancel()"
+        aria-label="Close"
+      >
+        ✕
+      </button>
+    </header>
+
+    <form class="enroll-from-family-modal__body" [formGroup]="form" (ngSubmit)="onSubmit()">
+      <label class="enroll-from-family-modal__block">
+        <span>Organization <abbr title="required">*</abbr></span>
+        <select formControlName="organization_id">
+          <option value="">Select an organization…</option>
+          <option *ngFor="let org of organizations" [value]="org.id">
+            {{ org.name }}<ng-container *ngIf="org.code"> ({{ org.code }})</ng-container>
+          </option>
+        </select>
+        <small *ngIf="submitted && form.controls.organization_id.invalid">
+          Organization is required.
+        </small>
+      </label>
+
+      <p class="enroll-from-family-modal__muted" *ngIf="organizationsLoading">
+        Loading organizations…
+      </p>
+      <p class="enroll-from-family-modal__field-error" *ngIf="organizationsError" role="alert">
+        {{ organizationsError }}
+        <button
+          type="button"
+          class="cf-btn enroll-from-family-modal__retry"
+          (click)="retryLoadOrganizations()"
+        >
+          Try again
+        </button>
+      </p>
+      <p
+        class="enroll-from-family-modal__muted"
+        *ngIf="
+          organizationsLoaded &&
+          !organizationsLoading &&
+          !organizationsError &&
+          !organizations.length
+        "
+      >
+        No active organizations found.
+      </p>
+
+      <div class="enroll-from-family-modal__grid">
+        <label>
+          <span>Joined date <abbr title="required">*</abbr></span>
+          <input type="date" formControlName="joined_date" />
+          <small *ngIf="submitted && form.controls.joined_date.invalid">
+            Joined date is required.
+          </small>
+        </label>
+
+        <label>
+          <span>Member type</span>
+          <select formControlName="member_type">
+            <option value="regular">Regular</option>
+            <option value="honorary">Honorary</option>
+            <option value="life">Life</option>
+            <option value="junior">Junior</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="enroll-from-family-modal__block">
+        <span>Remarks</span>
+        <textarea formControlName="remarks" rows="2"></textarea>
+      </label>
+
+      <p class="enroll-from-family-modal__error" *ngIf="formError" role="alert">{{ formError }}</p>
+
+      <footer class="enroll-from-family-modal__actions">
+        <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+        <button
+          type="submit"
+          class="cf-btn cf-btn-primary"
+          [disabled]="saving || organizationsLoading"
+        >
+          {{ saving ? 'Enrolling…' : 'Enroll in ministry' }}
+        </button>
+      </footer>
+    </form>
+  </div>
+</div>

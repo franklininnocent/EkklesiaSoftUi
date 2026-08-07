@@ -1,0 +1,10 @@
+.terminate-leadership-modal__body {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.terminate-leadership-modal__summary {
+  margin: 0;
+  font-size: var(--cf-text-sm);
+  color: var(--cf-muted);
+}

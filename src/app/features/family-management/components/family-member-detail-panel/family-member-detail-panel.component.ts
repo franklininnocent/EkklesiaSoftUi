@@ -10,12 +10,13 @@ import { Family, FamilyMember } from '@core/models/family.model';
 import { SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
 import { getMemberDisplayName } from '../../utils/profile-completion.util';
 import { getRelationshipLabel } from '../../utils/family-hierarchy.util';
+import { FamilyAffiliationsPanelComponent } from '../family-affiliations-panel/family-affiliations-panel.component';
 import { FamilyHeadProfileBlockComponent } from '../family-head-profile-block/family-head-profile-block.component';
 
 @Component({
   selector: 'app-family-member-detail-panel',
   standalone: true,
-  imports: [CommonModule, FamilyHeadProfileBlockComponent],
+  imports: [CommonModule, FamilyHeadProfileBlockComponent, FamilyAffiliationsPanelComponent],
   templateUrl: './family-member-detail-panel.component.html',
   styleUrls: ['./family-member-detail-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

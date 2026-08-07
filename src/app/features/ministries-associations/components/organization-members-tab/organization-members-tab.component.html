@@ -1,0 +1,140 @@
+<div class="organization-members">
+  <div class="cf-attention-callout" *ngIf="isInactiveOrganization" role="status">
+    <p>This organization is inactive. Activate it to enroll new members.</p>
+  </div>
+
+  <app-list-toolbar
+    searchPlaceholder="Search name or family…"
+    [searchValue]="search"
+    [filterCount]="drawerFilterCount"
+    (searchChange)="onToolbarSearch($event)"
+    (filtersOpened)="showFilters = true"
+  >
+    <button
+      *ngIf="canEnroll"
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="openEnrollModal()"
+    >
+      Enroll member
+    </button>
+  </app-list-toolbar>
+
+  <div
+    class="cf-loading-block"
+    *ngIf="loading && !loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading members…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="7"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert" *ngIf="loadError" role="alert">
+    <p>{{ loadError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+  </div>
+
+  <ng-container *ngIf="loaded && !loadError">
+    <div class="organization-members__table-wrap" *ngIf="members.length; else emptyMembers">
+      <app-data-table [ariaBusy]="loading">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Family</th>
+            <th scope="col">Source</th>
+            <th scope="col">Type</th>
+            <th scope="col">Status</th>
+            <th scope="col">Joined</th>
+            <th scope="col">Interval</th>
+            <th scope="col" *ngIf="canShowActions" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let member of members">
+            <td><strong>{{ member.display_name }}</strong></td>
+            <td>{{ familyDisplay(member) }}</td>
+            <td>{{ sourceLabel(member.member_source) }}</td>
+            <td>{{ typeLabel(member.member_type) }}</td>
+            <td>
+              <app-status-badge [label]="statusLabel(member.status)" [tone]="statusTone(member.status)"></app-status-badge>
+            </td>
+            <td>{{ formatDate(member.joined_date) }}</td>
+            <td>{{ member.interval_label }}</td>
+            <td *ngIf="canShowActions" class="cf-table__actions-cell">
+              <app-action-bar
+                [actions]="rowActions(member)"
+                size="sm"
+                (actionClicked)="onRowAction($event, member)"
+              ></app-action-bar>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <app-pagination
+        [currentPage]="currentPage"
+        [pageSize]="perPage"
+        [totalItems]="totalItems"
+        [pageSizeOptions]="perPageOptions"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+    </div>
+
+    <ng-template #emptyMembers>
+      <app-cf-empty-state
+        icon="◇"
+        [title]="hasActiveFilters ? 'No members match your filters' : 'No members yet'"
+        [description]="
+          hasActiveFilters
+            ? 'Try clearing search or filters.'
+            : 'Enroll a parishioner or guest to get started.'
+        "
+        [hasActions]="canEnroll && !hasActiveFilters"
+      >
+        <button
+          *ngIf="canEnroll && !hasActiveFilters"
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="openEnrollModal()"
+        >
+          Enroll member
+        </button>
+      </app-cf-empty-state>
+    </ng-template>
+  </ng-container>
+
+  <app-enroll-member-modal
+    *ngIf="showEnrollModal"
+    [organizationId]="organizationId"
+    (enrolled)="onMemberEnrolled()"
+    (cancel)="closeEnrollModal()"
+  ></app-enroll-member-modal>
+
+  <app-membership-status-modal
+    *ngIf="statusMember"
+    [organizationId]="organizationId"
+    [membership]="statusMember"
+    (updated)="onMemberStatusUpdated()"
+    (cancel)="closeStatusModal()"
+  ></app-membership-status-modal>
+
+  <app-re-enroll-member-modal
+    *ngIf="reEnrollMember"
+    [organizationId]="organizationId"
+    [membership]="reEnrollMember"
+    (reenrolled)="onMemberReEnrolled()"
+    (cancel)="closeReEnrollModal()"
+  ></app-re-enroll-member-modal>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</div>

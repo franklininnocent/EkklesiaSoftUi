@@ -1,0 +1,47 @@
+.enroll-member-modal__body {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.enroll-member-modal__source-toggle {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-2) var(--cf-space-4);
+  align-items: center;
+}
+
+.enroll-member-modal__source-toggle legend {
+  padding: 0;
+  margin: 0 0 var(--cf-space-1);
+  font-size: var(--cf-text-sm);
+  font-weight: 600;
+  width: 100%;
+}
+
+.enroll-member-modal__source-toggle label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-1);
+  font-size: var(--cf-text-sm);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.enroll-member-modal__guest {
+  display: grid;
+  gap: var(--cf-space-2);
+}
+
+.enroll-member-modal__muted {
+  margin: 0;
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+  font-weight: 400;
+}
+
+.enroll-member-modal__retry {
+  margin-left: var(--cf-space-2);
+}

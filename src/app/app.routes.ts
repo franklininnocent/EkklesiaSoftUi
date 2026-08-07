@@ -3,6 +3,7 @@ import { authGuard } from '@core/guards/auth.guard';
 import { tenantGuard } from '@core/guards/tenant.guard';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
 import { donationsGuard } from '@core/guards/donations.guard';
+import { ministriesGuard } from '@core/guards/ministries.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { FamilyListComponent } from './features/family-management/components/family-list/family-list';
 import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
@@ -48,6 +49,12 @@ export const routes: Routes = [
         loadChildren: () => import('./features/tenants/tenants.routes').then(m => m.TENANTS_ROUTES)
       },
       {
+        path: 'support-center',
+        canActivate: [tenantAdminGuard],
+        loadChildren: () =>
+          import('./features/support-center/support-center.routes').then((m) => m.SUPPORT_CENTER_ROUTES),
+      },
+      {
         path: 'church-profile',
         loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
       },
@@ -76,6 +83,12 @@ export const routes: Routes = [
         path: 'donations',
         canActivate: [donationsGuard],
         loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
+      },
+      {
+        path: 'ministries',
+        canActivate: [ministriesGuard],
+        loadChildren: () =>
+          import('./features/ministries-associations/ministries.routes').then(m => m.MINISTRIES_ROUTES)
       }
     ]
   },
@@ -131,6 +144,12 @@ export const routes: Routes = [
         path: 'donations',
         canActivate: [donationsGuard],
         loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
+      },
+      {
+        path: 'ministries',
+        canActivate: [ministriesGuard],
+        loadChildren: () =>
+          import('./features/ministries-associations/ministries.routes').then(m => m.MINISTRIES_ROUTES)
       }
     ]
   },
