@@ -19,6 +19,11 @@
     rgba(var(--primary-rgb, 59, 130, 246), 0.03) 0%,
     transparent 50%
   );
+
+  &.cf-page {
+    gap: var(--cf-page-gap);
+    font-family: var(--cf-font-sans);
+  }
   
   @media (max-width: 768px) {
     padding: 1.25rem;
@@ -69,45 +74,6 @@
       gap: 1.5rem;
     }
     
-    .header-title-section {
-      flex: 1;
-      min-width: 0;
-      
-      .page-title {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-        font-size: 2.25rem;
-        font-weight: 700;
-        background: linear-gradient(135deg, var(--primary-color) 0%, rgba(var(--primary-rgb, 59, 130, 246), 0.8) 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        background-clip: text;
-        margin: 0 0 0.75rem 0;
-        letter-spacing: -0.02em;
-        line-height: 1.2;
-        
-        .title-icon {
-          font-size: 2.75rem;
-          filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1));
-          -webkit-text-fill-color: initial;
-          background: none;
-          -webkit-background-clip: initial;
-          background-clip: initial;
-          color: var(--primary-color);
-          flex-shrink: 0;
-        }
-      }
-      
-      .page-subtitle {
-        color: var(--text-secondary);
-        font-size: 1.063rem;
-        margin: 0;
-        line-height: 1.6;
-        font-weight: 400;
-      }
-    }
-    
     // Tab navigation styling within header
     .tab-navigation {
       align-self: flex-end;
@@ -122,20 +88,6 @@
     .header-content {
       gap: 1.25rem;
       flex-direction: column;
-      
-      .header-title-section {
-        .page-title {
-          font-size: 1.75rem;
-          
-          .title-icon {
-            font-size: 2.25rem;
-          }
-        }
-        
-        .page-subtitle {
-          font-size: 0.938rem;
-        }
-      }
       
       .tab-navigation {
         width: 100%;

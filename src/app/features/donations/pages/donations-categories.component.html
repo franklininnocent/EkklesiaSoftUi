@@ -1,17 +1,15 @@
 <section class="categories-page cf-page cf-split-page">
-  <header class="cf-split-page__hero cf-hero">
-    <div class="cf-split-page__hero-copy">
-      <h1>Offering Categories</h1>
-      <p>Define gift types for voluntary collections — create and manage categories side by side.</p>
-    </div>
-    <div class="cf-split-page__hero-actions" *ngIf="canManage && categoriesLoaded && !showForm">
+  <app-page-header
+    title="Offering Categories"
+    subtitle="Define gift types for voluntary collections — create and manage categories side by side.">
+    <ng-container *ngIf="canManage && categoriesLoaded && !showForm">
       <a routerLink="/donations/register" class="cf-btn">Today's Register</a>
       <button type="button" class="cf-btn" *ngIf="!categories.length" (click)="seedDefaults()" [disabled]="seeding">
         {{ seeding ? 'Adding defaults…' : 'Add defaults' }}
       </button>
       <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Add category</button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!categoriesLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="cf-split-loading__label">Loading offering categories…</p>

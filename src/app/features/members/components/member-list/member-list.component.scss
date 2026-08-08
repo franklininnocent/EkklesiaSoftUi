@@ -4,26 +4,25 @@
 
 .members-list-container {
   @extend %standard-list-container;
+
+  &.cf-page {
+    padding: var(--cf-page-pad);
+    gap: var(--cf-page-gap);
+    font-family: var(--cf-font-sans);
+    min-height: 0;
+  }
 }
 
-.list-header {
-  @extend %standard-list-header;
-}
+/* Toolbar projected into app-page-header actions */
+.members-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-space-2, 0.5rem);
 
-.header-left {
-  @extend %standard-header-left;
-}
-
-.list-title {
-  @extend %standard-list-title;
-}
-
-.list-subtitle {
-  @extend %standard-list-subtitle;
-}
-
-.header-right {
-  @extend %standard-header-right;
+  .search-box-header {
+    min-width: 200px;
+  }
 }
 
 // Quick Search Box in Header
@@ -726,22 +725,19 @@ app-advanced-search-panel {
     padding: 1rem;
   }
 
-  .list-header {
+  .members-page-header-actions {
     flex-direction: column;
     align-items: stretch;
+    width: 100%;
 
-    .header-right {
+    .search-box-header {
       width: 100%;
+      max-width: 100%;
+    }
 
-      .search-box-header {
-        width: 100%;
-        max-width: 100%;
-      }
-
-      .btn {
-        width: 100%;
-        justify-content: center;
-      }
+    .btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 

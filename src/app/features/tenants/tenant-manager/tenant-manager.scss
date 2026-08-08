@@ -5,42 +5,11 @@
   max-width: 1400px;
   margin: 0 auto;
   width: 100%;
-}
 
-// Header Section
-.tenant-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1.5rem; /* Consistent spacing from breadcrumb for better visual hierarchy */
-  margin-bottom: var(--spacing-md);
-  gap: var(--spacing-md);
-  flex-wrap: wrap;
-
-  h1 {
-    font-size: var(--font-size-3xl);
-    font-weight: var(--font-weight-semibold);
-    margin-bottom: 0.375rem;
-    line-height: var(--line-height-tight);
-    color: var(--text-primary);
-    word-wrap: break-word;
-    overflow-wrap: break-word;
+  &.cf-page {
+    padding: var(--cf-page-pad);
+    gap: var(--cf-page-gap);
   }
-
-  p {
-    color: var(--text-secondary);
-    font-size: var(--font-size-sm);
-    line-height: var(--line-height-normal);
-    margin: 0;
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-  }
-}
-
-.header-content {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
 }
 
 // Create Button
@@ -537,26 +506,6 @@
 
 /* Mobile */
 @media (max-width: 768px) {
-  .tenant-header {
-    flex-direction: column;
-    align-items: flex-start;
-    margin-top: 1.25rem; /* Consistent mobile spacing from breadcrumb */
-    margin-bottom: var(--spacing-lg);
-    gap: var(--spacing-md);
-
-    h1 {
-      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
-      margin-bottom: 0.375rem;
-    }
-
-    p {
-      font-size: 0.875rem;
-    }
-  }
-
-  .header-content {
-    width: 100%;
-  }
 
   .btn-create {
     width: 48px;
@@ -622,17 +571,6 @@
 
 /* Small mobile */
 @media (max-width: 480px) {
-  .tenant-header {
-    margin-bottom: var(--spacing-md);
-    
-    h1 {
-      font-size: 1.75rem; /* Standardized across all pages and breakpoints */
-    }
-
-    p {
-      font-size: 0.813rem;
-    }
-  }
 
   .btn-create {
     width: 44px;
@@ -731,15 +669,6 @@
     max-width: 1600px;
   }
 
-  .tenant-header h1 {
-    font-size: 1.75rem; /* Standardized across all pages */
-    font-weight: 600;
-  }
-
-  .tenant-header p {
-    font-size: 1.0625rem;
-  }
-
   .tenants-grid {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr));
   }
@@ -777,15 +706,6 @@
 @media (min-width: 1920px) {
   .tenant-manager {
     max-width: 1800px;
-  }
-
-  .tenant-header h1 {
-    font-size: 1.75rem; /* Standardized across all pages and breakpoints */
-    font-weight: 600;
-  }
-
-  .tenant-header p {
-    font-size: 1.125rem;
   }
 
   .tenants-grid {

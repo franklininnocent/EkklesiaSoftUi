@@ -1,16 +1,14 @@
 <section class="recurring-page cf-page cf-split-page">
-  <header class="cf-split-page__hero cf-hero">
-    <div class="cf-split-page__hero-copy">
-      <h1>Recurring Gifts</h1>
-      <p>Scheduled voluntary giving — create schedules and manage collections side by side.</p>
-    </div>
-    <div class="cf-split-page__hero-actions" *ngIf="canCollect && schedulesLoaded && !showForm">
+  <app-page-header
+    title="Recurring Gifts"
+    subtitle="Scheduled voluntary giving — create schedules and manage collections side by side.">
+    <ng-container *ngIf="canCollect && schedulesLoaded && !showForm">
       <button type="button" class="cf-btn cf-btn-primary" (click)="runDue()" [disabled]="running">
         {{ running ? 'Running…' : 'Run due schedules' }}
       </button>
       <button type="button" class="cf-btn" (click)="openCreateForm()">New schedule</button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!schedulesLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="cf-split-loading__label">Loading recurring schedules…</p>

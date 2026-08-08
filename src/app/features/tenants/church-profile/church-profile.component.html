@@ -1,15 +1,13 @@
-<div class="church-management-container" [class.church-management-container--list]="activeTab !== 'profile'">
-  <!-- Page Header -->
+<div class="church-management-container cf-page" [class.church-management-container--list]="activeTab !== 'profile'">
+  <app-page-header
+    *ngIf="activeTab === 'profile'"
+    title="Church Management"
+    subtitle="Manage your church profile, leadership, statistics, and social media">
+  </app-page-header>
+
+  <!-- Page Header / tabs -->
   <div class="page-header" [class.page-header--compact]="activeTab !== 'profile'">
     <div class="header-content" [class.header-content--tabs-only]="activeTab !== 'profile'">
-      <div class="header-title-section" *ngIf="activeTab === 'profile'">
-        <h1 class="page-title">
-          <span class="title-icon">⛪</span>
-          Church Management
-        </h1>
-        <p class="page-subtitle">Manage your church profile, leadership, statistics, and social media</p>
-      </div>
-      
       <!-- Tab Navigation -->
       <div class="tab-navigation" *ngIf="!loading && churchProfile">
       <button 

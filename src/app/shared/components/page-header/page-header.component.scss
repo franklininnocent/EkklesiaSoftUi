@@ -17,13 +17,19 @@
 .cf-page-header__back {
   display: inline-block;
   margin-bottom: var(--cf-space-1);
-  color: var(--cf-muted);
-  font-size: var(--cf-text-sm);
+  color: var(--cf-color-text-muted, var(--cf-muted));
+  font-size: var(--cf-text-meta, var(--cf-text-sm));
   line-height: 1.3;
   text-decoration: none;
 
   &:hover {
-    color: var(--cf-primary);
+    color: var(--cf-color-primary, var(--cf-primary));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-primary);
+    outline-offset: 2px;
+    border-radius: var(--cf-radius-sm);
   }
 }
 
@@ -34,9 +40,10 @@
   gap: var(--cf-space-2);
 }
 
+/* Size/weight/color come from global .cf-hero h1 / --cf-text-page-title */
 .cf-page-header__title-row h1 {
   margin: 0;
-  line-height: 1.25;
+  line-height: var(--cf-leading-page-title);
 }
 
 /* Collapse hero h1 default bottom margin — subtitle carries the gap. */
@@ -46,17 +53,17 @@
 
 .cf-page-header__title-row h2 {
   margin: 0;
-  font-size: var(--cf-text-lg);
+  font-size: var(--cf-text-section-title, var(--cf-text-lg));
   font-weight: 600;
   line-height: 1.3;
-  color: var(--cf-slate-900);
+  color: var(--cf-color-text-primary, var(--cf-slate-900));
 }
 
 .cf-page-header__identity > p {
   margin: var(--cf-space-1) 0 0;
-  font-size: var(--cf-text-sm);
+  font-size: var(--cf-text-meta, var(--cf-text-sm));
   line-height: 1.35;
-  color: var(--cf-muted);
+  color: var(--cf-color-text-muted, var(--cf-muted));
 }
 
 .cf-page-header__actions {

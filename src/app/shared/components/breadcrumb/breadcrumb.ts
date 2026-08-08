@@ -82,9 +82,14 @@ export class BreadcrumbComponent implements OnInit {
         url += `/${routeURL}`;
 
         // Prefer resolver-provided label (e.g., family_code)
-        let label = (child.snapshot.data && child.snapshot.data['breadcrumbLabel'])
-          ? child.snapshot.data['breadcrumbLabel']
+        const resolvedLabel = child.snapshot.data && child.snapshot.data['breadcrumbLabel'];
+        let label = resolvedLabel
+          ? resolvedLabel
           : this.getRouteLabel(routeURL);
+
+        // #region agent log
+        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1da6e'},body:JSON.stringify({sessionId:'c1da6e',runId:'post-fix',hypothesisId:'A',location:'breadcrumb.ts:buildBreadcrumbs',message:'breadcrumb label resolution',data:{routeURL,url,hasResolvedLabel:!!resolvedLabel,resolvedLabel:typeof resolvedLabel==='string'?resolvedLabel.slice(0,64):null,finalLabel:typeof label==='string'?String(label).slice(0,64):label,looksLikeUuid:/^[0-9a-f-]{20,}$/i.test(routeURL),finalLooksLikeUuid:/^[0-9a-f-]{20,}$/i.test(String(label||'').replace(/\s/g,'')),dataKeys:Object.keys(child.snapshot.data||{})},timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
         
         // Skip auth routes from breadcrumbs
         if (routeURL === 'auth' || this.isAuthRoute(url)) {
@@ -96,6 +101,12 @@ export class BreadcrumbComponent implements OnInit {
         if (url.startsWith('/families/') && !breadcrumbs.find(b => b.url === '/families')) {
           breadcrumbs.push({ label: this.getRouteLabel('families'), url: '/families' });
         }
+
+        // #region agent log
+        if (url.startsWith('/ministries/')) {
+          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'c1da6e'},body:JSON.stringify({sessionId:'c1da6e',runId:'post-fix',hypothesisId:'B',location:'breadcrumb.ts:ministries-branch',message:'ministries crumb path',data:{url,label:typeof label==='string'?label.slice(0,64):label,hasMinistriesParent:!!breadcrumbs.find(b=>b.url==='/ministries'),crumbCountBeforePush:breadcrumbs.length,hasResolvedLabel:!!resolvedLabel},timestamp:Date.now()})}).catch(()=>{});
+        }
+        // #endregion
 
         if (!breadcrumbs.find(b => b.url === url)) {
           breadcrumbs.push({

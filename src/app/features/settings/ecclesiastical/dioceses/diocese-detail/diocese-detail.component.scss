@@ -1,46 +1,6 @@
-// Breadcrumb Navigation
-.breadcrumb {
-  padding: 1rem 0;
-  margin-bottom: 1.5rem;
-}
-
-.breadcrumb-list {
-  display: flex;
-  flex-wrap: wrap;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.breadcrumb-item {
-  display: flex;
-  align-items: center;
-  font-size: 0.875rem;
-
-  &:not(:last-child)::after {
-    content: '›';
-    margin-left: 0.5rem;
-    color: #9ca3af;
-    font-weight: 600;
-  }
-
-  &.active {
-    color: #374151;
-    font-weight: 500;
-  }
-}
-
-.breadcrumb-link {
-  color: #667eea;
-  text-decoration: none;
-  transition: color 0.2s;
-
-  &:hover {
-    color: #764ba2;
-    text-decoration: underline;
-  }
+.diocese-detail-page {
+  display: grid;
+  gap: var(--cf-page-gap);
 }
 
 // Loading Container
@@ -48,75 +8,10 @@
   padding: 2rem;
 }
 
-// Detail Header
-.detail-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  padding: 2rem;
-  border-radius: 12px;
-  margin-bottom: 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 1.5rem;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-}
+// Detail Grid / Cards continue below
 
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem;
-  flex: 1;
-}
 
-.header-icon {
-  font-size: 3.5rem;
-  line-height: 1;
-  opacity: 0.9;
-}
-
-.header-text {
-  flex: 1;
-}
-
-.detail-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin: 0 0 0.75rem 0;
-  line-height: 1.2;
-}
-
-.header-badges {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.type-badge {
-  display: inline-block;
-  padding: 0.375rem 0.875rem;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 20px;
-  font-size: 0.813rem;
-  font-weight: 600;
-  backdrop-filter: blur(10px);
-
-  &.archdiocese {
-    background: rgba(255, 215, 0, 0.3);
-  }
-}
-
-.code-badge {
-  display: inline-block;
-  padding: 0.375rem 0.875rem;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 20px;
-  font-size: 0.75rem;
-  font-weight: 500;
-  font-family: monospace;
-  letter-spacing: 0.5px;
-}
-
+// Status badges used in body content
 .badge-success,
 .badge-inactive {
   display: inline-block;
@@ -127,19 +22,13 @@
 }
 
 .badge-success {
-  background: rgba(16, 185, 129, 0.2);
-  color: #ffffff;
+  background: rgba(16, 185, 129, 0.15);
+  color: #065f46;
 }
 
 .badge-inactive {
-  background: rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-  flex-shrink: 0;
+  background: rgba(107, 114, 128, 0.15);
+  color: #374151;
 }
 
 // Buttons
@@ -162,23 +51,23 @@
 }
 
 .btn-secondary {
-  background: rgba(255, 255, 255, 0.9);
-  color: #667eea;
+  background: #f3f4f6;
+  color: #374151;
 
   &:hover:not(:disabled) {
-    background: #ffffff;
+    background: #e5e7eb;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
 }
 
 .btn-primary {
-  background: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: none;
 
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.3);
+    filter: brightness(1.05);
     transform: translateY(-2px);
   }
 }
@@ -406,10 +295,6 @@
 
   .header-icon {
     font-size: 2.5rem;
-  }
-
-  .detail-title {
-    font-size: 1.5rem;
   }
 
   .header-actions {

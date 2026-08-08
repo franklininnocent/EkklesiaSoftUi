@@ -8,13 +8,14 @@ import { ToastService } from '@core/services/toast.service';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { DonationCategory } from '../models/donation.model';
 
 @Component({
   selector: 'app-donations-categories',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, EditIconButtonComponent, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, EditIconButtonComponent, LoadingSkeletonComponent, PageHeaderComponent],
   templateUrl: './donations-categories.component.html',
   styleUrl: './donations-categories.component.scss'
 })

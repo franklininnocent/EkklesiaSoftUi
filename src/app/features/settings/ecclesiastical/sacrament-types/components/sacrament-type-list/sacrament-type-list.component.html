@@ -1,17 +1,14 @@
-<div class="sacrament-type-list-container">
-  <!-- Header -->
-  <div class="list-header">
-    <div class="header-content">
-      <h2 class="page-title">Sacrament Types</h2>
-      <p class="page-subtitle">Manage sacrament type master data</p>
-    </div>
-    <div class="header-actions">
+<div class="sacrament-type-list-container cf-page">
+  <app-page-header
+    title="Sacrament Types"
+    subtitle="Manage sacrament type master data">
+    <div class="sacrament-type-page-header-actions">
       <button class="btn btn-primary" (click)="onCreate()">
         <span class="btn-icon">+</span>
         Create Sacrament Type
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Filters -->
   <div class="filters-section">

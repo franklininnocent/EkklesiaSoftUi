@@ -1,11 +1,8 @@
-<div class="diocese-list-container">
-  <!-- Header -->
-  <div class="list-header">
-    <div class="header-left">
-      <h2 class="list-title">Dioceses & Archdioceses</h2>
-      <p class="list-subtitle">Manage ecclesiastical territories and hierarchies</p>
-    </div>
-    <div class="header-right">
+<div class="diocese-list-container cf-page">
+  <app-page-header
+    title="Dioceses & Archdioceses"
+    subtitle="Manage ecclesiastical territories and hierarchies">
+    <div class="diocese-page-header-actions">
       <div class="search-box-header">
         <span class="search-icon">🔍</span>
         <input 
@@ -33,7 +30,7 @@
         Add Diocese
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Active Filter Chips - Inline Compact Design -->
   <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">

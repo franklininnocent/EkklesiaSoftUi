@@ -6,11 +6,12 @@
 
 .organization-form-fields {
   display: grid;
-  gap: var(--cf-space-3);
+  gap: var(--cf-space-4);
+  min-width: 0;
 }
 
 .organization-form-fields__section + .organization-form-fields__section {
-  padding-top: var(--cf-space-3);
+  padding-top: var(--cf-space-4);
   border-top: 1px solid var(--cf-panel-border);
 }
 
@@ -20,6 +21,7 @@
 
 .organization-form-fields__stack.cf-form-grid {
   grid-template-columns: 1fr;
+  gap: var(--cf-space-3);
 }
 
 .organization-form-fields__settings {
@@ -36,6 +38,15 @@
   .organization-form-fields__settings {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
+  .organization-form-fields__stack.cf-form-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  /* Description spans full width; Vision/Mission/Objectives share a row. */
+  .organization-form-fields__stack app-form-field:first-of-type .cf-form-field {
+    grid-column: 1 / -1;
+  }
 }
 
 @media (min-width: $cf-bp-lg) {
@@ -45,32 +56,21 @@
     row-gap: var(--cf-space-3);
     align-items: start;
     grid-template-areas:
-      'basic about'
       'basic contact'
-      'settings contact';
+      'settings contact'
+      'about about';
 
     .organization-form-fields__section + .organization-form-fields__section {
       padding-top: 0;
       border-top: 0;
     }
 
-    /* Left column is already half-width — stack fields 1-per-row. */
-    .organization-form-fields__section--basic .organization-form-fields__grid {
-      grid-template-columns: 1fr;
-    }
-
     .organization-form-fields__section--basic {
       grid-area: basic;
     }
 
-    .organization-form-fields__section--about {
-      grid-area: about;
-    }
-
     .organization-form-fields__section--contact {
       grid-area: contact;
-      padding-top: var(--cf-space-3);
-      border-top: 1px solid var(--cf-panel-border);
     }
 
     .organization-form-fields__section--settings {
@@ -79,7 +79,12 @@
       border-top: 1px solid var(--cf-panel-border);
     }
 
-    /* Two switches on one row inside the left column. */
+    .organization-form-fields__section--about {
+      grid-area: about;
+      padding-top: var(--cf-space-3);
+      border-top: 1px solid var(--cf-panel-border);
+    }
+
     .organization-form-fields__section--settings .organization-form-fields__settings {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }

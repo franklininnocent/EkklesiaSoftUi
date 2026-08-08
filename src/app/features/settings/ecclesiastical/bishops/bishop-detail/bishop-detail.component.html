@@ -1,20 +1,28 @@
-<!-- Breadcrumb Navigation -->
-<nav class="breadcrumb" aria-label="Breadcrumb">
-  <ol class="breadcrumb-list">
-    <li class="breadcrumb-item">
-      <a [routerLink]="['/settings']" class="breadcrumb-link">Settings</a>
-    </li>
-    <li class="breadcrumb-item">
-      <a [routerLink]="['/settings/ecclesiastical']" class="breadcrumb-link">Ecclesiastical Data</a>
-    </li>
-    <li class="breadcrumb-item">
-      <a [routerLink]="['/settings/ecclesiastical/bishops']" class="breadcrumb-link">Bishops</a>
-    </li>
-    <li class="breadcrumb-item active" aria-current="page">
-      {{ loading ? 'Loading...' : (bishop?.full_name || 'Detail') }}
-    </li>
-  </ol>
-</nav>
+<div class="bishop-detail-page cf-page">
+  <app-page-header
+    [title]="bishop?.full_name || (loading ? 'Loading...' : 'Detail')"
+    [subtitle]="bishop?.ecclesiastical_title?.name"
+    backLink="/settings/ecclesiastical/bishops"
+    backLabel="Bishops"
+    [statusLabel]="bishop ? (bishop.status || 'Unknown') : undefined"
+    [statusTone]="bishopStatusTone">
+    <button
+      *ngIf="bishop"
+      type="button"
+      class="btn btn-primary hover-lift transition-all focus-ring"
+      (click)="onEdit()"
+      aria-label="Edit bishop">
+      ✏️ Edit
+    </button>
+    <button
+      *ngIf="bishop"
+      type="button"
+      class="btn btn-danger hover-lift transition-all focus-ring"
+      (click)="onDelete()"
+      aria-label="Delete bishop">
+      🗑️ Delete
+    </button>
+  </app-page-header>
 
 <!-- Loading State -->
 <div *ngIf="loading" class="loading-container">
@@ -23,62 +31,25 @@
 
 <!-- Bishop Detail Content -->
 <div *ngIf="!loading && bishop" class="bishop-detail animate-fade-in-up">
-  
-  <!-- Header Section -->
-  <div class="detail-header">
-    <div class="header-photo-section">
-      <div class="photo-container">
-        <img 
-          *ngIf="bishop.photo_url" 
-          [src]="bishop.photo_url" 
-          [alt]="bishop.full_name"
-          class="bishop-photo">
-        <div *ngIf="!bishop.photo_url" class="bishop-photo-placeholder">
-          {{ getInitials(bishop.full_name) }}
-        </div>
+
+  <div class="bishop-identity">
+    <div class="photo-container">
+      <img
+        *ngIf="bishop.photo_url"
+        [src]="bishop.photo_url"
+        [alt]="bishop.full_name"
+        class="bishop-photo">
+      <div *ngIf="!bishop.photo_url" class="bishop-photo-placeholder">
+        {{ getInitials(bishop.full_name) }}
       </div>
     </div>
-
-    <div class="header-info">
-      <h1 class="detail-title">{{ bishop.full_name }}</h1>
-      <p class="bishop-title" *ngIf="bishop.ecclesiastical_title">
-        {{ bishop.ecclesiastical_title.name }}
-      </p>
-      <div class="header-badges">
-        <span [class]="getStatusBadgeClass(bishop.status)">
-          {{ bishop.status || 'Unknown' }}
-        </span>
-        <span class="info-badge" *ngIf="bishop.nationality">
-          🌍 {{ bishop.nationality }}
-        </span>
-        <span class="info-badge" *ngIf="bishop.religious_order">
-          {{ bishop.religious_order.abbreviation || bishop.religious_order.name }}
-        </span>
-      </div>
-    </div>
-
-    <div class="header-actions">
-      <button 
-        type="button" 
-        class="btn btn-secondary hover-lift transition-all focus-ring"
-        (click)="goBack()"
-        aria-label="Go back">
-        ← Back
-      </button>
-      <button 
-        type="button" 
-        class="btn btn-primary hover-lift transition-all focus-ring"
-        (click)="onEdit()"
-        aria-label="Edit bishop">
-        ✏️ Edit
-      </button>
-      <button 
-        type="button" 
-        class="btn btn-danger hover-lift transition-all focus-ring"
-        (click)="onDelete()"
-        aria-label="Delete bishop">
-        🗑️ Delete
-      </button>
+    <div class="bishop-identity-meta">
+      <span class="info-badge" *ngIf="bishop.nationality">
+        🌍 {{ bishop.nationality }}
+      </span>
+      <span class="info-badge" *ngIf="bishop.religious_order">
+        {{ bishop.religious_order.abbreviation || bishop.religious_order.name }}
+      </span>
     </div>
   </div>
 
@@ -277,6 +248,7 @@
       </div>
     </div>
   </div>
+</div>
 </div>
 
 <!-- Delete Confirmation Modal -->

@@ -1,11 +1,8 @@
-<div class="bishop-list-container">
-  <!-- Header -->
-  <div class="list-header">
-    <div class="header-left">
-      <h2 class="list-title">Bishops & Archbishops</h2>
-      <p class="list-subtitle">Manage church leadership and hierarchy</p>
-    </div>
-    <div class="header-right">
+<div class="bishop-list-container cf-page">
+  <app-page-header
+    title="Bishops & Archbishops"
+    subtitle="Manage church leadership and hierarchy">
+    <div class="bishop-page-header-actions">
       <div class="search-box-header">
         <span class="search-icon">🔍</span>
         <input 
@@ -33,7 +30,7 @@
         Add Bishop
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Active Filter Chips - Inline Compact Design -->
   <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">

@@ -1,0 +1,146 @@
+<div class="my-subscription cf-page">
+  <app-page-header
+    title="My Subscription"
+    subtitle="Your church plan, access status, and included features"
+    backLink="/settings"
+    backLabel="Settings">
+  </app-page-header>
+
+  <!-- Loading -->
+  <div
+    *ngIf="loading"
+    class="my-sub-loading"
+    role="status"
+    aria-live="polite"
+    aria-busy="true">
+    <p class="cf-loading-block__label">Loading subscription…</p>
+    <app-loading-skeleton type="card" [rows]="6"></app-loading-skeleton>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="!loading && error" class="cf-inline-alert my-sub-alert my-sub-alert--error" role="alert">
+    <div class="my-sub-alert__copy">
+      <strong>Could not load subscription</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <!-- Empty -->
+  <app-cf-empty-state
+    *ngIf="!loading && !error && !summary"
+    title="No subscription details"
+    description="Subscription information is not available for this church yet. Contact your administrator if you need help."
+    icon="◎"
+    [hasActions]="false">
+  </app-cf-empty-state>
+
+  <ng-container *ngIf="!loading && !error && summary as s">
+    <!-- Priority 1: Access / status notice -->
+    <div
+      *ngIf="showAccessNotice(s)"
+      class="my-sub-notice"
+      role="status"
+      aria-live="polite"
+      [attr.data-tone]="s.status">
+      <div class="my-sub-notice__copy">
+        <strong>{{ accessHeadline(s) }}</strong>
+        <span>{{ accessDetail(s) }}</span>
+      </div>
+      <app-status-badge [label]="statusLabel(s.status)" [tone]="statusTone(s.status)"></app-status-badge>
+    </div>
+
+    <!-- Priority 2: Current subscription overview -->
+    <section class="my-sub-panel" aria-labelledby="my-sub-overview-title">
+      <header class="my-sub-panel__header">
+        <div>
+          <h2 id="my-sub-overview-title">Current subscription</h2>
+          <p>Plan and status for this church</p>
+        </div>
+      </header>
+
+      <dl class="my-sub-facts">
+        <div class="my-sub-fact">
+          <dt>Plan</dt>
+          <dd>{{ s.plan_name }}</dd>
+        </div>
+        <div class="my-sub-fact">
+          <dt>Status</dt>
+          <dd>
+            <app-status-badge [label]="statusLabel(s.status)" [tone]="statusTone(s.status)"></app-status-badge>
+          </dd>
+        </div>
+        <div class="my-sub-fact" *ngIf="showTrialField(s)">
+          <dt>Trial ends</dt>
+          <dd>{{ formatDate(s.trial_ends_at) }}</dd>
+        </div>
+        <div class="my-sub-fact">
+          <dt>Subscription ends</dt>
+          <dd>{{ subscriptionEndsLabel(s) }}</dd>
+        </div>
+        <div
+          class="my-sub-fact"
+          *ngIf="s.grace_ends_at && (s.status === 'GRACE_PERIOD' || s.status === 'EXPIRED')">
+          <dt>Grace ends</dt>
+          <dd>{{ formatDate(s.grace_ends_at) }}</dd>
+        </div>
+        <div class="my-sub-fact">
+          <dt>Feature access</dt>
+          <dd>
+            <app-status-badge
+              [label]="s.allows_gated_access ? 'Available' : 'Unavailable'"
+              [tone]="s.allows_gated_access ? 'success' : 'critical'">
+            </app-status-badge>
+          </dd>
+        </div>
+      </dl>
+
+      <p class="my-sub-access-note" *ngIf="!showAccessNotice(s)">{{ accessDetail(s) }}</p>
+    </section>
+
+    <!-- Priority 3: Plan limits -->
+    <section class="my-sub-panel" aria-labelledby="my-sub-plan-title">
+      <header class="my-sub-panel__header">
+        <div>
+          <h2 id="my-sub-plan-title">Plan details</h2>
+          <p>Limits included with {{ s.plan_name }}</p>
+        </div>
+      </header>
+
+      <dl class="my-sub-facts my-sub-facts--compact">
+        <div class="my-sub-fact">
+          <dt>User limit</dt>
+          <dd>{{ formatUsers(s.max_users) }}</dd>
+        </div>
+        <div class="my-sub-fact">
+          <dt>Storage limit</dt>
+          <dd>{{ formatStorage(s.max_storage_mb) }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- Priority 4: Features -->
+    <section class="my-sub-panel" aria-labelledby="my-sub-features-title" *ngIf="s.features?.length">
+      <header class="my-sub-panel__header">
+        <div>
+          <h2 id="my-sub-features-title">Included features</h2>
+          <p>What this plan covers for your church</p>
+        </div>
+      </header>
+      <ul class="my-sub-features">
+        <li *ngFor="let feature of s.features">{{ featureLabel(feature) }}</li>
+      </ul>
+    </section>
+
+    <!-- Secondary: honest scope note (no payment UX) -->
+    <aside class="my-sub-footnote" aria-label="About subscription management">
+      <p>
+        This page shows your church's subscription and access status.
+        Plan changes and renewals are managed by EkklesiaSoft administrators — payment and billing are not handled here.
+      </p>
+      <p *ngIf="s.grace_period_days != null">
+        Grace period is currently {{ s.grace_period_days }} day<span *ngIf="s.grace_period_days !== 1">s</span> after the end date.
+      </p>
+    </aside>
+  </ng-container>
+</div>

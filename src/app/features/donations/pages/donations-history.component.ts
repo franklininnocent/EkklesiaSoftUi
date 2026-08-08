@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import {
   ACTIVITY_FILTER_OPTIONS,
@@ -25,7 +26,7 @@ import {
 @Component({
   selector: 'app-donations-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, RouterModule, LoadingSkeletonComponent, PageHeaderComponent],
   templateUrl: './donations-history.component.html',
   styleUrl: './donations-history.component.scss'
 })

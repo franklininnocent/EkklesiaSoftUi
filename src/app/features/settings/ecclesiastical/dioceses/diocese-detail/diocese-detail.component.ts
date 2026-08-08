@@ -7,6 +7,7 @@ import { ToastService } from '@core/services';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-diocese-detail',
@@ -16,7 +17,8 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
     RouterModule,
     LoadingSkeletonComponent,
     EmptyStateComponent,
-    ConfirmationModalComponent
+    ConfirmationModalComponent,
+    PageHeaderComponent
   ],
   templateUrl: './diocese-detail.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -28,6 +30,12 @@ export class DioceseDetailComponent implements OnInit {
   loading = true;
   loadingBishops = true;
   showDeleteModal = false;
+
+  get dioceseHeaderSubtitle(): string | undefined {
+    if (!this.diocese) return undefined;
+    const type = this.getTypeBadge(this.diocese.is_archdiocese);
+    return this.diocese.code ? `${type} · ${this.diocese.code}` : type;
+  }
 
   constructor(
     private route: ActivatedRoute,

@@ -7,11 +7,12 @@ import { takeUntil } from 'rxjs/operators';
 import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PageHeaderComponent],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

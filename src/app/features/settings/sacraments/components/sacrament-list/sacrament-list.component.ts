@@ -17,6 +17,7 @@ import { handleApiError } from '../../utils/error-handler.util';
 import { SacramentFormModalComponent } from '../sacrament-form-modal/sacrament-form-modal.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent, ButtonComponent } from '@shared/components';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 @Component({
@@ -28,7 +29,8 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     SacramentFormModalComponent,
     AdvancedSearchPanelComponent,
     PaginationComponent,
-    ButtonComponent
+    ButtonComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './sacrament-list.component.html',
   styleUrl: './sacrament-list.component.scss',

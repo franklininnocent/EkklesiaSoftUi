@@ -11,6 +11,7 @@ import { User } from '@core/models/user.model';
 import { CardComponent, PaginationComponent, FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { RoleFormModalComponent } from './role-form-modal/role-form-modal.component';
 import { AssignPermissionsModalComponent } from './assign-permissions-modal/assign-permissions-modal.component';
 import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/pope-details-management.component';
@@ -20,7 +21,7 @@ import { Subject } from 'rxjs';
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent],
+  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

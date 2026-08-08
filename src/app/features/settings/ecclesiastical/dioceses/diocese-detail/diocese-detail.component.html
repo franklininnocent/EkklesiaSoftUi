@@ -1,20 +1,28 @@
-<!-- Breadcrumb Navigation -->
-<nav class="breadcrumb" aria-label="Breadcrumb">
-  <ol class="breadcrumb-list">
-    <li class="breadcrumb-item">
-      <a [routerLink]="['/settings']" class="breadcrumb-link">Settings</a>
-    </li>
-    <li class="breadcrumb-item">
-      <a [routerLink]="['/settings/ecclesiastical']" class="breadcrumb-link">Ecclesiastical Data</a>
-    </li>
-    <li class="breadcrumb-item">
-      <a [routerLink]="['/settings/ecclesiastical/dioceses']" class="breadcrumb-link">Dioceses</a>
-    </li>
-    <li class="breadcrumb-item active" aria-current="page">
-      {{ loading ? 'Loading...' : (diocese?.name || 'Detail') }}
-    </li>
-  </ol>
-</nav>
+<div class="diocese-detail-page cf-page">
+  <app-page-header
+    [title]="diocese?.name || (loading ? 'Loading...' : 'Detail')"
+    [subtitle]="dioceseHeaderSubtitle"
+    backLink="/settings/ecclesiastical/dioceses"
+    backLabel="Dioceses"
+    [statusLabel]="diocese ? (diocese.active ? 'Active' : 'Inactive') : undefined"
+    [statusTone]="diocese?.active ? 'success' : 'neutral'">
+    <button
+      *ngIf="diocese"
+      type="button"
+      class="btn btn-primary hover-lift transition-all focus-ring"
+      (click)="onEdit()"
+      aria-label="Edit diocese">
+      ✏️ Edit
+    </button>
+    <button
+      *ngIf="diocese"
+      type="button"
+      class="btn btn-danger hover-lift transition-all focus-ring"
+      (click)="onDelete()"
+      aria-label="Delete diocese">
+      🗑️ Delete
+    </button>
+  </app-page-header>
 
 <!-- Loading State -->
 <div *ngIf="loading" class="loading-container">
@@ -23,49 +31,6 @@
 
 <!-- Diocese Detail Content -->
 <div *ngIf="!loading && diocese" class="diocese-detail animate-fade-in-up">
-  
-  <!-- Header Section -->
-  <div class="detail-header">
-    <div class="header-content">
-      <div class="header-icon">⛪</div>
-      <div class="header-text">
-        <h1 class="detail-title">{{ diocese.name }}</h1>
-        <div class="header-badges">
-          <span class="type-badge" [class.archdiocese]="diocese.is_archdiocese">
-            {{ getTypeBadge(diocese.is_archdiocese) }}
-          </span>
-          <span [class]="getStatusBadgeClass(diocese.active)">
-            {{ diocese.active ? 'Active' : 'Inactive' }}
-          </span>
-          <span *ngIf="diocese.code" class="code-badge">{{ diocese.code }}</span>
-        </div>
-      </div>
-    </div>
-    
-    <div class="header-actions">
-      <button 
-        type="button" 
-        class="btn btn-secondary hover-lift transition-all focus-ring"
-        (click)="goBack()"
-        aria-label="Go back">
-        ← Back
-      </button>
-      <button 
-        type="button" 
-        class="btn btn-primary hover-lift transition-all focus-ring"
-        (click)="onEdit()"
-        aria-label="Edit diocese">
-        ✏️ Edit
-      </button>
-      <button 
-        type="button" 
-        class="btn btn-danger hover-lift transition-all focus-ring"
-        (click)="onDelete()"
-        aria-label="Delete diocese">
-        🗑️ Delete
-      </button>
-    </div>
-  </div>
 
   <!-- Main Content Grid -->
   <div class="detail-grid">
@@ -222,6 +187,7 @@
       </div>
     </div>
   </div>
+</div>
 </div>
 
 <!-- Delete Confirmation Modal -->

@@ -10,6 +10,7 @@ import { BCC, BCCStatistics } from '../../../../core/models/family.model';
 import { BCCFormComponent } from '../bcc-form/bcc-form';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 @Component({
@@ -21,7 +22,8 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     ReactiveFormsModule, 
     BCCFormComponent,
     AdvancedSearchPanelComponent,
-    PaginationComponent
+    PaginationComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './bcc-list.html',
   styleUrls: ['./bcc-list.scss'],

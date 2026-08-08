@@ -1,0 +1,53 @@
+.subscription-status-banner {
+  position: sticky;
+  top: 0;
+  z-index: 19;
+  display: grid;
+  gap: var(--cf-space-2, 0.5rem);
+  padding: var(--cf-space-2, 0.5rem) var(--cf-space-3, 0.75rem);
+  background: #fff7ed;
+  color: #9a3412;
+  border-bottom: 1px solid #fed7aa;
+}
+
+.subscription-status-banner[data-tone='EXPIRED'],
+.subscription-status-banner[data-tone='SUSPENDED'] {
+  background: #fef2f2;
+  color: #991b1b;
+  border-bottom-color: #fecaca;
+}
+
+.subscription-status-banner[data-tone='GRACE_PERIOD'] {
+  background: #fffbeb;
+  color: #92400e;
+  border-bottom-color: #fde68a;
+}
+
+.subscription-status-banner__copy {
+  display: grid;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.subscription-status-banner__copy strong {
+  font-size: var(--cf-text-sm, 0.875rem);
+  letter-spacing: 0.02em;
+}
+
+.subscription-status-banner__copy span {
+  font-size: var(--cf-text-sm, 0.875rem);
+}
+
+.subscription-status-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-2, 0.5rem);
+  align-items: center;
+}
+
+@media (min-width: 768px) {
+  .subscription-status-banner {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+  }
+}

@@ -1,709 +1,573 @@
-<div class="subscription-management-container">
-  <!-- Header -->
-  <div class="page-header">
-    <div class="header-left">
-      <button class="btn-back" (click)="goBack()" type="button" aria-label="Back to settings">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-          <polyline points="15 18 9 12 15 6"></polyline>
-        </svg>
-      </button>
-      <div class="header-content">
-        <h1>Subscription Management</h1>
-        <p>Manage subscription plans and duration options</p>
-      </div>
-    </div>
-    <div class="header-right">
-      <button 
-        *ngIf="activeTab === 'duration'"
-        class="btn-add" 
-        (click)="openAddModal()" 
-        type="button">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        <span>Add Duration Option</span>
-      </button>
-      <button 
-        *ngIf="activeTab === 'plans'"
-        class="btn-add" 
-        (click)="openAddPlanModal()" 
-        type="button">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        <span>Add Plan</span>
-      </button>
-    </div>
+<section class="subscription-management cf-page">
+  <app-page-header
+    title="Subscription Management"
+    subtitle="Plan catalog, duration options, and access windows for churches. Payments and checkout are not handled here."
+    backLink="/settings"
+    backLabel="Settings">
+    <button
+      *ngIf="activeTab === 'duration'"
+      class="cf-btn cf-btn-primary"
+      (click)="openAddModal()"
+      type="button"
+      [disabled]="durationsLoading">
+      Add duration
+    </button>
+    <button
+      *ngIf="activeTab === 'plans'"
+      class="cf-btn cf-btn-primary"
+      (click)="openAddPlanModal()"
+      type="button"
+      [disabled]="plansLoading">
+      Add plan
+    </button>
+  </app-page-header>
+
+  <div class="cf-nav-cluster">
+    <app-tab-strip
+      ariaLabel="Subscription management sections"
+      [tabs]="tabStripItems"
+      [activeId]="activeTab"
+      (tabChange)="onTabChange($event)">
+    </app-tab-strip>
   </div>
 
-  <!-- Tabs -->
-  <div class="tabs-container">
-    <button 
-      class="tab-button" 
-      [class.active]="activeTab === 'duration'"
-      (click)="setActiveTab('duration')"
-      type="button">
-      Duration Options
-    </button>
-    <button 
-      class="tab-button" 
-      [class.active]="activeTab === 'plans'"
-      (click)="setActiveTab('plans')"
-      type="button">
-      Subscription Plans
-    </button>
+  <!-- Access Settings -->
+  <div
+    *ngIf="activeTab === 'settings'"
+    class="sub-mgmt-panel"
+    role="tabpanel"
+    id="sub-mgmt-panel-settings"
+    aria-labelledby="sub-mgmt-tab-settings">
+
+    <div *ngIf="settingsLoading && !settingsLoaded" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <p class="cf-loading-block__label">Loading access settings…</p>
+      <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+    </div>
+
+    <div *ngIf="settingsError && !settingsLoading" class="cf-inline-alert cf-panel" role="alert">
+      <div>
+        <strong>Could not load access settings</strong>
+        <p>{{ settingsError }}</p>
+      </div>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="loadSettings()">Try again</button>
+    </div>
+
+    <article class="cf-panel sub-mgmt-settings" *ngIf="settingsLoaded">
+      <header class="sub-mgmt-settings__header">
+        <h2>Subscription access windows</h2>
+        <p>
+          These platform settings apply to every church. Grace days continue access after a subscription ends.
+          After grace, included features that require a current subscription are blocked.
+        </p>
+      </header>
+
+      <div class="sub-mgmt-settings__grid">
+        <div class="sub-mgmt-field">
+          <label for="grace-period-days">Grace period (days) <span class="required" aria-hidden="true">*</span></label>
+          <input
+            id="grace-period-days"
+            type="number"
+            min="0"
+            max="365"
+            [(ngModel)]="settingsForm.grace_period_days"
+            name="grace_period_days"
+            [disabled]="settingsSaving"
+            aria-required="true"
+          />
+          <small>Days after the end date when churches keep access with a warning. Use 0 for no grace.</small>
+        </div>
+        <div class="sub-mgmt-field">
+          <label for="expiring-warning-days">Expiring warning (days) <span class="required" aria-hidden="true">*</span></label>
+          <input
+            id="expiring-warning-days"
+            type="number"
+            min="0"
+            max="365"
+            [(ngModel)]="settingsForm.expiring_warning_days"
+            name="expiring_warning_days"
+            [disabled]="settingsSaving"
+            aria-required="true"
+          />
+          <small>Days before the end date when status becomes “Expiring soon” and a warning is shown.</small>
+        </div>
+      </div>
+
+      <div class="sub-mgmt-settings__actions">
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          [disabled]="settingsSaving || settingsLoading"
+          (click)="saveSettings()">
+          {{ settingsSaving ? 'Saving…' : 'Save access settings' }}
+        </button>
+      </div>
+    </article>
   </div>
 
-  <!-- Duration Options Tab Content -->
-  <div *ngIf="activeTab === 'duration'">
-    <!-- Loading State -->
-    <div *ngIf="loading && durationOptions.length === 0" class="loading-container">
-      <div class="spinner"></div>
-      <p>Loading duration options...</p>
+  <!-- Duration Options -->
+  <div
+    *ngIf="activeTab === 'duration'"
+    class="sub-mgmt-panel"
+    role="tabpanel"
+    id="sub-mgmt-panel-duration"
+    aria-labelledby="sub-mgmt-tab-duration">
+
+    <div *ngIf="durationsLoading && durationOptions.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <p class="cf-loading-block__label">Loading duration options…</p>
+      <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
     </div>
 
-    <!-- Error State -->
-    <div *ngIf="error && !loading" class="error-container" role="alert">
-      <div class="error-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-          <line x1="12" y1="9" x2="12" y2="13"></line>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
+    <div *ngIf="durationsError && !durationsLoading" class="cf-inline-alert cf-panel" role="alert">
+      <div>
+        <strong>Could not load duration options</strong>
+        <p>{{ durationsError }}</p>
       </div>
-      <h3>Failed to Load Duration Options</h3>
-      <p>{{ error }}</p>
-      <button class="btn-retry" (click)="loadDurationOptions()" type="button">Retry</button>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="loadDurationOptions()">Try again</button>
     </div>
 
-    <!-- Duration Options Table -->
-    <div *ngIf="!loading && !error" class="table-container">
-      <table class="data-table">
+    <ng-container *ngIf="!durationsError && !(durationsLoading && durationOptions.length === 0)">
+      <app-cf-empty-state
+        *ngIf="durationOptions.length === 0"
+        title="No duration options yet"
+        description="Duration options appear when renewing or upgrading a church subscription."
+        icon="◷"
+        [hasActions]="true">
+        <button type="button" class="cf-btn cf-btn-primary" (click)="openAddModal()">Add duration</button>
+      </app-cf-empty-state>
+
+      <app-data-table *ngIf="durationOptions.length > 0" [ariaBusy]="durationsLoading || saving">
+        <caption class="sr-only">Subscription duration options</caption>
         <thead>
           <tr>
-            <th>Months</th>
-            <th>Label</th>
-            <th>Display Order</th>
-            <th>Status</th>
-            <th>Actions</th>
+            <th scope="col">Months</th>
+            <th scope="col">Label</th>
+            <th scope="col">Display order</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let option of durationOptions" [class.inactive]="!option.active">
+          <tr
+            *ngFor="let option of durationOptions"
+            [class.sub-mgmt-row--inactive]="!option.active">
             <td>{{ option.months }}</td>
-            <td>{{ option.label }}</td>
+            <td><strong>{{ option.label }}</strong></td>
             <td>{{ option.display_order }}</td>
             <td>
-              <span class="status-badge" [ngClass]="option.active ? 'status-active' : 'status-inactive'">
-                {{ option.active ? 'Active' : 'Inactive' }}
-              </span>
+              <app-status-badge
+                [label]="option.active ? 'Active' : 'Inactive'"
+                [tone]="option.active ? 'success' : 'neutral'">
+              </app-status-badge>
             </td>
-            <td class="actions-cell">
-              <div class="action-buttons">
-                <button 
-                  class="btn-edit" 
-                  (click)="openEditModal(option)"
-                  [attr.aria-label]="'Edit ' + option.label"
-                  type="button">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                </button>
-                <button 
-                  class="btn-delete" 
-                  (click)="openDeleteModal(option)"
-                  [attr.aria-label]="'Delete ' + option.label"
-                  type="button">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr *ngIf="durationOptions.length === 0">
-            <td colspan="5" class="empty-state-cell">
-              <div class="empty-state">
-                <p>No duration options found. Click "Add Duration Option" to create one.</p>
-              </div>
+            <td class="cf-table__actions-cell">
+              <app-action-bar
+                [actions]="durationRowActions()"
+                size="sm"
+                (actionClicked)="onDurationRowAction($event, option)">
+              </app-action-bar>
             </td>
           </tr>
         </tbody>
-      </table>
-    </div>
+      </app-data-table>
+    </ng-container>
   </div>
 
-  <!-- Plans Tab Content -->
-  <div *ngIf="activeTab === 'plans'">
-    <!-- Loading State -->
-    <div *ngIf="loading && plans.length === 0" class="loading-container">
-      <div class="spinner"></div>
-      <p>Loading subscription plans...</p>
+  <!-- Plans -->
+  <div
+    *ngIf="activeTab === 'plans'"
+    class="sub-mgmt-panel"
+    role="tabpanel"
+    id="sub-mgmt-panel-plans"
+    aria-labelledby="sub-mgmt-tab-plans">
+
+    <div *ngIf="plansLoading && plans.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <p class="cf-loading-block__label">Loading subscription plans…</p>
+      <app-loading-skeleton type="table" [rows]="4" [columns]="6"></app-loading-skeleton>
     </div>
 
-    <!-- Error State -->
-    <div *ngIf="error && !loading" class="error-container" role="alert">
-      <div class="error-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-          <line x1="12" y1="9" x2="12" y2="13"></line>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
+    <div *ngIf="plansError && !plansLoading" class="cf-inline-alert cf-panel" role="alert">
+      <div>
+        <strong>Could not load subscription plans</strong>
+        <p>{{ plansError }}</p>
       </div>
-      <h3>Failed to Load Subscription Plans</h3>
-      <p>{{ error }}</p>
-      <button class="btn-retry" (click)="loadPlans()" type="button">Retry</button>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="loadPlans()">Try again</button>
     </div>
 
-    <!-- Plans Table -->
-    <div *ngIf="!loading && !error" class="table-container">
-      <table class="data-table">
+    <ng-container *ngIf="!plansError && !(plansLoading && plans.length === 0)">
+      <app-cf-empty-state
+        *ngIf="plans.length === 0"
+        title="No subscription plans yet"
+        description="Plans define what churches receive — features, user limits, and storage. Catalog price is for reference only."
+        icon="◎"
+        [hasActions]="true">
+        <button type="button" class="cf-btn cf-btn-primary" (click)="openAddPlanModal()">Add plan</button>
+      </app-cf-empty-state>
+
+      <app-data-table *ngIf="plans.length > 0" [ariaBusy]="plansLoading || saving">
+        <caption class="sr-only">Subscription plans catalog</caption>
         <thead>
           <tr>
-            <th>Key</th>
-            <th>Name</th>
-            <th>Price</th>
-            <th>Max Users</th>
-            <th>Storage (MB)</th>
-            <th>Features</th>
-            <th>Status</th>
-            <th>Default</th>
-            <th>Actions</th>
+            <th scope="col">Plan</th>
+            <th scope="col">Catalog price</th>
+            <th scope="col">Users</th>
+            <th scope="col">Storage</th>
+            <th scope="col">Features</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let plan of plans" [class.inactive]="!plan.active">
-            <td><code>{{ plan.key }}</code></td>
+          <tr
+            *ngFor="let plan of plans"
+            [class.sub-mgmt-row--inactive]="!plan.active">
             <td>
-              <strong>{{ plan.name }}</strong>
-              <div *ngIf="plan.description" class="plan-description">{{ plan.description }}</div>
-            </td>
-            <td>₹{{ plan.price | number:'1.2-2' }}</td>
-            <td>{{ plan.max_users === 999999 ? 'Unlimited' : plan.max_users }}</td>
-            <td>{{ plan.max_storage_mb | number }}</td>
-            <td>
-              <div class="features-list">
-                <span *ngFor="let feature of plan.features" class="feature-tag">{{ feature }}</span>
-                <span *ngIf="!plan.features || plan.features.length === 0" class="text-muted">None</span>
+              <div class="sub-mgmt-plan-cell">
+                <div class="sub-mgmt-plan-cell__title">
+                  <strong>{{ plan.name }}</strong>
+                  <code class="sub-mgmt-plan-key">{{ plan.key }}</code>
+                  <app-status-badge
+                    *ngIf="plan.is_default"
+                    label="Default"
+                    tone="info">
+                  </app-status-badge>
+                </div>
+                <span
+                  *ngIf="plan.description"
+                  class="sub-mgmt-plan-desc"
+                  [attr.title]="plan.description">
+                  {{ plan.description }}
+                </span>
               </div>
             </td>
+            <td>{{ formatPrice(plan.price) }}</td>
+            <td>{{ formatUsers(plan.max_users) }}</td>
+            <td>{{ formatStorage(plan.max_storage_mb) }}</td>
             <td>
-              <span class="status-badge" [ngClass]="plan.active ? 'status-active' : 'status-inactive'">
-                {{ plan.active ? 'Active' : 'Inactive' }}
-              </span>
+              <div class="sub-mgmt-features" *ngIf="plan.features?.length">
+                <span
+                  *ngFor="let feature of visibleFeatures(plan.features)"
+                  class="sub-mgmt-feature-tag">
+                  {{ featureLabel(feature) }}
+                </span>
+                <span *ngIf="extraFeatureCount(plan.features) as extra" class="sub-mgmt-feature-more">
+                  +{{ extra }}
+                </span>
+              </div>
+              <span class="sub-mgmt-muted" *ngIf="!plan.features?.length">None</span>
             </td>
             <td>
-              <span *ngIf="plan.is_default" class="badge-default">Default</span>
-              <span *ngIf="!plan.is_default" class="text-muted">-</span>
+              <app-status-badge
+                [label]="plan.active ? 'Active' : 'Inactive'"
+                [tone]="plan.active ? 'success' : 'neutral'">
+              </app-status-badge>
             </td>
-            <td class="actions-cell">
-              <div class="action-buttons">
-                <button 
-                  class="btn-edit" 
-                  (click)="openEditPlanModal(plan)"
-                  [attr.aria-label]="'Edit ' + plan.name"
-                  type="button">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                  </svg>
-                </button>
-                <button 
-                  class="btn-delete" 
-                  (click)="openDeletePlanModal(plan)"
-                  [attr.aria-label]="'Delete ' + plan.name"
-                  type="button">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-                    <polyline points="3 6 5 6 21 6"></polyline>
-                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  </svg>
-                </button>
-              </div>
-            </td>
-          </tr>
-          <tr *ngIf="plans.length === 0">
-            <td colspan="9" class="empty-state-cell">
-              <div class="empty-state">
-                <p>No subscription plans found. Click "Add Plan" to create one.</p>
-              </div>
+            <td class="cf-table__actions-cell">
+              <app-action-bar
+                [actions]="planRowActions()"
+                size="sm"
+                (actionClicked)="onPlanRowAction($event, plan)">
+              </app-action-bar>
             </td>
           </tr>
         </tbody>
-      </table>
-    </div>
+      </app-data-table>
+    </ng-container>
   </div>
-</div>
+</section>
 
-<!-- Duration Options Modals (existing modals remain the same) -->
-<!-- Add Duration Option Modal -->
-<div *ngIf="showAddModal" class="modal-overlay" (click)="closeAddModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Add Duration Option</h2>
-      <button class="modal-close" (click)="closeAddModal()" type="button" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
+<!-- Add Duration Modal -->
+<app-modal-shell
+  *ngIf="showAddModal"
+  title="Add duration option"
+  size="sm"
+  [isSubmitting]="saving"
+  (closeRequested)="closeAddModal()">
+  <div class="sub-mgmt-modal-form">
+    <div class="sub-mgmt-field">
+      <label for="add-months">Months <span class="required" aria-hidden="true">*</span></label>
+      <input id="add-months" type="number" [(ngModel)]="formData.months" min="1" max="120" [disabled]="saving" required aria-required="true">
     </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label for="add-months">Months <span class="required">*</span></label>
-        <input 
-          id="add-months"
-          type="number" 
-          [(ngModel)]="formData.months"
-          min="1"
-          max="120"
-          class="form-input"
-          [disabled]="loading"
-          required>
-      </div>
-      <div class="form-group">
-        <label for="add-label">Label <span class="required">*</span></label>
-        <input 
-          id="add-label"
-          type="text" 
-          [(ngModel)]="formData.label"
-          class="form-input"
-          placeholder="e.g., 1 Month, 1 Year, 3 Years"
-          [disabled]="loading"
-          required>
-      </div>
-      <div class="form-group">
-        <label for="add-display-order">Display Order</label>
-        <input 
-          id="add-display-order"
-          type="number" 
-          [(ngModel)]="formData.display_order"
-          min="0"
-          class="form-input"
-          [disabled]="loading">
-      </div>
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input 
-            type="checkbox" 
-            [(ngModel)]="formData.active"
-            [disabled]="loading">
-          <span>Active</span>
-        </label>
-      </div>
+    <div class="sub-mgmt-field">
+      <label for="add-label">Label <span class="required" aria-hidden="true">*</span></label>
+      <input id="add-label" type="text" [(ngModel)]="formData.label" placeholder="e.g., 1 Month, 1 Year" [disabled]="saving" required aria-required="true">
     </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeAddModal()" type="button">Cancel</button>
-      <button 
-        class="btn-save" 
-        (click)="createDurationOption()" 
-        [disabled]="loading"
-        type="button">
-        {{ loading ? 'Creating...' : 'Create' }}
-      </button>
+    <div class="sub-mgmt-field">
+      <label for="add-display-order">Display order</label>
+      <input id="add-display-order" type="number" [(ngModel)]="formData.display_order" min="0" [disabled]="saving">
     </div>
+    <label class="cf-switch-field">
+      <input type="checkbox" [(ngModel)]="formData.active" [disabled]="saving">
+      <span class="cf-switch-field__copy">
+        <span class="cf-switch-field__label">Active</span>
+      </span>
+    </label>
   </div>
-</div>
+  <ng-container modalFooter>
+    <button class="cf-btn" (click)="closeAddModal()" type="button" [disabled]="saving">Cancel</button>
+    <button class="cf-btn cf-btn-primary" (click)="createDurationOption()" [disabled]="saving" type="button">
+      {{ saving ? 'Creating…' : 'Create' }}
+    </button>
+  </ng-container>
+</app-modal-shell>
 
-<!-- Edit Duration Option Modal -->
-<div *ngIf="showEditModal" class="modal-overlay" (click)="closeEditModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Edit Duration Option</h2>
-      <button class="modal-close" (click)="closeEditModal()" type="button" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
+<!-- Edit Duration Modal -->
+<app-modal-shell
+  *ngIf="showEditModal"
+  title="Edit duration option"
+  size="sm"
+  [isSubmitting]="saving"
+  (closeRequested)="closeEditModal()">
+  <div class="sub-mgmt-modal-form">
+    <div class="sub-mgmt-field">
+      <label for="edit-months">Months <span class="required" aria-hidden="true">*</span></label>
+      <input id="edit-months" type="number" [(ngModel)]="formData.months" min="1" max="120" [disabled]="saving" required aria-required="true">
     </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label for="edit-months">Months <span class="required">*</span></label>
-        <input 
-          id="edit-months"
-          type="number" 
-          [(ngModel)]="formData.months"
-          min="1"
-          max="120"
-          class="form-input"
-          [disabled]="loading"
-          required>
-      </div>
-      <div class="form-group">
-        <label for="edit-label">Label <span class="required">*</span></label>
-        <input 
-          id="edit-label"
-          type="text" 
-          [(ngModel)]="formData.label"
-          class="form-input"
-          [disabled]="loading"
-          required>
-      </div>
-      <div class="form-group">
-        <label for="edit-display-order">Display Order</label>
-        <input 
-          id="edit-display-order"
-          type="number" 
-          [(ngModel)]="formData.display_order"
-          min="0"
-          class="form-input"
-          [disabled]="loading">
-      </div>
-      <div class="form-group">
-        <label class="checkbox-label">
-          <input 
-            type="checkbox" 
-            [(ngModel)]="formData.active"
-            [disabled]="loading">
-          <span>Active</span>
-        </label>
-      </div>
+    <div class="sub-mgmt-field">
+      <label for="edit-label">Label <span class="required" aria-hidden="true">*</span></label>
+      <input id="edit-label" type="text" [(ngModel)]="formData.label" [disabled]="saving" required aria-required="true">
     </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeEditModal()" type="button">Cancel</button>
-      <button 
-        class="btn-save" 
-        (click)="updateDurationOption()" 
-        [disabled]="loading"
-        type="button">
-        {{ loading ? 'Updating...' : 'Update' }}
-      </button>
+    <div class="sub-mgmt-field">
+      <label for="edit-display-order">Display order</label>
+      <input id="edit-display-order" type="number" [(ngModel)]="formData.display_order" min="0" [disabled]="saving">
     </div>
+    <label class="cf-switch-field">
+      <input type="checkbox" [(ngModel)]="formData.active" [disabled]="saving">
+      <span class="cf-switch-field__copy">
+        <span class="cf-switch-field__label">Active</span>
+      </span>
+    </label>
   </div>
-</div>
+  <ng-container modalFooter>
+    <button class="cf-btn" (click)="closeEditModal()" type="button" [disabled]="saving">Cancel</button>
+    <button class="cf-btn cf-btn-primary" (click)="updateDurationOption()" [disabled]="saving" type="button">
+      {{ saving ? 'Updating…' : 'Update' }}
+    </button>
+  </ng-container>
+</app-modal-shell>
 
-<!-- Delete Duration Option Modal -->
-<div *ngIf="showDeleteModal" class="modal-overlay" (click)="closeDeleteModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Delete Duration Option</h2>
-      <button class="modal-close" (click)="closeDeleteModal()" type="button" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <p>Are you sure you want to delete the duration option <strong>{{ deletingOption?.label }}</strong>?</p>
-      <p class="warning-text">This action cannot be undone.</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeDeleteModal()" type="button">Cancel</button>
-      <button 
-        class="btn-delete-confirm" 
-        (click)="deleteDurationOption()" 
-        [disabled]="loading"
-        type="button">
-        {{ loading ? 'Deleting...' : 'Delete' }}
-      </button>
-    </div>
-  </div>
-</div>
+<!-- Delete Duration Modal -->
+<app-modal-shell
+  *ngIf="showDeleteModal"
+  title="Delete duration option"
+  size="sm"
+  [isSubmitting]="saving"
+  (closeRequested)="closeDeleteModal()">
+  <p>Are you sure you want to delete <strong>{{ deletingOption?.label }}</strong>?</p>
+  <p class="sub-mgmt-warning">This cannot be undone.</p>
+  <ng-container modalFooter>
+    <button class="cf-btn" (click)="closeDeleteModal()" type="button" [disabled]="saving">Cancel</button>
+    <button class="cf-btn cf-btn-danger" (click)="deleteDurationOption()" [disabled]="saving" type="button">
+      {{ saving ? 'Deleting…' : 'Delete' }}
+    </button>
+  </ng-container>
+</app-modal-shell>
 
-<!-- Plans Modals -->
 <!-- Add Plan Modal -->
-<div *ngIf="showAddPlanModal" class="modal-overlay" (click)="closeAddPlanModal()">
-  <div class="modal-content modal-content-large" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Add Subscription Plan</h2>
-      <button class="modal-close" (click)="closeAddPlanModal()" type="button" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label for="add-plan-key">Plan Key <span class="required">*</span></label>
-        <input 
-          id="add-plan-key"
-          type="text" 
-          [(ngModel)]="planFormData.key"
-          class="form-input"
-          placeholder="e.g., free, basic, premium"
-          [disabled]="loading"
-          required>
-        <small class="form-hint">Unique identifier (lowercase, no spaces)</small>
-      </div>
-      <div class="form-group">
-        <label for="add-plan-name">Plan Name <span class="required">*</span></label>
-        <input 
-          id="add-plan-name"
-          type="text" 
-          [(ngModel)]="planFormData.name"
-          class="form-input"
-          placeholder="e.g., Free Plan, Basic Plan"
-          [disabled]="loading"
-          required>
-      </div>
-      <div class="form-group">
-        <label for="add-plan-description">Description</label>
-        <textarea 
-          id="add-plan-description"
-          [(ngModel)]="planFormData.description"
-          class="form-input"
-          rows="3"
-          [disabled]="loading"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="add-plan-price">Price (₹) <span class="required">*</span></label>
-          <input 
-            id="add-plan-price"
-            type="number" 
-            [(ngModel)]="planFormData.price"
-            min="0"
-            step="0.01"
-            class="form-input"
-            [disabled]="loading"
-            required>
+<app-modal-shell
+  *ngIf="showAddPlanModal"
+  title="Add subscription plan"
+  size="lg"
+  [isSubmitting]="saving"
+  (closeRequested)="closeAddPlanModal()">
+  <div class="sub-mgmt-plan-form">
+    <p class="sub-mgmt-plan-form__intro">
+      Define catalog limits and features for churches. Catalog price is reference only — not used for checkout.
+    </p>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="add-plan-identity">
+      <h3 id="add-plan-identity" class="sub-mgmt-plan-form__title">Identity</h3>
+      <div class="sub-mgmt-plan-form__grid">
+        <div class="sub-mgmt-field">
+          <label for="add-plan-key">Plan key <span class="required" aria-hidden="true">*</span></label>
+          <input id="add-plan-key" type="text" [(ngModel)]="planFormData.key" placeholder="e.g. basic" [disabled]="saving" required aria-required="true" autocomplete="off">
+          <small>Unique lowercase key, no spaces</small>
         </div>
-        <div class="form-group">
-          <label for="add-plan-max-users">Max Users <span class="required">*</span></label>
-          <input 
-            id="add-plan-max-users"
-            type="number" 
-            [(ngModel)]="planFormData.max_users"
-            min="1"
-            class="form-input"
-            [disabled]="loading"
-            required>
+        <div class="sub-mgmt-field">
+          <label for="add-plan-name">Plan name <span class="required" aria-hidden="true">*</span></label>
+          <input id="add-plan-name" type="text" [(ngModel)]="planFormData.name" placeholder="e.g. Basic" [disabled]="saving" required aria-required="true">
         </div>
-        <div class="form-group">
-          <label for="add-plan-storage">Storage (MB) <span class="required">*</span></label>
-          <input 
-            id="add-plan-storage"
-            type="number" 
-            [(ngModel)]="planFormData.max_storage_mb"
-            min="1"
-            class="form-input"
-            [disabled]="loading"
-            required>
+        <div class="sub-mgmt-field sub-mgmt-field--full">
+          <label for="add-plan-description">Description</label>
+          <textarea id="add-plan-description" [(ngModel)]="planFormData.description" rows="2" [disabled]="saving" placeholder="Short summary shown in admin views"></textarea>
         </div>
       </div>
-      <div class="form-group">
-        <label>Features</label>
-        <div class="features-checkbox-group">
-          <label *ngFor="let feature of availableFeatures" class="checkbox-label">
-            <input 
-              type="checkbox" 
-              [checked]="isFeatureSelected(feature)"
-              (change)="toggleFeature(feature)"
-              [disabled]="loading">
-            <span>{{ feature }}</span>
-          </label>
+    </section>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="add-plan-limits">
+      <h3 id="add-plan-limits" class="sub-mgmt-plan-form__title">Limits &amp; catalog price</h3>
+      <div class="sub-mgmt-plan-form__grid sub-mgmt-plan-form__grid--3">
+        <div class="sub-mgmt-field">
+          <label for="add-plan-price">Catalog price (₹) <span class="required" aria-hidden="true">*</span></label>
+          <input id="add-plan-price" type="number" [(ngModel)]="planFormData.price" min="0" step="0.01" [disabled]="saving" required aria-required="true">
+          <small>Reference only</small>
+        </div>
+        <div class="sub-mgmt-field">
+          <label for="add-plan-max-users">User limit <span class="required" aria-hidden="true">*</span></label>
+          <input id="add-plan-max-users" type="number" [(ngModel)]="planFormData.max_users" min="1" [disabled]="saving" required aria-required="true">
+        </div>
+        <div class="sub-mgmt-field">
+          <label for="add-plan-storage">Storage (MB) <span class="required" aria-hidden="true">*</span></label>
+          <input id="add-plan-storage" type="number" [(ngModel)]="planFormData.max_storage_mb" min="1" [disabled]="saving" required aria-required="true">
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="add-plan-display-order">Display Order</label>
-          <input 
-            id="add-plan-display-order"
-            type="number" 
-            [(ngModel)]="planFormData.display_order"
-            min="0"
-            class="form-input"
-            [disabled]="loading">
-        </div>
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              [(ngModel)]="planFormData.active"
-              [disabled]="loading">
-            <span>Active</span>
-          </label>
-        </div>
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              [(ngModel)]="planFormData.is_default"
-              [disabled]="loading">
-            <span>Default Plan</span>
-          </label>
-        </div>
+    </section>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="add-plan-features">
+      <h3 id="add-plan-features" class="sub-mgmt-plan-form__title">Features</h3>
+      <div class="sub-mgmt-features-checkboxes" role="group" aria-label="Plan features">
+        <label *ngFor="let feature of availableFeatures" class="sub-mgmt-checkbox">
+          <input type="checkbox" [checked]="isFeatureSelected(feature)" (change)="toggleFeature(feature)" [disabled]="saving">
+          <span>{{ featureLabel(feature) }}</span>
+        </label>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeAddPlanModal()" type="button">Cancel</button>
-      <button 
-        class="btn-save" 
-        (click)="createPlan()" 
-        [disabled]="loading"
-        type="button">
-        {{ loading ? 'Creating...' : 'Create' }}
-      </button>
-    </div>
+    </section>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="add-plan-options">
+      <h3 id="add-plan-options" class="sub-mgmt-plan-form__title">Options</h3>
+      <div class="sub-mgmt-plan-form__options">
+        <div class="sub-mgmt-field sub-mgmt-field--order">
+          <label for="add-plan-display-order">Display order</label>
+          <input id="add-plan-display-order" type="number" [(ngModel)]="planFormData.display_order" min="0" [disabled]="saving">
+        </div>
+        <label class="cf-switch-field">
+          <input type="checkbox" [(ngModel)]="planFormData.active" [disabled]="saving">
+          <span class="cf-switch-field__copy">
+            <span class="cf-switch-field__label">Active</span>
+            <small>Inactive plans cannot be assigned to churches</small>
+          </span>
+        </label>
+        <label class="cf-switch-field">
+          <input type="checkbox" [(ngModel)]="planFormData.is_default" [disabled]="saving">
+          <span class="cf-switch-field__copy">
+            <span class="cf-switch-field__label">Default plan</span>
+            <small>Used when a church has no plan selected</small>
+          </span>
+        </label>
+      </div>
+    </section>
   </div>
-</div>
+  <ng-container modalFooter>
+    <button class="cf-btn" (click)="closeAddPlanModal()" type="button" [disabled]="saving">Cancel</button>
+    <button class="cf-btn cf-btn-primary" (click)="createPlan()" [disabled]="saving" type="button">
+      {{ saving ? 'Creating…' : 'Create plan' }}
+    </button>
+  </ng-container>
+</app-modal-shell>
 
 <!-- Edit Plan Modal -->
-<div *ngIf="showEditPlanModal" class="modal-overlay" (click)="closeEditPlanModal()">
-  <div class="modal-content modal-content-large" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Edit Subscription Plan</h2>
-      <button class="modal-close" (click)="closeEditPlanModal()" type="button" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label for="edit-plan-key">Plan Key <span class="required">*</span></label>
-        <input 
-          id="edit-plan-key"
-          type="text" 
-          [(ngModel)]="planFormData.key"
-          class="form-input"
-          [disabled]="loading"
-          required>
-      </div>
-      <div class="form-group">
-        <label for="edit-plan-name">Plan Name <span class="required">*</span></label>
-        <input 
-          id="edit-plan-name"
-          type="text" 
-          [(ngModel)]="planFormData.name"
-          class="form-input"
-          [disabled]="loading"
-          required>
-      </div>
-      <div class="form-group">
-        <label for="edit-plan-description">Description</label>
-        <textarea 
-          id="edit-plan-description"
-          [(ngModel)]="planFormData.description"
-          class="form-input"
-          rows="3"
-          [disabled]="loading"></textarea>
-      </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="edit-plan-price">Price (₹) <span class="required">*</span></label>
-          <input 
-            id="edit-plan-price"
-            type="number" 
-            [(ngModel)]="planFormData.price"
-            min="0"
-            step="0.01"
-            class="form-input"
-            [disabled]="loading"
-            required>
+<app-modal-shell
+  *ngIf="showEditPlanModal"
+  title="Edit subscription plan"
+  size="lg"
+  [isSubmitting]="saving"
+  (closeRequested)="closeEditPlanModal()">
+  <div class="sub-mgmt-plan-form">
+    <p class="sub-mgmt-plan-form__intro">
+      Update catalog limits and features. Catalog price is reference only — not used for checkout.
+    </p>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="edit-plan-identity">
+      <h3 id="edit-plan-identity" class="sub-mgmt-plan-form__title">Identity</h3>
+      <div class="sub-mgmt-plan-form__grid">
+        <div class="sub-mgmt-field">
+          <label for="edit-plan-key">Plan key <span class="required" aria-hidden="true">*</span></label>
+          <input id="edit-plan-key" type="text" [(ngModel)]="planFormData.key" [disabled]="saving" required aria-required="true" autocomplete="off">
+          <small>Unique lowercase key, no spaces</small>
         </div>
-        <div class="form-group">
-          <label for="edit-plan-max-users">Max Users <span class="required">*</span></label>
-          <input 
-            id="edit-plan-max-users"
-            type="number" 
-            [(ngModel)]="planFormData.max_users"
-            min="1"
-            class="form-input"
-            [disabled]="loading"
-            required>
+        <div class="sub-mgmt-field">
+          <label for="edit-plan-name">Plan name <span class="required" aria-hidden="true">*</span></label>
+          <input id="edit-plan-name" type="text" [(ngModel)]="planFormData.name" [disabled]="saving" required aria-required="true">
         </div>
-        <div class="form-group">
-          <label for="edit-plan-storage">Storage (MB) <span class="required">*</span></label>
-          <input 
-            id="edit-plan-storage"
-            type="number" 
-            [(ngModel)]="planFormData.max_storage_mb"
-            min="1"
-            class="form-input"
-            [disabled]="loading"
-            required>
+        <div class="sub-mgmt-field sub-mgmt-field--full">
+          <label for="edit-plan-description">Description</label>
+          <textarea id="edit-plan-description" [(ngModel)]="planFormData.description" rows="2" [disabled]="saving"></textarea>
         </div>
       </div>
-      <div class="form-group">
-        <label>Features</label>
-        <div class="features-checkbox-group">
-          <label *ngFor="let feature of availableFeatures" class="checkbox-label">
-            <input 
-              type="checkbox" 
-              [checked]="isFeatureSelected(feature)"
-              (change)="toggleFeature(feature)"
-              [disabled]="loading">
-            <span>{{ feature }}</span>
-          </label>
+    </section>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="edit-plan-limits">
+      <h3 id="edit-plan-limits" class="sub-mgmt-plan-form__title">Limits &amp; catalog price</h3>
+      <div class="sub-mgmt-plan-form__grid sub-mgmt-plan-form__grid--3">
+        <div class="sub-mgmt-field">
+          <label for="edit-plan-price">Catalog price (₹) <span class="required" aria-hidden="true">*</span></label>
+          <input id="edit-plan-price" type="number" [(ngModel)]="planFormData.price" min="0" step="0.01" [disabled]="saving" required aria-required="true">
+          <small>Reference only</small>
+        </div>
+        <div class="sub-mgmt-field">
+          <label for="edit-plan-max-users">User limit <span class="required" aria-hidden="true">*</span></label>
+          <input id="edit-plan-max-users" type="number" [(ngModel)]="planFormData.max_users" min="1" [disabled]="saving" required aria-required="true">
+        </div>
+        <div class="sub-mgmt-field">
+          <label for="edit-plan-storage">Storage (MB) <span class="required" aria-hidden="true">*</span></label>
+          <input id="edit-plan-storage" type="number" [(ngModel)]="planFormData.max_storage_mb" min="1" [disabled]="saving" required aria-required="true">
         </div>
       </div>
-      <div class="form-row">
-        <div class="form-group">
-          <label for="edit-plan-display-order">Display Order</label>
-          <input 
-            id="edit-plan-display-order"
-            type="number" 
-            [(ngModel)]="planFormData.display_order"
-            min="0"
-            class="form-input"
-            [disabled]="loading">
-        </div>
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              [(ngModel)]="planFormData.active"
-              [disabled]="loading">
-            <span>Active</span>
-          </label>
-        </div>
-        <div class="form-group">
-          <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              [(ngModel)]="planFormData.is_default"
-              [disabled]="loading">
-            <span>Default Plan</span>
-          </label>
-        </div>
+    </section>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="edit-plan-features">
+      <h3 id="edit-plan-features" class="sub-mgmt-plan-form__title">Features</h3>
+      <div class="sub-mgmt-features-checkboxes" role="group" aria-label="Plan features">
+        <label *ngFor="let feature of availableFeatures" class="sub-mgmt-checkbox">
+          <input type="checkbox" [checked]="isFeatureSelected(feature)" (change)="toggleFeature(feature)" [disabled]="saving">
+          <span>{{ featureLabel(feature) }}</span>
+        </label>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeEditPlanModal()" type="button">Cancel</button>
-      <button 
-        class="btn-save" 
-        (click)="updatePlan()" 
-        [disabled]="loading"
-        type="button">
-        {{ loading ? 'Updating...' : 'Update' }}
-      </button>
-    </div>
+    </section>
+
+    <section class="sub-mgmt-plan-form__section" aria-labelledby="edit-plan-options">
+      <h3 id="edit-plan-options" class="sub-mgmt-plan-form__title">Options</h3>
+      <div class="sub-mgmt-plan-form__options">
+        <div class="sub-mgmt-field sub-mgmt-field--order">
+          <label for="edit-plan-display-order">Display order</label>
+          <input id="edit-plan-display-order" type="number" [(ngModel)]="planFormData.display_order" min="0" [disabled]="saving">
+        </div>
+        <label class="cf-switch-field">
+          <input type="checkbox" [(ngModel)]="planFormData.active" [disabled]="saving">
+          <span class="cf-switch-field__copy">
+            <span class="cf-switch-field__label">Active</span>
+            <small>Inactive plans cannot be assigned to churches</small>
+          </span>
+        </label>
+        <label class="cf-switch-field">
+          <input type="checkbox" [(ngModel)]="planFormData.is_default" [disabled]="saving">
+          <span class="cf-switch-field__copy">
+            <span class="cf-switch-field__label">Default plan</span>
+            <small>Used when a church has no plan selected</small>
+          </span>
+        </label>
+      </div>
+    </section>
   </div>
-</div>
+  <ng-container modalFooter>
+    <button class="cf-btn" (click)="closeEditPlanModal()" type="button" [disabled]="saving">Cancel</button>
+    <button class="cf-btn cf-btn-primary" (click)="updatePlan()" [disabled]="saving" type="button">
+      {{ saving ? 'Updating…' : 'Save plan' }}
+    </button>
+  </ng-container>
+</app-modal-shell>
 
 <!-- Delete Plan Modal -->
-<div *ngIf="showDeletePlanModal" class="modal-overlay" (click)="closeDeletePlanModal()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>Delete Subscription Plan</h2>
-      <button class="modal-close" (click)="closeDeletePlanModal()" type="button" aria-label="Close">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <div class="modal-body">
-      <p>Are you sure you want to delete the subscription plan <strong>{{ deletingPlan?.name }}</strong>?</p>
-      <p class="warning-text">This action cannot be undone. If any tenants are using this plan, deletion will be prevented.</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn-cancel" (click)="closeDeletePlanModal()" type="button">Cancel</button>
-      <button 
-        class="btn-delete-confirm" 
-        (click)="deletePlan()" 
-        [disabled]="loading"
-        type="button">
-        {{ loading ? 'Deleting...' : 'Delete' }}
-      </button>
-    </div>
-  </div>
-</div>
+<app-modal-shell
+  *ngIf="showDeletePlanModal"
+  title="Delete subscription plan"
+  size="sm"
+  [isSubmitting]="saving"
+  (closeRequested)="closeDeletePlanModal()">
+  <p>Are you sure you want to delete <strong>{{ deletingPlan?.name }}</strong>?</p>
+  <p class="sub-mgmt-warning" *ngIf="deletingPlan?.active">
+    This plan is still active. Deactivate it first (edit → uncheck Active). Churches keep current entitlements; new assigns are blocked once inactive.
+  </p>
+  <p class="sub-mgmt-warning" *ngIf="!deletingPlan?.active">
+    This cannot be undone. Deletion is blocked if any church still uses this plan key — keep the plan inactive in that case.
+  </p>
+  <ng-container modalFooter>
+    <button class="cf-btn" (click)="closeDeletePlanModal()" type="button" [disabled]="saving">Cancel</button>
+    <button
+      class="cf-btn cf-btn-danger"
+      (click)="deletePlan()"
+      [disabled]="saving || !!deletingPlan?.active"
+      type="button">
+      {{ saving ? 'Deleting…' : 'Delete' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

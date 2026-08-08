@@ -2,19 +2,23 @@ import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
+import { AuthService } from '@core/services/auth.service';
+import { ToastService } from '@core/services/toast.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
+  const toast = inject(ToastService);
+  const auth = inject(AuthService);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
       let errorMessage = 'An unknown error occurred';
+      const reason = error.error?.reason as string | undefined;
+      const subscriptionStatus = error.error?.subscription_status as string | undefined;
 
       if (error.error instanceof ErrorEvent) {
-        // Client-side error
         errorMessage = 'A network error occurred while processing your request. Please try again.';
       } else {
-        // Server-side error
         switch (error.status) {
           case 0:
             errorMessage = 'Unable to reach the server right now. Please check your internet connection and try again.';
@@ -29,7 +33,24 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             }
             break;
           case 403:
-            errorMessage = 'Forbidden. You do not have permission.';
+            if (reason === 'subscription_blocked') {
+              errorMessage =
+                error.error?.message ||
+                'Your subscription has ended or is suspended. Contact your administrator to restore access.';
+              toast.error(errorMessage, 'Subscription');
+              const canViewSub = auth.canViewMySubscription();
+              if (canViewSub && !router.url.includes('/settings/my-subscription')) {
+                router.navigate(['/settings/my-subscription'], {
+                  queryParams: { status: subscriptionStatus || 'EXPIRED' },
+                });
+              } else if (!canViewSub && !router.url.includes('/dashboard')) {
+                router.navigate(['/dashboard'], {
+                  queryParams: { error: 'subscription', message: errorMessage },
+                });
+              }
+            } else {
+              errorMessage = error.error?.message || 'Forbidden. You do not have permission.';
+            }
             break;
           case 404:
             errorMessage = 'Resource not found';
@@ -46,13 +67,14 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
       }
 
       console.error('HTTP Error:', errorMessage, error);
-      
+
       return throwError(() => ({
         message: errorMessage,
         status: error.status,
-        errors: error.error?.errors
+        errors: error.error?.errors,
+        reason,
+        subscription_status: subscriptionStatus,
       }));
     })
   );
 };
-

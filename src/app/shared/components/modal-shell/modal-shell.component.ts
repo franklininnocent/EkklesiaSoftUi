@@ -48,7 +48,7 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   /** Used for `aria-label` when no visible `title` is provided. */
   @Input() ariaLabel?: string;
   /** Dialog width variant. */
-  @Input() size: 'sm' | 'md' = 'md';
+  @Input() size: 'sm' | 'md' | 'lg' = 'md';
   /**
    * Blocks Escape, backdrop-click, and the close button while a submit is
    * in flight, matching the existing `saving`/`loading` guard pattern used

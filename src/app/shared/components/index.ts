@@ -16,3 +16,6 @@ export * from './action-bar/action-bar.component';
 export * from './section-card/section-card.component';
 export * from './tab-strip/tab-strip.component';
 export * from './data-table/data-table.component';
+export * from './rich-text/rich-text-editor/rich-text-editor.component';
+export * from './rich-text/rich-text-viewer/rich-text-viewer.component';
+export * from './rich-text/rich-text.utils';

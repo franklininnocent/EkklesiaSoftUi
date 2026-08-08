@@ -1,0 +1,113 @@
+<div class="organization-member-history">
+  <p class="organization-member-history__intro">
+    Past enrollments for this organization. Current members are listed on the Members tab.
+  </p>
+
+  <app-list-toolbar
+    searchPlaceholder="Search name or family…"
+    [searchValue]="search"
+    [filterCount]="drawerFilterCount"
+    (searchChange)="onToolbarSearch($event)"
+    (filtersOpened)="showFilters = true"
+  ></app-list-toolbar>
+
+  <div
+    class="cf-loading-block"
+    *ngIf="loading && !loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading member history…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="9"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert" *ngIf="loadError" role="alert">
+    <p>{{ loadError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+  </div>
+
+  <ng-container *ngIf="loaded && !loadError">
+    <div class="organization-member-history__table-wrap" *ngIf="members.length; else emptyHistory">
+      <app-data-table [ariaBusy]="loading">
+        <thead>
+          <tr>
+            <th scope="col">Name</th>
+            <th scope="col">Family</th>
+            <th scope="col">Type</th>
+            <th scope="col">Status</th>
+            <th scope="col">Start</th>
+            <th scope="col">End</th>
+            <th scope="col">Duration</th>
+            <th scope="col">Source</th>
+            <th scope="col">Details</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let member of members">
+            <td><strong>{{ member.display_name }}</strong></td>
+            <td>{{ familyDisplay(member) }}</td>
+            <td>{{ typeLabel(member.member_type) }}</td>
+            <td>
+              <app-status-badge
+                [label]="statusLabel(member.status)"
+                [tone]="statusTone(member.status)"
+              ></app-status-badge>
+            </td>
+            <td>{{ formatDate(member.joined_date) }}</td>
+            <td>{{ formatEndDate(member) }}</td>
+            <td>{{ formatDuration(member) }}</td>
+            <td>{{ sourceLabel(member.member_source) }}</td>
+            <td class="organization-member-history__details-cell">
+              <button
+                type="button"
+                class="organization-member-history__view-link"
+                [attr.aria-label]="'View membership details for ' + member.display_name"
+                (click)="openDetail(member)"
+              >
+                View
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <app-pagination
+        [currentPage]="currentPage"
+        [pageSize]="perPage"
+        [totalItems]="totalItems"
+        [pageSizeOptions]="perPageOptions"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+    </div>
+
+    <ng-template #emptyHistory>
+      <app-cf-empty-state
+        icon="◇"
+        [title]="hasActiveFilters ? 'No history matches your filters' : 'No past memberships yet'"
+        [description]="
+          hasActiveFilters
+            ? 'Try clearing search or filters.'
+            : 'Closed enrollments will appear here after a member’s status is changed and their interval ends.'
+        "
+        [hasActions]="false"
+      ></app-cf-empty-state>
+    </ng-template>
+  </ng-container>
+
+  <app-member-history-detail-modal
+    *ngIf="detailMember"
+    [membership]="detailMember"
+    (cancel)="closeDetail()"
+  ></app-member-history-detail-modal>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</div>

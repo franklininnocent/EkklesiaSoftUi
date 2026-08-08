@@ -1,15 +1,12 @@
-<div class="tenant-manager">
-  <!-- Header Section -->
-  <div class="tenant-header">
-    <div class="header-content">
-      <h1>Tenants</h1>
-      <p>Manage all tenants and organizations in your system</p>
-    </div>
+<div class="tenant-manager cf-page">
+  <app-page-header
+    title="Tenants"
+    subtitle="Manage all tenants and organizations in your system">
     <button class="btn-create" (click)="openCreateModal()" [disabled]="loading" title="Create New Tenant">
       <span class="btn-icon">+</span>
       <span class="btn-tooltip">Create New Tenant</span>
     </button>
-  </div>
+  </app-page-header>
 
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-container">

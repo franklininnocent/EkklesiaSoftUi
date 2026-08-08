@@ -1,14 +1,12 @@
 <section class="plans-page cf-page">
-  <header class="plans-page__hero cf-hero">
-    <div class="plans-page__hero-copy">
-      <h1>Contribution Plans</h1>
-      <p>Define what families owe and how often — create and manage plans side by side.</p>
-    </div>
-    <div class="plans-page__hero-actions" *ngIf="canManage && plansLoaded && !showForm">
+  <app-page-header
+    title="Contribution Plans"
+    subtitle="Define what families owe and how often — create and manage plans side by side.">
+    <ng-container *ngIf="canManage && plansLoaded && !showForm">
       <a routerLink="/donations/dues" class="cf-btn" *ngIf="plans.length">Outstanding</a>
       <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">New plan</button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
   <div class="plan-loading plans-card" *ngIf="!plansLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="plan-loading__label">Loading contribution plans…</p>

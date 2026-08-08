@@ -1,0 +1,14 @@
+<div
+  class="subscription-status-banner"
+  *ngIf="snapshot as s"
+  role="status"
+  aria-live="polite"
+  [attr.data-tone]="s.status">
+  <div class="subscription-status-banner__copy">
+    <strong>{{ s.status === 'EXPIRED' || s.status === 'SUSPENDED' ? 'Access limited' : 'Subscription notice' }}</strong>
+    <span>{{ message(s.status) }}</span>
+  </div>
+  <div class="subscription-status-banner__actions" *ngIf="canViewDetails">
+    <a routerLink="/settings/my-subscription" class="cf-btn">My Subscription</a>
+  </div>
+</div>

@@ -1,17 +1,12 @@
 <section class="cf-page donations-expenses">
-  <header class="cf-panel donations-expenses__header">
-    <div>
-      <p class="donations-expenses__eyebrow">Stewardship</p>
-      <h1>Parish Disbursements</h1>
-      <p>Lightweight record of parish expenses and disbursements — not full accounting.</p>
-    </div>
-    <div class="donations-expenses__actions">
-      <a routerLink="/donations" class="cf-btn">Back to Command Center</a>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="showForm = !showForm">
-        {{ showForm ? 'Close Form' : 'Record Disbursement' }}
-      </button>
-    </div>
-  </header>
+  <app-page-header
+    title="Parish Disbursements"
+    subtitle="Lightweight record of parish expenses and disbursements — not full accounting.">
+    <a routerLink="/donations" class="cf-btn">Back to Command Center</a>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="showForm = !showForm">
+      {{ showForm ? 'Close Form' : 'Record Disbursement' }}
+    </button>
+  </app-page-header>
 
   <form class="cf-panel donations-expenses__form" *ngIf="showForm" (ngSubmit)="submit()">
     <h2>New Disbursement</h2>

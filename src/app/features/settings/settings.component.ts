@@ -9,11 +9,12 @@ import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { AuthService } from '@core/services';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-settings',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, PageHeaderComponent],
   templateUrl: './settings.component.html',
   styleUrl: './settings.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -30,7 +31,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     { title: 'Profile Settings', description: 'Manage your personal information', icon: 'user', route: null },
     { title: 'Security', description: 'Password and authentication settings', icon: 'lock', route: null },
     { title: 'Notifications', description: 'Configure notification preferences', icon: 'bell', route: null },
-    { title: 'Billing', description: 'Manage subscription and payment methods', icon: 'credit-card', route: null },
+    { title: 'My Subscription', description: 'View your church plan and access status', icon: 'credit-card', route: '/settings/my-subscription', requiresMySubscriptionAccess: true },
     { title: 'Teams', description: 'Manage team members and roles', icon: 'users', route: null },
     { title: 'Integrations', description: 'Connect third-party services', icon: 'link', route: null },
     { 
@@ -236,25 +237,31 @@ export class SettingsComponent implements OnInit, OnDestroy {
    * Check if a section should be displayed based on user permissions.
    */
   shouldDisplaySection(section: any, user: User | null): boolean {
-    if (section.requiresSuperAdmin) {
-      return this.isSuperAdmin(user);
+    if (section.requiresSuperAdmin && !this.isSuperAdmin(user)) {
+      return false;
     }
-    if (section.requiresEkklesiaRole) {
-      return this.hasEkklesiaRole(user);
+    if (section.requiresEkklesiaRole && !this.hasEkklesiaRole(user)) {
+      return false;
     }
-    if (section.requiresRoleManagement) {
-      return this.canManageRoles(user);
+    if (section.requiresRoleManagement && !this.canManageRoles(user)) {
+      return false;
+    }
+    if (section.requiresMySubscriptionAccess && !this.authService.canViewMySubscription(user)) {
+      return false;
     }
     if (section.requiresTenantAccess) {
-      // ONLY Tenant users (NOT Ekklesia users) can access Sacraments
-      // Must have tenant_id AND must NOT have Ekklesia role
-      return user !== null && user.tenant_id !== null && !this.hasEkklesiaRole(user);
+      // ONLY Tenant users (NOT Ekklesia users) — must have tenant_id AND must NOT have Ekklesia role
+      if (!(user !== null && user.tenant_id !== null && !this.hasEkklesiaRole(user))) {
+        return false;
+      }
     }
-    if (section.requiresPermission) {
-      return this.authService.hasPermission(section.requiresPermission);
+    if (section.requiresPermission && !this.authService.hasPermission(section.requiresPermission)) {
+      return false;
     }
     if (section.requiresAnyPermission?.length) {
-      return section.requiresAnyPermission.some((p: string) => this.authService.hasPermission(p));
+      if (!section.requiresAnyPermission.some((p: string) => this.authService.hasPermission(p))) {
+        return false;
+      }
     }
     return true;
   }

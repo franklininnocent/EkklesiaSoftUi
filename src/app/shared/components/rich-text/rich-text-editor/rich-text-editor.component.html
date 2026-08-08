@@ -1,0 +1,256 @@
+<div
+  class="rich-text-editor"
+  [style.--rte-height]="height"
+  [style.--rte-height-sm]="heightSm"
+>
+  <div
+    class="rich-text-editor__toolbar"
+    role="toolbar"
+    aria-label="Text formatting"
+    (keydown)="onToolbarKeydown($event)"
+    (click)="$event.stopPropagation()"
+  >
+    <div class="rich-text-editor__group" role="group" aria-label="History">
+      <button type="button" class="rich-text-editor__btn" title="Undo (Ctrl+Z)" aria-label="Undo" [disabled]="!canUndo()" (click)="undo()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 1 1 0 11H13"/></svg>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Redo (Ctrl+Shift+Z)" aria-label="Redo" [disabled]="!canRedo()" (click)="redo()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 1 0 0 11H11"/></svg>
+      </button>
+    </div>
+
+    <span class="rich-text-editor__sep" aria-hidden="true"></span>
+
+    <div class="rich-text-editor__group" role="group" aria-label="Block type">
+      <div class="rich-text-editor__dropdown">
+        <button
+          type="button"
+          class="rich-text-editor__btn rich-text-editor__btn--label"
+          title="Text style"
+          aria-label="Text style"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="openMenu === 'heading'"
+          [class.rich-text-editor__btn--active]="isActive('heading')"
+          [disabled]="isDisabled"
+          (click)="toggleMenu('heading', $event)"
+        >
+          <span class="rich-text-editor__btn-text">{{ blockLabel }}</span>
+          <svg class="rich-text-editor__caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div *ngIf="openMenu === 'heading'" class="rich-text-editor__menu" role="menu" aria-label="Text style">
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="!isActive('heading')" (click)="setParagraph()">
+            <span class="rich-text-editor__menu-preview rich-text-editor__menu-preview--p">Paragraph</span>
+          </button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('heading', { level: 1 })" (click)="setHeading(1)">
+            <span class="rich-text-editor__menu-preview rich-text-editor__menu-preview--h1">Heading 1</span>
+          </button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('heading', { level: 2 })" (click)="setHeading(2)">
+            <span class="rich-text-editor__menu-preview rich-text-editor__menu-preview--h2">Heading 2</span>
+          </button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('heading', { level: 3 })" (click)="setHeading(3)">
+            <span class="rich-text-editor__menu-preview rich-text-editor__menu-preview--h3">Heading 3</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <span class="rich-text-editor__sep" aria-hidden="true"></span>
+
+    <div class="rich-text-editor__group rich-text-editor__group--marks" role="group" aria-label="Inline formatting">
+      <button type="button" class="rich-text-editor__btn" title="Bold (Ctrl+B)" aria-label="Bold" [attr.aria-pressed]="isActive('bold')" [class.rich-text-editor__btn--active]="isActive('bold')" [disabled]="isDisabled" (click)="toggleBold()">
+        <strong aria-hidden="true">B</strong>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Italic (Ctrl+I)" aria-label="Italic" [attr.aria-pressed]="isActive('italic')" [class.rich-text-editor__btn--active]="isActive('italic')" [disabled]="isDisabled" (click)="toggleItalic()">
+        <em aria-hidden="true">I</em>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Underline (Ctrl+U)" aria-label="Underline" [attr.aria-pressed]="isActive('underline')" [class.rich-text-editor__btn--active]="isActive('underline')" [disabled]="isDisabled" (click)="toggleUnderline()">
+        <span class="rich-text-editor__u" aria-hidden="true">U</span>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Strikethrough" aria-label="Strikethrough" [attr.aria-pressed]="isActive('strike')" [class.rich-text-editor__btn--active]="isActive('strike')" [disabled]="isDisabled" (click)="toggleStrike()">
+        <span class="rich-text-editor__s" aria-hidden="true">S</span>
+      </button>
+    </div>
+
+    <div class="rich-text-editor__group rich-text-editor__group--format-compact" role="group" aria-label="Format">
+      <div class="rich-text-editor__dropdown">
+        <button
+          type="button"
+          class="rich-text-editor__btn rich-text-editor__btn--label"
+          title="Format"
+          aria-label="Format"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="openMenu === 'format'"
+          [disabled]="isDisabled"
+          (click)="toggleMenu('format', $event)"
+        >
+          Format
+          <svg class="rich-text-editor__caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div *ngIf="openMenu === 'format'" class="rich-text-editor__menu" role="menu" aria-label="Format">
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('bold')" (click)="toggleBold()">Bold</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('italic')" (click)="toggleItalic()">Italic</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('underline')" (click)="toggleUnderline()">Underline</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('strike')" (click)="toggleStrike()">Strikethrough</button>
+        </div>
+      </div>
+    </div>
+
+    <span class="rich-text-editor__sep" aria-hidden="true"></span>
+
+    <div class="rich-text-editor__group" role="group" aria-label="Alignment">
+      <div class="rich-text-editor__dropdown">
+        <button
+          type="button"
+          class="rich-text-editor__btn"
+          title="Alignment"
+          aria-label="Alignment"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="openMenu === 'align'"
+          [disabled]="isDisabled"
+          (click)="toggleMenu('align', $event)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M3 12h12M3 18h18"/></svg>
+          <svg class="rich-text-editor__caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div *ngIf="openMenu === 'align'" class="rich-text-editor__menu" role="menu" aria-label="Alignment">
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="alignLabel === 'Left'" (click)="setAlign('left')">Align left</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="alignLabel === 'Center'" (click)="setAlign('center')">Align center</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="alignLabel === 'Right'" (click)="setAlign('right')">Align right</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="alignLabel === 'Justify'" (click)="setAlign('justify')">Justify</button>
+        </div>
+      </div>
+    </div>
+
+    <span class="rich-text-editor__sep" aria-hidden="true"></span>
+
+    <div class="rich-text-editor__group rich-text-editor__group--lists-desktop" role="group" aria-label="Lists">
+      <button type="button" class="rich-text-editor__btn" title="Bullet list" aria-label="Bullet list" [attr.aria-pressed]="isActive('bulletList')" [class.rich-text-editor__btn--active]="isActive('bulletList')" [disabled]="isDisabled" (click)="toggleBulletList()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Numbered list" aria-label="Numbered list" [attr.aria-pressed]="isActive('orderedList')" [class.rich-text-editor__btn--active]="isActive('orderedList')" [disabled]="isDisabled" (click)="toggleOrderedList()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>
+      </button>
+    </div>
+
+    <div class="rich-text-editor__group rich-text-editor__group--lists-compact" role="group" aria-label="Lists">
+      <div class="rich-text-editor__dropdown">
+        <button
+          type="button"
+          class="rich-text-editor__btn rich-text-editor__btn--label"
+          title="Lists"
+          aria-label="Lists"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="openMenu === 'lists'"
+          [class.rich-text-editor__btn--active]="isActive('bulletList') || isActive('orderedList')"
+          [disabled]="isDisabled"
+          (click)="toggleMenu('lists', $event)"
+        >
+          Lists
+          <svg class="rich-text-editor__caret" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div *ngIf="openMenu === 'lists'" class="rich-text-editor__menu" role="menu" aria-label="Lists">
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('bulletList')" (click)="toggleBulletList()">Bullet list</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" [class.is-active]="isActive('orderedList')" (click)="toggleOrderedList()">Numbered list</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" (click)="sinkListItem()">Increase indent</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" (click)="liftListItem()">Decrease indent</button>
+        </div>
+      </div>
+    </div>
+
+    <span class="rich-text-editor__sep rich-text-editor__sep--desktop" aria-hidden="true"></span>
+
+    <div class="rich-text-editor__group rich-text-editor__group--desktop" role="group" aria-label="Insert">
+      <button type="button" class="rich-text-editor__btn" title="Blockquote" aria-label="Blockquote" [attr.aria-pressed]="isActive('blockquote')" [class.rich-text-editor__btn--active]="isActive('blockquote')" [disabled]="isDisabled" (click)="toggleBlockquote()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V21zM15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v4z"/></svg>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Link" aria-label="Link" [attr.aria-pressed]="isActive('link')" [class.rich-text-editor__btn--active]="isActive('link')" [disabled]="isDisabled" (click)="openLinkDialog()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </button>
+    </div>
+
+    <div class="rich-text-editor__group" role="group" aria-label="More actions">
+      <div class="rich-text-editor__dropdown">
+        <button
+          type="button"
+          class="rich-text-editor__btn"
+          title="More"
+          aria-label="More formatting actions"
+          aria-haspopup="menu"
+          [attr.aria-expanded]="openMenu === 'more'"
+          [disabled]="isDisabled"
+          (click)="toggleMenu('more', $event)"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>
+        </button>
+        <div *ngIf="openMenu === 'more'" class="rich-text-editor__menu rich-text-editor__menu--end" role="menu" aria-label="More actions">
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item rich-text-editor__menu-item--mobile-only" [class.is-active]="isActive('blockquote')" (click)="toggleBlockquote()">Blockquote</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item rich-text-editor__menu-item--mobile-only" [class.is-active]="isActive('link')" (click)="openLinkDialog()">Link</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" (click)="insertHorizontalRule()">Horizontal rule</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" (click)="sinkListItem()">Increase indent</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" (click)="liftListItem()">Decrease indent</button>
+          <button type="button" role="menuitem" class="rich-text-editor__menu-item" (click)="clearFormatting()">Clear formatting</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div #editorBody class="rich-text-editor__body">
+    <div
+      #bubbleMenu
+      class="rich-text-editor__bubble"
+      [class.rich-text-editor__bubble--visible]="bubbleVisible"
+      [style.left.px]="bubbleLeft"
+      [style.top.px]="bubbleTop"
+      role="toolbar"
+      aria-label="Quick formatting"
+      (mousedown)="$event.preventDefault()"
+    >
+      <button type="button" class="rich-text-editor__btn" title="Bold" aria-label="Bold" [attr.aria-pressed]="isActive('bold')" [class.rich-text-editor__btn--active]="isActive('bold')" (click)="toggleBold()">
+        <strong aria-hidden="true">B</strong>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Italic" aria-label="Italic" [attr.aria-pressed]="isActive('italic')" [class.rich-text-editor__btn--active]="isActive('italic')" (click)="toggleItalic()">
+        <em aria-hidden="true">I</em>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Underline" aria-label="Underline" [attr.aria-pressed]="isActive('underline')" [class.rich-text-editor__btn--active]="isActive('underline')" (click)="toggleUnderline()">
+        <span class="rich-text-editor__u" aria-hidden="true">U</span>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Strikethrough" aria-label="Strikethrough" [attr.aria-pressed]="isActive('strike')" [class.rich-text-editor__btn--active]="isActive('strike')" (click)="toggleStrike()">
+        <span class="rich-text-editor__s" aria-hidden="true">S</span>
+      </button>
+      <button type="button" class="rich-text-editor__btn" title="Link" aria-label="Link" [attr.aria-pressed]="isActive('link')" [class.rich-text-editor__btn--active]="isActive('link')" (click)="openLinkDialog()">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+      </button>
+    </div>
+
+    <div #editorHost class="rich-text-editor__surface"></div>
+  </div>
+</div>
+
+<app-modal-shell
+  *ngIf="linkDialogOpen"
+  title="Link"
+  size="sm"
+  (closeRequested)="closeLinkDialog()"
+>
+  <div class="rich-text-editor__link-form">
+    <label class="rich-text-editor__link-label" for="rich-text-link-url">URL</label>
+    <input
+      id="rich-text-link-url"
+      class="rich-text-editor__link-input"
+      type="url"
+      name="richTextLinkUrl"
+      [(ngModel)]="linkUrl"
+      placeholder="https://example.com"
+      autocomplete="off"
+      (keydown.enter)="$event.preventDefault(); applyLink()"
+    />
+    <p class="rich-text-editor__link-help">Allowed: http, https, mailto</p>
+    <p *ngIf="linkError" class="rich-text-editor__link-error" role="alert">{{ linkError }}</p>
+  </div>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="closeLinkDialog()">Cancel</button>
+    <button type="button" class="cf-btn" (click)="removeLink()">Remove</button>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="applyLink()">Apply</button>
+  </ng-container>
+</app-modal-shell>

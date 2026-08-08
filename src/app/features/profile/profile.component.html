@@ -1,8 +1,8 @@
-<div class="profile-container" *ngIf="currentUser$ | async as user">
-  <div class="profile-header">
-    <h1 class="page-title">Profile</h1>
-    <p class="page-description">Manage your account information</p>
-  </div>
+<div class="profile-container cf-page" *ngIf="currentUser$ | async as user">
+  <app-page-header
+    title="Profile"
+    subtitle="Manage your account information">
+  </app-page-header>
 
   <div class="profile-content">
     <div class="profile-card">
@@ -65,4 +65,3 @@
     </div>
   </div>
 </div>
-

@@ -1,31 +1,17 @@
 .ecclesiastical-container {
-  padding: 1.5rem;
   max-width: 1400px;
   margin: 0 auto;
+  display: grid;
+  gap: var(--cf-space-3, 0.75rem);
 }
 
-.ecclesiastical-header {
-  margin-bottom: 1.5rem;
-}
-
-.ecclesiastical-title {
-  font-size: 1.75rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 0.5rem 0;
-}
-
-.ecclesiastical-subtitle {
-  font-size: 1rem;
-  color: #6b7280;
-  margin: 0;
-}
-
+/* Tabs sit above child .cf-page shells; horizontal pad matches --cf-page-pad */
 .ecclesiastical-nav {
   display: flex;
   gap: 1rem;
   border-bottom: 2px solid #e5e7eb;
-  margin-bottom: 1.5rem;
+  margin: var(--cf-page-pad) var(--cf-page-pad) 0;
+  padding: 0;
 }
 
 .nav-tab {
@@ -59,6 +45,7 @@
 
 .ecclesiastical-content {
   animation: fadeIn 0.3s ease-in;
+  min-width: 0;
 }
 
 @keyframes fadeIn {
@@ -73,22 +60,13 @@
 }
 
 @media (max-width: 768px) {
-  .ecclesiastical-container {
-    padding: 1rem;
-  }
-
-  .ecclesiastical-title {
-    font-size: 1.5rem;
+  .ecclesiastical-nav {
+    overflow-x: auto;
+    gap: 0.5rem;
   }
 
   .nav-tab {
     padding: 0.625rem 1rem;
-    font-size: 0.875rem;
-  }
-
-  .tab-icon {
-    font-size: 1rem;
+    white-space: nowrap;
   }
 }
-
-

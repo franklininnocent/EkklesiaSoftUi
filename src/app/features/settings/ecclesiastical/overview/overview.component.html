@@ -1,17 +1,12 @@
-<div class="overview-container">
-  <!-- Page Header -->
-  <div class="page-header">
-    <div class="header-content">
-      <h1 class="page-title">Ecclesiastical Data Management</h1>
-      <p class="page-subtitle">Comprehensive overview of dioceses, archdioceses, and bishops worldwide</p>
-    </div>
-    <div class="header-actions">
-      <button class="btn btn-secondary" (click)="refreshStatistics()" [disabled]="loading">
-        <span class="btn-icon">🔄</span>
-        Refresh
-      </button>
-    </div>
-  </div>
+<div class="overview-container cf-page">
+  <app-page-header
+    title="Ecclesiastical Data Management"
+    subtitle="Comprehensive overview of dioceses, archdioceses, and bishops worldwide">
+    <button class="btn btn-secondary" (click)="refreshStatistics()" [disabled]="loading">
+      <span class="btn-icon">🔄</span>
+      Refresh
+    </button>
+  </app-page-header>
 
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-container">

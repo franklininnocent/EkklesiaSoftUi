@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PaginationComponent } from '@shared/components';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
@@ -13,7 +14,7 @@ import { takeUntil } from 'rxjs/operators';
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, PaginationComponent, SortableDirective, UserFormModalComponent],
+  imports: [CommonModule, PaginationComponent, SortableDirective, UserFormModalComponent, PageHeaderComponent],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

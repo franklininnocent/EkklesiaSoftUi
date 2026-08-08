@@ -2,37 +2,16 @@
   padding: 0;
 }
 
-.list-header {
+/* Toolbar projected into app-page-header actions */
+.diocese-page-header-actions {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 1.25rem;
   flex-wrap: wrap;
-  gap: 1rem;
-}
-
-.header-left {
-  flex: 1;
-}
-
-.list-title {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 0.375rem 0;
-}
-
-.list-subtitle {
-  font-size: 0.875rem;
-  color: #6b7280;
-  margin: 0;
-}
-
-.header-right {
-  display: flex;
-  gap: 0.75rem;
   align-items: center;
-  flex-wrap: wrap;
+  gap: var(--cf-space-2, 0.5rem);
+
+  .search-box-header {
+    min-width: 200px;
+  }
 }
 
 // Filter Chips Container - Compact Inline Design
@@ -567,8 +546,10 @@
 
 // Responsive
 @media (max-width: 768px) {
-  .list-header {
+  .diocese-page-header-actions {
     flex-direction: column;
+    align-items: stretch;
+    width: 100%;
   }
 
   .diocese-table {

@@ -5,28 +5,21 @@
 
 .users {
   @extend %standard-list-container;
+
+  &.cf-page {
+    padding: var(--cf-page-pad);
+    gap: var(--cf-page-gap);
+    font-family: var(--cf-font-sans);
+    min-height: 0;
+  }
 }
 
-.users-header {
-  @extend %standard-list-header;
-  margin-top: 1.5rem;
-  margin-bottom: 1.25rem;
-
-  .header-left {
-    @extend %standard-header-left;
-  }
-
-  .header-right {
-    @extend %standard-header-right;
-  }
-
-  h1 {
-    @extend %standard-list-title;
-  }
-
-  p {
-    @extend %standard-list-subtitle;
-  }
+/* Toolbar projected into app-page-header actions */
+.users-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-space-2, 0.5rem);
 }
 
 // Standard Button Styles
@@ -288,11 +281,15 @@
 }
 
 @media (max-width: 768px) {
-  .users-header {
+  .users-page-header-actions {
     flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-    margin-top: 1.25rem; /* Slightly reduced for mobile but still maintains good spacing */
+    align-items: stretch;
+    width: 100%;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   .users-table {

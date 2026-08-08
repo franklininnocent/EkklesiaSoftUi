@@ -4,26 +4,12 @@
   margin: 0 auto;
 }
 
-.list-header {
+/* Toolbar projected into app-page-header actions */
+.sacrament-type-page-header-actions {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 2rem;
-  
-  .header-content {
-    .page-title {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: #1a202c;
-      margin: 0 0 0.5rem 0;
-    }
-    
-    .page-subtitle {
-      color: #718096;
-      font-size: 0.95rem;
-      margin: 0;
-    }
-  }
+  gap: var(--cf-space-2, 0.5rem);
 }
 
 .filters-section {
@@ -422,10 +408,15 @@
 
 // Responsive
 @media (max-width: 768px) {
-  .list-header {
+  .sacrament-type-page-header-actions {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+    align-items: stretch;
+    width: 100%;
+
+    .btn {
+      width: 100%;
+      justify-content: center;
+    }
   }
   
   .filter-row {

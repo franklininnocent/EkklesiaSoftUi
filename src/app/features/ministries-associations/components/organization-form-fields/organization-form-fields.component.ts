@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
+import { RichTextEditorComponent } from '@shared/components/rich-text/rich-text-editor/rich-text-editor.component';
 import { OrganizationCategory, OrganizationType } from '../../models/ministries.model';
 import { OrganizationFormGroup } from '../../utils/organization-form.util';
 
@@ -18,7 +19,7 @@ import { OrganizationFormGroup } from '../../utils/organization-form.util';
 @Component({
   selector: 'app-organization-form-fields',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormFieldComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormFieldComponent, RichTextEditorComponent],
   templateUrl: './organization-form-fields.component.html',
   styleUrl: './organization-form-fields.component.scss',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -30,7 +31,7 @@ export class OrganizationFormFieldsComponent {
   @Input() submitted = false;
   @Input() fieldErrors: Record<string, string> = {};
   @Input({ required: true }) maxEstablishedDate!: string;
-  /** Desktop two-column section layout (create page). Detail edit stays stacked. */
+  /** Desktop two-column section layout (create + detail edit). */
   @Input() columns = false;
 
   /** Resolves the first applicable validator/server error message for a control. */

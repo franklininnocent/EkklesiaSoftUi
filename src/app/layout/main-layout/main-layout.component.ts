@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable, Subject } from 'rxjs';
-import { filter, take, takeUntil } from 'rxjs/operators';
+import { filter, takeUntil } from 'rxjs/operators';
 import { trigger, transition, style, animate } from '@angular/animations';
 
 import { AppState } from '@core/store';
@@ -20,6 +20,8 @@ import { CommandPaletteComponent } from '@shared/components/command-palette/comm
 import { GlobalFamilySearchComponent } from '@shared/components/global-family-search/global-family-search.component';
 import { SupportSessionBannerComponent } from '@features/support-center/components/support-session-banner/support-session-banner.component';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { SubscriptionStatusBannerComponent } from '@shared/components/subscription-status-banner/subscription-status-banner.component';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 
 @Component({
   selector: 'app-main-layout',
@@ -32,6 +34,7 @@ import { SupportSessionService } from '@features/support-center/services/support
     CommandPaletteComponent,
     GlobalFamilySearchComponent,
     SupportSessionBannerComponent,
+    SubscriptionStatusBannerComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -67,6 +70,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private quickCollectService = inject(QuickCollectService);
   private supportSessions = inject(SupportSessionService);
+  private subscriptionAccess = inject(SubscriptionAccessService);
 
   currentUser$: Observable<User | null>;
   currentTenant$: Observable<Tenant | null>;
@@ -89,11 +93,19 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     // Load user data if authenticated but user is not in store (e.g., after page refresh)
-    this.currentUser$.pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
+    this.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
       if (!user && this.authService.isAuthenticated()) {
-        // User is authenticated but not loaded in store, dispatch loadUser action
         this.store.dispatch(AuthActions.loadUser());
       }
+      if (user?.tenant_id) {
+        this.subscriptionAccess.ensureLoaded();
+      } else {
+        this.subscriptionAccess.clear();
+      }
+      this.cdr.markForCheck();
+    });
+
+    this.subscriptionAccess.snapshot$.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.cdr.markForCheck();
     });
 
@@ -249,11 +261,24 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   canViewDonations(user: User | null): boolean {
-    return this.authService.canAccessDonations(user);
+    if (!this.authService.canAccessDonations(user)) {
+      return false;
+    }
+    // Soft-gate: hide when tenant subscription is expired/suspended.
+    if (user?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin()) {
+      return this.subscriptionAccess.allowsGatedAccess;
+    }
+    return true;
   }
 
   canAccessMinistries(user: User | null): boolean {
-    return this.authService.canAccessMinistries(user);
+    if (!this.authService.canAccessMinistries(user)) {
+      return false;
+    }
+    if (user?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin()) {
+      return this.subscriptionAccess.allowsGatedAccess;
+    }
+    return true;
   }
 
   openQuickCollect(): void {

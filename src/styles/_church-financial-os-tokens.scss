@@ -39,14 +39,50 @@
   --cf-primary-soft: var(--cf-indigo-soft);
   --cf-overlay-bg: rgba(15, 23, 42, 0.45);
 
-  /* Typography scale — see docs/CHURCH_FINANCIAL_OS_DESIGN_SYSTEM.md for usage guidance */
+  /* Semantic color roles — alias existing palette; prefer these in new UI */
+  --cf-color-primary: var(--cf-primary);
+  --cf-color-secondary: var(--cf-slate-700);
+  --cf-color-success: var(--cf-forest);
+  --cf-color-warning: var(--cf-amber);
+  --cf-color-danger: var(--cf-critical);
+  --cf-color-info: var(--cf-info);
+  --cf-color-text-primary: var(--cf-slate-900);
+  --cf-color-text-secondary: var(--cf-slate-700);
+  --cf-color-text-muted: var(--cf-muted);
+  --cf-color-border: var(--cf-panel-border);
+  --cf-color-surface: var(--cf-panel-bg);
+  --cf-color-background: var(--cf-slate-50);
+  --cf-color-disabled: var(--cf-slate-300);
+
+  --cf-border-width: 1px;
+
+  /* Typography scale — see docs/frontend/style-guide.md for usage guidance */
   --cf-text-xs: 0.72rem;   /* filter badges, KPI captions, timestamps */
   --cf-text-sm: 0.8rem;    /* table body text, secondary metadata, error text */
   --cf-text-base: 0.85rem; /* form labels, button text */
   --cf-text-md: 0.9rem;    /* banners, section intros */
   --cf-text-lg: 1.05rem;   /* section headings (h2) */
   --cf-text-xl: 1.15rem;   /* panel/dialog titles */
-  --cf-text-2xl: 1.3rem;   /* page h1 — compact enterprise admin title */
+  --cf-text-2xl: 1.3rem;   /* compact emphasis (KPIs, dense chrome) — NOT page titles */
+
+  /*
+   * Semantic typography roles
+   * Page Title is a dedicated token (not --cf-text-2xl) so the enterprise H1
+   * scale can change without resizing compact chrome that uses 2xl.
+   * Mobile-first: 1.5rem → tablet 1.75rem → desktop 2rem (see media queries below).
+   */
+  --cf-text-page-title: 1.5rem;
+  --cf-font-weight-page-title: 700;
+  --cf-leading-page-title: 1.25;
+  --cf-text-section-title: var(--cf-text-lg);
+  --cf-text-subsection: var(--cf-text-md);
+  --cf-text-minor-heading: var(--cf-text-base);
+  --cf-text-body: var(--cf-text-sm);
+  --cf-text-body-sm: var(--cf-text-xs);
+  --cf-text-caption: var(--cf-text-xs);
+  --cf-text-label: var(--cf-text-base);
+  --cf-text-meta: var(--cf-text-sm);
+  --cf-text-helper: var(--cf-text-xs);
 
   /* Icon sizing */
   --cf-icon-sm: 16px;
@@ -94,6 +130,18 @@
 
   --cf-badge-pad-y: 0.1rem;
   --cf-badge-pad-x: 0.4rem;
+}
+
+@media (min-width: $cf-bp-md) {
+  :root {
+    --cf-text-page-title: 1.75rem;
+  }
+}
+
+@media (min-width: $cf-bp-lg) {
+  :root {
+    --cf-text-page-title: 2rem;
+  }
 }
 
 .cf-panel {
@@ -158,17 +206,35 @@
 }
 
 .cf-btn {
-  border: 1px solid var(--cf-panel-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cf-space-2);
+  min-height: var(--cf-control-height);
+  border: var(--cf-border-width, 1px) solid var(--cf-panel-border);
   border-radius: var(--cf-radius-sm);
   padding: var(--cf-btn-pad-y) var(--cf-btn-pad-x);
   background: var(--cf-panel-bg);
   color: var(--cf-slate-900);
   cursor: pointer;
   font-size: var(--cf-text-base);
+  font-family: inherit;
+  line-height: 1.25;
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    background: var(--cf-slate-50);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--cf-primary);
     outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    color: var(--cf-color-text-muted);
   }
 }
 
@@ -176,12 +242,21 @@
   border-color: transparent;
   background: var(--cf-primary);
   color: #fff;
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.95);
+    background: var(--cf-primary);
+  }
 }
 
 .cf-page {
   padding: var(--cf-page-pad);
   display: grid;
   gap: var(--cf-page-gap);
+  /* Keep rows packed to the top when a page shell is taller than its content
+     (e.g. min-height: 100vh from legacy list containers). Default stretch
+     expands the gaps between header and body into large empty bands. */
+  align-content: start;
   font-family: var(--cf-font-sans);
 }
 
@@ -202,19 +277,64 @@
   background: var(--cf-slate-50);
 }
 
-.cf-hero h1 {
+/* Official Page Title / H1 — single source of truth for top-level page headings.
+   Prefer <app-page-header> (renders h1 inside .cf-hero) or class .cf-page-title. */
+.cf-hero h1,
+.cf-page-title {
   margin: 0 0 var(--cf-space-1);
-  font-size: var(--cf-text-2xl);
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--cf-slate-900);
+  font-size: var(--cf-text-page-title);
+  font-weight: var(--cf-font-weight-page-title);
+  line-height: var(--cf-leading-page-title);
+  color: var(--cf-color-text-primary);
+  font-family: var(--cf-font-sans);
+  letter-spacing: -0.01em;
 }
 
 .cf-hero p {
   margin: var(--cf-space-1) 0 0;
-  color: var(--cf-muted);
-  font-size: var(--cf-text-sm);
+  color: var(--cf-color-text-muted);
+  font-size: var(--cf-text-meta);
   line-height: 1.35;
+}
+
+.cf-section-title {
+  margin: 0 0 var(--cf-space-2);
+  font-size: var(--cf-text-section-title);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cf-color-text-primary);
+}
+
+.cf-subsection-title {
+  margin: 0 0 var(--cf-space-2);
+  font-size: var(--cf-text-subsection);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--cf-color-text-primary);
+}
+
+.cf-body {
+  font-size: var(--cf-text-body);
+  line-height: 1.45;
+  color: var(--cf-color-text-primary);
+}
+
+.cf-caption {
+  font-size: var(--cf-text-caption);
+  line-height: 1.35;
+  color: var(--cf-color-text-muted);
+}
+
+.cf-meta {
+  font-size: var(--cf-text-meta);
+  line-height: 1.35;
+  color: var(--cf-color-text-muted);
+}
+
+.cf-helper {
+  font-size: var(--cf-text-helper);
+  line-height: 1.35;
+  color: var(--cf-color-text-muted);
 }
 
 .cf-table {
@@ -1578,9 +1698,105 @@
   }
 }
 
+/* Ghost = bordered transparent button; use with .cf-btn or alone */
+.cf-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cf-space-2);
+  min-height: var(--cf-control-height);
+  border: var(--cf-border-width, 1px) solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  padding: var(--cf-btn-pad-y) var(--cf-btn-pad-x);
+  background: transparent;
+  color: var(--cf-slate-900);
+  cursor: pointer;
+  font-size: var(--cf-text-base);
+  font-family: inherit;
+  line-height: 1.25;
+
+  &:hover:not(:disabled) {
+    background: var(--cf-slate-50);
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+/* Link-style alias of .cf-btn-text */
+a.cf-btn-link,
+button.cf-btn-link,
+.cf-btn-link {
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0.2rem;
+  color: var(--cf-primary);
+  cursor: pointer;
+  font-size: var(--cf-text-base);
+  font-family: inherit;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    color: var(--cf-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+  }
+}
+
+/* Icon-only control — square hit target aligned to control height */
+.cf-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cf-control-height);
+  height: var(--cf-control-height);
+  min-height: var(--cf-control-height);
+  padding: 0;
+  border: var(--cf-border-width, 1px) solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-panel-bg);
+  color: var(--cf-slate-900);
+  cursor: pointer;
+
+  svg {
+    width: var(--cf-icon-md);
+    height: var(--cf-icon-md);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--cf-slate-50);
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
 /* Badge/chip system — single source of truth for status-like labels.
    Tones map to the semantic token pairs above; do not hardcode hex values
-   for status pills/badges in feature modules. */
+   for status pills/badges in feature modules.
+   Suggested status mapping:
+   Active → success | Inactive/Archived → neutral | Pending/Draft → warning
+   Completed → info | Warning → warning | Error → critical */
 .cf-badge {
   display: inline-block;
   padding: var(--cf-badge-pad-y) var(--cf-badge-pad-x);
@@ -1631,4 +1847,20 @@
 .cf-table__cell--truncate {
   @include cf-truncate;
   max-width: 0;
+}
+
+/* Guard page titles against html.font-* bare-h1 overrides in styles.scss.
+   Specificity must beat `html.font-standard h1` etc. Rem tokens still scale
+   with the root font-size theme. */
+html.font-small,
+html.font-standard,
+html.font-large {
+  .cf-hero h1,
+  .cf-page-title,
+  h1.page-title,
+  .page-title {
+    font-size: var(--cf-text-page-title);
+    font-weight: var(--cf-font-weight-page-title);
+    line-height: var(--cf-leading-page-title);
+  }
 }

@@ -4,6 +4,25 @@
 
 .family-list-container {
   @extend %standard-list-container;
+
+  &.cf-page {
+    padding: var(--cf-page-pad);
+    gap: var(--cf-page-gap);
+    font-family: var(--cf-font-sans);
+    min-height: 0;
+  }
+}
+
+/* Toolbar projected into app-page-header actions */
+.family-page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-space-2, 0.5rem);
+
+  .search-box-header {
+    min-width: 200px;
+  }
 }
 
 // Statistics Grid
@@ -57,26 +76,6 @@
       letter-spacing: 0.025em;
     }
   }
-}
-
-.list-header {
-  @extend %standard-list-header;
-}
-
-.header-left {
-  @extend %standard-header-left;
-}
-
-.list-title {
-  @extend %standard-list-title;
-}
-
-.list-subtitle {
-  @extend %standard-list-subtitle;
-}
-
-.header-right {
-  @extend %standard-header-right;
 }
 
 // Filter Chips Container - Compact Inline Design
@@ -882,35 +881,19 @@
     padding: 0.75rem;
   }
 
-  .list-header {
+  .family-page-header-actions {
     flex-direction: column;
     align-items: stretch;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
+    width: 100%;
 
-    .header-left {
-      .list-title {
-        font-size: 1.25rem;
-      }
-
-      .list-subtitle {
-        font-size: 0.813rem;
-      }
+    .search-box-header {
+      width: 100%;
+      min-width: 100%;
     }
 
-    .header-right {
-      flex-direction: column;
-      gap: 0.5rem;
-
-      .search-box-header {
-        width: 100%;
-        min-width: 100%;
-      }
-
-      .btn {
-        width: 100%;
-        justify-content: center;
-      }
+    .btn {
+      width: 100%;
+      justify-content: center;
     }
   }
 
@@ -1075,18 +1058,14 @@
     padding: 1rem;
   }
 
-  .list-header {
+  .family-page-header-actions {
     flex-wrap: wrap;
+    width: 100%;
 
-    .header-right {
-      flex-wrap: wrap;
-      width: 100%;
-
-      .search-box-header {
-        flex: 1;
-        min-width: 200px;
-        max-width: 280px;
-      }
+    .search-box-header {
+      flex: 1;
+      min-width: 200px;
+      max-width: 280px;
     }
   }
 
@@ -1114,12 +1093,10 @@
 
 // Medium Devices (tablets, 768px and up)
 @media (min-width: 768px) and (max-width: 991.98px) {
-  .list-header {
-    .header-right {
-      .search-box-header {
-        min-width: 220px;
-        max-width: 300px;
-      }
+  .family-page-header-actions {
+    .search-box-header {
+      min-width: 220px;
+      max-width: 300px;
     }
   }
 
@@ -1159,12 +1136,10 @@
 
 // Extra Large Devices (large desktops, 1200px and up)
 @media (min-width: 1200px) {
-  .list-header {
-    .header-right {
-      .search-box-header {
-        min-width: 260px;
-        max-width: 360px;
-      }
+  .family-page-header-actions {
+    .search-box-header {
+      min-width: 260px;
+      max-width: 360px;
     }
   }
 }
@@ -1200,7 +1175,7 @@
 
 // Print styles
 @media print {
-  .list-header .header-right,
+  .family-page-header-actions,
   .filter-chips-container .btn-clear-all-chips,
   .action-btn,
   app-pagination,

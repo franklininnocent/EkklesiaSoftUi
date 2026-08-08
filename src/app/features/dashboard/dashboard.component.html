@@ -3,7 +3,7 @@
   <!-- Page header (uses app shell for tenant + profile; no duplicate topbar) -->
   <header class="cd-page-header">
     <div class="cd-page-header__intro">
-      <h1 class="cd-page-title">Dashboard</h1>
+      <h1 class="cd-page-title cf-page-title">Dashboard</h1>
       <p class="cd-page-subtitle" *ngIf="currentUser$ | async as user">
         {{ getGreeting() }}, <strong>{{ getUserFirstName(user.name) }}</strong>
         <span class="cd-page-subtitle__sep">·</span>

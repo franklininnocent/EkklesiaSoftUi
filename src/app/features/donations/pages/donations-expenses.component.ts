@@ -2,6 +2,7 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { CommandCenterDataService } from '../dashboard/services/command-center-data.service';
 import { ParishExpenseRecord } from '../models/donation.model';
 import { refreshStewardshipView } from '../utils/stewardship-view.util';
@@ -9,7 +10,7 @@ import { refreshStewardshipView } from '../utils/stewardship-view.util';
 @Component({
   selector: 'app-donations-expenses',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, PageHeaderComponent],
   templateUrl: './donations-expenses.component.html',
   styleUrl: './donations-expenses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

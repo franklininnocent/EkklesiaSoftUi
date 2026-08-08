@@ -16,10 +16,13 @@ import { ToastService } from '@core/services/toast.service';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
-import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import { RichTextViewerComponent } from '@shared/components/rich-text/rich-text-viewer/rich-text-viewer.component';
+import { StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
+import { richTextToPayload } from '@shared/components/rich-text/rich-text.utils';
 import { AuditLogPanelComponent } from '../components/audit-log-panel/audit-log-panel.component';
 import { OrganizationMembersTabComponent } from '../components/organization-members-tab/organization-members-tab.component';
+import { OrganizationMemberHistoryTabComponent } from '../components/organization-member-history-tab/organization-member-history-tab.component';
 import { OrganizationLeadershipTabComponent } from '../components/organization-leadership-tab/organization-leadership-tab.component';
 import { OrganizationFormFieldsComponent } from '../components/organization-form-fields/organization-form-fields.component';
 import {
@@ -47,13 +50,15 @@ const SOCIAL_LINK_LABELS: Record<SocialLinkKey, string> = {
   telegram: 'Telegram',
 };
 
-type OrganizationTab = 'profile' | 'members' | 'leadership' | 'audit';
+type OrganizationTab = 'profile' | 'members' | 'leadership' | 'audit' | 'member-history';
+type ProfileDirection = 'vision' | 'mission' | 'objectives';
 
 const ORGANIZATION_TABS: OrganizationTab[] = [
   'profile',
   'members',
   'leadership',
   'audit',
+  'member-history',
 ];
 
 const TAB_LABELS: Record<OrganizationTab, string> = {
@@ -61,7 +66,14 @@ const TAB_LABELS: Record<OrganizationTab, string> = {
   members: 'Members',
   leadership: 'Leadership',
   audit: 'Audit',
+  'member-history': 'Member History',
 };
+
+const PROFILE_DIRECTION_ITEMS: ReadonlyArray<{ id: ProfileDirection; label: string }> = [
+  { id: 'vision', label: 'Vision' },
+  { id: 'mission', label: 'Mission' },
+  { id: 'objectives', label: 'Objectives' },
+];
 
 @Component({
   selector: 'app-organization-detail-page',
@@ -72,13 +84,14 @@ const TAB_LABELS: Record<OrganizationTab, string> = {
     RouterModule,
     LoadingSkeletonComponent,
     PageHeaderComponent,
-    StatusBadgeComponent,
     TabStripComponent,
     OrganizationFormFieldsComponent,
     OrganizationMembersTabComponent,
+    OrganizationMemberHistoryTabComponent,
     OrganizationLeadershipTabComponent,
     AuditLogPanelComponent,
     ConfirmationModalComponent,
+    RichTextViewerComponent,
   ],
   templateUrl: './organization-detail.page.html',
   styleUrl: './organization-detail.page.scss',
@@ -96,12 +109,15 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
 
   readonly tabs = ORGANIZATION_TABS;
   readonly tabLabels = TAB_LABELS;
+  readonly profileDirectionItems = PROFILE_DIRECTION_ITEMS;
+  readonly profileDirectionPanelId = 'org-profile-direction-panel';
 
   organization: Organization | null = null;
   summary: OrganizationSummary | null = null;
   categories: OrganizationCategory[] = [];
   types: OrganizationType[] = [];
   activeTab: OrganizationTab = 'profile';
+  activeProfileDirection: ProfileDirection = 'vision';
 
   loading = true;
   loadError: string | null = null;
@@ -114,6 +130,7 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
   archiveBusy = false;
   restoreBusy = false;
   showArchiveConfirm = false;
+  headerMenuOpen = false;
   submitted = false;
   formError: string | null = null;
   fieldErrors: Record<string, string> = {};
@@ -155,6 +172,32 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
       return 'neutral';
     }
     return this.organization?.status === 'active' ? 'success' : 'neutral';
+  }
+
+  get showHeaderMoreMenu(): boolean {
+    if (this.isArchived) {
+      return this.canArchive;
+    }
+    return this.canEdit || this.canArchive;
+  }
+
+  get activeProfileDirectionContent(): string | null {
+    if (!this.organization) {
+      return null;
+    }
+    return this.organization[this.activeProfileDirection] ?? null;
+  }
+
+  setActiveProfileDirection(direction: ProfileDirection): void {
+    if (this.activeProfileDirection === direction) {
+      return;
+    }
+    this.activeProfileDirection = direction;
+    this.cdr.markForCheck();
+  }
+
+  profileDirectionTabId(direction: ProfileDirection): string {
+    return `org-profile-direction-${direction}`;
   }
 
   ngOnInit(): void {
@@ -224,16 +267,37 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
       return '—';
     }
 
-    const date = new Date(`${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) {
-      return value;
+    const datePart = value.includes('T') ? value.slice(0, 10) : value;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(datePart);
+    if (!match) {
+      const parsed = new Date(value);
+      if (Number.isNaN(parsed.getTime())) {
+        return '—';
+      }
+      return this.formatDisplayDate(parsed);
     }
 
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    const year = Number(match[1]);
+    const monthIndex = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const date = new Date(year, monthIndex, day);
+    if (
+      Number.isNaN(date.getTime()) ||
+      date.getFullYear() !== year ||
+      date.getMonth() !== monthIndex ||
+      date.getDate() !== day
+    ) {
+      return '—';
+    }
+
+    return this.formatDisplayDate(date);
+  }
+
+  private formatDisplayDate(date: Date): string {
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = date.toLocaleDateString('en-GB', { month: 'short' });
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
   }
 
   socialLinks(
@@ -260,6 +324,30 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
 
   onLeadershipChanged(): void {
     this.refreshHeader();
+  }
+
+  toggleHeaderMenu(event: Event): void {
+    event.stopPropagation();
+    this.headerMenuOpen = !this.headerMenuOpen;
+  }
+
+  closeHeaderMenu(): void {
+    if (this.headerMenuOpen) {
+      this.headerMenuOpen = false;
+    }
+  }
+
+  onHeaderMenuAction(action: 'status' | 'archive' | 'restore'): void {
+    this.headerMenuOpen = false;
+    if (action === 'status') {
+      this.toggleStatus();
+      return;
+    }
+    if (action === 'archive') {
+      this.openArchiveConfirm();
+      return;
+    }
+    this.restoreOrganization();
   }
 
   startEditProfile(): void {
@@ -493,6 +581,7 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
         next: ({ organization, summary }) => {
           this.organization = organization.data;
           this.summary = summary.data;
+          this.activeProfileDirection = 'vision';
           this.loading = false;
           this.cdr.markForCheck();
         },
@@ -596,10 +685,10 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
       short_name: raw.short_name.trim() || null,
       category_id: raw.category_id,
       type_id: raw.type_id,
-      description: raw.description.trim() || null,
-      vision: raw.vision.trim() || null,
-      mission: raw.mission.trim() || null,
-      objectives: raw.objectives.trim() || null,
+      description: richTextToPayload(raw.description),
+      vision: richTextToPayload(raw.vision),
+      mission: richTextToPayload(raw.mission),
+      objectives: richTextToPayload(raw.objectives),
       patron_saint: raw.patron_saint.trim() || null,
       established_date: raw.established_date || null,
       theme_color: raw.theme_color.trim() || null,

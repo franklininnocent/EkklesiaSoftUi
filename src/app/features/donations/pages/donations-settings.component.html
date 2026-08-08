@@ -1,15 +1,13 @@
 <section class="settings-page cf-page cf-split-page">
-  <header class="cf-split-page__hero cf-hero">
-    <div class="cf-split-page__hero-copy">
-      <h1>Stewardship Settings</h1>
-      <p>Receipts, UPI collection, tax acknowledgements, and AI outreach — configure once.</p>
-    </div>
-    <div class="cf-split-page__hero-actions" *ngIf="canEditSettings && settingsLoaded">
+  <app-page-header
+    title="Stewardship Settings"
+    subtitle="Receipts, UPI collection, tax acknowledgements, and AI outreach — configure once.">
+    <ng-container *ngIf="canEditSettings && settingsLoaded">
       <button type="submit" form="settings-form" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
         {{ saving ? 'Saving…' : 'Save settings' }}
       </button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!settingsLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="cf-split-loading__label">Loading stewardship settings…</p>

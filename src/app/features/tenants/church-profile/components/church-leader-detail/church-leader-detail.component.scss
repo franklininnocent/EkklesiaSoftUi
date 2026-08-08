@@ -47,9 +47,11 @@
 
 .cld__header h1 {
   margin: 0;
-  font-size: 1.45rem;
-  font-weight: 800;
-  letter-spacing: -0.02em;
+  font-size: var(--cf-text-page-title);
+  font-weight: var(--cf-font-weight-page-title, 700);
+  line-height: var(--cf-leading-page-title, 1.25);
+  color: var(--cf-color-text-primary, inherit);
+  letter-spacing: -0.01em;
 }
 
 .cld__header-copy p {

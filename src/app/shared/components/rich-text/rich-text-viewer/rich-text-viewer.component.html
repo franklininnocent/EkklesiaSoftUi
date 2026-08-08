@@ -1,0 +1,10 @@
+<span *ngIf="isEmpty" class="rich-text-viewer__empty">{{ emptyLabel }}</span>
+<div
+  *ngIf="!isEmpty && isPlainText"
+  class="rich-text-viewer rich-text-viewer--plain"
+>{{ content }}</div>
+<div
+  *ngIf="!isEmpty && !isPlainText"
+  class="rich-text-viewer"
+  [innerHTML]="htmlContent"
+></div>

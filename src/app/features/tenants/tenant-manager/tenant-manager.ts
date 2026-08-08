@@ -11,6 +11,7 @@ import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { Tenant } from '@core/models/tenant.model';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { Subject, takeUntil } from 'rxjs';
 import { environment } from '@environments/environment';
 
@@ -19,7 +20,8 @@ import { environment } from '@environments/environment';
   standalone: true,
   imports: [
     CommonModule,
-    TenantCreateModalComponent
+    TenantCreateModalComponent,
+    PageHeaderComponent
   ],
   templateUrl: './tenant-manager.html',
   styleUrls: ['./tenant-manager.scss'],

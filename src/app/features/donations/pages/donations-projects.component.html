@@ -1,22 +1,14 @@
 <section class="projects-page cf-page">
-  <!-- Page header -->
-  <header class="proj-page-header">
-    <div class="proj-page-header__main">
-      <div class="proj-page-header__icon" aria-hidden="true">▣</div>
-      <div>
-        <h1 class="proj-page-header__title">{{ pageTitle }}</h1>
-        <p class="proj-page-header__subtitle">{{ pageSubtitle }}</p>
-      </div>
-    </div>
-    <div class="proj-page-header__actions" *ngIf="!showForm">
+  <app-page-header [title]="pageTitle" [subtitle]="pageSubtitle">
+    <ng-container *ngIf="!showForm">
       <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
       <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
       <a routerLink="/donations/project-installments" class="cf-btn">Installments</a>
-    </div>
-    <div class="proj-page-header__actions" *ngIf="showForm">
+    </ng-container>
+    <ng-container *ngIf="showForm">
       <button type="button" class="cf-btn" (click)="closeForm()">Back to projects</button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
   <!-- Success / save error alerts -->
   <div class="proj-alert proj-alert--success" *ngIf="message" role="status">

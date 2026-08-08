@@ -1,11 +1,8 @@
-<div class="sacrament-list-container">
-  <!-- Header -->
-  <div class="list-header">
-    <div class="header-left">
-      <h2 class="list-title">Sacraments</h2>
-      <p class="list-subtitle">Manage baptisms, confirmations, marriages, and all sacraments</p>
-    </div>
-    <div class="header-right">
+<div class="sacrament-list-container cf-page">
+  <app-page-header
+    title="Sacraments"
+    subtitle="Manage baptisms, confirmations, marriages, and all sacraments">
+    <div class="sacrament-page-header-actions">
       <div class="search-box-header">
         <span class="search-icon">🔍</span>
         <input 
@@ -32,7 +29,7 @@
         <span class="btn-icon">➕</span>
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Active Filter Chips - Inline Compact Design -->
   <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">

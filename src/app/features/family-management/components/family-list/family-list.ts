@@ -11,6 +11,7 @@ import { Family, BCC, FamilyStatistics, FamilyMember } from '../../../../core/mo
 import { FamilyFormComponent } from '../family-form/family-form';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-family-list',
@@ -21,7 +22,8 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
     ReactiveFormsModule, 
     FamilyFormComponent,
     AdvancedSearchPanelComponent,
-    PaginationComponent
+    PaginationComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './family-list.html',
   styleUrls: ['./family-list.scss'],

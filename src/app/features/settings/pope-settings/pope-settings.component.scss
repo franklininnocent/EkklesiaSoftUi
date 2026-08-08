@@ -1,22 +1,10 @@
 .pope-settings-container {
   max-width: 900px;
   margin: 0 auto;
-  padding: 2rem;
 
-  .header {
-    margin-bottom: 2rem;
-
-    h1 {
-      font-size: 2rem;
-      font-weight: 700;
-      color: var(--text-primary, #1a1a1a);
-      margin-bottom: 0.5rem;
-    }
-
-    .description {
-      font-size: 1rem;
-      color: var(--text-secondary, #6b7280);
-    }
+  &.cf-page {
+    padding: var(--cf-page-pad);
+    gap: var(--cf-page-gap);
   }
 
   .loading-state {

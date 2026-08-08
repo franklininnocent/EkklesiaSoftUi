@@ -13,11 +13,12 @@ import { PopeDetailsService } from '@core/services/church';
 import { AuthService } from '@core/services';
 import { ToastService } from '@core/services/toast.service';
 import { PopeDetails, UpdatePopeDetailsRequest } from '@core/models/church';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-pope-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, PageHeaderComponent],
   templateUrl: './pope-settings.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './pope-settings.component.scss'

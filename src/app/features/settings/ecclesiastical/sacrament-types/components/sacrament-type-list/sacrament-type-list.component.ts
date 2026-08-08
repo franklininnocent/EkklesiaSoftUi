@@ -6,6 +6,7 @@ import { SacramentType, SacramentTypeListParams, SACRAMENT_CATEGORIES } from '..
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { ToastService } from '@core/services/toast.service';
 
 @Component({
@@ -16,7 +17,8 @@ import { ToastService } from '@core/services/toast.service';
     FormsModule,
     LoadingSkeletonComponent,
     EmptyStateComponent,
-    PaginationComponent
+    PaginationComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './sacrament-type-list.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

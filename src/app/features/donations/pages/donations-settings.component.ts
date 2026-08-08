@@ -4,6 +4,7 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { FinancialAiStatus } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
@@ -11,7 +12,7 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
 @Component({
   selector: 'app-donations-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingSkeletonComponent],
+  imports: [CommonModule, ReactiveFormsModule, LoadingSkeletonComponent, PageHeaderComponent],
   templateUrl: './donations-settings.component.html',
   styleUrl: './donations-settings.component.scss'
 })

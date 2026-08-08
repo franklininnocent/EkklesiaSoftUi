@@ -15,6 +15,7 @@ import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { richTextToPayload } from '@shared/components/rich-text/rich-text.utils';
 import {
   CreateOrganizationPayload,
   OrganizationCategory,
@@ -177,10 +178,10 @@ export class OrganizationFormPageComponent implements OnInit, OnDestroy {
       short_name: raw.short_name.trim() || null,
       category_id: raw.category_id,
       type_id: raw.type_id,
-      description: raw.description.trim() || null,
-      vision: raw.vision.trim() || null,
-      mission: raw.mission.trim() || null,
-      objectives: raw.objectives.trim() || null,
+      description: richTextToPayload(raw.description),
+      vision: richTextToPayload(raw.vision),
+      mission: richTextToPayload(raw.mission),
+      objectives: richTextToPayload(raw.objectives),
       patron_saint: raw.patron_saint.trim() || null,
       established_date: raw.established_date || null,
       theme_color: raw.theme_color.trim() || null,

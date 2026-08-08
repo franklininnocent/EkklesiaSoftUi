@@ -8,6 +8,7 @@ import { MemberService, MemberFilters } from '../../services/member.service';
 import { BCCService } from '@core/services/bcc.service';
 import { FamilyMember, BCC } from '@core/models/family.model';
 import { PaginationComponent, ButtonComponent } from '@shared/components';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
@@ -21,7 +22,8 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     PaginationComponent,
     AdvancedSearchPanelComponent,
     ButtonComponent,
-    SortableDirective
+    SortableDirective,
+    PageHeaderComponent,
   ],
   templateUrl: './member-list.component.html',
   styleUrls: ['./member-list.component.scss'],

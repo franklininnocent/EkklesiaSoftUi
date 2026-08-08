@@ -111,16 +111,40 @@
     <p class="cf-form-section__intro">Purpose and direction (optional).</p>
     <div class="organization-form-fields__stack cf-form-grid">
       <app-form-field label="Description" fieldId="org-field-description" [wide]="true">
-        <textarea id="org-field-description" formControlName="description" rows="3"></textarea>
+        <app-rich-text-editor
+          id="org-field-description"
+          formControlName="description"
+          placeholder="Describe this organization"
+          ariaLabel="Description"
+          height="15rem"
+        ></app-rich-text-editor>
       </app-form-field>
       <app-form-field label="Vision" fieldId="org-field-vision" [wide]="true">
-        <textarea id="org-field-vision" formControlName="vision" rows="2"></textarea>
+        <app-rich-text-editor
+          id="org-field-vision"
+          formControlName="vision"
+          placeholder="Vision"
+          ariaLabel="Vision"
+          height="10rem"
+        ></app-rich-text-editor>
       </app-form-field>
       <app-form-field label="Mission" fieldId="org-field-mission" [wide]="true">
-        <textarea id="org-field-mission" formControlName="mission" rows="2"></textarea>
+        <app-rich-text-editor
+          id="org-field-mission"
+          formControlName="mission"
+          placeholder="Mission"
+          ariaLabel="Mission"
+          height="10rem"
+        ></app-rich-text-editor>
       </app-form-field>
       <app-form-field label="Objectives" fieldId="org-field-objectives" [wide]="true">
-        <textarea id="org-field-objectives" formControlName="objectives" rows="2"></textarea>
+        <app-rich-text-editor
+          id="org-field-objectives"
+          formControlName="objectives"
+          placeholder="Objectives"
+          ariaLabel="Objectives"
+          height="10rem"
+        ></app-rich-text-editor>
       </app-form-field>
     </div>
   </section>

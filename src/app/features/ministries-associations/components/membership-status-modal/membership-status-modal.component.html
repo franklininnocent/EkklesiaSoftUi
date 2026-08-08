@@ -57,18 +57,18 @@
       <textarea id="membership-exit-reason" formControlName="exit_reason" rows="2" maxlength="500"></textarea>
     </app-form-field>
 
-    <div class="membership-status-modal__confirm cf-attention-callout" *ngIf="closesInterval" role="note">
-      <p>
+    <div class="membership-status-modal__confirm" *ngIf="closesInterval" role="note">
+      <p class="membership-status-modal__confirm-copy">
         This will close the current enrollment. Closed intervals cannot be edited —
         use re-enroll later if they return.
       </p>
-      <label>
+      <label class="membership-status-modal__confirm-check">
         <input
           type="checkbox"
           [checked]="confirmed"
           (change)="onConfirmToggle($event)"
         />
-        I understand this enrollment will be closed
+        <span>I understand this enrollment will be closed</span>
       </label>
     </div>
 

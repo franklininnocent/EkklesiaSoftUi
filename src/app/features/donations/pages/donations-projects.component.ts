@@ -14,6 +14,7 @@ import { FamilyService } from '@core/services/family.service';
 import { Family } from '@core/models/family.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationProject, ProjectDashboard, ProjectFamilyAssignment } from '../models/donation.model';
@@ -38,7 +39,8 @@ function projectDateRangeValidator(control: AbstractControl): ValidationErrors |
     RouterModule,
     FinancialActivityTimelineComponent,
     CfEmptyStateComponent,
-    LoadingSkeletonComponent
+    LoadingSkeletonComponent,
+    PageHeaderComponent
   ],
   templateUrl: './donations-projects.component.html',
   styleUrl: './donations-projects.component.scss'

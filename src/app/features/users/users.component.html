@@ -1,10 +1,8 @@
-<div class="users">
-  <div class="users-header">
-    <div class="header-left">
-      <h1 class="list-title">Users</h1>
-      <p class="list-subtitle">Manage your team members and their permissions ({{ totalUsers }} users)</p>
-    </div>
-    <div class="header-right">
+<div class="users cf-page">
+  <app-page-header
+    title="Users"
+    [subtitle]="'Manage your team members and their permissions (' + totalUsers + ' users)'">
+    <div class="users-page-header-actions">
       <button class="btn btn-primary" (click)="openCreateUserModal()" type="button" title="Create new user">
         <span class="btn-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -16,7 +14,7 @@
         <span>Add User</span>
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Loading State -->
   <div *ngIf="loading" class="loading-container">

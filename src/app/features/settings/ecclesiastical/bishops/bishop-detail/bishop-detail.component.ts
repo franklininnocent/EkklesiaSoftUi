@@ -6,6 +6,8 @@ import { Bishop } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 
 @Component({
   selector: 'app-bishop-detail',
@@ -14,7 +16,8 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
     CommonModule,
     RouterModule,
     LoadingSkeletonComponent,
-    ConfirmationModalComponent
+    ConfirmationModalComponent,
+    PageHeaderComponent
   ],
   templateUrl: './bishop-detail.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -24,6 +27,19 @@ export class BishopDetailComponent implements OnInit {
   bishop: Bishop | null = null;
   loading = true;
   showDeleteModal = false;
+
+  get bishopStatusTone(): StatusBadgeTone {
+    switch ((this.bishop?.status || '').toLowerCase()) {
+      case 'active':
+        return 'success';
+      case 'retired':
+        return 'warning';
+      case 'deceased':
+        return 'critical';
+      default:
+        return 'neutral';
+    }
+  }
 
   constructor(
     private route: ActivatedRoute,

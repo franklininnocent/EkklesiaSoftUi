@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { rbacGuard } from '@core/guards/rbac.guard';
+import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
+import { subscriptionViewGuard } from '@core/guards/subscription-view.guard';
 
 export const SETTINGS_ROUTES: Routes = [
   {
@@ -25,7 +27,13 @@ export const SETTINGS_ROUTES: Routes = [
   },
   {
     path: 'subscription',
+    canActivate: [tenantAdminGuard],
     loadComponent: () => import('./subscription/subscription-management.component').then(m => m.SubscriptionManagementComponent)
+  },
+  {
+    path: 'my-subscription',
+    canActivate: [subscriptionViewGuard],
+    loadComponent: () => import('./my-subscription/my-subscription.component').then(m => m.MySubscriptionComponent)
   },
   {
     path: 'support-access',
@@ -35,4 +43,3 @@ export const SETTINGS_ROUTES: Routes = [
       ),
   }
 ];
-

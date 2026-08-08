@@ -1,11 +1,8 @@
-<div class="members-list-container">
-  <!-- Header -->
-  <div class="list-header">
-    <div class="header-left">
-      <h2 class="list-title">Members</h2>
-      <p class="list-subtitle">View and manage all family members and heads</p>
-    </div>
-    <div class="header-right">
+<div class="members-list-container cf-page">
+  <app-page-header
+    title="Members"
+    subtitle="View and manage all family members and heads">
+    <div class="members-page-header-actions">
       <div class="search-box-header">
         <span class="search-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
@@ -42,7 +39,7 @@
         <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
       </app-button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Advanced Search Panel -->
   <app-advanced-search-panel

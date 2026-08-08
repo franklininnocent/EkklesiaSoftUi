@@ -6,6 +6,7 @@ import { environment } from '@environments/environment';
 import { AuthResponse, LoginRequest, RegisterRequest, User } from '@core/models';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
+import { canViewMySubscription as canViewMySubscriptionAccess } from '@shared/utils/subscription-access.util';
 
 @Injectable({
   providedIn: 'root'
@@ -381,6 +382,14 @@ export class AuthService {
 
   canManageRbac(user: User | null = this.currentUserValue): boolean {
     return this.canAccessRbac(user);
+  }
+
+  /**
+   * Whether the user may open Settings → My Subscription.
+   * Shared by route guard, settings tile, banner CTA, and soft-gate redirects.
+   */
+  canViewMySubscription(user: User | null = this.currentUserValue): boolean {
+    return canViewMySubscriptionAccess(user);
   }
 
   canAccessDonations(user: User | null = this.currentUserValue): boolean {

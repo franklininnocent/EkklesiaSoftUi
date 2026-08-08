@@ -12,6 +12,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-diocese-list',
@@ -24,7 +25,8 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
     LoadingSkeletonComponent,
     EmptyStateComponent,
     AdvancedSearchPanelComponent,
-    PaginationComponent
+    PaginationComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './diocese-list.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

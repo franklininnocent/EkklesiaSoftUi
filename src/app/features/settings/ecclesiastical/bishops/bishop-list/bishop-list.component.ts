@@ -11,6 +11,7 @@ import { BishopFormModalComponent } from '../bishop-form-modal/bishop-form-modal
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
   selector: 'app-bishop-list',
@@ -23,7 +24,8 @@ import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/ad
     BishopFormModalComponent,
     LoadingSkeletonComponent,
     EmptyStateComponent,
-    AdvancedSearchPanelComponent
+    AdvancedSearchPanelComponent,
+    PageHeaderComponent,
   ],
   templateUrl: './bishop-list.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

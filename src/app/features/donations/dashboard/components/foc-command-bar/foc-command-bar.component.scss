@@ -220,10 +220,10 @@
 
 .foc-exec__hero h1 {
   margin: 0;
-  font-size: clamp(1.65rem, 2.8vw, 2.35rem);
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.05;
+  font-size: var(--cf-text-page-title);
+  font-weight: var(--cf-font-weight-page-title, 700);
+  letter-spacing: -0.01em;
+  line-height: var(--cf-leading-page-title, 1.25);
 }
 
 .foc-exec__subtitle {

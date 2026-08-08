@@ -22,7 +22,10 @@
 
 .chc-hero h1 {
   margin: 0;
-  font-size: clamp(1.35rem, 2vw, 1.8rem);
+  font-size: var(--cf-text-page-title);
+  font-weight: var(--cf-font-weight-page-title, 700);
+  line-height: var(--cf-leading-page-title, 1.25);
+  color: var(--cf-color-text-primary, var(--cf-slate-900));
 }
 
 .chc-hero__subtitle {

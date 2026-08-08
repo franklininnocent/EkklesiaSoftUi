@@ -25,6 +25,7 @@ export interface Tenant {
   max_storage_mb: number;
   trial_ends_at?: string | null;
   subscription_ends_at?: string | null;
+  subscription_suspended_at?: string | null;
   
   // Status & settings
   active: 0 | 1;
@@ -116,6 +117,7 @@ export interface TenantStats {
   remaining_slots: number;
   has_active_subscription: boolean;
   is_in_trial: boolean;
+  subscription_status?: string;
 }
 
 /**

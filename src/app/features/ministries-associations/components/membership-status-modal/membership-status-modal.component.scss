@@ -8,15 +8,54 @@
   font-size: var(--cf-text-sm);
 }
 
-.membership-status-modal__confirm.cf-attention-callout {
-  flex-direction: column;
-  align-items: flex-start;
+.membership-status-modal__confirm {
+  display: grid;
+  gap: var(--cf-space-3);
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--cf-amber-soft);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-amber-soft);
 }
 
-.membership-status-modal__confirm label {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--cf-space-2);
-  font-weight: 600;
+.membership-status-modal__confirm-copy {
+  margin: 0;
   color: var(--cf-amber);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.membership-status-modal__confirm-check {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding-top: var(--cf-space-3);
+  border-top: 1px solid rgba(146, 64, 14, 0.18);
+  color: var(--cf-slate-800);
+  font-size: var(--cf-text-sm);
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+/* Reset .cf-form-grid input rules that stretch checkboxes into full controls. */
+.membership-status-modal__body.cf-form-grid .membership-status-modal__confirm-check input[type='checkbox'] {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 1.05rem;
+  height: 1.05rem;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  margin: 0;
+  padding: 0;
+  border: 1px solid rgba(146, 64, 14, 0.45);
+  border-radius: 0.2rem;
+  background: #fff;
+  accent-color: var(--cf-amber);
+  cursor: pointer;
+  appearance: auto;
+}
+
+.membership-status-modal__confirm-check span {
+  flex: 1 1 auto;
+  min-width: 0;
 }

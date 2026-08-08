@@ -1,11 +1,8 @@
-<div class="family-list-container">
-  <!-- Header -->
-  <div class="list-header">
-    <div class="header-left">
-      <h2 class="list-title">Family Management</h2>
-      <p class="list-subtitle">Manage all families and their members</p>
-    </div>
-    <div class="header-right">
+<div class="family-list-container cf-page">
+  <app-page-header
+    title="Family Management"
+    subtitle="Manage all families and their members">
+    <div class="family-page-header-actions">
       <div class="search-box-header">
         <span class="search-icon">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
@@ -51,7 +48,7 @@
         Add Family
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Active Filter Chips - Inline Compact Design -->
   <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in animate-slide-in-down">

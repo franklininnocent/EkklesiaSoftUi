@@ -1,14 +1,12 @@
 <section class="history-page cf-page cf-split-page" [class.history-page--comfortable]="density === 'comfortable'">
-  <header class="cf-split-page__hero cf-hero">
-    <div class="cf-split-page__hero-copy">
-      <h1>Activity History</h1>
-      <p>Stewardship timeline — filter and scan recent parish activity side by side.</p>
-    </div>
-    <div class="cf-split-page__hero-actions" *ngIf="activitiesLoaded && !loadError">
+  <app-page-header
+    title="Activity History"
+    subtitle="Stewardship timeline — filter and scan recent parish activity side by side.">
+    <ng-container *ngIf="activitiesLoaded && !loadError">
       <span class="history-count" *ngIf="totalCount">{{ visibleActivities.length }} of {{ totalCount }}</span>
       <button type="button" class="cf-btn" (click)="reload()">Refresh</button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!activitiesLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="cf-split-loading__label">Loading activity history…</p>

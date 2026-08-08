@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { OrganizationBreadcrumbResolver } from './resolvers/organization-breadcrumb.resolver';
 
 export const MINISTRIES_ROUTES: Routes = [
   {
@@ -30,5 +31,6 @@ export const MINISTRIES_ROUTES: Routes = [
     path: ':id',
     loadComponent: () =>
       import('./pages/organization-detail.page').then(m => m.OrganizationDetailPageComponent),
+    resolve: { breadcrumbLabel: OrganizationBreadcrumbResolver },
   },
 ];

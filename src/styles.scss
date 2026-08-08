@@ -1078,10 +1078,17 @@ html.font-small {
     padding: 0.75rem !important;
   }
 
-  /* Headers */
-  h1, .page-title {
+  /* Headers — page titles use CF token; leave bare h2/h3 mobile tweaks */
+  h1:not(.cf-page-title):not(.page-title) {
     font-size: 1.25rem !important;
     line-height: 1.3 !important;
+  }
+
+  .cf-hero h1,
+  .cf-page-title,
+  .page-title {
+    font-size: var(--cf-text-page-title) !important;
+    line-height: var(--cf-leading-page-title) !important;
   }
 
   h2 {
@@ -1223,8 +1230,14 @@ html.font-small {
     padding: 1rem !important;
   }
 
-  h1, .page-title {
+  h1:not(.cf-page-title):not(.page-title) {
     font-size: 1.375rem !important;
+  }
+
+  .cf-hero h1,
+  .cf-page-title,
+  .page-title {
+    font-size: var(--cf-text-page-title) !important;
   }
 
   .data-table {
