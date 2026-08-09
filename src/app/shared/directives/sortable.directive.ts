@@ -22,6 +22,18 @@ export class SortableDirective {
   @HostBinding('class.asc') get isAsc() { return this.direction === 'asc'; }
   @HostBinding('class.desc') get isDesc() { return this.direction === 'desc'; }
 
+  /** Additive a11y — does not change sort behavior when unset. */
+  @HostBinding('attr.aria-sort')
+  get ariaSort(): 'ascending' | 'descending' | 'none' {
+    if (this.direction === 'asc') {
+      return 'ascending';
+    }
+    if (this.direction === 'desc') {
+      return 'descending';
+    }
+    return 'none';
+  }
+
   constructor() {
     this.addSortIcon();
   }
@@ -33,10 +45,22 @@ export class SortableDirective {
     this.updateSortIcon();
   }
 
+  @HostListener('keydown.enter', ['$event'])
+  @HostListener('keydown.space', ['$event'])
+  onKeyActivate(event: Event): void {
+    event.preventDefault();
+    this.rotate();
+  }
+
   private addSortIcon() {
     const icon = this.renderer.createElement('span');
     this.renderer.addClass(icon, 'sort-icon');
+    this.renderer.setAttribute(icon, 'aria-hidden', 'true');
     this.renderer.appendChild(this.el.nativeElement, icon);
+    // Make keyboard-focusable for a11y without changing mouse behavior.
+    if (!this.el.nativeElement.hasAttribute('tabindex')) {
+      this.renderer.setAttribute(this.el.nativeElement, 'tabindex', '0');
+    }
   }
 
   private updateSortIcon() {

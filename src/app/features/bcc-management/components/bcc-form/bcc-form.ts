@@ -1,6 +1,7 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { BCC } from '../../../../core/models/family.model';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
@@ -10,7 +11,7 @@ import { takeUntil } from 'rxjs/operators';
 @Component({
   selector: 'app-bcc-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
   templateUrl: './bcc-form.html',
   styleUrls: ['./bcc-form.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -19,7 +20,7 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   @Input() bcc: BCC | null = null;
   @Output() save = new EventEmitter<any>();
   @Output() cancel = new EventEmitter<void>();
-  @ViewChild('formContent', { static: false }) formContentRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('formContent', { static: false }) formContentRef!: ElementRef<HTMLFormElement>;
 
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);

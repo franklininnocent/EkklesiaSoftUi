@@ -1,245 +1,193 @@
-<div class="bcc-list-container cf-page">
+<section class="bcc-list cf-page">
   <app-page-header
     title="BCC Management"
-    subtitle="Manage Basic Christian Communities">
-    <div class="bcc-page-header-actions">
-    <div class="search-box-header">
-      <span class="search-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-          <circle cx="11" cy="11" r="8"></circle>
-          <path d="m21 21-4.35-4.35"></path>
-        </svg>
-      </span>
-      <input
-        type="text"
-        [(ngModel)]="searchTerm"
-        (input)="onQuickSearch()"
-        placeholder="Quick search..."
-        class="search-input-header"
-        aria-label="Quick search BCCs">
+    subtitle="Manage Basic Christian Communities"
+  >
+    <app-list-toolbar
+      searchPlaceholder="Search name or code…"
+      [searchValue]="searchTerm"
+      [filterCount]="getActiveFilterCount()"
+      (searchChange)="onListSearchChange($event)"
+      (filtersOpened)="showAdvancedSearch = true"
+    >
       <button
-        *ngIf="searchTerm"
-        class="clear-search-btn"
-        (click)="clearSearch()"
-        aria-label="Clear search"
-        type="button">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="createBCC()"
+        aria-label="Create new BCC"
+      >
+        Add BCC
       </button>
-    </div>
-    <button class="btn btn-filters" (click)="showAdvancedSearch = true" type="button" aria-label="Show advanced search filters">
-      <span class="btn-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-          <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-        </svg>
-      </span>
-      Filters
-      <span *ngIf="getActiveFilterCount() > 0" class="filter-badge" aria-label="Active filters count">{{ getActiveFilterCount() }}</span>
-    </button>
-    <button class="btn btn-primary" (click)="createBCC()" type="button" aria-label="Create new BCC">
-      <span class="btn-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
-          <line x1="12" y1="5" x2="12" y2="19"></line>
-          <line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-      </span>
-      Add BCC
-    </button>
-    </div>
+    </app-list-toolbar>
   </app-page-header>
 
-  <!-- Active Filter Chips - Inline Compact Design -->
-  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in animate-slide-in-down">
-    <div class="chips-inline-wrapper">
-      <span class="chips-label">
-        <span class="filter-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16">
-            <circle cx="11" cy="11" r="8"></circle>
-            <path d="m21 21-4.35-4.35"></path>
-          </svg>
-        </span>
-        Active Filters ({{ getActiveFilters().length }}):
+  <div
+    class="bcc-list__chips"
+    *ngIf="getActiveFilters().length > 0"
+    role="region"
+    aria-label="Active filters"
+  >
+    <span class="cf-meta">Active filters</span>
+    <div class="bcc-list__chip-list">
+      <span class="cf-badge cf-badge--info" *ngFor="let filter of getActiveFilters()">
+        {{ filter.label }}: {{ filter.displayValue }}
+        <button
+          type="button"
+          class="bcc-list__chip-remove"
+          (click)="removeFilter(filter)"
+          [attr.aria-label]="'Remove filter: ' + filter.label"
+        >
+          ×
+        </button>
       </span>
-      <div class="chips-list">
-        <div 
-          *ngFor="let filter of getActiveFilters()" 
-          class="filter-chip animate-scale-in"
-          [attr.aria-label]="filter.label + ': ' + filter.displayValue">
-          <span class="chip-content">
-            <span class="chip-label">{{ filter.label }}:</span>
-            <span class="chip-value">{{ filter.displayValue }}</span>
-          </span>
-          <button 
-            type="button"
-            class="chip-remove"
-            (click)="removeFilter(filter)"
-            [attr.aria-label]="'Remove filter: ' + filter.label">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <button 
-        type="button"
-        class="btn-clear-all-chips"
-        (click)="clearAllFilters()"
-        aria-label="Clear all filters">
-        Clear All
-      </button>
     </div>
+    <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllFilters()">
+      Clear all
+    </button>
   </div>
 
-  <!-- Loading State -->
-  <div class="loading-container" *ngIf="loading">
-    <div class="spinner"></div>
-    <p>Loading BCCs...</p>
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading && !loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading BCCs…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="8"></app-loading-skeleton>
   </div>
 
-  <!-- Error State -->
-  <div class="error-container" *ngIf="error && !loading" role="alert" aria-live="polite">
-    <div class="error-message">
-      <span class="error-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
-          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-          <line x1="12" y1="9" x2="12" y2="13"></line>
-          <line x1="12" y1="17" x2="12.01" y2="17"></line>
-        </svg>
-      </span>
-      <p>{{ error }}</p>
-      <button class="btn btn-primary" (click)="loadBCCs()" type="button" aria-label="Retry loading BCCs">Retry</button>
-    </div>
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <p>{{ error }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="loadBCCs()">Try again</button>
   </div>
 
-  <!-- Data Table -->
-  <div class="table-container" *ngIf="!loading && !error">
-    <!-- Empty State -->
-    <div class="empty-state" *ngIf="bccs.length === 0" role="status" aria-live="polite">
-      <div class="empty-icon">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="64" height="64">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-          <polyline points="9 22 9 12 15 12 15 22"></polyline>
-        </svg>
-      </div>
-      <h3>No BCCs found</h3>
-      <p>Start by adding your first BCC</p>
-      <button class="btn btn-primary animate-scale-in" (click)="createBCC()" type="button" aria-label="Create new BCC">Add BCC</button>
-    </div>
-
-    <!-- Table -->
-    <table class="data-table" *ngIf="bccs.length > 0">
+  <ng-container *ngIf="loaded && !error">
+    <app-data-table *ngIf="bccs.length" [clickableRows]="true">
       <thead>
         <tr>
-          <th (click)="sortBy('bcc_code')" class="sortable">
+          <th scope="col" class="sortable" (click)="sortBy('bcc_code')">
             BCC Code {{ getSortIcon('bcc_code') }}
           </th>
-          <th (click)="sortBy('name')" class="sortable">
+          <th scope="col" class="sortable" (click)="sortBy('name')">
             BCC Name {{ getSortIcon('name') }}
           </th>
-          
-          <th>Capacity</th>
-          <th>Families</th>
-          <th>Leaders</th>
-          <th>Meeting Day</th>
-          <th>Contact</th>
-          <th *ngIf="isTenantAdmin">Actions</th>
+          <th scope="col">Capacity</th>
+          <th scope="col">Families</th>
+          <th scope="col">Leaders</th>
+          <th scope="col">Meeting Day</th>
+          <th scope="col">Contact</th>
+          <th
+            *ngIf="isTenantAdmin"
+            scope="col"
+            class="cf-table__actions-col"
+          >
+            Actions
+          </th>
         </tr>
       </thead>
       <tbody>
-        <tr *ngFor="let bcc of bccs">
-          <td class="bcc-code first-column-with-status">
-            <button 
-              type="button"
-              class="bcc-code-link" 
-              (click)="viewBCC(bcc)"
-              [attr.aria-label]="'View details for BCC ' + bcc.bcc_code"
-              title="Click to view BCC details">
-              {{ bcc.bcc_code }}
-            </button>
-            <span 
-              *ngIf="bcc.status === 'inactive'"
-              class="status-indicator-dot status-indicator-dot-inactive"
-              [attr.aria-label]="'Inactive'"
-              [title]="'Inactive'">
-              <span class="status-indicator-sr-only">Inactive</span>
-            </span>
-          </td>
-          <td class="bcc-name">
-            <strong>{{ bcc.name }}</strong>
-          </td>
-          
+        <tr
+          *ngFor="let bcc of bccs"
+          tabindex="0"
+          (click)="viewBCC(bcc)"
+          (keydown.enter)="viewBCC(bcc)"
+        >
           <td>
-            <div class="capacity-indicator">
-              <div class="capacity-bar">
-                <div 
-                  class="capacity-fill" 
+            <div class="bcc-list__code-cell">
+              <strong class="bcc-list__code">{{ bcc.bcc_code }}</strong>
+              <app-status-badge
+                *ngIf="bcc.status === 'inactive'"
+                label="Inactive"
+                tone="neutral"
+              ></app-status-badge>
+            </div>
+          </td>
+          <td><strong>{{ bcc.name }}</strong></td>
+          <td>
+            <div class="bcc-list__capacity">
+              <div class="bcc-list__capacity-bar" aria-hidden="true">
+                <span
+                  class="bcc-list__capacity-fill"
                   [style.width.%]="getCapacityPercentage(bcc)"
                   [ngClass]="getCapacityClass(getCapacityPercentage(bcc))"
-                ></div>
+                ></span>
               </div>
-              <span class="capacity-text">
+              <span class="cf-meta">
                 {{ bcc.current_family_count || 0 }}
-                <span class="capacity-percentage">({{ getCapacityPercentage(bcc) | number:'1.0-0' }}%)</span>
+                ({{ getCapacityPercentage(bcc) | number:'1.0-0' }}%)
               </span>
             </div>
           </td>
-          <td class="text-center">
-            <span class="family-count">{{ bcc.current_family_count || 0 }}</span>
-          </td>
-          <td class="text-center">
-            <span class="leader-count">{{ bcc.leaders?.length || 0 }}</span>
-          </td>
+          <td>{{ bcc.current_family_count || 0 }}</td>
+          <td>{{ bcc.leaders?.length || 0 }}</td>
           <td>
-            <span *ngIf="bcc.meeting_day" class="meeting-day">
-              {{ bcc.meeting_day | titlecase }}
-            </span>
-            <span *ngIf="!bcc.meeting_day" class="text-muted">Not set</span>
+            <span *ngIf="bcc.meeting_day">{{ bcc.meeting_day | titlecase }}</span>
+            <span *ngIf="!bcc.meeting_day" class="cf-meta">Not set</span>
           </td>
-          <td>
-            <div class="contact-info">
-              <div>-</div>
-              <div>-</div>
-            </div>
-          </td>
-          <td *ngIf="isTenantAdmin" class="actions">
-            <div class="action-buttons">
-              <button 
-                class="btn-delete" 
-                (click)="deleteBCC(bcc)"
+          <td class="cf-meta">—</td>
+          <td
+            *ngIf="isTenantAdmin"
+            class="cf-table__actions-cell"
+            (click)="$event.stopPropagation()"
+            (keydown)="$event.stopPropagation()"
+          >
+            <div class="cf-row-actions">
+              <button
                 type="button"
-                title="Delete BCC">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-                <span>Delete</span>
+                class="cf-btn cf-btn--sm cf-btn-danger"
+                (click)="deleteBCC(bcc)"
+                title="Delete BCC"
+              >
+                Delete
               </button>
             </div>
           </td>
         </tr>
       </tbody>
-    </table>
+    </app-data-table>
 
-    <!-- Pagination -->
     <app-pagination
-      *ngIf="!loading && totalRecords > 0"
+      *ngIf="bccs.length"
       [currentPage]="currentPage"
       [pageSize]="perPage"
       [totalItems]="totalRecords"
-      [pageSizeOptions]="[10, 20, 30, 50, 100]"
+      [pageSizeOptions]="perPageOptions"
       [showPageSizeSelector]="true"
       [showPageInfo]="true"
       (pageChange)="onPageChange($event)"
-      (pageSizeChange)="onPageSizeChange($event)">
-    </app-pagination>
-  </div>
+      (pageSizeChange)="onPageSizeChange($event)"
+    ></app-pagination>
 
-  <!-- BCC Form Modal -->
+    <app-cf-empty-state
+      *ngIf="!loading && !bccs.length"
+      icon="◇"
+      [title]="hasActiveFiltersOrSearch ? 'No BCCs match your filters' : 'No BCCs yet'"
+      [description]="
+        hasActiveFiltersOrSearch
+          ? 'Try clearing search or filters.'
+          : 'Add your first Basic Christian Community to get started.'
+      "
+    >
+      <button
+        *ngIf="!hasActiveFiltersOrSearch"
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="createBCC()"
+      >
+        Add BCC
+      </button>
+      <button
+        *ngIf="hasActiveFiltersOrSearch"
+        type="button"
+        class="cf-btn"
+        (click)="clearAllFilters()"
+      >
+        Clear filters
+      </button>
+    </app-cf-empty-state>
+  </ng-container>
+
   <app-bcc-form
     *ngIf="showForm"
     [bcc]="selectedBCC"
@@ -247,203 +195,20 @@
     (cancel)="onFormCancel()"
   ></app-bcc-form>
 
-  <!-- Advanced Search Side Panel -->
   <app-advanced-search-panel
     mode="sidepanel"
     [fields]="searchFields"
     [isExpanded]="showAdvancedSearch"
     (search)="onAdvancedSearch($event)"
     (clear)="onClearAdvancedSearch()"
-    (close)="showAdvancedSearch = false">
-  </app-advanced-search-panel>
+    (close)="showAdvancedSearch = false"
+  ></app-advanced-search-panel>
 
-  <!-- BCC Detail Modal -->
-  <div #detailModal class="modal-overlay" *ngIf="showDetailModal" (click)="closeDetailModal()" role="dialog" aria-modal="true" aria-labelledby="bcc-detail-title">
-    <div class="bcc-detail-modal" (click)="$event.stopPropagation()">
-      <!-- Modal Header -->
-      <div class="modal-header">
-        <div class="header-content">
-          <div class="header-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="32" height="32">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
-          </div>
-          <div class="header-text">
-            <h2 class="modal-title" id="bcc-detail-title">{{ detailBCC?.name || 'BCC Details' }}</h2>
-            <p class="modal-subtitle">{{ detailBCC?.bcc_code }}</p>
-          </div>
-        </div>
-        <button 
-          type="button"
-          class="modal-close-btn" 
-          (click)="closeDetailModal()"
-          aria-label="Close BCC details modal"
-          aria-describedby="bcc-detail-title">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
-      </div>
-
-      <!-- Modal Body -->
-      <div class="modal-body" *ngIf="!loadingDetail && detailBCC">
-        <!-- Status Badge -->
-        <div class="status-section">
-          <span class="status-badge" [ngClass]="'status-' + detailBCC.status">
-            {{ detailBCC.status | titlecase }}
-          </span>
-        </div>
-
-        <!-- Main Content Grid -->
-        <div class="detail-grid">
-          <!-- Basic Information -->
-          <div class="detail-section">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-              </span>
-              Basic Information
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label">BCC Code</span>
-                <span class="detail-value">{{ detailBCC.bcc_code }}</span>
-                <span class="detail-separator" *ngIf="detailBCC.name">•</span>
-                <span class="detail-label" *ngIf="detailBCC.name">Name</span>
-                <span class="detail-value" *ngIf="detailBCC.name">{{ detailBCC.name }}</span>
-                <span class="detail-separator" *ngIf="detailBCC.description">•</span>
-                <span class="detail-label" *ngIf="detailBCC.description">Description</span>
-                <span class="detail-value" *ngIf="detailBCC.description">{{ detailBCC.description }}</span>
-              </div>
-              <div class="detail-item" *ngIf="detailBCC.location">
-                <span class="detail-label">Location/Street</span>
-                <span class="detail-value">{{ detailBCC.location }}</span>
-              </div>
-              <div class="detail-item" *ngIf="detailBCC.established_date">
-                <span class="detail-label">Established Date</span>
-                <span class="detail-value">{{ detailBCC.established_date | date:'mediumDate' }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Meeting Information -->
-          <div class="detail-section" *ngIf="detailBCC.meeting_day || detailBCC.meeting_time || detailBCC.meeting_place || detailBCC.meeting_frequency">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-              </span>
-              Meeting Information
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label" *ngIf="detailBCC.meeting_day">Meeting Day</span>
-                <span class="detail-value" *ngIf="detailBCC.meeting_day">{{ detailBCC.meeting_day | titlecase }}</span>
-                <span class="detail-separator" *ngIf="detailBCC.meeting_day && (detailBCC.meeting_time || detailBCC.meeting_frequency || detailBCC.meeting_place)">•</span>
-                <span class="detail-label" *ngIf="detailBCC.meeting_time">Meeting Time</span>
-                <span class="detail-value" *ngIf="detailBCC.meeting_time">{{ detailBCC.meeting_time }}</span>
-                <span class="detail-separator" *ngIf="detailBCC.meeting_time && (detailBCC.meeting_frequency || detailBCC.meeting_place)">•</span>
-                <span class="detail-label" *ngIf="detailBCC.meeting_frequency">Frequency</span>
-                <span class="detail-value" *ngIf="detailBCC.meeting_frequency">{{ detailBCC.meeting_frequency }}</span>
-                <span class="detail-separator" *ngIf="detailBCC.meeting_frequency && detailBCC.meeting_place">•</span>
-                <span class="detail-label" *ngIf="detailBCC.meeting_place">Meeting Place</span>
-                <span class="detail-value" *ngIf="detailBCC.meeting_place">{{ detailBCC.meeting_place }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Statistics -->
-          <div class="detail-section">
-            <h3 class="section-title">
-              <span class="section-icon">📊</span>
-              Statistics
-            </h3>
-            <div class="statistics-grid">
-              <div class="stat-card">
-                <div class="stat-icon">👨‍👩‍👧‍👦</div>
-                <div class="stat-info">
-                  <span class="stat-value">{{ detailBCC.current_family_count || detailBCC.families_count || 0 }}</span>
-                  <span class="stat-label">Families</span>
-                </div>
-              </div>
-              <div class="stat-card" *ngIf="detailBCC.leaders && detailBCC.leaders.length > 0">
-                <div class="stat-icon">👥</div>
-                <div class="stat-info">
-                  <span class="stat-value">{{ detailBCC.leaders.length }}</span>
-                  <span class="stat-label">Leaders</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Leaders -->
-          <div class="detail-section" *ngIf="detailBCC.leaders && detailBCC.leaders.length > 0">
-            <h3 class="section-title">
-              <span class="section-icon">👥</span>
-              Leaders
-            </h3>
-            <div class="leaders-list">
-              <div class="leader-card" *ngFor="let leader of detailBCC.leaders">
-                <div class="leader-info">
-                  <span class="leader-name">{{ leader.leader_name }}</span>
-                  <span class="leader-role">{{ leader.role }}</span>
-                </div>
-                <span class="leader-badge" *ngIf="leader.is_current">Current</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Notes -->
-          <div class="detail-section" *ngIf="detailBCC.notes">
-            <h3 class="section-title">
-              <span class="section-icon">📝</span>
-              Notes
-            </h3>
-            <div class="notes-content">
-              {{ detailBCC.notes }}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Loading State -->
-      <div class="modal-loading" *ngIf="loadingDetail">
-        <div class="spinner"></div>
-        <p>Loading BCC details...</p>
-      </div>
-
-      <!-- Modal Footer -->
-      <div class="modal-footer">
-        <button 
-          type="button"
-          class="btn btn-secondary" 
-          (click)="closeDetailModal()">
-          Close
-        </button>
-        <button 
-          type="button"
-          class="btn btn-primary" 
-          (click)="editBCC(detailBCC!); closeDetailModal()"
-          *ngIf="detailBCC">
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-          Edit BCC
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
+  <app-bcc-detail-modal
+    *ngIf="showDetailModal"
+    [bcc]="detailBCC"
+    [loading]="loadingDetail"
+    (close)="closeDetailModal()"
+    (edit)="onDetailEdit($event)"
+  ></app-bcc-detail-modal>
+</section>

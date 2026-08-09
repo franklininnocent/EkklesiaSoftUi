@@ -917,58 +917,26 @@
 </app-filter-panel>
 
 <!-- Role Delete Confirmation Modal -->
-<div class="action-modal-overlay" *ngIf="showRoleDeleteConfirmModal">
-  <div class="action-modal">
-    <div class="action-modal__header">
-      <h3>Delete Role</h3>
-      <button type="button" class="action-modal__close" (click)="cancelDeleteRole()">✕</button>
-    </div>
-    <div class="action-modal__body">
-      <p class="action-modal__title">{{ pendingRoleAction?.name }}</p>
-      <p class="action-modal__meta">
-        Assigned users: <strong>{{ pendingRoleAction?.users_count || 0 }}</strong> |
-        Permissions: <strong>{{ pendingRoleAction?.permissions_count || 0 }}</strong>
-      </p>
-      <p class="action-modal__impact">
-        {{ getRoleDeleteImpactMessage(pendingRoleAction) }}
-      </p>
-    </div>
-    <div class="action-modal__footer">
-      <button type="button" class="btn-secondary" (click)="cancelDeleteRole()">Cancel</button>
-      <button
-        type="button"
-        class="btn-danger"
-        (click)="confirmDeleteRole()"
-        [disabled]="(pendingRoleAction?.users_count || 0) > 0"
-      >
-        Confirm Delete
-      </button>
-    </div>
-  </div>
-</div>
+<app-confirmation-modal
+  [show]="showRoleDeleteConfirmModal"
+  title="Delete Role"
+  [message]="deleteConfirmMessage"
+  confirmText="Confirm Delete"
+  cancelText="Cancel"
+  confirmButtonClass="btn-danger"
+  (confirmed)="confirmDeleteRole()"
+  (cancelled)="cancelDeleteRole()">
+</app-confirmation-modal>
 
 <!-- Role Status Confirmation Modal -->
-<div class="action-modal-overlay" *ngIf="showRoleStatusConfirmModal">
-  <div class="action-modal">
-    <div class="action-modal__header">
-      <h3>{{ pendingRoleStatusTarget === 0 ? 'Deactivate Role' : 'Activate Role' }}</h3>
-      <button type="button" class="action-modal__close" (click)="cancelToggleRoleStatus()">✕</button>
-    </div>
-    <div class="action-modal__body">
-      <p class="action-modal__title">{{ pendingRoleAction?.name }}</p>
-      <p class="action-modal__impact" *ngIf="pendingRoleStatusTarget === 0">
-        Inactive roles cannot be assigned to new users. Existing assignments remain visible.
-      </p>
-      <p class="action-modal__impact" *ngIf="pendingRoleStatusTarget === 1">
-        This role will be available again for new user assignments.
-      </p>
-    </div>
-    <div class="action-modal__footer">
-      <button type="button" class="btn-secondary" (click)="cancelToggleRoleStatus()">Cancel</button>
-      <button type="button" class="btn-primary" (click)="confirmToggleRoleStatus()">
-        Confirm {{ pendingRoleStatusTarget === 0 ? 'Deactivate' : 'Activate' }}
-      </button>
-    </div>
-  </div>
-</div>
+<app-confirmation-modal
+  [show]="showRoleStatusConfirmModal"
+  [title]="pendingRoleStatusTarget === 0 ? 'Deactivate Role' : 'Activate Role'"
+  [message]="statusConfirmMessage"
+  [confirmText]="'Confirm ' + (pendingRoleStatusTarget === 0 ? 'Deactivate' : 'Activate')"
+  cancelText="Cancel"
+  confirmButtonClass="btn-primary"
+  (confirmed)="confirmToggleRoleStatus()"
+  (cancelled)="cancelToggleRoleStatus()">
+</app-confirmation-modal>
 

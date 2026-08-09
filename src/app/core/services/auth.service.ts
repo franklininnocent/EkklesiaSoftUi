@@ -442,13 +442,20 @@ export class AuthService {
     );
   }
 
-  canAccessMinistries(user: User | null = this.currentUserValue): boolean {
+  /**
+   * Tenant Ministries & Associations CRUD (/ministries) — not platform Insights.
+   * SuperAdmin/EkklesiaAdmin need home tenant_id or an active Support session.
+   */
+  canAccessMinistries(
+    user: User | null = this.currentUserValue,
+    options: { hasActiveSupportSession?: boolean } = {}
+  ): boolean {
     if (!user) {
       return false;
     }
 
     if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
-      return true;
+      return !!user.tenant_id || !!options.hasActiveSupportSession;
     }
 
     if (!user.tenant_id) {

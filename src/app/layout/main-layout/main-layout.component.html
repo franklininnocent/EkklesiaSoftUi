@@ -158,6 +158,21 @@
          </span>
          <span class="nav-text">Support Center</span>
        </a>
+
+       <a
+         *ngIf="canManageTenants((currentUser$ | async))"
+         routerLink="platform/ministries"
+         routerLinkActive="active"
+         class="nav-item"
+         aria-label="Ministries Insights">
+         <span class="nav-icon">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+             <path d="M3 3v18h18"></path>
+             <path d="M7 14l4-4 4 4 5-6"></path>
+           </svg>
+         </span>
+         <span class="nav-text">Ministries Insights</span>
+       </a>
        
        <a routerLink="users" routerLinkActive="active" class="nav-item" aria-label="Users">
          <span class="nav-icon">

@@ -14,6 +14,7 @@ import { FamilyService } from '@core/services/family.service';
 import { Family } from '@core/models/family.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
@@ -40,6 +41,7 @@ function projectDateRangeValidator(control: AbstractControl): ValidationErrors |
     FinancialActivityTimelineComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
+    ModalShellComponent,
     PageHeaderComponent
   ],
   templateUrl: './donations-projects.component.html',
@@ -96,16 +98,10 @@ export class DonationsProjectsComponent implements OnInit {
   }
 
   get pageTitle(): string {
-    if (this.showForm) {
-      return this.editingProjectId ? 'Edit Project' : 'Create Project';
-    }
     return 'Building & Special Projects';
   }
 
   get pageSubtitle(): string {
-    if (this.showForm) {
-      return 'Set up project targets, contribution schedules, and family assignments.';
-    }
     return 'Track funding progress — spot gaps and follow up with families.';
   }
 
@@ -216,7 +212,6 @@ export class DonationsProjectsComponent implements OnInit {
       status: 'active'
     });
     this.showForm = true;
-    this.scrollToForm();
   }
 
   closeForm(): void {
@@ -241,7 +236,6 @@ export class DonationsProjectsComponent implements OnInit {
       status: project.status
     });
     this.draftAssignments = [];
-    this.scrollToForm();
   }
 
   setStatusActive(active: boolean): void {
@@ -359,12 +353,6 @@ export class DonationsProjectsComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
-  }
-
-  private scrollToForm(): void {
-    setTimeout(() => {
-      document.getElementById('project-form-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 0);
   }
 
   private resetForm(): void {

@@ -19,6 +19,7 @@ import { FamilyService } from '../../../../core/services/family.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { Family, BCC, FamilyMember } from '../../../../core/models/family.model';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
+import { ModalShellComponent } from '@shared/components';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { AuthService } from '@core/services';
 import { getCountryCallingCode, CountryCode, parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
@@ -35,7 +36,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 @Component({
   selector: 'app-family-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, FamilyMemberFormModalComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, FamilyMemberFormModalComponent, ModalShellComponent],
   templateUrl: './family-form.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-form.scss']

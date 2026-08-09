@@ -1,0 +1,101 @@
+<div *ngIf="loading">
+  <app-loading-skeleton type="card" [rows]="5"></app-loading-skeleton>
+</div>
+
+<div class="cf-inline-alert cf-panel" *ngIf="!loading && error" role="alert">
+  <p>{{ error }}</p>
+</div>
+
+<ng-container *ngIf="!loading && !error && detail as d">
+  <app-page-header
+    [title]="d.summary.tenant_name"
+    [subtitle]="d.summary.tenant_slug"
+    variant="panel"
+    backLink="/platform/ministries/tenants"
+    backLabel="Back to tenants"
+  >
+    <app-status-badge [label]="statusLabel(d.summary.module_status)" [tone]="toneForStatus(d.summary.module_status)"></app-status-badge>
+    <app-status-badge [label]="statusLabel(d.summary.adoption_status)" [tone]="toneForStatus(d.summary.adoption_status)"></app-status-badge>
+    <app-status-badge [label]="statusLabel(d.summary.health_flag)" [tone]="toneForStatus(d.summary.health_flag)"></app-status-badge>
+  </app-page-header>
+
+  <section class="cf-kpi-grid" aria-label="Tenant summary">
+    <article class="cf-kpi"><span>Organizations</span><strong>{{ d.summary.organizations_count }}</strong></article>
+    <article class="cf-kpi"><span>Members</span><strong>{{ d.summary.members_count }}</strong></article>
+    <article class="cf-kpi"><span>Leaders</span><strong>{{ d.summary.leaders_count }}</strong></article>
+    <article class="cf-kpi"><span>Active users</span><strong>{{ d.summary.active_users_count }}</strong></article>
+    <article class="cf-kpi"><span>Window actions</span><strong>{{ d.summary.window_actions }}</strong></article>
+    <article class="cf-kpi"><span>Activation</span><strong>{{ d.summary.activation_date ? (d.summary.activation_date | date: 'mediumDate') : '—' }}</strong></article>
+    <article class="cf-kpi"><span>Last activity</span><strong>{{ d.summary.last_activity_at ? (d.summary.last_activity_at | date: 'short') : '—' }}</strong></article>
+  </section>
+
+  <div class="insights-detail__grid">
+    <app-section-card title="Usage">
+      <table class="cf-table">
+        <thead>
+          <tr>
+            <th scope="col">Window</th>
+            <th scope="col">Actions</th>
+            <th scope="col">Prior</th>
+            <th scope="col">Active days</th>
+            <th scope="col">Trend</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let u of usageEntries()">
+            <td>{{ u.window_days }}D</td>
+            <td>{{ u.meaningful_actions }}</td>
+            <td>{{ u.prior_meaningful_actions }}</td>
+            <td>{{ u.active_days }}</td>
+            <td><app-status-badge [label]="statusLabel(u.usage_trend)" [tone]="toneForStatus(u.usage_trend)"></app-status-badge></td>
+          </tr>
+        </tbody>
+      </table>
+    </app-section-card>
+
+    <app-section-card title="Feature adoption">
+      <ul class="insights-detail__features">
+        <li *ngFor="let f of featureEntries()">
+          <span>{{ f.label }}</span>
+          <app-status-badge
+            [label]="f.used ? ('Used · ' + f.event_count) : 'Not used'"
+            [tone]="f.used ? 'success' : 'neutral'"
+          ></app-status-badge>
+        </li>
+      </ul>
+    </app-section-card>
+
+    <app-section-card title="Data health">
+      <ul class="insights-detail__health">
+        <li>Organizations without members: <strong>{{ d.health.orgs_without_active_members }}</strong></li>
+        <li>Active orgs without leadership: <strong>{{ d.health.active_orgs_without_leadership }}</strong></li>
+        <li>Stale active organizations: <strong>{{ d.health.stale_active_orgs }}</strong></li>
+      </ul>
+    </app-section-card>
+  </div>
+
+  <app-section-card title="Recent actions">
+    <app-cf-empty-state
+      *ngIf="!d.recent_actions.length"
+      title="No recent actions"
+      description="This tenant has no meaningful Ministries & Associations activity yet."
+      [hasActions]="false"
+    ></app-cf-empty-state>
+    <table class="cf-table" *ngIf="d.recent_actions.length">
+      <thead>
+        <tr>
+          <th scope="col">When</th>
+          <th scope="col">Action</th>
+          <th scope="col">Actor</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of d.recent_actions">
+          <td>{{ row.occurred_at | date: 'short' }}</td>
+          <td>{{ row.event_label }}</td>
+          <td>{{ row.actor?.name || '—' }}</td>
+        </tr>
+      </tbody>
+    </table>
+  </app-section-card>
+</ng-container>

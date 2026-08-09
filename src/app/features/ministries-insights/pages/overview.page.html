@@ -1,0 +1,173 @@
+<div class="insights-overview" *ngIf="loading">
+  <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+</div>
+
+<div class="cf-inline-alert cf-panel" *ngIf="!loading && error" role="alert">
+  <p>{{ error }}</p>
+</div>
+
+<div class="insights-overview" *ngIf="!loading && !error && overview as o">
+  <div class="cf-decision-strip insights-overview__decision">
+    <div class="cf-decision-strip__copy">
+      <strong>Cross-tenant platform intelligence</strong>
+      <span>
+        How Ministries &amp; Associations is adopted and used across tenants —
+        not parish day-to-day management.
+      </span>
+    </div>
+    <div class="cf-decision-strip__actions">
+      <div class="insights-overview__windows" role="group" aria-label="Activity window">
+        <button
+          type="button"
+          class="cf-btn cf-btn-sm"
+          *ngFor="let days of windows"
+          [class.cf-btn-primary]="windowDays === days"
+          [attr.aria-pressed]="windowDays === days"
+          (click)="setWindow(days)"
+        >
+          {{ days }}D
+        </button>
+      </div>
+      <a
+        class="cf-btn cf-btn-sm cf-btn-secondary"
+        routerLink="/platform/ministries/tenants"
+        [queryParams]="{ adoption_status: 'inactive', window_days: windowDays }"
+      >
+        Review inactive
+      </a>
+      <a
+        class="cf-btn cf-btn-sm cf-btn-primary"
+        routerLink="/platform/ministries/tenants"
+        [queryParams]="{ window_days: windowDays }"
+      >
+        Open tenants
+      </a>
+    </div>
+  </div>
+
+  <p class="insights-overview__hint" *ngIf="o.window">
+    Activity window {{ o.window.current_start | date: 'mediumDate' }} – {{ o.window.current_end | date: 'mediumDate' }}
+    · Compare vs prior {{ windowDays }} days
+  </p>
+
+  <div class="insights-overview__kpi-band" *ngIf="o.kpis as kpis">
+    <p class="insights-overview__kpi-caption">Adoption &amp; engagement</p>
+    <section class="cf-kpi-grid insights-overview__primary" aria-label="Primary adoption metrics">
+      <a
+        *ngFor="let tile of primaryKpis"
+        class="cf-kpi insights-overview__kpi insights-overview__kpi-link"
+        [routerLink]="tile.href || null"
+        [queryParams]="tile.href ? (tile.queryParams || { window_days: windowDays }) : null"
+        [attr.tabindex]="tile.href ? null : -1"
+        [class.insights-overview__kpi-link--static]="!tile.href"
+        [class.insights-overview__kpi--positive]="tile.key === 'active' || tile.key === 'highly_engaged'"
+        [class.insights-overview__kpi--attention]="tile.key === 'inactive' || tile.key === 'declining' || tile.key === 'data_health_issues'"
+      >
+        <strong class="insights-overview__kpi-value">{{ metricValue(kpis[tile.key]) }}</strong>
+        <span class="insights-overview__kpi-label">{{ tile.label }}</span>
+      </a>
+    </section>
+  </div>
+
+  <div class="insights-overview__kpi-band insights-overview__kpi-band--secondary" *ngIf="o.kpis as kpis">
+    <p class="insights-overview__kpi-caption">Inventory</p>
+    <section class="cf-kpi-grid insights-overview__secondary" aria-label="Inventory metrics">
+      <a
+        *ngFor="let tile of secondaryKpis"
+        class="cf-kpi insights-overview__kpi insights-overview__kpi--secondary insights-overview__kpi-link"
+        [routerLink]="tile.href || null"
+        [queryParams]="tile.href ? (tile.queryParams || null) : null"
+        [attr.tabindex]="tile.href ? null : -1"
+        [class.insights-overview__kpi-link--static]="!tile.href"
+      >
+        <strong class="insights-overview__kpi-value">{{ metricValue(kpis[tile.key]) }}</strong>
+        <span class="insights-overview__kpi-label">{{ tile.label }}</span>
+      </a>
+    </section>
+  </div>
+
+  <div class="insights-overview__grid">
+    <app-section-card title="Adoption funnel">
+      <ol class="insights-funnel" *ngIf="o.funnel as funnel">
+        <li>
+          <div class="insights-funnel__row">
+            <span>All tenants</span>
+            <strong>{{ funnel.all_tenants }}</strong>
+          </div>
+          <div class="insights-funnel__bar" [style.width.%]="100"></div>
+        </li>
+        <li>
+          <div class="insights-funnel__row">
+            <span>Module enabled</span>
+            <strong>{{ funnel.module_enabled }}</strong>
+          </div>
+          <div
+            class="insights-funnel__bar"
+            [style.width.%]="funnelPercent(funnel.module_enabled, funnel.all_tenants)"
+          ></div>
+        </li>
+        <li>
+          <div class="insights-funnel__row">
+            <span>Activated</span>
+            <strong>{{ funnel.activated }}</strong>
+          </div>
+          <div
+            class="insights-funnel__bar"
+            [style.width.%]="funnelPercent(funnel.activated, funnel.all_tenants)"
+          ></div>
+        </li>
+        <li>
+          <div class="insights-funnel__row">
+            <span>Active</span>
+            <strong>{{ funnel.active }}</strong>
+          </div>
+          <div
+            class="insights-funnel__bar"
+            [style.width.%]="funnelPercent(funnel.active, funnel.all_tenants)"
+          ></div>
+        </li>
+        <li>
+          <div class="insights-funnel__row">
+            <span>Highly engaged</span>
+            <strong>{{ funnel.highly_engaged }}</strong>
+          </div>
+          <div
+            class="insights-funnel__bar"
+            [style.width.%]="funnelPercent(funnel.highly_engaged, funnel.all_tenants)"
+          ></div>
+        </li>
+      </ol>
+    </app-section-card>
+
+    <app-section-card title="Attention required">
+      <app-cf-empty-state
+        *ngIf="!o.attention?.length"
+        title="No attention items"
+        description="No enabled-not-started, inactive, declining, or data-health issues in this window."
+        [hasActions]="false"
+      ></app-cf-empty-state>
+
+      <ul class="insights-attention" *ngIf="o.attention?.length">
+        <li *ngFor="let item of o.attention">
+          <a
+            [routerLink]="item.href.split('?')[0]"
+            [queryParams]="attentionQuery(item)"
+            class="insights-attention__link"
+          >
+            <div class="insights-attention__head">
+              <strong>{{ item.label }}</strong>
+              <app-status-badge [label]="item.count + ''" [tone]="attentionTone(item.severity)"></app-status-badge>
+            </div>
+            <p>{{ item.description }}</p>
+            <p class="insights-attention__sample" *ngIf="item.sample_tenants?.length">
+              Examples:
+              <span *ngFor="let t of item.sample_tenants; let last = last">
+                {{ t.name }}<span *ngIf="!last">, </span>
+              </span>
+            </p>
+          </a>
+        </li>
+      </ul>
+    </app-section-card>
+  </div>
+</div>

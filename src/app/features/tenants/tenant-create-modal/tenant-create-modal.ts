@@ -3,7 +3,7 @@
  * Professional form with complete validation, API integration, and error handling
  */
 
-import { Component, EventEmitter, Output, inject, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, EventEmitter, Output, inject, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -13,9 +13,9 @@ import { CreateTenantRequest, TenantAddress } from '@core/models/tenant.model';
 import { GeographyService, Country, State } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 interface FormErrors {
   [key: string]: string;
@@ -24,12 +24,12 @@ interface FormErrors {
 @Component({
   selector: 'app-tenant-create-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgSelectModule, PhoneInputComponent],
+  imports: [CommonModule, FormsModule, NgSelectModule, PhoneInputComponent, ModalShellComponent],
   templateUrl: './tenant-create-modal.html',
   styleUrls: ['./tenant-create-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class TenantCreateModalComponent implements OnInit, OnDestroy, AfterViewChecked {
+export class TenantCreateModalComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
   private geographyService = inject(GeographyService);
@@ -37,15 +37,8 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy, AfterViewC
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
 
-  @ViewChild('modalContainer', { static: false }) modalContainerRef?: ElementRef<HTMLElement>;
-
   @Output() close = new EventEmitter<void>();
   @Output() tenantCreated = new EventEmitter<void>();
-  
-  // Focus management
-  private previousActiveElement: HTMLElement | null = null;
-  private focusTrapCleanup: (() => void) | null = null;
-  private modalWasOpen = false;
 
   constructor() {
     console.log('🎉 TenantCreateModalComponent initialized!');
@@ -270,21 +263,7 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy, AfterViewC
    */
   onClose(): void {
     if (!this.isSubmitting) {
-      // Clean up focus trap
-      if (this.focusTrapCleanup) {
-        this.focusTrapCleanup();
-        this.focusTrapCleanup = null;
-      }
-      
       this.close.emit();
-      
-      // Restore previous focus
-      if (this.previousActiveElement) {
-        setTimeout(() => {
-          restoreActiveElement(this.previousActiveElement);
-          this.previousActiveElement = null;
-        }, 100);
-      }
     }
   }
 
@@ -648,42 +627,10 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy, AfterViewC
   }
 
   /**
-   * Handle backdrop click
-   */
-  onBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget && !this.isSubmitting) {
-      this.onClose();
-    }
-  }
-
-  /**
-   * Lifecycle hook: After view checked
-   */
-  ngAfterViewChecked(): void {
-    // Handle focus trapping when modal is shown
-    if (this.modalContainerRef?.nativeElement && !this.modalWasOpen) {
-      this.previousActiveElement = saveActiveElement();
-      this.focusTrapCleanup = trapFocus(this.modalContainerRef.nativeElement);
-      this.modalWasOpen = true;
-    }
-  }
-
-  /**
    * Lifecycle hook: On destroy
    */
   ngOnDestroy(): void {
-    // Clean up subscriptions
     this.destroy$.next();
     this.destroy$.complete();
-    
-    // Clean up focus trap
-    if (this.focusTrapCleanup) {
-      this.focusTrapCleanup();
-    }
-    
-    // Restore previous focus
-    if (this.previousActiveElement) {
-      restoreActiveElement(this.previousActiveElement);
-    }
   }
 }

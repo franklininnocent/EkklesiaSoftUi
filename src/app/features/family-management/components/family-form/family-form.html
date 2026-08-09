@@ -1,98 +1,81 @@
-<div class="modal-overlay" (click)="onCancel()">
-  <div class="modal-content" [class.modal-content--wide]="activeTab === 'members'" (click)="$event.stopPropagation()">
-    <!-- Modal Header -->
-    <div class="modal-header">
-      <h2>{{ family ? 'Edit' : 'Add' }} Family</h2>
-      <button class="close-btn" type="button" (click)="onCancel()">✕</button>
-    </div>
+<app-modal-shell
+  [title]="(family ? 'Edit' : 'Add') + ' Family'"
+  size="xl"
+  headerVariant="compact"
+  [isSubmitting]="loading"
+  (closeRequested)="onCancel()"
+>
+  <!-- Error Message -->
+  <div class="error-banner" *ngIf="error">
+    <span class="error-icon">⚠️</span>
+    <div class="error-content">{{ error }}</div>
+  </div>
 
-    <!-- Error Message -->
-    <div class="error-banner" *ngIf="error">
-      <span class="error-icon">⚠️</span>
-      <div class="error-content">{{ error }}</div>
-    </div>
+  <!-- Tabs -->
+  <div class="tabs">
+    <button 
+      type="button"
+      class="tab" 
+      [class.active]="activeTab === 'info'"
+      (click)="switchTab('info')"
+    >
+      Family Information
+    </button>
+    <button 
+      type="button"
+      class="tab" 
+      [class.active]="activeTab === 'members'"
+      (click)="switchTab('members')"
+    >
+      Members ({{ regularMembersCount }})
+    </button>
+  </div>
 
-    <!-- Tabs -->
-    <div class="tabs">
-      <button 
-        type="button"
-        class="tab" 
-        [class.active]="activeTab === 'info'"
-        (click)="switchTab('info')"
-      >
-        Family Information
-      </button>
-      <button 
-        type="button"
-        class="tab" 
-        [class.active]="activeTab === 'members'"
-        (click)="switchTab('members')"
-      >
-        Members ({{ regularMembersCount }})
-      </button>
-    </div>
-
-    <form [formGroup]="familyForm" (ngSubmit)="onSubmit()">
-      <!-- Tab: Family Info -->
-      <div class="tab-content" *ngIf="activeTab === 'info'" #infoTabContent>
-        <div class="form-grid">
-          <div class="form-group full-width">
-            <label>Family Name <span class="required">*</span></label>
-            <input 
-              type="text" 
-              formControlName="family_name" 
-              class="form-control"
-              [class.error]="hasError('family_name')"
+  <form id="family-info-form" [formGroup]="familyForm" (ngSubmit)="onSubmit()">
+    <!-- Tab: Family Info -->
+    <div class="tab-content" *ngIf="activeTab === 'info'" #infoTabContent>
+      <div class="cf-split-grid cf-split-grid--sections">
+      <section class="cf-split-section" aria-labelledby="family-section-details">
+        <h3 id="family-section-details" class="cf-split-section__title">Family Details</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field cf-split-field--full" [class.cf-split-field--invalid]="hasError('family_name')">
+            <label for="family_name">Family Name <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input
+              id="family_name"
+              type="text"
+              formControlName="family_name"
+              aria-required="true"
               placeholder="Enter family name"
             />
-            <span class="field-error" *ngIf="hasError('family_name')">
+            <p class="cf-split-field__error" *ngIf="hasError('family_name')">
               {{ getErrorMessage('family_name') }}
-            </span>
+            </p>
           </div>
 
-          <div class="form-group">
-            <label>Address Line 1</label>
-            <input 
-              type="text" 
-              formControlName="address_line_1" 
-              class="form-control"
-              placeholder="Street address"
-            />
+          <div class="cf-split-field" [class.cf-split-field--invalid]="hasError('status')">
+            <label for="status">Status</label>
+            <select
+              id="status"
+              formControlName="status"
+            >
+              <option value="active">Active</option>
+              <option value="inactive" [disabled]="family && getActiveMemberCount() > 0">Inactive</option>
+              <option value="migrated">Migrated</option>
+            </select>
+            <p class="cf-split-field__error" *ngIf="hasError('status')">
+              {{ getErrorMessage('status') || (familyForm.get('status')?.errors?.['hasActiveMembers'] ? 'Cannot set Family to inactive with active members' : '') }}
+            </p>
+            <p class="cf-split-field__error" *ngIf="family && getActiveMemberCount() > 0">
+              ⚠️ This Family has {{ getActiveMemberCount() }} active {{ getActiveMemberCount() === 1 ? 'member' : 'members' }} (including family head). Deactivate them before setting Family to inactive.
+            </p>
+            <p class="cf-split-field__hint" *ngIf="!family || getActiveMemberCount() === 0">
+              Current status of the Family
+            </p>
           </div>
 
-          <div class="form-group">
-            <label>Address Line 2</label>
-            <input 
-              type="text" 
-              formControlName="address_line_2" 
-              class="form-control"
-              placeholder="Apartment, suite, etc."
-            />
-          </div>
-
-          <div class="form-group">
-            <label>City</label>
-            <input 
-              type="text" 
-              formControlName="city" 
-              class="form-control"
-              placeholder="City"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>Postal Code</label>
-            <input 
-              type="text" 
-              formControlName="postal_code" 
-              class="form-control"
-              placeholder="Postal code"
-            />
-          </div>
-
-          <div class="form-group">
-            <label>BCC</label>
-            <select formControlName="bcc_id" class="form-control">
+          <div class="cf-split-field">
+            <label for="bcc_id">BCC</label>
+            <select id="bcc_id" formControlName="bcc_id">
               <option value="">Not Assigned</option>
               <option *ngFor="let bcc of activeBCCs" [value]="bcc.id">
                 {{ bcc.name }}
@@ -100,304 +83,327 @@
             </select>
           </div>
 
-          <div class="form-group">
-            <label>Status</label>
-            <select 
-              formControlName="status" 
-              class="form-control"
-              [class.error]="hasError('status')"
-            >
-              <option value="active">Active</option>
-              <option value="inactive" [disabled]="family && getActiveMemberCount() > 0">Inactive</option>
-              <option value="migrated">Migrated</option>
-            </select>
-            <span class="field-error" *ngIf="hasError('status')">
-              {{ getErrorMessage('status') || (familyForm.get('status')?.errors?.['hasActiveMembers'] ? 'Cannot set Family to inactive with active members' : '') }}
-            </span>
-            <small class="form-hint" *ngIf="family && getActiveMemberCount() > 0" style="color: #dc2626;">
-              ⚠️ This Family has {{ getActiveMemberCount() }} active {{ getActiveMemberCount() === 1 ? 'member' : 'members' }} (including family head). Deactivate them before setting Family to inactive.
-            </small>
-            <small class="form-hint" *ngIf="!family || getActiveMemberCount() === 0">
-              Current status of the Family
-            </small>
-          </div>
-
-          <div class="form-group full-width">
-            <label>Notes</label>
-            <textarea 
-              formControlName="notes" 
-              class="form-control" 
+          <div class="cf-split-field cf-split-field--full">
+            <label for="notes">Notes <span class="cf-split-optional">optional</span></label>
+            <textarea
+              id="notes"
+              formControlName="notes"
               rows="3"
               placeholder="Any additional notes..."
             ></textarea>
           </div>
         </div>
-      </div>
+      </section>
 
-      <!-- Tab: Members -->
-      <div class="tab-content members-tab" *ngIf="activeTab === 'members'" #membersTabContent>
-        <div class="em-members-workspace">
-          <header class="em-members-workspace__header">
-            <div class="em-members-workspace__intro">
-              <h3 class="em-members-workspace__title">Members</h3>
-              <p class="em-members-workspace__subtitle">
-                Manage family members, relationships, and sacramental records.
-              </p>
-            </div>
-            <button type="button" class="em-btn em-btn--primary" (click)="openAddMemberModal()">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <path d="M12 5v14M5 12h14"/>
-              </svg>
-              Add Member
-            </button>
-          </header>
-
-          <div class="em-members-stats" aria-label="Member statistics">
-            <div class="em-stat-card">
-              <span class="em-stat-card__value">{{ regularMembersCount }}</span>
-              <span class="em-stat-card__label">Total Members</span>
-            </div>
-            <div class="em-stat-card em-stat-card--success">
-              <span class="em-stat-card__value">{{ getMemberCountByStatus('active') }}</span>
-              <span class="em-stat-card__label">Active</span>
-            </div>
-            <div class="em-stat-card em-stat-card--warning">
-              <span class="em-stat-card__value">{{ getMemberCountByStatus('inactive') }}</span>
-              <span class="em-stat-card__label">Inactive</span>
-            </div>
-            <div class="em-stat-card em-stat-card--info">
-              <span class="em-stat-card__value">{{ filteredRegularMemberIndices.length }}</span>
-              <span class="em-stat-card__label">Showing</span>
-            </div>
+      <section class="cf-split-section" aria-labelledby="family-section-address">
+        <h3 id="family-section-address" class="cf-split-section__title">Address Information</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field cf-split-field--full">
+            <label for="address_line_1">Address Line 1 <span class="cf-split-optional">optional</span></label>
+            <input
+              id="address_line_1"
+              type="text"
+              formControlName="address_line_1"
+              placeholder="Street address"
+            />
           </div>
 
-          <div class="em-members-controls">
-            <label class="em-search">
-              <svg class="em-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-              </svg>
-              <input
-                type="search"
-                [(ngModel)]="memberSearchQuery"
-                [ngModelOptions]="{standalone: true}"
-                placeholder="Search by name, email, phone, or relationship"
-                aria-label="Search members"
-              />
-            </label>
-            <div class="em-filter-pills" role="tablist" aria-label="Filter members">
-              <button
-                type="button"
-                class="em-filter-pill"
-                *ngFor="let option of memberFilterOptions"
-                [class.is-active]="memberFilter === option.id"
-                (click)="setMemberFilter(option.id)"
-              >
-                {{ option.label }}
-              </button>
-            </div>
+          <div class="cf-split-field cf-split-field--full">
+            <label for="address_line_2">Address Line 2 <span class="cf-split-optional">optional</span></label>
+            <input
+              id="address_line_2"
+              type="text"
+              formControlName="address_line_2"
+              placeholder="Apartment, suite, etc."
+            />
           </div>
 
-          <div formArrayName="members" class="em-members-list">
-            <article
-              *ngFor="let memberIndex of filteredRegularMemberIndices"
-              [formGroupName]="memberIndex"
-              class="em-member-card"
-              [class.is-expanded]="isMemberExpanded(memberIndex)"
-            >
-              <header
-                class="em-member-card__header"
-                (click)="toggleMember(memberIndex)"
-                (keydown.enter)="toggleMember(memberIndex); $event.preventDefault()"
-                (keydown.space)="toggleMember(memberIndex); $event.preventDefault()"
-                role="button"
-                tabindex="0"
-                [attr.aria-expanded]="isMemberExpanded(memberIndex)"
-              >
-                <div class="em-member-card__identity">
-                  <div class="em-avatar" [ngClass]="getAvatarTone(memberIndex)" aria-hidden="true">
-                    {{ getMemberInitials(memberIndex) }}
-                  </div>
-                  <div class="em-member-card__summary">
-                    <div class="em-member-card__title-row">
-                      <h4 class="em-member-card__name">{{ getMemberDisplayName(memberIndex) }}</h4>
-                      <span class="em-badge em-badge--status" [ngClass]="getMemberStatusClass(memberIndex)">
-                        {{ getStatusLabel(members.at(memberIndex).get('status')?.value) }}
-                      </span>
-                      <span class="em-badge em-badge--relationship" [ngClass]="getMemberRelationshipClass(memberIndex)">
-                        {{ getRelationshipLabel(members.at(memberIndex).get('relationship_to_head')?.value) }}
-                      </span>
-                    </div>
-                    <div class="em-member-card__contacts">
-                      <span class="em-contact-item">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-                        </svg>
-                        {{ getMemberPhoneDisplay(memberIndex) }}
-                      </span>
-                      <span class="em-contact-item">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                          <path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/>
-                        </svg>
-                        {{ getMemberEmailDisplay(memberIndex) }}
-                      </span>
-                    </div>
-                    <p class="em-member-card__meta">{{ getMemberUpdatedLabel(memberIndex) }}</p>
-                  </div>
-                </div>
+          <div class="cf-split-field">
+            <label for="city">City <span class="cf-split-optional">optional</span></label>
+            <input
+              id="city"
+              type="text"
+              formControlName="city"
+              placeholder="City"
+            />
+          </div>
 
-                <div class="em-member-card__actions" (click)="$event.stopPropagation()">
-                  <button
-                    type="button"
-                    class="em-action-btn em-action-btn--edit"
-                    (click)="openEditMemberModal(memberIndex)"
-                    aria-label="Edit member"
-                    title="Edit member"
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                    </svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="em-action-btn em-action-btn--toggle"
-                    (click)="toggleMember(memberIndex)"
-                    [attr.aria-label]="isMemberExpanded(memberIndex) ? 'Collapse member details' : 'Expand member details'"
-                    [attr.aria-expanded]="isMemberExpanded(memberIndex)"
-                    title="{{ isMemberExpanded(memberIndex) ? 'Collapse' : 'Expand' }}"
-                  >
-                    <span class="em-member-card__chevron" [class.is-open]="isMemberExpanded(memberIndex)" aria-hidden="true">
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="m6 9 6 6 6-6"/>
-                      </svg>
-                    </span>
-                  </button>
-                </div>
-              </header>
-
-              <div class="em-member-card__body" *ngIf="isMemberExpanded(memberIndex)">
-                <div class="member-errors" *ngIf="hasMemberError(memberIndex, 'phone') || hasMemberError(memberIndex, 'email') || hasMemberError(memberIndex, 'first_name') || hasMemberError(memberIndex, 'last_name')">
-                  <div class="error-item" *ngIf="hasMemberError(memberIndex, 'phone')">
-                    <span class="error-icon">⚠️</span>
-                    <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'phone') }}</span>
-                  </div>
-                  <div class="error-item" *ngIf="hasMemberError(memberIndex, 'email')">
-                    <span class="error-icon">⚠️</span>
-                    <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'email') }}</span>
-                  </div>
-                  <div class="error-item" *ngIf="hasMemberError(memberIndex, 'first_name')">
-                    <span class="error-icon">⚠️</span>
-                    <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'first_name') }}</span>
-                  </div>
-                  <div class="error-item" *ngIf="hasMemberError(memberIndex, 'last_name')">
-                    <span class="error-icon">⚠️</span>
-                    <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'last_name') }}</span>
-                  </div>
-                </div>
-
-                <div class="em-detail-grid">
-                  <section class="em-detail-panel">
-                    <header class="em-detail-panel__head">
-                      <h5>Personal Information</h5>
-                    </header>
-                    <div class="em-detail-panel__body">
-                      <dl class="em-field-list">
-                        <div class="em-field"><dt>Date of Birth</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('date_of_birth')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Gender</dt><dd>{{ formatMemberField(members.at(memberIndex).get('gender')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Marital Status</dt><dd>{{ formatMemberField(members.at(memberIndex).get('marital_status')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Occupation</dt><dd>{{ formatMemberField(members.at(memberIndex).get('occupation')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Education</dt><dd>{{ formatMemberField(members.at(memberIndex).get('education')?.value) }}</dd></div>
-                      </dl>
-                    </div>
-                  </section>
-
-                  <section class="em-detail-panel">
-                    <header class="em-detail-panel__head">
-                      <h5>Contact Information</h5>
-                    </header>
-                    <div class="em-detail-panel__body">
-                      <dl class="em-field-list">
-                        <div class="em-field"><dt>Mobile</dt><dd>{{ getMemberPhoneDisplay(memberIndex) }}</dd></div>
-                        <div class="em-field"><dt>Email</dt><dd>{{ getMemberEmailDisplay(memberIndex) }}</dd></div>
-                        <div class="em-field em-field--full"><dt>Family Address</dt><dd>{{ getFamilyAddressDisplay() }}</dd></div>
-                      </dl>
-                    </div>
-                  </section>
-
-                  <section class="em-detail-panel em-detail-panel--wide">
-                    <header class="em-detail-panel__head">
-                      <h5>Sacramental Details</h5>
-                    </header>
-                    <div class="em-detail-panel__body">
-                      <dl class="em-field-list em-field-list--grid">
-                        <div class="em-field"><dt>Baptism</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('baptism_date')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Baptism Church</dt><dd>{{ formatMemberField(members.at(memberIndex).get('baptism_church_name')?.value) }}</dd></div>
-                        <div class="em-field"><dt>First Communion</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('first_communion_date')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Confirmation</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('confirmation_date')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Marriage</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('marriage_date')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Marriage Place</dt><dd>{{ formatMemberField(members.at(memberIndex).get('marriage_place')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Spouse</dt><dd>{{ formatMemberField(members.at(memberIndex).get('marriage_spouse_name')?.value) }}</dd></div>
-                        <div class="em-field"><dt>Priest</dt><dd>{{ formatMemberField(members.at(memberIndex).get('baptism_priest_name')?.value) }}</dd></div>
-                      </dl>
-                    </div>
-                  </section>
-                </div>
-              </div>
-            </article>
-
-            <div *ngIf="regularMembersCount === 0" class="em-empty-state">
-              <div class="em-empty-state__icon" aria-hidden="true">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-              </div>
-              <h4>No family members found</h4>
-              <p>Add your first family member to begin managing family records.</p>
-              <button type="button" class="em-btn em-btn--primary" (click)="openAddMemberModal()">Add Member</button>
-            </div>
-
-            <div *ngIf="regularMembersCount > 0 && filteredRegularMemberIndices.length === 0" class="em-empty-state">
-              <div class="em-empty-state__icon" aria-hidden="true">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-                </svg>
-              </div>
-              <h4>No matching members</h4>
-              <p>Try adjusting your search keywords or filter selection.</p>
-              <button type="button" class="em-btn em-btn--outline" (click)="clearMemberFilters()">Clear filters</button>
-            </div>
+          <div class="cf-split-field">
+            <label for="postal_code">Postal Code <span class="cf-split-optional">optional</span></label>
+            <input
+              id="postal_code"
+              type="text"
+              formControlName="postal_code"
+              placeholder="Postal code"
+            />
           </div>
         </div>
+      </section>
       </div>
 
-      <!-- Save/Cancel only on Family Information tab; member add/edit uses its own modal actions -->
-      <div class="modal-footer" *ngIf="activeTab === 'info'">
-        <button 
-          type="button" 
-          class="btn btn-secondary" 
-          (click)="onCancel()" 
+      <div class="cf-split-form-actions">
+        <button
+          type="submit"
+          form="family-info-form"
+          class="cf-btn cf-btn-primary"
+          [disabled]="loading || familyForm.pristine || familyForm.invalid"
+        >
+          {{ loading ? 'Saving…' : 'Save' }}
+        </button>
+        <button
+          type="button"
+          class="cf-btn"
+          (click)="onCancel()"
           [disabled]="loading"
         >
           Cancel
         </button>
-        <button 
-          type="submit" 
-          class="btn btn-primary" 
-          [disabled]="loading || familyForm.pristine || familyForm.invalid"
-        >
-          <span *ngIf="!loading">Save</span>
-          <span *ngIf="loading">Saving...</span>
-        </button>
       </div>
-    </form>
-    
-    <!-- Member Modal -->
-    <app-family-member-form-modal
-      *ngIf="showMemberModal"
-      [member]="memberToEditIndex !== null ? (members.at(memberToEditIndex).getRawValue()) : null"
-      [saving]="memberModalSaving"
-      [error]="memberModalError"
-      (save)="onMemberModalSave($event)"
-      (cancel)="onMemberModalCancel()">
-    </app-family-member-form-modal>
-  </div>
-</div>
+    </div>
+
+    <!-- Tab: Members -->
+    <div class="tab-content members-tab" *ngIf="activeTab === 'members'" #membersTabContent>
+      <div class="em-members-workspace">
+        <header class="em-members-workspace__header">
+          <div class="em-members-workspace__intro">
+            <h3 class="em-members-workspace__title">Members</h3>
+            <p class="em-members-workspace__subtitle">
+              Manage family members, relationships, and sacramental records.
+            </p>
+          </div>
+          <button type="button" class="em-btn em-btn--primary" (click)="openAddMemberModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Add Member
+          </button>
+        </header>
+
+        <div class="em-members-stats" aria-label="Member statistics">
+          <div class="em-stat-card">
+            <span class="em-stat-card__value">{{ regularMembersCount }}</span>
+            <span class="em-stat-card__label">Total Members</span>
+          </div>
+          <div class="em-stat-card em-stat-card--success">
+            <span class="em-stat-card__value">{{ getMemberCountByStatus('active') }}</span>
+            <span class="em-stat-card__label">Active</span>
+          </div>
+          <div class="em-stat-card em-stat-card--warning">
+            <span class="em-stat-card__value">{{ getMemberCountByStatus('inactive') }}</span>
+            <span class="em-stat-card__label">Inactive</span>
+          </div>
+          <div class="em-stat-card em-stat-card--info">
+            <span class="em-stat-card__value">{{ filteredRegularMemberIndices.length }}</span>
+            <span class="em-stat-card__label">Showing</span>
+          </div>
+        </div>
+
+        <div class="em-members-controls">
+          <label class="em-search">
+            <svg class="em-search__icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+            </svg>
+            <input
+              type="search"
+              [(ngModel)]="memberSearchQuery"
+              [ngModelOptions]="{standalone: true}"
+              placeholder="Search by name, email, phone, or relationship"
+              aria-label="Search members"
+            />
+          </label>
+          <div class="em-filter-pills" role="tablist" aria-label="Filter members">
+            <button
+              type="button"
+              class="em-filter-pill"
+              *ngFor="let option of memberFilterOptions"
+              [class.is-active]="memberFilter === option.id"
+              (click)="setMemberFilter(option.id)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+        </div>
+
+        <div formArrayName="members" class="em-members-list">
+          <article
+            *ngFor="let memberIndex of filteredRegularMemberIndices"
+            [formGroupName]="memberIndex"
+            class="em-member-card"
+            [class.is-expanded]="isMemberExpanded(memberIndex)"
+          >
+            <header
+              class="em-member-card__header"
+              (click)="toggleMember(memberIndex)"
+              (keydown.enter)="toggleMember(memberIndex); $event.preventDefault()"
+              (keydown.space)="toggleMember(memberIndex); $event.preventDefault()"
+              role="button"
+              tabindex="0"
+              [attr.aria-expanded]="isMemberExpanded(memberIndex)"
+            >
+              <div class="em-member-card__identity">
+                <div class="em-avatar" [ngClass]="getAvatarTone(memberIndex)" aria-hidden="true">
+                  {{ getMemberInitials(memberIndex) }}
+                </div>
+                <div class="em-member-card__summary">
+                  <div class="em-member-card__title-row">
+                    <h4 class="em-member-card__name">{{ getMemberDisplayName(memberIndex) }}</h4>
+                    <span class="em-badge em-badge--status" [ngClass]="getMemberStatusClass(memberIndex)">
+                      {{ getStatusLabel(members.at(memberIndex).get('status')?.value) }}
+                    </span>
+                    <span class="em-badge em-badge--relationship" [ngClass]="getMemberRelationshipClass(memberIndex)">
+                      {{ getRelationshipLabel(members.at(memberIndex).get('relationship_to_head')?.value) }}
+                    </span>
+                  </div>
+                  <div class="em-member-card__contacts">
+                    <span class="em-contact-item">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+                      </svg>
+                      {{ getMemberPhoneDisplay(memberIndex) }}
+                    </span>
+                    <span class="em-contact-item">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                        <path d="M4 4h16v16H4z"/><path d="m22 6-10 7L2 6"/>
+                      </svg>
+                      {{ getMemberEmailDisplay(memberIndex) }}
+                    </span>
+                  </div>
+                  <p class="em-member-card__meta">{{ getMemberUpdatedLabel(memberIndex) }}</p>
+                </div>
+              </div>
+
+              <div class="em-member-card__actions" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  class="em-action-btn em-action-btn--edit"
+                  (click)="openEditMemberModal(memberIndex)"
+                  aria-label="Edit member"
+                  title="Edit member"
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  class="em-action-btn em-action-btn--toggle"
+                  (click)="toggleMember(memberIndex)"
+                  [attr.aria-label]="isMemberExpanded(memberIndex) ? 'Collapse member details' : 'Expand member details'"
+                  [attr.aria-expanded]="isMemberExpanded(memberIndex)"
+                  title="{{ isMemberExpanded(memberIndex) ? 'Collapse' : 'Expand' }}"
+                >
+                  <span class="em-member-card__chevron" [class.is-open]="isMemberExpanded(memberIndex)" aria-hidden="true">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </span>
+                </button>
+              </div>
+            </header>
+
+            <div class="em-member-card__body" *ngIf="isMemberExpanded(memberIndex)">
+              <div class="member-errors" *ngIf="hasMemberError(memberIndex, 'phone') || hasMemberError(memberIndex, 'email') || hasMemberError(memberIndex, 'first_name') || hasMemberError(memberIndex, 'last_name')">
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'phone')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'phone') }}</span>
+                </div>
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'email')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'email') }}</span>
+                </div>
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'first_name')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'first_name') }}</span>
+                </div>
+                <div class="error-item" *ngIf="hasMemberError(memberIndex, 'last_name')">
+                  <span class="error-icon">⚠️</span>
+                  <span class="error-text">{{ getMemberErrorMessage(memberIndex, 'last_name') }}</span>
+                </div>
+              </div>
+
+              <div class="em-detail-grid">
+                <section class="em-detail-panel">
+                  <header class="em-detail-panel__head">
+                    <h5>Personal Information</h5>
+                  </header>
+                  <div class="em-detail-panel__body">
+                    <dl class="em-field-list">
+                      <div class="em-field"><dt>Date of Birth</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('date_of_birth')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Gender</dt><dd>{{ formatMemberField(members.at(memberIndex).get('gender')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Marital Status</dt><dd>{{ formatMemberField(members.at(memberIndex).get('marital_status')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Occupation</dt><dd>{{ formatMemberField(members.at(memberIndex).get('occupation')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Education</dt><dd>{{ formatMemberField(members.at(memberIndex).get('education')?.value) }}</dd></div>
+                    </dl>
+                  </div>
+                </section>
+
+                <section class="em-detail-panel">
+                  <header class="em-detail-panel__head">
+                    <h5>Contact Information</h5>
+                  </header>
+                  <div class="em-detail-panel__body">
+                    <dl class="em-field-list">
+                      <div class="em-field"><dt>Mobile</dt><dd>{{ getMemberPhoneDisplay(memberIndex) }}</dd></div>
+                      <div class="em-field"><dt>Email</dt><dd>{{ getMemberEmailDisplay(memberIndex) }}</dd></div>
+                      <div class="em-field em-field--full"><dt>Family Address</dt><dd>{{ getFamilyAddressDisplay() }}</dd></div>
+                    </dl>
+                  </div>
+                </section>
+
+                <section class="em-detail-panel em-detail-panel--wide">
+                  <header class="em-detail-panel__head">
+                    <h5>Sacramental Details</h5>
+                  </header>
+                  <div class="em-detail-panel__body">
+                    <dl class="em-field-list em-field-list--grid">
+                      <div class="em-field"><dt>Baptism</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('baptism_date')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Baptism Church</dt><dd>{{ formatMemberField(members.at(memberIndex).get('baptism_church_name')?.value) }}</dd></div>
+                      <div class="em-field"><dt>First Communion</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('first_communion_date')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Confirmation</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('confirmation_date')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Marriage</dt><dd>{{ formatMemberDate(members.at(memberIndex).get('marriage_date')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Marriage Place</dt><dd>{{ formatMemberField(members.at(memberIndex).get('marriage_place')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Spouse</dt><dd>{{ formatMemberField(members.at(memberIndex).get('marriage_spouse_name')?.value) }}</dd></div>
+                      <div class="em-field"><dt>Priest</dt><dd>{{ formatMemberField(members.at(memberIndex).get('baptism_priest_name')?.value) }}</dd></div>
+                    </dl>
+                  </div>
+                </section>
+              </div>
+            </div>
+          </article>
+
+          <div *ngIf="regularMembersCount === 0" class="em-empty-state">
+            <div class="em-empty-state__icon" aria-hidden="true">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <h4>No family members found</h4>
+            <p>Add your first family member to begin managing family records.</p>
+            <button type="button" class="em-btn em-btn--primary" (click)="openAddMemberModal()">Add Member</button>
+          </div>
+
+          <div *ngIf="regularMembersCount > 0 && filteredRegularMemberIndices.length === 0" class="em-empty-state">
+            <div class="em-empty-state__icon" aria-hidden="true">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+              </svg>
+            </div>
+            <h4>No matching members</h4>
+            <p>Try adjusting your search keywords or filter selection.</p>
+            <button type="button" class="em-btn em-btn--outline" (click)="clearMemberFilters()">Clear filters</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </form>
+
+  <!-- Member Modal -->
+  <app-family-member-form-modal
+    *ngIf="showMemberModal"
+    [member]="memberToEditIndex !== null ? (members.at(memberToEditIndex).getRawValue()) : null"
+    [saving]="memberModalSaving"
+    [error]="memberModalError"
+    (save)="onMemberModalSave($event)"
+    (cancel)="onMemberModalCancel()">
+  </app-family-member-form-modal>
+</app-modal-shell>

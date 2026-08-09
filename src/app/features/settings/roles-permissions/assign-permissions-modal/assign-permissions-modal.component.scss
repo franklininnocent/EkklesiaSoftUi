@@ -32,168 +32,11 @@
   --transition-slow: 300ms;
 }
 
-// ============ MODAL OVERLAY ============
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  padding: var(--spacing-md);
-  animation: fadeIn var(--transition-normal) ease-out;
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-// ============ MODAL CONTAINER ============
-.modal-container {
-  background: white;
-  border-radius: var(--radius-lg);
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-  width: 100%;
-  max-width: 1200px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  animation: slideIn var(--transition-slow) ease-out;
-}
-
-@keyframes slideIn {
-  from {
-    opacity: 0;
-    transform: translateY(-20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-// ============ MODAL HEADER ============
-.modal-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-bottom: 2px solid var(--gray-100);
-  background: linear-gradient(135deg, #667eea08 0%, #764ba208 100%);
-  border-top-left-radius: var(--radius-lg);
-  border-top-right-radius: var(--radius-lg);
-  flex-shrink: 0;
-}
-
-.header-content {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-md);
-  flex: 1;
-}
-
-.header-icon {
-  font-size: 2rem;
-  width: 48px;
-  height: 48px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: var(--radius-md);
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  flex-shrink: 0;
-}
-
-.header-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.modal-title {
-  font-size: var(--font-size-xl);
-  font-weight: 600;
-  color: var(--text-primary);
-  margin: 0;
-  line-height: 1.3;
-}
-
-.modal-subtitle {
-  font-size: var(--font-size-sm);
-  color: var(--text-secondary);
-  margin: 0.25rem 0 0 0;
-  font-weight: 500;
-}
-
-.role-name-badge {
-  font-weight: 600;
-  color: var(--primary-color);
-  background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--primary-color);
-}
-
-.btn-close {
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--gray-300);
-  background: white;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.25rem;
-  flex-shrink: 0;
-
-  &:hover {
-    background: var(--gray-100);
-    border-color: var(--gray-400);
-    color: var(--text-primary);
-  }
-
-  &:active {
-    transform: scale(0.95);
-  }
-}
-
 // ============ MODAL BODY ============
 .modal-body {
   flex: 1;
   overflow-y: auto;
   padding: var(--spacing-md) var(--spacing-lg);
-  
-  // Custom scrollbar
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: var(--gray-100);
-    border-radius: var(--radius-full);
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: var(--gray-300);
-    border-radius: var(--radius-full);
-
-    &:hover {
-      background: var(--gray-400);
-    }
-  }
 }
 
 // ============ LOADING & ERROR STATES ============
@@ -1057,80 +900,7 @@
 }
 
 // ============ MODAL FOOTER ============
-.modal-footer {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: var(--spacing-md);
-  padding: var(--spacing-lg) var(--spacing-xl);
-  border-top: 2px solid var(--gray-100);
-  background: var(--gray-50);
-  border-bottom-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-lg);
-  flex-shrink: 0;
-}
-
-// ============ BUTTON SYSTEM (Matching Parent) ============
-@mixin button-base {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--spacing-sm);
-  padding: 0.625rem 1.5rem;
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-  transition: all var(--transition-normal);
-  border: none;
-  white-space: nowrap;
-  text-decoration: none;
-  user-select: none;
-
-  &:focus {
-    outline: none;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-}
-
-.btn-primary {
-  @include button-base;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
-  }
-
-  &:active:not(:disabled) {
-    transform: translateY(0);
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.35);
-  }
-}
-
-.btn-secondary {
-  @include button-base;
-  background: white;
-  color: var(--text-primary);
-  border: 1px solid var(--gray-300);
-
-  &:hover:not(:disabled) {
-    background: var(--gray-50);
-    border-color: var(--gray-400);
-  }
-
-  &:active:not(:disabled) {
-    background: var(--gray-100);
-  }
-}
+// Shell owns the footer container; inline-footer still needed for inline mode.
 
 .btn-spinner {
   width: 16px;
@@ -1188,33 +958,14 @@
 
 // ============ RESPONSIVE DESIGN ============
 @media (max-width: 1024px) {
-  .modal-container {
-    max-width: 95vw;
-  }
-
   .permissions-grid {
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
   }
 }
 
 @media (max-width: 768px) {
-  .modal-header {
-    padding: var(--spacing-md);
-  }
-
   .modal-body {
     padding: var(--spacing-md);
-  }
-
-  .modal-footer {
-    padding: var(--spacing-md);
-    flex-direction: column;
-
-    .btn-primary,
-    .btn-secondary {
-      width: 100%;
-      justify-content: center;
-    }
   }
 
   .actions-bar {
@@ -1295,34 +1046,8 @@
 }
 
 @media (max-width: 480px) {
-  .modal-overlay {
-    padding: 0;
-  }
-
-  .modal-container {
-    max-width: 100vw;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-
-  .modal-header {
-    border-top-left-radius: 0;
-    border-top-right-radius: 0;
-  }
-
-  .modal-footer {
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-  }
-
-  .header-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
-  }
-
-  .modal-title {
-    font-size: var(--font-size-lg);
+  .modal-body {
+    padding: var(--spacing-sm);
   }
 }
 

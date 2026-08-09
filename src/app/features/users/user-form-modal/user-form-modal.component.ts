@@ -6,7 +6,8 @@ import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
-import { PhoneInputComponent, ButtonComponent } from '@shared/components';
+import { PhoneInputComponent, ButtonComponent, ModalShellComponent } from '@shared/components';
+import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
@@ -30,7 +31,7 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
 @Component({
   selector: 'app-user-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, PhoneInputComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, PhoneInputComponent, ButtonComponent, ModalShellComponent, FormFieldComponent],
   templateUrl: './user-form-modal.component.html',
   styleUrl: './user-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

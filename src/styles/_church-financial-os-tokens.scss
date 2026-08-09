@@ -39,6 +39,32 @@
   --cf-primary-soft: var(--cf-indigo-soft);
   --cf-overlay-bg: rgba(15, 23, 42, 0.45);
 
+  /*
+   * Popup / modal system — single source of truth for centered dialogs.
+   * Use via app-modal-shell size input; do not invent per-feature widths.
+   */
+  --cf-modal-width-xs: 28rem;
+  --cf-modal-width-sm: 32rem;
+  --cf-modal-width-md: 36rem;
+  --cf-modal-width-lg: 44rem;
+  --cf-modal-width-xl: 56rem;
+  --cf-modal-width-full: 72rem;
+  --cf-modal-max-height: 90vh;
+  --cf-modal-pad-x: var(--cf-space-4);
+  --cf-modal-pad-y: var(--cf-space-4);
+  --cf-modal-header-pad-y: var(--cf-space-3);
+  --cf-modal-footer-gap: var(--cf-space-2);
+  --cf-modal-anim-duration: 180ms;
+  --cf-modal-anim-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Layering — prefer these over hardcoded 999 / 9999 / 10000 */
+  --cf-z-dropdown: 1000;
+  --cf-z-drawer: 1100;
+  --cf-z-modal: 1200;
+  --cf-z-modal-nested: 1300;
+  --cf-z-toast: 1400;
+  --cf-z-command-palette: 1350;
+
   /* Semantic color roles — alias existing palette; prefer these in new UI */
   --cf-color-primary: var(--cf-primary);
   --cf-color-secondary: var(--cf-slate-700);

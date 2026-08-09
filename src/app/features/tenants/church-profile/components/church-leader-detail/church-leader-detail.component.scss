@@ -1,14 +1,14 @@
 .cld-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 1200;
-  background: rgba(15, 23, 42, 0.48);
+  z-index: var(--cf-z-drawer);
+  background: var(--cf-overlay-bg);
   backdrop-filter: blur(4px);
 }
 
 .cld {
   position: fixed;
-  z-index: 1201;
+  z-index: var(--cf-z-drawer);
   inset: 1rem 1rem 1rem auto;
   width: min(52rem, calc(100vw - 2rem));
   max-width: calc(100vw - 2rem);

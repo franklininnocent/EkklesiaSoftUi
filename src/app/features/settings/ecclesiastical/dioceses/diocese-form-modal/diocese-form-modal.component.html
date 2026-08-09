@@ -1,241 +1,218 @@
-<div class="modal-backdrop" *ngIf="show" (click)="onBackdropClick($event)">
-  <div class="modal-container" [class.animate-scale-in]="show">
-    <!-- Modal Header -->
-    <div class="modal-header">
-      <h2 class="modal-title">{{ modalTitle }}</h2>
-      <button type="button" class="close-btn hover-scale transition-all focus-ring" (click)="onCancel()" [disabled]="isSubmitting" aria-label="Close modal">
-        <span>✕</span>
-      </button>
-    </div>
-
-    <!-- Modal Body -->
-    <div class="modal-body">
-      <form [formGroup]="dioceseForm" (ngSubmit)="onSubmit()" [class.animate-shake]="showValidationErrors">
-        <div class="form-grid">
-          <!-- Name -->
-          <div class="form-group full-width">
-            <label for="name" class="form-label required">Diocese/Archdiocese Name</label>
-            <input
-              #firstInput
-              type="text"
-              id="name"
-              formControlName="name"
-              class="form-input transition-colors focus-ring"
-              [class.error]="hasError('name')"
-              placeholder="e.g., Diocese of Madurai"
-              aria-required="true"
-              aria-describedby="name-error">
-            <span id="name-error" class="field-error" *ngIf="hasError('name')" role="alert">
-              {{ getErrorMessage('name') }}
-            </span>
-          </div>
-
-          <!-- Code -->
-          <div class="form-group">
-            <label for="code" class="form-label">Code</label>
-            <input
-              type="text"
-              id="code"
-              formControlName="code"
-              class="form-input"
-              [class.error]="hasError('code')"
-              placeholder="e.g., MAD">
-            <span class="field-error" *ngIf="hasError('code')">
-              {{ getErrorMessage('code') }}
-            </span>
-          </div>
-
-          <!-- Is Archdiocese -->
-          <div class="form-group checkbox-group">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                formControlName="is_archdiocese"
-                class="checkbox-input">
-              <span>Is Archdiocese (Metropolitan)</span>
-            </label>
-          </div>
-
-          <!-- Denomination -->
-          <div class="form-group">
-            <label for="denomination_id" class="form-label required">Denomination</label>
-            <select
-              id="denomination_id"
-              formControlName="denomination_id"
-              class="form-select"
-              [class.error]="hasError('denomination_id')">
-              <option [value]="null">Select Denomination</option>
-              <option *ngFor="let denom of denominations" [value]="denom.id">
-                {{ denom.name }}
-              </option>
-            </select>
-            <span class="field-error" *ngIf="hasError('denomination_id')">
-              {{ getErrorMessage('denomination_id') }}
-            </span>
-          </div>
-
-          <!-- Country -->
-          <div class="form-group">
-            <label for="country_id" class="form-label required">Country</label>
-            <select
-              id="country_id"
-              formControlName="country_id"
-              class="form-select"
-              [class.error]="hasError('country_id')">
-              <option [value]="null">Select Country</option>
-              <option *ngFor="let country of countries" [value]="country.id">
-                {{ country.name }}
-              </option>
-            </select>
-            <span class="field-error" *ngIf="hasError('country_id')">
-              {{ getErrorMessage('country_id') }}
-            </span>
-          </div>
-
-          <!-- State/Province -->
-          <div class="form-group">
-            <label for="state_id" class="form-label">State/Province</label>
-            <select
-              id="state_id"
-              formControlName="state_id"
-              class="form-select"
-              [disabled]="!filteredStates.length">
-              <option [value]="null">Select State/Province</option>
-              <option *ngFor="let state of filteredStates" [value]="state.id">
-                {{ state.name }}
-              </option>
-            </select>
-            <small class="form-hint" *ngIf="!filteredStates.length && dioceseForm.get('country_id')?.value">
-              No states available for selected country
-            </small>
-          </div>
-
-          <!-- Established Date -->
-          <div class="form-group">
-            <label for="established_date" class="form-label">Established Date</label>
-            <input
-              type="date"
-              id="established_date"
-              formControlName="established_date"
-              class="form-input">
-          </div>
-
-          <!-- Active Status -->
-          <div class="form-group checkbox-group">
-            <label class="checkbox-label">
-              <input
-                type="checkbox"
-                formControlName="active"
-                class="checkbox-input">
-              <span>Active</span>
-            </label>
-          </div>
-
-          <!-- Website -->
-          <div class="form-group full-width">
-            <label for="website" class="form-label">Website</label>
-            <input
-              type="url"
-              id="website"
-              formControlName="website"
-              class="form-input"
-              [class.error]="hasError('website')"
-              placeholder="https://example.com">
-            <span class="field-error" *ngIf="hasError('website')">
-              {{ getErrorMessage('website') }}
-            </span>
-          </div>
-
-          <!-- Address Line 1 -->
-          <div class="form-group full-width">
-            <label for="address_line1" class="form-label">Address</label>
-            <input
-              type="text"
-              id="address_line1"
-              formControlName="address_line1"
-              class="form-input"
-              placeholder="Street address">
-          </div>
-
-          <!-- City -->
-          <div class="form-group">
-            <label for="city" class="form-label">City</label>
-            <input
-              type="text"
-              id="city"
-              formControlName="city"
-              class="form-input"
-              placeholder="City name">
-          </div>
-
-          <!-- Postal Code -->
-          <div class="form-group">
-            <label for="postal_code" class="form-label">Postal Code</label>
-            <input
-              type="text"
-              id="postal_code"
-              formControlName="postal_code"
-              class="form-input"
-              placeholder="ZIP/Postal code">
-          </div>
-
-          <!-- Phone -->
-          <div class="form-group">
-            <app-phone-input
-              [label]="'Phone'"
-              [id]="'phone'"
-              [name]="'phone'"
-              [required]="false"
-              [disabled]="isSubmitting"
-              [maxLength]="15"
-              [minLength]="6"
-              [showError]="true"
-              [errorMessage]="hasError('phone') ? getErrorMessage('phone') : ''"
-              formControlName="phone"
-            ></app-phone-input>
-          </div>
-
-          <!-- Email -->
-          <div class="form-group">
-            <label for="email" class="form-label">Email</label>
-            <input
-              type="email"
-              id="email"
-              formControlName="email"
-              class="form-input"
-              [class.error]="hasError('email')"
-              placeholder="contact@diocese.org">
-            <span class="field-error" *ngIf="hasError('email')">
-              {{ getErrorMessage('email') }}
-            </span>
-          </div>
-        </div>
-      </form>
-    </div>
-
-    <!-- Modal Footer -->
-    <div class="modal-footer">
-      <button
-        type="button"
-        class="btn btn-secondary hover-lift transition-all focus-ring"
-        (click)="onCancel()"
-        [disabled]="isSubmitting"
-        aria-label="Cancel">
-        Cancel
-      </button>
-      <button
-        type="button"
-        class="btn btn-primary hover-lift transition-all focus-ring"
-        (click)="onSubmit()"
-        [disabled]="isSubmitting"
-        [attr.aria-busy]="isSubmitting">
-        <span *ngIf="!isSubmitting">{{ submitButtonText }}</span>
-        <span *ngIf="isSubmitting" class="loading-state">
-          <app-loading-spinner size="small" color="white"></app-loading-spinner>
-          <span>Saving...</span>
+<app-modal-shell
+  *ngIf="show"
+  [title]="modalTitle"
+  size="xl"
+  [isSubmitting]="isSubmitting"
+  (closeRequested)="onCancel()"
+>
+  <!-- Modal Body -->
+  <form [formGroup]="dioceseForm" (ngSubmit)="onSubmit()" [class.animate-shake]="showValidationErrors">
+    <div class="form-grid">
+      <!-- Name -->
+      <div class="form-group full-width">
+        <label for="name" class="form-label required">Diocese/Archdiocese Name</label>
+        <input
+          #firstInput
+          type="text"
+          id="name"
+          formControlName="name"
+          class="form-input transition-colors focus-ring"
+          [class.error]="hasError('name')"
+          placeholder="e.g., Diocese of Madurai"
+          aria-required="true"
+          aria-describedby="name-error">
+        <span id="name-error" class="field-error" *ngIf="hasError('name')" role="alert">
+          {{ getErrorMessage('name') }}
         </span>
-      </button>
+      </div>
+
+      <!-- Code -->
+      <div class="form-group">
+        <label for="code" class="form-label">Code</label>
+        <input
+          type="text"
+          id="code"
+          formControlName="code"
+          class="form-input"
+          [class.error]="hasError('code')"
+          placeholder="e.g., MAD">
+        <span class="field-error" *ngIf="hasError('code')">
+          {{ getErrorMessage('code') }}
+        </span>
+      </div>
+
+      <!-- Is Archdiocese -->
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            formControlName="is_archdiocese"
+            class="checkbox-input">
+          <span>Is Archdiocese (Metropolitan)</span>
+        </label>
+      </div>
+
+      <!-- Denomination -->
+      <div class="form-group">
+        <label for="denomination_id" class="form-label required">Denomination</label>
+        <select
+          id="denomination_id"
+          formControlName="denomination_id"
+          class="form-select"
+          [class.error]="hasError('denomination_id')">
+          <option [value]="null">Select Denomination</option>
+          <option *ngFor="let denom of denominations" [value]="denom.id">
+            {{ denom.name }}
+          </option>
+        </select>
+        <span class="field-error" *ngIf="hasError('denomination_id')">
+          {{ getErrorMessage('denomination_id') }}
+        </span>
+      </div>
+
+      <!-- Country -->
+      <div class="form-group">
+        <label for="country_id" class="form-label required">Country</label>
+        <select
+          id="country_id"
+          formControlName="country_id"
+          class="form-select"
+          [class.error]="hasError('country_id')">
+          <option [value]="null">Select Country</option>
+          <option *ngFor="let country of countries" [value]="country.id">
+            {{ country.name }}
+          </option>
+        </select>
+        <span class="field-error" *ngIf="hasError('country_id')">
+          {{ getErrorMessage('country_id') }}
+        </span>
+      </div>
+
+      <!-- State/Province -->
+      <div class="form-group">
+        <label for="state_id" class="form-label">State/Province</label>
+        <select
+          id="state_id"
+          formControlName="state_id"
+          class="form-select"
+          [disabled]="!filteredStates.length">
+          <option [value]="null">Select State/Province</option>
+          <option *ngFor="let state of filteredStates" [value]="state.id">
+            {{ state.name }}
+          </option>
+        </select>
+        <small class="form-hint" *ngIf="!filteredStates.length && dioceseForm.get('country_id')?.value">
+          No states available for selected country
+        </small>
+      </div>
+
+      <!-- Established Date -->
+      <div class="form-group">
+        <label for="established_date" class="form-label">Established Date</label>
+        <input
+          type="date"
+          id="established_date"
+          formControlName="established_date"
+          class="form-input">
+      </div>
+
+      <!-- Active Status -->
+      <div class="form-group checkbox-group">
+        <label class="checkbox-label">
+          <input
+            type="checkbox"
+            formControlName="active"
+            class="checkbox-input">
+          <span>Active</span>
+        </label>
+      </div>
+
+      <!-- Website -->
+      <div class="form-group full-width">
+        <label for="website" class="form-label">Website</label>
+        <input
+          type="url"
+          id="website"
+          formControlName="website"
+          class="form-input"
+          [class.error]="hasError('website')"
+          placeholder="https://example.com">
+        <span class="field-error" *ngIf="hasError('website')">
+          {{ getErrorMessage('website') }}
+        </span>
+      </div>
+
+      <!-- Address Line 1 -->
+      <div class="form-group full-width">
+        <label for="address_line1" class="form-label">Address</label>
+        <input
+          type="text"
+          id="address_line1"
+          formControlName="address_line1"
+          class="form-input"
+          placeholder="Street address">
+      </div>
+
+      <!-- City -->
+      <div class="form-group">
+        <label for="city" class="form-label">City</label>
+        <input
+          type="text"
+          id="city"
+          formControlName="city"
+          class="form-input"
+          placeholder="City name">
+      </div>
+
+      <!-- Postal Code -->
+      <div class="form-group">
+        <label for="postal_code" class="form-label">Postal Code</label>
+        <input
+          type="text"
+          id="postal_code"
+          formControlName="postal_code"
+          class="form-input"
+          placeholder="ZIP/Postal code">
+      </div>
+
+      <!-- Phone -->
+      <div class="form-group">
+        <app-phone-input
+          [label]="'Phone'"
+          [id]="'phone'"
+          [name]="'phone'"
+          [required]="false"
+          [disabled]="isSubmitting"
+          [maxLength]="15"
+          [minLength]="6"
+          [showError]="true"
+          [errorMessage]="hasError('phone') ? getErrorMessage('phone') : ''"
+          formControlName="phone"
+        ></app-phone-input>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label for="email" class="form-label">Email</label>
+        <input
+          type="email"
+          id="email"
+          formControlName="email"
+          class="form-input"
+          [class.error]="hasError('email')"
+          placeholder="contact@diocese.org">
+        <span class="field-error" *ngIf="hasError('email')">
+          {{ getErrorMessage('email') }}
+        </span>
+      </div>
     </div>
+  </form>
+
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="isSubmitting">Cancel</button>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="onSubmit()" [disabled]="isSubmitting">
+      {{ submitButtonText }}
+    </button>
   </div>
-</div>
+</app-modal-shell>
 

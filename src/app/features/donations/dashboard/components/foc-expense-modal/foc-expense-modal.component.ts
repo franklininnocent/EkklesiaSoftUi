@@ -10,6 +10,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ParishExpenseRecord } from '../../../models/donation.model';
 import { formatFocCurrency } from '../../utils/foc-format.util';
 
@@ -45,7 +46,7 @@ export interface FocExpenseMethodOption {
 @Component({
   selector: 'app-foc-expense-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ModalShellComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './foc-expense-modal.component.html',
   styleUrl: './foc-expense-modal.component.scss'
@@ -192,12 +193,6 @@ export class FocExpenseModalComponent {
 
   onFieldChange(): void {
     this.touch();
-  }
-
-  onBackdropClick(event: MouseEvent): void {
-    if ((event.target as HTMLElement).classList.contains('foc-disb-backdrop')) {
-      this.close.emit();
-    }
   }
 
   saveDraft(): void {

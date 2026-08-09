@@ -1,103 +1,10 @@
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  backdrop-filter: blur(6px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  z-index: 1050;
-  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.modal-container {
-  width: min(940px, 100%);
-  max-height: 92vh;
-  background: #ffffff;
-  border-radius: 18px;
-  box-shadow: 0 24px 60px rgba(15, 23, 42, 0.28);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  animation: slideUp 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #4338ca 100%);
-  background-size: 200% 200%;
-  animation: gradientShift 8s ease infinite;
-  color: #fff;
-  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.25);
-}
-
-.header-titles h3 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-}
-
-.header-titles .subtitle {
-  margin: 4px 0 0;
-  color: rgba(255, 255, 255, 0.8);
-  font-size: 0.92rem;
-}
-
-.modal-header .btn-icon {
-  background: rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  font-size: 1rem;
-  color: #ffffff;
-}
-
-.modal-header .btn-icon:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.4);
-  transform: rotate(90deg) scale(1.08);
-}
-
-.modal-header .btn-icon:active {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg) scale(1.03);
-}
-
-.modal-body {
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1 1 auto;
-  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
+// Modal Shell owns overlay/dialog/header/footer.
+// Only form-specific content styles remain here.
 
 .sacrament-form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
-}
-
-.modal-footer {
-  margin-top: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 12px;
 }
 
 .section-title {
@@ -401,43 +308,15 @@ textarea.form-control {
 }
 
 @media (max-width: 680px) {
-  .modal-container {
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-  }
-
-  .modal-body {
-    padding: 18px;
-  }
-
-  .modal-header {
-    padding: 16px 18px;
-  }
-
   .form-grid {
     grid-template-columns: 1fr;
   }
 }
 
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes slideUp {
-  from { transform: translateY(24px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes gradientShift {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
+@keyframes inputFocusPulse {
+  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35); }
+  50% { box-shadow: 0 0 0 6px rgba(79, 70, 229, 0); }
+  100% { box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15), 0 0 0 3px rgba(79, 70, 229, 0.1); }
 }
 
 @keyframes inputFocusPulse {

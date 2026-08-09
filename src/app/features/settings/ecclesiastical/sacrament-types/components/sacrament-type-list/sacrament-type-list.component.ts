@@ -8,6 +8,7 @@ import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { ToastService } from '@core/services/toast.service';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-sacrament-type-list',
@@ -19,6 +20,7 @@ import { ToastService } from '@core/services/toast.service';
     EmptyStateComponent,
     PaginationComponent,
     PageHeaderComponent,
+    ModalShellComponent,
   ],
   templateUrl: './sacrament-type-list.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

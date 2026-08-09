@@ -1,0 +1,28 @@
+<section class="ministries-insights cf-page">
+  <app-page-header
+    title="Ministries Insights"
+    subtitle="Cross-tenant adoption, usage, health, and governance for Ministries &amp; Associations."
+  ></app-page-header>
+
+  <div
+    class="ministries-insights__notice"
+    *ngIf="noticeMessage"
+    role="status"
+  >
+    <p>{{ noticeMessage }}</p>
+    <div class="ministries-insights__notice-actions">
+      <a routerLink="/support-center">Open Support Center</a>
+      <button type="button" class="btn btn-link" (click)="dismissNotice()">Dismiss</button>
+    </div>
+  </div>
+
+  <app-tab-strip
+    ariaLabel="Ministries Insights sections"
+    mode="router"
+    [tabs]="tabs"
+  ></app-tab-strip>
+
+  <div class="ministries-insights__body">
+    <router-outlet></router-outlet>
+  </div>
+</section>

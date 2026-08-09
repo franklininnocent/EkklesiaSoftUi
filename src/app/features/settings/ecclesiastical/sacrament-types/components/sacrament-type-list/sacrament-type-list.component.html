@@ -159,21 +159,19 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
-  <div class="modal-dialog modal-sm" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3 class="modal-title">Confirm Delete</h3>
-      <button class="close-button" (click)="cancelDelete()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p>Are you sure you want to delete the sacrament type <strong>{{ selectedType?.name }}</strong>?</p>
-      <p class="warning-text">This action cannot be undone. The sacrament type can only be deleted if it's not being used by any sacrament records.</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
-      <button class="btn btn-danger" (click)="confirmDelete()">Delete</button>
-    </div>
+<app-modal-shell
+  *ngIf="showDeleteModal"
+  title="Confirm Delete"
+  size="xs"
+  [isSubmitting]="false"
+  (closeRequested)="cancelDelete()"
+>
+  <p>Are you sure you want to delete the sacrament type <strong>{{ selectedType?.name }}</strong>?</p>
+  <p class="warning-text">This action cannot be undone. The sacrament type can only be deleted if it's not being used by any sacrament records.</p>
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="cancelDelete()">Cancel</button>
+    <button type="button" class="cf-btn cf-btn-danger" (click)="confirmDelete()">Delete</button>
   </div>
-</div>
+</app-modal-shell>
 
 

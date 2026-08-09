@@ -1,0 +1,40 @@
+.ministries-insights {
+  display: block;
+}
+
+.ministries-insights__notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  margin: var(--space-3, 0.75rem) 0 var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem) var(--space-4, 1rem);
+  border: 1px solid var(--cf-border-subtle, #d7dde5);
+  border-left: 4px solid var(--cf-accent, #2f6fed);
+  background: var(--cf-surface-muted, #f5f7fa);
+  border-radius: 4px;
+}
+
+.ministries-insights__notice p {
+  margin: 0;
+  flex: 1 1 18rem;
+  color: var(--cf-text, #1f2933);
+  font-size: 0.95rem;
+  line-height: 1.45;
+}
+
+.ministries-insights__notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3, 0.75rem);
+}
+
+.ministries-insights__notice-actions a {
+  font-weight: 600;
+}
+
+.ministries-insights__body {
+  margin-top: var(--space-4, 1rem);
+}

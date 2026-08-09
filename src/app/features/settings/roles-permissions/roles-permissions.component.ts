@@ -14,6 +14,7 @@ import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { RoleFormModalComponent } from './role-form-modal/role-form-modal.component';
 import { AssignPermissionsModalComponent } from './assign-permissions-modal/assign-permissions-modal.component';
+import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/pope-details-management.component';
 import { take, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
@@ -21,7 +22,7 @@ import { Subject } from 'rxjs';
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -1392,6 +1393,23 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       return data.slice(startIndex, endIndex);
     }
     return data;
+  }
+
+  get deleteConfirmMessage(): string {
+    const role = this.pendingRoleAction;
+    if (!role) return '';
+    const users = role.users_count || 0;
+    const perms = role.permissions_count || 0;
+    return `${role.name}\nAssigned users: ${users} | Permissions: ${perms}\n\n${this.getRoleDeleteImpactMessage(role)}`;
+  }
+
+  get statusConfirmMessage(): string {
+    const role = this.pendingRoleAction;
+    if (!role) return '';
+    if (this.pendingRoleStatusTarget === 0) {
+      return `${role.name}\n\nInactive roles cannot be assigned to new users. Existing assignments remain visible.`;
+    }
+    return `${role.name}\n\nThis role will be available again for new user assignments.`;
   }
 
   ngOnDestroy(): void {

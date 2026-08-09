@@ -7,8 +7,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 999;
+  background: var(--cf-overlay-bg);
+  z-index: var(--cf-z-drawer);
   cursor: pointer;
 }
 
@@ -23,7 +23,7 @@
   height: 100vh;
   background: white;
   box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
-  z-index: 1000;
+  z-index: var(--cf-z-drawer);
   display: flex;
   flex-direction: column;
   transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);

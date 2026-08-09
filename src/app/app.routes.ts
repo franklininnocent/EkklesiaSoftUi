@@ -55,6 +55,14 @@ export const routes: Routes = [
           import('./features/support-center/support-center.routes').then((m) => m.SUPPORT_CENTER_ROUTES),
       },
       {
+        path: 'platform/ministries',
+        canActivate: [tenantAdminGuard],
+        loadChildren: () =>
+          import('./features/ministries-insights/ministries-insights.routes').then(
+            (m) => m.MINISTRIES_INSIGHTS_ROUTES
+          ),
+      },
+      {
         path: 'church-profile',
         loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
       },

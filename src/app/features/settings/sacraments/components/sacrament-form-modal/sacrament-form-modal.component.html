@@ -1,30 +1,18 @@
-<div class="modal-overlay" (click)="onBackdropClick()">
-  <div class="modal-dialog modal-xl" (click)="onModalClick($event)">
-    <!-- Modal Header -->
-    <div class="modal-header">
-      <div class="modal-title-wrapper">
-        <h2 class="modal-title">
-          {{ isEditMode ? 'Edit' : 'Add' }}
-        </h2>
-        <p class="modal-subtitle">
-          {{ isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information' }}
-        </p>
-      </div>
-      <button type="button" class="modal-close-btn" (click)="onCancel()" [disabled]="saving">
-        ×
-      </button>
-    </div>
+<app-modal-shell
+  [title]="isEditMode ? 'Edit' : 'Add'"
+  [description]="isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information'"
+  size="xl"
+  [isSubmitting]="saving || loading"
+  (closeRequested)="onCancel()"
+>
+  <!-- Loading State -->
+  <div *ngIf="loading" class="loading-container">
+    <div class="spinner"></div>
+    <p>Loading...</p>
+  </div>
 
-    <!-- Modal Body -->
-    <div class="modal-body">
-      <!-- Loading State -->
-      <div *ngIf="loading" class="loading-container">
-        <div class="spinner"></div>
-        <p>Loading...</p>
-      </div>
-
-      <!-- Form -->
-      <form *ngIf="!loading" class="sacrament-form" (ngSubmit)="onSave()">
+  <!-- Form -->
+  <form *ngIf="!loading" class="sacrament-form" (ngSubmit)="onSave()">
         <!-- Sacrament Information -->
         <div class="form-section">
           <h3 class="section-title">✝️ Sacrament Information</h3>
@@ -480,17 +468,12 @@
           </div>
         </div>
       </form>
-    </div>
 
-    <!-- Modal Footer -->
-    <div class="modal-footer">
-      <app-button variant="cancel" (clicked)="onCancel()" [disabled]="saving">
-        Cancel
-      </app-button>
-      <app-button type="submit" variant="save" (clicked)="onSave()" [loading]="saving || loading">
-        {{ isEditMode ? 'Update' : 'Create' }} Record
-      </app-button>
-    </div>
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="onSave()" [disabled]="saving || loading">
+      {{ isEditMode ? 'Update' : 'Create' }} Record
+    </button>
   </div>
-</div>
+</app-modal-shell>
 

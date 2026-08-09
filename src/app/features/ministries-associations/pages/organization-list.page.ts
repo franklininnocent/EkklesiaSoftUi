@@ -308,8 +308,12 @@ export class OrganizationListPageComponent implements OnInit, OnDestroy {
           this.loaded = true;
           this.cdr.markForCheck();
         },
-        error: () => {
-          this.loadError = 'Could not load organizations. Please try again.';
+        error: (err) => {
+          const apiMessage =
+            typeof err?.error?.message === 'string' ? err.error.message.trim() : '';
+          this.loadError = apiMessage
+            ? `${apiMessage} If you are a platform admin, open Ministries Insights or start a Support Center session for a parish.`
+            : 'Could not load organizations. Please try again.';
           this.loading = false;
           this.loaded = true;
           this.cdr.markForCheck();

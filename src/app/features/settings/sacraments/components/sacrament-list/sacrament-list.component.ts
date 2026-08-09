@@ -19,6 +19,7 @@ import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared
 import { PaginationComponent, ButtonComponent } from '@shared/components';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-sacrament-list',
@@ -31,6 +32,7 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     PaginationComponent,
     ButtonComponent,
     PageHeaderComponent,
+    ModalShellComponent,
   ],
   templateUrl: './sacrament-list.component.html',
   styleUrl: './sacrament-list.component.scss',

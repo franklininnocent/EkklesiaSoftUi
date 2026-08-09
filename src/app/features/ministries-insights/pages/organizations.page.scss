@@ -1,0 +1,42 @@
+.insights-orgs__toolbar {
+  margin: 0.55rem 0 0.65rem;
+}
+
+.insights-orgs__hint,
+.insights-orgs__meta {
+  margin: 0.55rem 0 0;
+  color: var(--cf-muted, #64748b);
+  font-size: 0.82rem;
+}
+
+.insights-orgs__meta {
+  margin-bottom: 0.45rem;
+}
+
+.insights-orgs__code {
+  color: var(--cf-muted, #64748b);
+  font-size: 0.78rem;
+}
+
+.insights-orgs__kpi-btn {
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+}
+
+.insights-orgs__kpi-btn:hover,
+.insights-orgs__kpi-btn:focus-visible {
+  border-color: var(--cf-brand, #1d4ed8);
+  outline: none;
+}
+
+.insights-sort {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}

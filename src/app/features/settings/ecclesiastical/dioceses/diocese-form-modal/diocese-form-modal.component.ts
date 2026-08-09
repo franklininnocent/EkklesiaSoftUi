@@ -8,11 +8,12 @@ import { ToastService } from '@core/services';
 import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-diocese-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingSpinnerComponent, PhoneInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, LoadingSpinnerComponent, PhoneInputComponent, ModalShellComponent],
   templateUrl: './diocese-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './diocese-form-modal.component.scss'

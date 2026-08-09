@@ -32,11 +32,12 @@ import {
   validateRequired
 } from '../../utils/validation.util';
 import { ButtonComponent } from '@shared/components';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-sacrament-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, FamilyFormComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, FamilyFormComponent, ButtonComponent, ModalShellComponent],
   templateUrl: './sacrament-form-modal.component.html',
   styleUrl: './sacrament-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

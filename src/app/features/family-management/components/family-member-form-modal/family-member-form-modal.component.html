@@ -1,178 +1,169 @@
-<div class="modal-overlay" (click)="onCancel()">
-  <div class="modal-dialog" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3 class="modal-title">{{ isHeadOnly ? (isEditMode ? 'Edit Family Head' : 'Add Family Head') : (isEditMode ? 'Edit Member' : 'Add Member') }}</h3>
-      <button type="button" class="modal-close" (click)="onCancel()">✕</button>
-    </div>
-
-    <div class="modal-body">
-      <form [formGroup]="form" (ngSubmit)="onSave()" class="member-form">
-        <h4 class="section-title">Basic Information</h4>
-        <div class="form-grid form-section">
-          <div class="form-group">
-            <label class="required">First Name</label>
-            <input 
-              type="text" 
-              formControlName="first_name" 
-              class="form-control"
-              [class.error]="isFieldInvalid('first_name')"
-            />
-            <span class="field-error" *ngIf="isFieldInvalid('first_name')">
-              {{ getErrorMessage('first_name') }}
-            </span>
-          </div>
-          <div class="form-group">
-            <label>Middle Name</label>
-            <input 
-              type="text" 
-              formControlName="middle_name" 
-              class="form-control"
-              [class.error]="isFieldInvalid('middle_name')"
-            />
-            <span class="field-error" *ngIf="isFieldInvalid('middle_name')">
-              {{ getErrorMessage('middle_name') }}
-            </span>
-          </div>
-          <div class="form-group">
-            <label class="required">Last Name</label>
-            <input 
-              type="text" 
-              formControlName="last_name" 
-              class="form-control"
-              [class.error]="isFieldInvalid('last_name')"
-            />
-            <span class="field-error" *ngIf="isFieldInvalid('last_name')">
-              {{ getErrorMessage('last_name') }}
-            </span>
-          </div>
-          <div class="form-group">
-            <label>Date of Birth</label>
-            <input type="date" formControlName="date_of_birth" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>Gender</label>
-            <select formControlName="gender" class="form-control">
-              <option value="">Select</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="required">Relationship</label>
-            <select 
-              formControlName="relationship_to_head" 
-              class="form-control"
-              [class.error]="isFieldInvalid('relationship_to_head')"
-              [disabled]="isHeadOnly"
-              [title]="isHeadOnly ? 'Relationship is locked to Family Head' : ''"
-            >
-              <option value="self" *ngIf="isHeadOnly">Family Head</option>
-              <option value="spouse" *ngIf="!isHeadOnly">Spouse</option>
-              <option value="son" *ngIf="!isHeadOnly">Son</option>
-              <option value="daughter" *ngIf="!isHeadOnly">Daughter</option>
-              <option value="father" *ngIf="!isHeadOnly">Father</option>
-              <option value="mother" *ngIf="!isHeadOnly">Mother</option>
-              <option value="brother" *ngIf="!isHeadOnly">Brother</option>
-              <option value="sister" *ngIf="!isHeadOnly">Sister</option>
-              <option value="other" *ngIf="!isHeadOnly">Other</option>
-            </select>
-            <span class="field-error" *ngIf="isFieldInvalid('relationship_to_head')">
-              {{ getErrorMessage('relationship_to_head') }}
-            </span>
-            <small class="form-hint" *ngIf="isHeadOnly" style="display: block; margin-top: 4px; color: #666; font-size: 0.875rem;">
-              This member will be saved as the Family Head
-            </small>
-          </div>
-          <div class="form-group">
-            <label>Marital Status</label>
-            <select formControlName="marital_status" class="form-control">
-              <option value="single">Single</option>
-              <option value="married">Married</option>
-              <option value="widowed">Widowed</option>
-              <option value="separated">Separated</option>
-              <option value="divorced">Divorced</option>
-            </select>
-          </div>
+<app-modal-shell
+  [title]="isHeadOnly ? (isEditMode ? 'Edit Family Head' : 'Add Family Head') : (isEditMode ? 'Edit Member' : 'Add Member')"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close member form"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <form id="member-form" class="cf-split-form-body" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
+    <section class="cf-split-section" aria-labelledby="member-section-basic">
+      <h3 id="member-section-basic" class="cf-split-section__title">Basic Information</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="member_first_name">First name <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <input
+            type="text"
+            id="member_first_name"
+            formControlName="first_name"
+            aria-required="true"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('first_name')"
+          />
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('first_name')">{{ getErrorMessage('first_name') }}</p>
         </div>
-
-        <h4 class="section-title">Contact & Profile</h4>
-        <div class="form-grid form-section">
-          <div class="form-group">
-            <app-phone-input
-              [label]="'Phone'"
-              [id]="'phone'"
-              [name]="'phone'"
-              [required]="false"
-              [disabled]="saving"
-              [maxLength]="15"
-              [minLength]="6"
-              [showError]="true"
-              [errorMessage]="isFieldInvalid('phone') ? getErrorMessage('phone') : ''"
-              formControlName="phone"
-            ></app-phone-input>
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input 
-              type="email" 
-              formControlName="email" 
-              class="form-control"
-              [class.error]="isFieldInvalid('email')"
-            />
-            <span class="field-error" *ngIf="isFieldInvalid('email')">
-              {{ getErrorMessage('email') }}
-            </span>
-          </div>
-          <div class="form-group">
-            <label>Occupation</label>
-            <input type="text" formControlName="occupation" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>Education</label>
-            <input type="text" formControlName="education" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>Status</label>
-            <select formControlName="status" class="form-control">
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="deceased">Deceased</option>
-              <option value="migrated">Migrated</option>
-            </select>
-          </div>
+        <div class="cf-split-field">
+          <label for="member_middle_name">Middle name <span class="cf-split-optional">optional</span></label>
+          <input
+            type="text"
+            id="member_middle_name"
+            formControlName="middle_name"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('middle_name')"
+          />
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('middle_name')">{{ getErrorMessage('middle_name') }}</p>
         </div>
-
-        <h4 class="section-title">Sacraments</h4>
-        <div class="form-grid form-section">
-          <div class="form-group">
-            <label>Baptism Date</label>
-            <input type="date" formControlName="baptism_date" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>First Communion</label>
-            <input type="date" formControlName="first_communion_date" class="form-control" />
-          </div>
-          <div class="form-group">
-            <label>Confirmation</label>
-            <input type="date" formControlName="confirmation_date" class="form-control" />
-          </div>
+        <div class="cf-split-field">
+          <label for="member_last_name">Last name <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <input
+            type="text"
+            id="member_last_name"
+            formControlName="last_name"
+            aria-required="true"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('last_name')"
+          />
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('last_name')">{{ getErrorMessage('last_name') }}</p>
         </div>
-        
-        <div *ngIf="errorMessage" class="error-message">
-          {{ errorMessage }}
+        <div class="cf-split-field">
+          <label for="member_dob">Date of birth <span class="cf-split-optional">optional</span></label>
+          <input type="date" id="member_dob" formControlName="date_of_birth" />
         </div>
-      </form>
-    </div>
+        <div class="cf-split-field">
+          <label for="member_gender">Gender <span class="cf-split-optional">optional</span></label>
+          <select id="member_gender" formControlName="gender">
+            <option value="">Select</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="cf-split-field">
+          <label for="member_relationship">Relationship <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <select
+            id="member_relationship"
+            formControlName="relationship_to_head"
+            aria-required="true"
+            [disabled]="isHeadOnly"
+            [title]="isHeadOnly ? 'Relationship is locked to Family Head' : ''"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('relationship_to_head')"
+          >
+            <option value="self" *ngIf="isHeadOnly">Family Head</option>
+            <option value="spouse" *ngIf="!isHeadOnly">Spouse</option>
+            <option value="son" *ngIf="!isHeadOnly">Son</option>
+            <option value="daughter" *ngIf="!isHeadOnly">Daughter</option>
+            <option value="father" *ngIf="!isHeadOnly">Father</option>
+            <option value="mother" *ngIf="!isHeadOnly">Mother</option>
+            <option value="brother" *ngIf="!isHeadOnly">Brother</option>
+            <option value="sister" *ngIf="!isHeadOnly">Sister</option>
+            <option value="other" *ngIf="!isHeadOnly">Other</option>
+          </select>
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('relationship_to_head')">{{ getErrorMessage('relationship_to_head') }}</p>
+          <p class="cf-split-field__hint" *ngIf="isHeadOnly">This member will be saved as the Family Head</p>
+        </div>
+        <div class="cf-split-field">
+          <label for="member_marital_status">Marital status <span class="cf-split-optional">optional</span></label>
+          <select id="member_marital_status" formControlName="marital_status">
+            <option value="single">Single</option>
+            <option value="married">Married</option>
+            <option value="widowed">Widowed</option>
+            <option value="separated">Separated</option>
+            <option value="divorced">Divorced</option>
+          </select>
+        </div>
+      </div>
+    </section>
 
-    <div class="modal-footer">
-      <button type="button" class="btn btn-secondary" (click)="onCancel()">Cancel</button>
-      <button type="submit" class="btn btn-primary" (click)="onSave()" [disabled]="saving">
-        <span *ngIf="!saving">Save</span>
-        <span *ngIf="saving">Saving...</span>
+    <section class="cf-split-section" aria-labelledby="member-section-contact">
+      <h3 id="member-section-contact" class="cf-split-section__title">Contact & Profile</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <app-phone-input
+            [label]="'Phone'"
+            [id]="'phone'"
+            [name]="'phone'"
+            [required]="false"
+            [disabled]="saving"
+            [maxLength]="15"
+            [minLength]="6"
+            [showError]="true"
+            [errorMessage]="isFieldInvalid('phone') ? getErrorMessage('phone') : ''"
+            formControlName="phone"
+          ></app-phone-input>
+        </div>
+        <div class="cf-split-field">
+          <label for="member_email">Email <span class="cf-split-optional">optional</span></label>
+          <input
+            type="email"
+            id="member_email"
+            formControlName="email"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('email')"
+          />
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('email')">{{ getErrorMessage('email') }}</p>
+        </div>
+        <div class="cf-split-field">
+          <label for="member_occupation">Occupation <span class="cf-split-optional">optional</span></label>
+          <input type="text" id="member_occupation" formControlName="occupation" />
+        </div>
+        <div class="cf-split-field">
+          <label for="member_education">Education <span class="cf-split-optional">optional</span></label>
+          <input type="text" id="member_education" formControlName="education" />
+        </div>
+        <div class="cf-split-field">
+          <label for="member_status">Status <span class="cf-split-optional">optional</span></label>
+          <select id="member_status" formControlName="status">
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="deceased">Deceased</option>
+            <option value="migrated">Migrated</option>
+          </select>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="member-section-sacraments">
+      <h3 id="member-section-sacraments" class="cf-split-section__title">Sacraments</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="member_baptism_date">Baptism date <span class="cf-split-optional">optional</span></label>
+          <input type="date" id="member_baptism_date" formControlName="baptism_date" />
+        </div>
+        <div class="cf-split-field">
+          <label for="member_first_communion_date">First communion <span class="cf-split-optional">optional</span></label>
+          <input type="date" id="member_first_communion_date" formControlName="first_communion_date" />
+        </div>
+        <div class="cf-split-field">
+          <label for="member_confirmation_date">Confirmation <span class="cf-split-optional">optional</span></label>
+          <input type="date" id="member_confirmation_date" formControlName="confirmation_date" />
+        </div>
+      </div>
+    </section>
+
+    <p class="cf-split-form-alert cf-split-form-alert--error" *ngIf="errorMessage">{{ errorMessage }}</p>
+
+    <div class="cf-split-form-actions">
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
+        {{ saving ? 'Saving…' : 'Save' }}
       </button>
+      <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
     </div>
-  </div>
-</div>
-
-
+  </form>
+</app-modal-shell>

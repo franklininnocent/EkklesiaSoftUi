@@ -299,10 +299,10 @@ interface ActivityRow {
       overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
     }
     .qc-backdrop {
-      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 1200;
+      position: fixed; inset: 0; background: var(--cf-overlay-bg); z-index: var(--cf-z-drawer);
     }
     .qc-drawer {
-      position: fixed; top: 0; right: 0; width: min(760px, 100vw); height: 100vh; z-index: 1201;
+      position: fixed; top: 0; right: 0; width: min(760px, 100vw); height: 100vh; z-index: var(--cf-z-drawer);
       background: var(--cf-panel-bg); box-shadow: var(--cf-shadow-lg);
       display: flex; flex-direction: column; font-family: var(--cf-font-sans);
     }

@@ -7,47 +7,128 @@
 .cf-modal-shell__overlay {
   position: fixed;
   inset: 0;
-  z-index: 10000;
+  z-index: var(--cf-z-modal);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: var(--cf-space-4);
   background: var(--cf-overlay-bg);
+  animation: cf-modal-overlay-in var(--cf-modal-anim-duration) var(--cf-modal-anim-easing);
+
+  &--nested {
+    z-index: var(--cf-z-modal-nested);
+  }
 }
 
 .cf-modal-shell__dialog {
-  width: min(36rem, 100%);
-  max-height: 90vh;
-  overflow: auto;
+  width: min(var(--cf-modal-width-md), 100%);
+  max-height: var(--cf-modal-max-height);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background: var(--cf-panel-bg);
+  border: 1px solid var(--cf-panel-border);
   border-radius: var(--cf-radius);
   box-shadow: var(--cf-shadow-modal);
-}
+  animation: cf-modal-dialog-in var(--cf-modal-anim-duration) var(--cf-modal-anim-easing);
 
-.cf-modal-shell__dialog--sm {
-  width: min(32rem, 100%);
-}
+  &--xs {
+    width: min(var(--cf-modal-width-xs), 100%);
+  }
 
-.cf-modal-shell__dialog--lg {
-  width: min(44rem, 100%);
+  &--sm {
+    width: min(var(--cf-modal-width-sm), 100%);
+  }
+
+  &--md {
+    width: min(var(--cf-modal-width-md), 100%);
+  }
+
+  &--lg {
+    width: min(var(--cf-modal-width-lg), 100%);
+  }
+
+  &--xl {
+    width: min(var(--cf-modal-width-xl), 100%);
+  }
+
+  &--full {
+    width: min(var(--cf-modal-width-full), 96vw);
+  }
 }
 
 .cf-modal-shell__header {
+  flex-shrink: 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: var(--cf-space-3);
-  padding: var(--cf-space-3) var(--cf-space-4);
+  padding: var(--cf-modal-header-pad-y) var(--cf-modal-pad-x);
   border-bottom: 1px solid var(--cf-panel-border);
+
+  /*
+   * Compact variant — matches .cf-split-card__header exactly (Offering
+   * Categories "Add category" reference implementation) for modals hosting
+   * that same split-form language.
+   */
+  &--compact {
+    padding: 1rem 1.15rem;
+    background: var(--cf-slate-50);
+
+    .cf-modal-shell__title {
+      font-size: 1rem;
+      line-height: 1.3;
+    }
+
+    .cf-modal-shell__description {
+      font-size: 0.82rem;
+      line-height: 1.4;
+    }
+
+    /*
+     * Matches .cf-split-card__close exactly (bordered cf-btn pill, not the
+     * default borderless icon square) — see Add Category reference header.
+     */
+    .cf-modal-shell__close {
+      width: auto;
+      height: auto;
+      min-height: var(--cf-control-height);
+      margin: 0;
+      padding: 0.25rem 0.55rem;
+      border: 1px solid var(--cf-panel-border);
+      border-radius: var(--cf-radius-sm);
+      background: var(--cf-panel-bg);
+      color: var(--cf-slate-900);
+
+      &:hover:not(:disabled) {
+        background: var(--cf-slate-50);
+        color: var(--cf-slate-900);
+      }
+    }
+  }
+}
+
+.cf-modal-shell__heading {
+  min-width: 0;
+  flex: 1;
 }
 
 .cf-modal-shell__title {
   margin: 0;
+  font-family: var(--cf-font-sans);
   font-size: var(--cf-text-xl);
   font-weight: 600;
+  line-height: 1.35;
   color: var(--cf-slate-900);
+}
+
+.cf-modal-shell__description {
+  margin: var(--cf-space-1) 0 0;
+  font-family: var(--cf-font-sans);
+  font-size: var(--cf-text-sm);
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--cf-muted);
 }
 
 .cf-modal-shell__close {
@@ -55,7 +136,13 @@
   border: 0;
   background: transparent;
   padding: var(--cf-space-1);
+  margin: calc(var(--cf-space-1) * -1) calc(var(--cf-space-1) * -1) 0 0;
   display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cf-control-height);
+  height: var(--cf-control-height);
+  flex-shrink: 0;
   cursor: pointer;
   color: var(--cf-muted);
   border-radius: var(--cf-radius-sm);
@@ -76,17 +163,78 @@
 }
 
 .cf-modal-shell__body {
-  padding: var(--cf-space-4);
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--cf-modal-pad-y) var(--cf-modal-pad-x);
+  font-family: var(--cf-font-sans);
+  font-size: var(--cf-text-body);
+  color: var(--cf-slate-700);
+
+  &--flush {
+    padding: 0;
+  }
 }
 
 .cf-modal-shell__footer {
+  flex-shrink: 0;
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: var(--cf-space-2);
-  padding: 0 var(--cf-space-4) var(--cf-space-4);
+  align-items: center;
+  gap: var(--cf-modal-footer-gap);
+  padding: var(--cf-space-3) var(--cf-modal-pad-x) var(--cf-modal-pad-y);
+  border-top: 1px solid var(--cf-panel-border);
+  background: var(--cf-panel-bg);
 
   &:empty {
     display: none;
+    padding: 0;
+    border-top: 0;
+  }
+}
+
+@keyframes cf-modal-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes cf-modal-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-modal-shell__overlay,
+  .cf-modal-shell__dialog {
+    animation: none;
+  }
+}
+
+@media (max-width: $cf-bp-md) {
+  .cf-modal-shell__overlay {
+    padding: var(--cf-space-2);
+    align-items: flex-end;
+  }
+
+  .cf-modal-shell__dialog,
+  .cf-modal-shell__dialog--xs,
+  .cf-modal-shell__dialog--sm,
+  .cf-modal-shell__dialog--md,
+  .cf-modal-shell__dialog--lg,
+  .cf-modal-shell__dialog--xl,
+  .cf-modal-shell__dialog--full {
+    width: 100%;
+    max-height: min(var(--cf-modal-max-height), 100dvh);
   }
 }

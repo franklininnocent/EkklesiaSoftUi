@@ -27,6 +27,7 @@ import { GeographyService, Country } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ChurchLeaderWorkspaceComponent } from './components/church-leader-workspace/church-leader-workspace.component';
 import { ChurchLeaderDetailComponent } from './components/church-leader-detail/church-leader-detail.component';
 import { ChurchLeadershipTableComponent } from './components/church-leadership-table/church-leadership-table.component';
@@ -61,7 +62,18 @@ import {
 @Component({
   selector: 'app-church-profile',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, NgSelectModule, PhoneInputComponent, ChurchLeaderWorkspaceComponent, ChurchLeaderDetailComponent, ChurchLeadershipTableComponent, PageHeaderComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    FormsModule,
+    NgSelectModule,
+    PhoneInputComponent,
+    ModalShellComponent,
+    ChurchLeaderWorkspaceComponent,
+    ChurchLeaderDetailComponent,
+    ChurchLeadershipTableComponent,
+    PageHeaderComponent,
+  ],
   templateUrl: './church-profile.component.html',
   styleUrl: './church-profile.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -1923,10 +1935,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     // Close modal on Escape key
     if (event.key === 'Escape' && !this.saving) {
       event.preventDefault();
+      // General Information uses app-modal-shell (owns Escape).
       if (this.showLeaderModal) {
         this.closeLeaderModal();
-      } else if (this.showGeneralModal) {
-        this.closeGeneralModal();
       } else if (this.showStatisticModal) {
         this.closeStatisticModal();
       } else if (this.showSocialModal) {

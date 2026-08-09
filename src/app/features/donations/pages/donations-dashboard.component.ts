@@ -11,6 +11,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { Subject, of } from 'rxjs';
 import { catchError, filter, switchMap } from 'rxjs/operators';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationDashboardSummary } from '../models/donation.model';
@@ -18,121 +19,148 @@ import { DonationDashboardSummary } from '../models/donation.model';
 @Component({
   selector: 'app-donations-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, PageHeaderComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="executive-dashboard">
-      <header class="hero">
-        <div>
-          <h1>Financial Dashboard</h1>
-          <p>Church financial health, collections, and families requiring attention.</p>
-        </div>
-        <div class="hero-actions">
-          <button type="button" class="btn-primary" (click)="openQuickCollect()">+ Quick Collect</button>
-          <button type="button" class="btn-secondary" (click)="reload()">Refresh</button>
-        </div>
-      </header>
+    <section class="donations-dashboard cf-page cf-financial-dashboard">
+      <app-page-header
+        title="Financial Dashboard"
+        subtitle="Church financial health, collections, and families requiring attention."
+      >
+        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">+ Quick Collect</button>
+        <button type="button" class="cf-btn" (click)="reload()">Refresh</button>
+      </app-page-header>
 
-      <div *ngIf="loading" class="state">Loading financial dashboard…</div>
-      <div *ngIf="!loading && error" class="state error">{{ error }}</div>
+      <div
+        *ngIf="loading"
+        class="cf-loading-block cf-panel"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="cf-loading-block__label">Loading financial dashboard…</p>
+      </div>
+
+      <div *ngIf="!loading && error" class="cf-inline-alert cf-panel" role="alert">
+        {{ error }}
+      </div>
 
       <ng-container *ngIf="!loading && summary">
-        <article class="health-banner" [class]="summary.financial_health?.status || 'attention'">
-          <div class="health-score">
-            <span class="score-value">{{ summary.financial_health?.score || 0 }}</span>
-            <span class="score-label">{{ summary.financial_health?.label || 'Calculating' }}</span>
+        <article
+          class="health-banner cf-panel"
+          [attr.data-status]="healthStatus"
+        >
+          <div class="cf-health-gauge" [attr.data-status]="healthStatus">
+            <div
+              class="health-score-chip"
+              [class.health-score-chip--healthy]="healthStatus === 'healthy'"
+              [class.health-score-chip--attention]="healthStatus === 'attention'"
+              [class.health-score-chip--risk]="healthStatus === 'risk'"
+            >
+              <span class="health-score-chip__value">{{ summary.financial_health?.score || 0 }}</span>
+              <span class="health-score-chip__label">{{ summary.financial_health?.label || 'Calculating' }}</span>
+            </div>
           </div>
           <div class="health-copy">
-            <h2>Financial Health Score</h2>
-            <p>{{ summary.financial_health?.summary || 'Track collections, outstanding balances, and family participation from one place.' }}</p>
+            <h2 class="cf-section-title">Financial Health Score</h2>
+            <p class="cf-meta">{{ summary.financial_health?.summary || 'Track collections, outstanding balances, and family participation from one place.' }}</p>
           </div>
-          <div class="health-meta">
+          <div class="health-meta cf-meta">
             <span>Families active: {{ summary.families?.active || 0 }}</span>
             <span>Participation (90d): {{ summary.families?.participation_rate || 0 }}%</span>
           </div>
         </article>
 
-        <div class="kpi-grid">
-          <article class="kpi"><span>Total Collected</span><strong>{{ summary.totals.collected | number:'1.2-2' }}</strong></article>
-          <article class="kpi"><span>This Month</span><strong>{{ summary.period_collections?.current_month_collected || 0 | number:'1.2-2' }}</strong></article>
-          <article class="kpi"><span>Annual (FY)</span><strong>{{ summary.period_collections?.annual_collected || 0 | number:'1.2-2' }}</strong></article>
-          <article class="kpi warn"><span>Outstanding</span><strong>{{ summary.totals.pending_dues | number:'1.2-2' }}</strong></article>
-          <article class="kpi"><span>Voluntary Gifts</span><strong>{{ summary.totals.voluntary_collected || 0 | number:'1.2-2' }}</strong></article>
-          <article class="kpi"><span>Active Projects</span><strong>{{ summary.totals.active_projects || 0 }}</strong></article>
-          <article class="kpi"><span>Active Families</span><strong>{{ summary.families?.active || 0 }}</strong></article>
-          <article class="kpi"><span>Net Position</span><strong>{{ summary.totals.net | number:'1.2-2' }}</strong></article>
+        <div class="cf-kpi-grid">
+          <article class="cf-kpi"><span>Total Collected</span><strong>{{ summary.totals.collected | number:'1.2-2' }}</strong></article>
+          <article class="cf-kpi"><span>This Month</span><strong>{{ summary.period_collections?.current_month_collected || 0 | number:'1.2-2' }}</strong></article>
+          <article class="cf-kpi"><span>Annual (FY)</span><strong>{{ summary.period_collections?.annual_collected || 0 | number:'1.2-2' }}</strong></article>
+          <article class="cf-kpi cf-kpi--warn"><span>Outstanding</span><strong>{{ summary.totals.pending_dues | number:'1.2-2' }}</strong></article>
+          <article class="cf-kpi"><span>Voluntary Gifts</span><strong>{{ summary.totals.voluntary_collected || 0 | number:'1.2-2' }}</strong></article>
+          <article class="cf-kpi"><span>Active Projects</span><strong>{{ summary.totals.active_projects || 0 }}</strong></article>
+          <article class="cf-kpi"><span>Active Families</span><strong>{{ summary.families?.active || 0 }}</strong></article>
+          <article class="cf-kpi"><span>Net Position</span><strong>{{ summary.totals.net | number:'1.2-2' }}</strong></article>
         </div>
 
         <div class="panels">
-          <section class="panel">
+          <section class="cf-panel">
             <div class="panel-head">
-              <h3>Collection Trend</h3>
-              <span>Last 12 months</span>
+              <h3 class="cf-section-title">Collection Trend</h3>
+              <span class="cf-meta">Last 12 months</span>
             </div>
-            <div class="trend-chart">
+            <div class="trend-chart" *ngIf="summary.collection_trend?.length; else noTrend">
               <div class="trend-bar" *ngFor="let row of summary.collection_trend">
                 <div class="bar" [style.height.%]="barHeight(row.collected)"></div>
-                <label>{{ row.label }}</label>
-                <strong>{{ row.collected | number:'1.0-0' }}</strong>
+                <label class="cf-chart-panel__label">{{ row.label }}</label>
+                <strong class="cf-chart-panel__label">{{ row.collected | number:'1.0-0' }}</strong>
               </div>
             </div>
+            <ng-template #noTrend><p class="cf-meta">No collection trend data yet.</p></ng-template>
           </section>
 
-          <section class="panel">
+          <section class="cf-panel">
             <div class="panel-head">
-              <h3>Families Requiring Attention</h3>
-              <span>{{ summary.attention_summary?.count || 0 }} families · {{ summary.attention_summary?.total_overdue_amount || 0 | number:'1.2-2' }} overdue</span>
+              <h3 class="cf-section-title">Families Requiring Attention</h3>
+              <span class="cf-meta">{{ summary.attention_summary?.count || 0 }} families · {{ summary.attention_summary?.total_overdue_amount || 0 | number:'1.2-2' }} overdue</span>
             </div>
-            <table class="table" *ngIf="summary.families_requiring_attention?.length; else noAttention">
-              <thead><tr><th>Family</th><th>Overdue</th><th>Days</th><th></th></tr></thead>
-              <tbody>
-                <tr *ngFor="let row of summary.families_requiring_attention">
-                  <td>
-                    <strong>{{ row.family_name }}</strong>
-                    <small>{{ row.family_code }}</small>
-                  </td>
-                  <td>{{ row.overdue_amount | number:'1.2-2' }}</td>
-                  <td>{{ row.days_overdue }}</td>
-                  <td><a [routerLink]="['/families', row.family_id]">View</a></td>
-                </tr>
-              </tbody>
-            </table>
-            <ng-template #noAttention><p class="empty">No overdue families right now.</p></ng-template>
+            <div class="cf-table-responsive" *ngIf="summary.families_requiring_attention?.length; else noAttention">
+              <table class="cf-table">
+                <thead><tr><th>Family</th><th>Overdue</th><th>Days</th><th></th></tr></thead>
+                <tbody>
+                  <tr *ngFor="let row of summary.families_requiring_attention">
+                    <td>
+                      <strong>{{ row.family_name }}</strong>
+                      <small class="cf-meta">{{ row.family_code }}</small>
+                    </td>
+                    <td>{{ row.overdue_amount | number:'1.2-2' }}</td>
+                    <td>{{ row.days_overdue }}</td>
+                    <td><a class="donations-dashboard__view" [routerLink]="['/families', row.family_id]">View</a></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <ng-template #noAttention><p class="cf-meta">No overdue families right now.</p></ng-template>
           </section>
         </div>
 
         <div class="panels">
-          <section class="panel">
-            <div class="panel-head"><h3>Recent Activity</h3></div>
+          <section class="cf-panel">
+            <div class="panel-head">
+              <h3 class="cf-section-title">Recent Activity</h3>
+            </div>
             <ul class="activity-list" *ngIf="summary.recent_activity?.length; else noActivity">
               <li *ngFor="let item of summary.recent_activity">
                 <div>
                   <strong>{{ item.family_name || item.payer_name }}</strong>
-                  <span>{{ item.date | date }} · {{ item.method }}</span>
+                  <span class="cf-meta">{{ item.date | date }} · {{ item.method }}</span>
                 </div>
                 <strong>{{ item.amount | number:'1.2-2' }}</strong>
               </li>
             </ul>
-            <ng-template #noActivity><p class="empty">No recent payments recorded.</p></ng-template>
+            <ng-template #noActivity><p class="cf-meta">No recent payments recorded.</p></ng-template>
           </section>
 
-          <section class="panel">
-            <div class="panel-head"><h3>Active Projects</h3></div>
+          <section class="cf-panel">
+            <div class="panel-head">
+              <h3 class="cf-section-title">Active Projects</h3>
+            </div>
             <div class="project-list" *ngIf="summary.active_project_summaries?.length; else noProjects">
               <article *ngFor="let project of summary.active_project_summaries">
                 <div class="project-top">
                   <strong>{{ project.name }}</strong>
-                  <span>{{ project.funding_percentage }}%</span>
+                  <span class="cf-meta">{{ project.funding_percentage }}%</span>
                 </div>
-                <div class="progress"><span [style.width.%]="project.funding_percentage"></span></div>
-                <small>{{ project.collected | number:'1.2-2' }} of {{ project.target_amount | number:'1.2-2' }}</small>
+                <div class="progress" aria-hidden="true">
+                  <span [style.width.%]="project.funding_percentage"></span>
+                </div>
+                <small class="cf-meta">{{ project.collected | number:'1.2-2' }} of {{ project.target_amount | number:'1.2-2' }}</small>
               </article>
             </div>
-            <ng-template #noProjects><p class="empty">No active fundraising projects.</p></ng-template>
+            <ng-template #noProjects><p class="cf-meta">No active fundraising projects.</p></ng-template>
           </section>
         </div>
 
-        <nav class="quick-links">
+        <nav class="quick-links" aria-label="Financial shortcuts">
           <a routerLink="plans">Contribution Plans</a>
           <a routerLink="dues">Outstanding Dues</a>
           <a routerLink="projects">Projects</a>
@@ -145,53 +173,167 @@ import { DonationDashboardSummary } from '../models/donation.model';
     </section>
   `,
   styles: [`
-    .executive-dashboard { padding: 1rem; display: grid; gap: 1rem; }
-    .hero { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: flex-start; }
-    .hero h1 { margin: 0 0 0.25rem; }
-    .hero p { margin: 0; color: #6b7280; }
-    .hero-actions { display: flex; gap: 0.5rem; }
-    .btn-primary, .btn-secondary { border-radius: 10px; padding: 0.55rem 0.9rem; cursor: pointer; border: 1px solid transparent; }
-    .btn-primary { background: #2563eb; color: #fff; }
-    .btn-secondary { background: #fff; border-color: #d1d5db; }
-    .health-banner { display: grid; grid-template-columns: auto 1fr auto; gap: 1rem; align-items: center; padding: 1rem; border-radius: 16px; border: 1px solid #dbeafe; background: linear-gradient(135deg, #eff6ff, #fff); }
-    .health-banner.attention { border-color: #fde68a; background: linear-gradient(135deg, #fffbeb, #fff); }
-    .health-banner.risk { border-color: #fecaca; background: linear-gradient(135deg, #fef2f2, #fff); }
-    .health-score { width: 84px; height: 84px; border-radius: 999px; display: grid; place-content: center; background: #2563eb; color: #fff; text-align: center; }
-    .health-banner.attention .health-score { background: #d97706; }
-    .health-banner.risk .health-score { background: #dc2626; }
-    .score-value { font-size: 1.5rem; font-weight: 800; line-height: 1; }
-    .score-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; }
-    .health-copy h2 { margin: 0 0 0.25rem; font-size: 1.05rem; }
-    .health-copy p { margin: 0; color: #374151; }
-    .health-meta { display: grid; gap: 0.25rem; color: #4b5563; font-size: 0.88rem; text-align: right; }
-    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
-    .kpi { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 0.85rem; }
-    .kpi span { display: block; color: #6b7280; font-size: 0.82rem; }
-    .kpi strong { font-size: 1.15rem; }
-    .kpi.warn strong { color: #b45309; }
-    .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1rem; }
-    .panel { background: #fff; border: 1px solid #e5e7eb; border-radius: 14px; padding: 1rem; }
-    .panel-head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: baseline; margin-bottom: 0.75rem; }
-    .panel-head h3 { margin: 0; font-size: 1rem; }
-    .panel-head span { color: #6b7280; font-size: 0.82rem; }
-    .trend-chart { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.5rem; overflow-x: auto; }
-    .trend-bar { display: grid; gap: 0.25rem; justify-items: center; min-width: 72px; }
-    .trend-bar .bar { width: 100%; min-height: 8px; background: #dbeafe; border-radius: 999px 999px 4px 4px; align-self: end; }
-    .trend-bar label, .trend-bar strong { font-size: 0.72rem; color: #4b5563; text-align: center; }
-    .table { width: 100%; border-collapse: collapse; }
-    .table th, .table td { border-bottom: 1px solid #e5e7eb; text-align: left; padding: 0.55rem 0.35rem; font-size: 0.88rem; }
-    .table small { display: block; color: #6b7280; }
-    .activity-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
-    .activity-list li { display: flex; justify-content: space-between; gap: 0.75rem; padding-bottom: 0.55rem; border-bottom: 1px solid #f3f4f6; }
-    .activity-list span { display: block; color: #6b7280; font-size: 0.82rem; }
+    :host { display: block; }
+
+    .health-banner {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: var(--cf-space-3);
+      align-items: center;
+      border-left: 3px solid var(--cf-primary);
+    }
+
+    .health-banner[data-status='healthy'] { border-left-color: var(--cf-forest); }
+    .health-banner[data-status='attention'] { border-left-color: var(--cf-amber); }
+    .health-banner[data-status='risk'] { border-left-color: var(--cf-critical); }
+
+    .health-score-chip {
+      width: 3.75rem;
+      height: 3.75rem;
+      border-radius: var(--cf-radius-pill);
+      display: grid;
+      place-content: center;
+      text-align: center;
+      color: #fff;
+      background: var(--cf-primary);
+    }
+
+    .health-score-chip--healthy { background: var(--cf-forest); }
+    .health-score-chip--attention { background: var(--cf-amber); }
+    .health-score-chip--risk { background: var(--cf-critical); }
+
+    .health-score-chip__value {
+      font-size: 1rem;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .health-score-chip__label {
+      font-size: var(--cf-text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1.2;
+      margin-top: 0.15rem;
+    }
+
+    .health-copy .cf-section-title { margin: 0 0 0.2rem; }
+    .health-copy .cf-meta { margin: 0; }
+    .health-meta { display: grid; gap: 0.2rem; text-align: right; }
+
+    .cf-kpi--warn strong { color: var(--cf-amber); }
+
+    .panels {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: var(--cf-page-gap);
+    }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      align-items: baseline;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .panel-head .cf-section-title { margin: 0; }
+
+    .trend-chart {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 0.5rem;
+      overflow-x: auto;
+      align-items: end;
+      min-height: 8rem;
+    }
+
+    .trend-bar {
+      display: grid;
+      grid-template-rows: 1fr auto auto;
+      gap: 0.2rem;
+      justify-items: center;
+      min-width: 4.5rem;
+      height: 100%;
+    }
+
+    .trend-bar .bar {
+      width: 100%;
+      min-height: 8px;
+      background: var(--cf-primary-soft, #dbeafe);
+      border-radius: var(--cf-radius-pill) var(--cf-radius-pill) 4px 4px;
+      align-self: end;
+    }
+
+    .cf-table small.cf-meta { display: block; }
+
+    .donations-dashboard__view {
+      color: var(--cf-primary);
+      font-size: var(--cf-text-sm);
+      text-decoration: none;
+    }
+
+    .activity-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      gap: 0.55rem;
+    }
+
+    .activity-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      padding-bottom: 0.55rem;
+      border-bottom: 1px solid var(--cf-panel-border);
+    }
+
+    .activity-list .cf-meta { display: block; }
+
     .project-list { display: grid; gap: 0.75rem; }
-    .project-top { display: flex; justify-content: space-between; gap: 0.5rem; }
-    .progress { height: 8px; background: #e5e7eb; border-radius: 999px; overflow: hidden; margin: 0.35rem 0; }
-    .progress span { display: block; height: 100%; background: #2563eb; }
-    .quick-links { display: flex; flex-wrap: wrap; gap: 0.85rem; }
-    .quick-links a { color: #2563eb; text-decoration: none; font-size: 0.92rem; }
-    .empty, .state { color: #6b7280; margin: 0; }
-    .state.error { color: #b91c1c; }
+
+    .project-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.5rem;
+    }
+
+    .progress {
+      height: 8px;
+      background: var(--cf-slate-100);
+      border-radius: var(--cf-radius-pill);
+      overflow: hidden;
+      margin: 0.35rem 0;
+    }
+
+    .progress span {
+      display: block;
+      height: 100%;
+      background: var(--cf-primary);
+    }
+
+    .quick-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .quick-links a {
+      color: var(--cf-primary);
+      text-decoration: none;
+      font-size: var(--cf-text-base);
+    }
+
+    @media (max-width: 768px) {
+      .health-banner {
+        grid-template-columns: 1fr;
+        justify-items: start;
+      }
+
+      .health-meta { text-align: left; }
+    }
   `]
 })
 export class DonationsDashboardComponent implements OnInit {
@@ -206,6 +348,14 @@ export class DonationsDashboardComponent implements OnInit {
   summary: DonationDashboardSummary | null = null;
   loading = true;
   error: string | null = null;
+
+  get healthStatus(): 'healthy' | 'attention' | 'risk' {
+    const status = this.summary?.financial_health?.status;
+    if (status === 'healthy' || status === 'risk') {
+      return status;
+    }
+    return 'attention';
+  }
 
   ngOnInit(): void {
     this.reload$.pipe(

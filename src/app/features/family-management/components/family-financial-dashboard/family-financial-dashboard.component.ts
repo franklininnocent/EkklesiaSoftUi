@@ -20,8 +20,8 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
     <section class="family-financial-dashboard cf-panel" *ngIf="profile">
       <header class="dashboard-header">
         <div>
-          <h3>Family Financial Relationship</h3>
-          <p class="subtitle">Outstanding balances, giving activity, and next steps — at a glance.</p>
+          <h3 class="cf-section-title">Family Financial Relationship</h3>
+          <p class="subtitle cf-meta">Outstanding balances, giving activity, and next steps — at a glance.</p>
         </div>
         <button type="button" class="cf-btn" (click)="refresh.emit()">Refresh</button>
       </header>
@@ -33,8 +33,8 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
         [attr.aria-label]="financialStatusTitle + '. ' + financialStatusHint"
       >
         <div class="health-badge">
-          <strong>{{ financialStatusTitle }}</strong>
-          <p class="health-hint">{{ financialStatusHint }}</p>
+          <strong class="cf-subsection-title">{{ financialStatusTitle }}</strong>
+          <p class="health-hint cf-meta">{{ financialStatusHint }}</p>
         </div>
       </article>
 
@@ -59,12 +59,12 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
       <article class="contribution-plans-panel cf-panel">
         <header class="contribution-plans-panel__header">
           <div>
-            <h4>Contribution Plans</h4>
-            <p>Active plan assignments and payment progress for this family.</p>
+            <h4 class="cf-subsection-title">Contribution Plans</h4>
+            <p class="cf-meta">Active plan assignments and payment progress for this family.</p>
           </div>
         </header>
 
-        <table class="table cf-table contribution-plans-table" *ngIf="contributionPlans.length">
+        <table class="cf-table contribution-plans-table" *ngIf="contributionPlans.length">
           <thead>
             <tr>
               <th>Plan</th>
@@ -80,33 +80,39 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
             <tr *ngFor="let plan of contributionPlans">
               <td>
                 <strong>{{ plan.plan_name || plan.plan_id }}</strong>
-                <span class="plan-meta">{{ plan.plan_code || '—' }} · {{ plan.frequency || '—' }}</span>
+                <span class="plan-meta cf-caption">{{ plan.plan_code || '—' }} · {{ plan.frequency || '—' }}</span>
               </td>
               <td>{{ formatCurrency(plan.assigned_amount) }}</td>
               <td>{{ formatCurrency(plan.amount_paid) }}</td>
               <td>{{ formatCurrency(plan.outstanding_balance ?? plan.amount_pending) }}</td>
               <td>{{ plan.installment_count || 0 }}</td>
               <td>{{ plan.next_due_date ? (plan.next_due_date | date) : '—' }}</td>
-              <td><span class="badge" [ngClass]="planStatusClass(plan.status)">{{ planStatusLabel(plan.status) }}</span></td>
+              <td><span class="cf-badge" [ngClass]="planStatusClass(plan.status)">{{ planStatusLabel(plan.status) }}</span></td>
             </tr>
           </tbody>
         </table>
 
         <div class="contribution-plans-empty" *ngIf="!contributionPlans.length">
-          <p class="empty-note">No contribution plans are assigned to this family yet.</p>
+          <p class="empty-note cf-meta">No contribution plans are assigned to this family yet.</p>
           <a routerLink="/donations/plans" class="cf-btn">Manage Contribution Plans</a>
         </div>
 
         <div class="outstanding-dues-block" *ngIf="outstandingDues.length">
-          <h5>Outstanding Period Dues</h5>
-          <table class="table cf-table">
+          <h5 class="cf-subsection-title">Outstanding Period Dues</h5>
+          <table class="cf-table">
             <thead><tr><th>Period</th><th>Due Date</th><th>Outstanding</th><th>Status</th></tr></thead>
             <tbody>
               <tr *ngFor="let due of outstandingDues">
                 <td>{{ due.plan?.name || due.period_label }}</td>
                 <td>{{ due.due_date | date }}</td>
                 <td>{{ formatCurrency(due.outstanding_amount ?? ((due.amount_due || 0) - (due.amount_paid || 0))) }}</td>
-                <td><span class="badge" [class.overdue]="due.is_overdue">{{ due.is_overdue ? 'Overdue' : due.status }}</span></td>
+                <td>
+                  <span
+                    class="cf-badge"
+                    [class.cf-badge--critical]="due.is_overdue"
+                    [class.cf-badge--neutral]="!due.is_overdue"
+                  >{{ due.is_overdue ? 'Overdue' : due.status }}</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -128,8 +134,8 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
         <div class="cf-disclosure__body" *ngIf="isExpanded('breakdown')">
           <div class="split-grid">
             <div>
-              <h4>Collected</h4>
-              <ul class="metric-list">
+              <h4 class="cf-subsection-title">Collected</h4>
+              <ul class="metric-list cf-body">
                 <li>Mandatory: {{ formatCurrency(profile.totals.mandatory_paid) }}</li>
                 <li>Projects: {{ formatCurrency(profile.totals.project_paid) }}</li>
                 <li>Voluntary: {{ formatCurrency(profile.totals.voluntary_paid || profile.totals.voluntary_collected) }}</li>
@@ -137,8 +143,8 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
               </ul>
             </div>
             <div>
-              <h4>Outstanding</h4>
-              <ul class="metric-list">
+              <h4 class="cf-subsection-title">Outstanding</h4>
+              <ul class="metric-list cf-body">
                 <li>Mandatory: {{ formatCurrency(profile.outstanding_balances?.mandatory || profile.totals.pending_mandatory_due) }}</li>
                 <li>Mandatory overdue: {{ formatCurrency(profile.outstanding_balances?.mandatory_overdue) }}</li>
                 <li>Project balance: {{ formatCurrency(profile.outstanding_balances?.project) }}</li>
@@ -157,8 +163,8 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
         </button>
         <div class="cf-disclosure__body" *ngIf="isExpanded('projects')">
         <div class="panel">
-          <h4>Special Project Contributions</h4>
-          <table class="table" *ngIf="profile.project_contributions?.projects?.length">
+          <h4 class="cf-subsection-title">Special Project Contributions</h4>
+          <table class="cf-table" *ngIf="profile.project_contributions?.projects?.length">
             <thead><tr><th>Project</th><th>Assigned</th><th>Collected</th><th>Balance</th><th>Installments</th><th>Status</th></tr></thead>
             <tbody>
               <tr *ngFor="let project of profile.project_contributions?.projects">
@@ -175,7 +181,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
               </tr>
             </tbody>
           </table>
-          <table class="table" *ngIf="profile.project_contributions?.installment_ledger?.length">
+          <table class="cf-table" *ngIf="profile.project_contributions?.installment_ledger?.length">
             <thead><tr><th>Installment</th><th>Due</th><th>Paid</th><th>Outstanding</th><th>Status</th></tr></thead>
             <tbody>
               <tr *ngFor="let row of profile.project_contributions?.installment_ledger">
@@ -183,7 +189,13 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
                 <td>{{ row.due_date | date }}</td>
                 <td>{{ row.amount_paid | number:'1.2-2' }}</td>
                 <td>{{ row.outstanding_amount | number:'1.2-2' }}</td>
-                <td><span class="badge" [class.overdue]="row.is_overdue">{{ row.is_overdue ? 'Overdue' : row.status }}</span></td>
+                <td>
+                  <span
+                    class="cf-badge"
+                    [class.cf-badge--critical]="row.is_overdue"
+                    [class.cf-badge--neutral]="!row.is_overdue"
+                  >{{ row.is_overdue ? 'Overdue' : row.status }}</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -198,12 +210,12 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
         </button>
         <div class="cf-disclosure__body" *ngIf="isExpanded('donations')">
         <div class="panel">
-          <div class="mini-metrics">
+          <div class="mini-metrics cf-meta">
             <span>Lifetime {{ profile.donations_offerings?.lifetime_collected || 0 | number:'1.2-2' }}</span>
             <span>FY {{ profile.donations_offerings?.financial_year || profile.financial_year }}: {{ profile.donations_offerings?.current_financial_year_collected || 0 | number:'1.2-2' }}</span>
             <span>Last gift: {{ profile.donations_offerings?.last_donation_date ? (profile.donations_offerings?.last_donation_date | date) : '—' }}</span>
           </div>
-          <table class="table" *ngIf="profile.donations_offerings?.by_category?.length">
+          <table class="cf-table" *ngIf="profile.donations_offerings?.by_category?.length">
             <thead><tr><th>Category</th><th>Collected</th></tr></thead>
             <tbody>
               <tr *ngFor="let row of profile.donations_offerings?.by_category">
@@ -212,7 +224,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
               </tr>
             </tbody>
           </table>
-          <table class="table" *ngIf="profile.donations_offerings?.recent_donations?.length || profile.voluntary_donations?.recent_donations?.length">
+          <table class="cf-table" *ngIf="profile.donations_offerings?.recent_donations?.length || profile.voluntary_donations?.recent_donations?.length">
             <thead><tr><th>Donation</th><th>Donor</th><th>Collected</th><th>Date</th></tr></thead>
             <tbody>
               <tr *ngFor="let donation of profile.donations_offerings?.recent_donations || profile.voluntary_donations?.recent_donations">
@@ -236,25 +248,25 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
         <div class="panel">
           <div class="split-grid">
             <div>
-              <h4>Punctuality Score</h4>
+              <h4 class="cf-subsection-title">Punctuality Score</h4>
               <p class="score">{{ profile.analytics?.punctuality?.score || 0 }}% — {{ profile.analytics?.punctuality?.label || 'N/A' }}</p>
-              <ul class="metric-list">
+              <ul class="metric-list cf-body">
                 <li>Evaluated periods: {{ profile.analytics?.punctuality?.evaluated_periods || 0 }}</li>
                 <li>Paid on time: {{ profile.analytics?.punctuality?.paid_on_time || 0 }}</li>
                 <li>Open overdue: {{ profile.analytics?.punctuality?.overdue_open || 0 }}</li>
               </ul>
             </div>
             <div>
-              <h4>Family Ranking</h4>
-              <ul class="metric-list">
+              <h4 class="cf-subsection-title">Family Ranking</h4>
+              <ul class="metric-list cf-body">
                 <li>Rank by giving: #{{ profile.analytics?.ranking?.by_total_giving || '-' }} of {{ profile.analytics?.ranking?.participating_families || 0 }}</li>
                 <li>Percentile: {{ profile.analytics?.ranking?.percentile || 0 }}%</li>
                 <li>Total giving: {{ profile.analytics?.ranking?.total_paid || 0 | number:'1.2-2' }}</li>
               </ul>
             </div>
             <div>
-              <h4>Comparison</h4>
-              <ul class="metric-list">
+              <h4 class="cf-subsection-title">Comparison</h4>
+              <ul class="metric-list cf-body">
                 <li>Tenant average: {{ profile.analytics?.comparison?.tenant_average_giving || 0 | number:'1.2-2' }}</li>
                 <li>Tenant median: {{ profile.analytics?.comparison?.tenant_median_giving || 0 | number:'1.2-2' }}</li>
                 <li>Vs average: {{ profile.analytics?.comparison?.vs_average_pct || 0 }}%</li>
@@ -262,8 +274,8 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
               </ul>
             </div>
           </div>
-          <h4>Contribution Trend (12 months)</h4>
-          <table class="table" *ngIf="profile.analytics?.trend?.length">
+          <h4 class="cf-subsection-title">Contribution Trend (12 months)</h4>
+          <table class="cf-table" *ngIf="profile.analytics?.trend?.length">
             <thead><tr><th>Period</th><th>Mandatory</th><th>Projects</th><th>Voluntary</th><th>Total</th></tr></thead>
             <tbody>
               <tr *ngFor="let row of profile.analytics?.trend">
@@ -284,35 +296,31 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
   styles: [`
     .family-financial-dashboard { margin-bottom: 0; }
     .dashboard-header { display: flex; justify-content: space-between; gap: 1rem; align-items: flex-start; margin-bottom: 0.85rem; }
-    .subtitle { margin: 0.2rem 0 0; color: var(--cf-muted); font-size: 0.92rem; }
+    .dashboard-header .cf-section-title { margin: 0; }
+    .subtitle { margin: 0.2rem 0 0; }
     .quick-kpis { margin-bottom: 0.85rem; }
-    .panel { margin-top: 0; }
+    .panel { margin-top: 0; display: grid; gap: 0.75rem; }
     .split-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
-    .section-head { display: flex; justify-content: space-between; gap: 1rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.65rem; }
-    .mini-metrics { display: flex; flex-wrap: wrap; gap: 0.75rem; color: var(--cf-slate-700); font-size: 0.92rem; }
+    .mini-metrics { display: flex; flex-wrap: wrap; gap: 0.75rem; }
     .metric-list { margin: 0; padding-left: 1.1rem; color: var(--cf-slate-700); }
     .metric-list li + li { margin-top: 0.25rem; }
-    .badge { display: inline-block; padding: 0.15rem 0.45rem; border-radius: 999px; background: var(--cf-indigo-soft); color: var(--cf-indigo); font-size: 0.78rem; }
-    .badge.overdue { background: var(--cf-critical-soft); color: var(--cf-critical); }
-    .score { font-size: 1.2rem; font-weight: 700; margin: 0.2rem 0 0.6rem; color: var(--cf-slate-900); }
+    .score { font-size: var(--cf-text-lg); font-weight: 700; margin: 0.2rem 0 0.6rem; color: var(--cf-slate-900); }
     .health-strip { display: flex; padding: 0.75rem 0.9rem; border-radius: var(--cf-radius); margin-bottom: 0.85rem; border: 1px solid var(--cf-indigo-soft); background: var(--cf-slate-50); }
     .health-strip.healthy { border-color: var(--cf-forest-soft); background: var(--cf-forest-soft); }
     .health-strip.attention { border-color: var(--cf-amber-soft); background: var(--cf-amber-soft); }
     .health-strip.risk { border-color: var(--cf-critical-soft); background: var(--cf-critical-soft); }
     .health-badge { display: grid; gap: 0.2rem; min-width: 0; }
-    .health-badge strong { font-size: 1rem; color: var(--cf-slate-900); }
-    .health-hint { margin: 0; font-size: 0.88rem; color: var(--cf-slate-700); line-height: 1.45; }
-    .empty-note { color: var(--cf-muted); margin: 0.5rem 0 0; }
+    .health-badge .cf-subsection-title { margin: 0; color: var(--cf-slate-900); }
+    .health-hint { margin: 0; line-height: 1.45; }
+    .empty-note { margin: 0.5rem 0 0; }
     .contribution-plans-panel { margin-bottom: 0.85rem; display: grid; gap: 0.85rem; }
     .activity-feed { display: block; margin-bottom: 0.85rem; }
-    .contribution-plans-panel__header h4 { margin: 0; font-size: 1rem; color: var(--cf-slate-900); }
-    .contribution-plans-panel__header p { margin: 0.2rem 0 0; color: var(--cf-muted); font-size: 0.88rem; }
-    .contribution-plans-table .plan-meta { display: block; color: var(--cf-muted); font-size: 0.78rem; margin-top: 0.1rem; }
+    .contribution-plans-panel__header .cf-subsection-title { margin: 0; color: var(--cf-slate-900); }
+    .contribution-plans-panel__header p { margin: 0.2rem 0 0; }
+    .contribution-plans-table .plan-meta { display: block; margin-top: 0.1rem; }
     .outstanding-dues-block { display: grid; gap: 0.5rem; }
-    .outstanding-dues-block h5 { margin: 0; font-size: 0.9rem; color: var(--cf-slate-900); }
-    .badge.active { background: var(--cf-forest-soft); color: var(--cf-forest); }
-    .badge.completed { background: var(--cf-indigo-soft); color: var(--cf-indigo); }
-    .badge.inactive { background: var(--cf-slate-100); color: var(--cf-muted); }
+    .outstanding-dues-block .cf-subsection-title { margin: 0; color: var(--cf-slate-900); }
+    .cf-subsection-title { margin: 0 0 0.35rem; }
     .contribution-plans-empty { display: grid; gap: 0.65rem; justify-items: start; padding: 0.5rem 0; }
   `]
 })
@@ -489,13 +497,13 @@ export class FamilyFinancialDashboardComponent {
   planStatusClass(status: string): string {
     switch (status) {
       case 'overdue':
-        return 'overdue';
+        return 'cf-badge--critical';
       case 'completed':
-        return 'completed';
+        return 'cf-badge--info';
       case 'inactive':
-        return 'inactive';
+        return 'cf-badge--neutral';
       default:
-        return 'active';
+        return 'cf-badge--success';
     }
   }
 

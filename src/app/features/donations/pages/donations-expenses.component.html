@@ -8,24 +8,59 @@
     </button>
   </app-page-header>
 
-  <form class="cf-panel donations-expenses__form" *ngIf="showForm" (ngSubmit)="submit()">
-    <h2>New Disbursement</h2>
-    <div class="donations-expenses__grid">
-      <label><span>Category</span><input [(ngModel)]="form.category" name="category" required /></label>
-      <label><span>Amount</span><input type="number" min="0.01" step="0.01" [(ngModel)]="form.amount" name="amount" required /></label>
-      <label><span>Date</span><input type="date" [(ngModel)]="form.expense_date" name="expense_date" required /></label>
-      <label><span>Payee</span><input [(ngModel)]="form.payee" name="payee" /></label>
-      <label><span>Method</span>
-        <select [(ngModel)]="form.method" name="method">
-          <option value="cash">Cash</option>
-          <option value="bank_transfer">Bank Transfer</option>
-          <option value="cheque">Cheque</option>
-        </select>
-      </label>
-      <label class="donations-expenses__notes"><span>Notes</span><textarea rows="2" [(ngModel)]="form.notes" name="notes"></textarea></label>
-    </div>
-    <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Save Disbursement' }}</button>
-  </form>
+  <app-modal-shell
+    *ngIf="showForm"
+    title="Record Disbursement"
+    size="sm"
+    headerVariant="compact"
+    bodyPadding="none"
+    closeAriaLabel="Close record disbursement"
+    [isSubmitting]="saving"
+    (closeRequested)="showForm = false"
+  >
+    <form class="cf-split-form-body" (ngSubmit)="submit()" novalidate>
+      <section class="cf-split-section" aria-labelledby="disbursement-section-details">
+        <h3 id="disbursement-section-details" class="cf-split-section__title">Disbursement details</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field">
+            <label for="disb-category">Category <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input id="disb-category" [(ngModel)]="form.category" name="category" required aria-required="true" />
+          </div>
+          <div class="cf-split-field">
+            <label for="disb-amount">Amount <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input id="disb-amount" type="number" min="0.01" step="0.01" [(ngModel)]="form.amount" name="amount" required aria-required="true" />
+          </div>
+          <div class="cf-split-field">
+            <label for="disb-date">Date <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input id="disb-date" type="date" [(ngModel)]="form.expense_date" name="expense_date" required aria-required="true" />
+          </div>
+          <div class="cf-split-field">
+            <label for="disb-payee">Payee <span class="cf-split-optional">optional</span></label>
+            <input id="disb-payee" [(ngModel)]="form.payee" name="payee" />
+          </div>
+          <div class="cf-split-field">
+            <label for="disb-method">Method</label>
+            <select id="disb-method" [(ngModel)]="form.method" name="method">
+              <option value="cash">Cash</option>
+              <option value="bank_transfer">Bank Transfer</option>
+              <option value="cheque">Cheque</option>
+            </select>
+          </div>
+          <div class="cf-split-field cf-split-field--full">
+            <label for="disb-notes">Notes <span class="cf-split-optional">optional</span></label>
+            <textarea id="disb-notes" rows="2" [(ngModel)]="form.notes" name="notes"></textarea>
+          </div>
+        </div>
+      </section>
+
+      <div class="cf-split-form-actions">
+        <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
+          {{ saving ? 'Saving…' : 'Save Disbursement' }}
+        </button>
+        <button type="button" class="cf-btn" (click)="showForm = false" [disabled]="saving">Cancel</button>
+      </div>
+    </form>
+  </app-modal-shell>
 
   <p *ngIf="loading" class="donations-expenses__status">Loading disbursements…</p>
   <p *ngIf="error" class="donations-expenses__error" role="alert">{{ error }}</p>

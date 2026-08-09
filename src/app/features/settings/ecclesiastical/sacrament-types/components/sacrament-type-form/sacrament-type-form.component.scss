@@ -1,75 +1,5 @@
 @use '../../../../../../shared/styles/form-validation' as *;
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-dialog {
-  background: #fff;
-  border-radius: 8px;
-  width: 90%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-
-  .modal-title {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1a202c;
-    margin: 0;
-  }
-
-  .close-button {
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: #718096;
-    cursor: pointer;
-    padding: 0;
-    width: 2rem;
-    height: 2rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
-
-    &:hover {
-      background: #edf2f7;
-      color: #2d3748;
-    }
-  }
-}
-
-.modal-body {
-  padding: 1.5rem;
-}
-
-.modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-  padding: 1.5rem;
-  border-top: 1px solid #e2e8f0;
-}
-
 .form-group {
   margin-bottom: 1.25rem;
 }
@@ -151,45 +81,7 @@ textarea.form-control {
   color: #fc8181;
 }
 
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: none;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-
-  &.btn-primary {
-    background: #4299e1;
-    color: #fff;
-
-    &:hover:not(:disabled) {
-      background: #3182ce;
-    }
-  }
-
-  &.btn-secondary {
-    background: #edf2f7;
-    color: #2d3748;
-
-    &:hover:not(:disabled) {
-      background: #e2e8f0;
-    }
-  }
-}
-
 @media (max-width: 768px) {
-  .modal-dialog {
-    width: 95%;
-    max-height: 95vh;
-  }
-
   .form-row {
     grid-template-columns: 1fr;
   }

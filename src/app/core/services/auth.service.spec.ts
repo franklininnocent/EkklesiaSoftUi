@@ -92,4 +92,29 @@ describe('AuthService RBAC access helpers', () => {
     (service as any).currentUserSubject.next(user);
     expect(service.canManageRbac(user)).toBe(service.canAccessRbac(user));
   });
+
+  it('denies Tenant Ministries for EkklesiaAdmin without tenant_id or support session', () => {
+    const user = { role_name: 'EkklesiaAdmin', tenant_id: null, permissions: [] } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessMinistries(user)).toBe(false);
+    expect(service.canAccessMinistries(user, { hasActiveSupportSession: false })).toBe(false);
+  });
+
+  it('allows Tenant Ministries for EkklesiaAdmin with active support session', () => {
+    const user = { role_name: 'EkklesiaAdmin', tenant_id: null, permissions: [] } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessMinistries(user, { hasActiveSupportSession: true })).toBe(true);
+  });
+
+  it('allows Tenant Ministries for SuperAdmin with home tenant_id', () => {
+    const user = { role_name: 'SuperAdmin', tenant_id: 7, permissions: [] } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessMinistries(user)).toBe(true);
+  });
+
+  it('allows Tenant Ministries for parish Administrator with tenant_id', () => {
+    const user = { role_name: 'Administrator', tenant_id: 42, permissions: [] } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessMinistries(user)).toBe(true);
+  });
 });

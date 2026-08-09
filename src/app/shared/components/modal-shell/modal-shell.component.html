@@ -1,17 +1,38 @@
-<div class="cf-modal-shell__overlay" (click)="onBackdropClick()">
+<div
+  class="cf-modal-shell__overlay"
+  [class.cf-modal-shell__overlay--nested]="nested"
+  (click)="onBackdropClick()"
+>
   <div
     #dialogEl
     class="cf-modal-shell__dialog"
+    [class.cf-modal-shell__dialog--xs]="size === 'xs'"
     [class.cf-modal-shell__dialog--sm]="size === 'sm'"
+    [class.cf-modal-shell__dialog--md]="size === 'md'"
     [class.cf-modal-shell__dialog--lg]="size === 'lg'"
+    [class.cf-modal-shell__dialog--xl]="size === 'xl'"
+    [class.cf-modal-shell__dialog--full]="size === 'full'"
     role="dialog"
     aria-modal="true"
     [attr.aria-labelledby]="title ? resolvedTitleId : null"
+    [attr.aria-describedby]="description ? resolvedDescId : null"
     [attr.aria-label]="!title ? ariaLabel : null"
     (click)="$event.stopPropagation()"
   >
-    <header class="cf-modal-shell__header">
-      <h2 *ngIf="title" [id]="resolvedTitleId" class="cf-modal-shell__title">{{ title }}</h2>
+    <header
+      class="cf-modal-shell__header"
+      [class.cf-modal-shell__header--compact]="headerVariant === 'compact'"
+    >
+      <div class="cf-modal-shell__heading">
+        <h2 *ngIf="title" [id]="resolvedTitleId" class="cf-modal-shell__title">{{ title }}</h2>
+        <p
+          *ngIf="description"
+          [id]="resolvedDescId"
+          class="cf-modal-shell__description"
+        >
+          {{ description }}
+        </p>
+      </div>
       <button
         type="button"
         class="cf-modal-shell__close"
@@ -26,7 +47,10 @@
       </button>
     </header>
 
-    <div class="cf-modal-shell__body">
+    <div
+      class="cf-modal-shell__body"
+      [class.cf-modal-shell__body--flush]="bodyPadding === 'none'"
+    >
       <ng-content></ng-content>
     </div>
 

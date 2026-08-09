@@ -1,13 +1,8 @@
 <section class="projects-page cf-page">
   <app-page-header [title]="pageTitle" [subtitle]="pageSubtitle">
-    <ng-container *ngIf="!showForm">
-      <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
-      <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
-      <a routerLink="/donations/project-installments" class="cf-btn">Installments</a>
-    </ng-container>
-    <ng-container *ngIf="showForm">
-      <button type="button" class="cf-btn" (click)="closeForm()">Back to projects</button>
-    </ng-container>
+    <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
+    <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
+    <a routerLink="/donations/project-installments" class="cf-btn">Installments</a>
   </app-page-header>
 
   <!-- Success / save error alerts -->
@@ -21,7 +16,7 @@
   </div>
 
   <!-- Stats (list view) -->
-  <div class="proj-stats" *ngIf="!showForm && projectsLoaded && projects.length">
+  <div class="proj-stats" *ngIf="projectsLoaded && projects.length">
     <article class="proj-stat">
       <span>Total projects</span>
       <strong>{{ projects.length }}</strong>
@@ -36,318 +31,297 @@
     </article>
   </div>
 
-  <!-- Create / Edit form card -->
-  <article id="project-form-card" class="proj-form-card" *ngIf="showForm && canManage">
-    <form [formGroup]="projectForm" (ngSubmit)="saveProject()" novalidate>
-      <div class="proj-form-card__body">
-        <p class="proj-form-card__intro">
-          Fields marked with <span class="cf-form-field__required" aria-hidden="true">*</span> are required.
-        </p>
+  <!-- Create / Edit Project Modal — large sectioned Category-style modal (see enterprise-modal-style-guide.md §14) -->
+  <app-modal-shell
+    *ngIf="showForm && canManage"
+    [title]="editingProjectId ? 'Edit Project' : 'Create Project'"
+    size="lg"
+    headerVariant="compact"
+    bodyPadding="none"
+    closeAriaLabel="Close project form"
+    [isSubmitting]="saving"
+    (closeRequested)="closeForm()"
+  >
+    <form class="cf-split-form-body proj-modal" [formGroup]="projectForm" (ngSubmit)="saveProject()" novalidate>
+      <p class="cf-meta">
+        Set up project targets, contribution schedules, and family assignments. Fields marked with
+        <span class="cf-split-req" aria-hidden="true">*</span> are required.
+      </p>
 
-        <p class="cf-form-field__error proj-form-field--full" *ngIf="submitAttempted && projectForm.invalid" role="alert">
-          Please complete all required fields before saving.
-        </p>
+      <p class="cf-split-form-alert cf-split-form-alert--error" *ngIf="submitAttempted && projectForm.invalid" role="alert">
+        Please complete all required fields before saving.
+      </p>
 
-        <!-- Section 1: Basic Information -->
-        <section class="proj-form-section" aria-labelledby="proj-section-basic">
-          <div class="proj-form-section__head">
-            <span class="proj-form-section__number">1</span>
-            <h2 id="proj-section-basic" class="proj-form-section__title">Basic Information</h2>
+      <!-- Section 1: Basic Information -->
+      <section class="cf-split-section" aria-labelledby="proj-section-basic">
+        <h3 id="proj-section-basic" class="cf-split-section__title">Basic Information</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field">
+            <label for="project-name">
+              Project name <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="project-name"
+              formControlName="name"
+              placeholder="e.g., Building Fund 2026"
+              autocomplete="off"
+              aria-required="true"
+              [class.cf-form-field__control--invalid]="isFieldInvalid('name')"
+            />
+            <p class="cf-split-field__hint" *ngIf="isFieldInvalid('name')" role="alert">{{ fieldError('name') }}</p>
           </div>
-          <div class="proj-form-section__grid">
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-name">
-                Project name
-                <span class="cf-form-field__required" aria-hidden="true">*</span>
-              </label>
-              <input
-                id="project-name"
-                formControlName="name"
-                placeholder="e.g., Building Fund 2026"
-                autocomplete="off"
-                aria-required="true"
-                [class.cf-form-field__control--invalid]="isFieldInvalid('name')"
-              />
-              <p class="cf-form-field__error" *ngIf="isFieldInvalid('name')">{{ fieldError('name') }}</p>
-            </div>
 
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-code">
-                Project code
-                <span class="cf-form-field__required" aria-hidden="true">*</span>
-              </label>
-              <input
-                id="project-code"
-                formControlName="code"
-                placeholder="e.g., BF2026"
-                autocomplete="off"
-                aria-required="true"
-                [class.cf-form-field__control--invalid]="isFieldInvalid('code')"
-              />
-              <p class="cf-form-field__error" *ngIf="isFieldInvalid('code')">{{ fieldError('code') }}</p>
-            </div>
+          <div class="cf-split-field">
+            <label for="project-code">
+              Project code <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="project-code"
+              formControlName="code"
+              placeholder="e.g., BF2026"
+              autocomplete="off"
+              aria-required="true"
+              [class.cf-form-field__control--invalid]="isFieldInvalid('code')"
+            />
+            <p class="cf-split-field__hint" *ngIf="isFieldInvalid('code')" role="alert">{{ fieldError('code') }}</p>
           </div>
-        </section>
+        </div>
+      </section>
 
-        <!-- Section 2: Financial Details -->
-        <section class="proj-form-section" aria-labelledby="proj-section-financial">
-          <div class="proj-form-section__head">
-            <span class="proj-form-section__number">2</span>
-            <h2 id="proj-section-financial" class="proj-form-section__title">Financial Details</h2>
+      <!-- Section 2: Financial Details -->
+      <section class="cf-split-section" aria-labelledby="proj-section-financial">
+        <h3 id="proj-section-financial" class="cf-split-section__title">Financial Details</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field cf-split-field--full">
+            <label for="project-assignment-mode">
+              Assignment mode
+              <button
+                type="button"
+                class="cf-form-field__tooltip"
+                title="Fixed amount applies the same target to every family. Per-family mode lets you set individual targets."
+                aria-label="Help: assignment mode"
+              >?</button>
+            </label>
+            <select id="project-assignment-mode" formControlName="assignment_mode">
+              <option value="uniform">Fixed amount for all families</option>
+              <option value="individual">Family-specific targets</option>
+              <option value="uniform_with_exceptions">Fixed amount with exceptions</option>
+            </select>
           </div>
-          <div class="proj-form-section__grid">
-            <div class="cf-form-field proj-form-field--full">
-              <label class="cf-form-field__label" for="project-assignment-mode">
-                Assignment mode
-                <button
-                  type="button"
-                  class="cf-form-field__tooltip"
-                  title="Fixed amount applies the same target to every family. Per-family mode lets you set individual targets."
-                  aria-label="Help: assignment mode"
-                >?</button>
-              </label>
-              <select id="project-assignment-mode" formControlName="assignment_mode">
-                <option value="uniform">Fixed amount for all families</option>
-                <option value="individual">Family-specific targets</option>
-                <option value="uniform_with_exceptions">Fixed amount with exceptions</option>
-              </select>
-            </div>
 
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-family-target">
-                {{ familyTargetLabel }}
-                <span class="cf-form-field__required" aria-hidden="true">*</span>
-              </label>
-              <div class="cf-amount-input">
-                <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
-                <input
-                  id="project-family-target"
-                  formControlName="default_family_target"
-                  type="number"
-                  min="0.01"
-                  step="0.01"
-                  placeholder="e.g., 5000"
-                  aria-required="true"
-                  [class.cf-form-field__control--invalid]="isFieldInvalid('default_family_target')"
-                />
-              </div>
-              <p class="cf-form-field__error" *ngIf="isFieldInvalid('default_family_target')">{{ fieldError('default_family_target') }}</p>
-            </div>
-
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-installment-count">
-                Number of installments
-                <span class="cf-form-field__required" aria-hidden="true">*</span>
-              </label>
+          <div class="cf-split-field">
+            <label for="project-family-target">
+              {{ familyTargetLabel }} <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <div class="cf-amount-input">
+              <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
               <input
-                id="project-installment-count"
-                formControlName="installment_count"
+                id="project-family-target"
+                formControlName="default_family_target"
                 type="number"
-                min="1"
-                step="1"
-                placeholder="e.g., 12"
+                min="0.01"
+                step="0.01"
+                placeholder="e.g., 5000"
                 aria-required="true"
-                [class.cf-form-field__control--invalid]="isFieldInvalid('installment_count')"
+                [class.cf-form-field__control--invalid]="isFieldInvalid('default_family_target')"
               />
-              <p class="cf-form-field__error" *ngIf="isFieldInvalid('installment_count')">{{ fieldError('installment_count') }}</p>
             </div>
+            <p class="cf-split-field__hint" *ngIf="isFieldInvalid('default_family_target')" role="alert">{{ fieldError('default_family_target') }}</p>
+          </div>
 
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-target-amount">
-                Overall project target
-                <span class="cf-form-field__optional">optional</span>
-                <button
-                  type="button"
-                  class="cf-form-field__tooltip"
-                  title="Total fundraising goal across all families for progress tracking."
-                  aria-label="Help: overall project target"
-                >?</button>
-              </label>
-              <div class="cf-amount-input">
-                <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
-                <input
-                  id="project-target-amount"
-                  formControlName="target_amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="e.g., 250000"
-                />
-              </div>
-            </div>
+          <div class="cf-split-field">
+            <label for="project-installment-count">
+              Number of installments <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="project-installment-count"
+              formControlName="installment_count"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="e.g., 12"
+              aria-required="true"
+              [class.cf-form-field__control--invalid]="isFieldInvalid('installment_count')"
+            />
+            <p class="cf-split-field__hint" *ngIf="isFieldInvalid('installment_count')" role="alert">{{ fieldError('installment_count') }}</p>
+          </div>
 
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-installment-frequency">
-                Installment frequency
-                <button
-                  type="button"
-                  class="cf-form-field__tooltip"
-                  title="How often installments are due. Choose 'No schedule' to manage dates manually."
-                  aria-label="Help: installment frequency"
-                >?</button>
-              </label>
-              <select id="project-installment-frequency" formControlName="installment_frequency">
-                <option value="">No schedule</option>
-                <option value="monthly">Monthly</option>
-                <option value="quarterly">Quarterly</option>
-                <option value="half_yearly">Half-yearly</option>
-                <option value="yearly">Yearly</option>
-              </select>
+          <div class="cf-split-field">
+            <label for="project-target-amount">
+              Overall project target
+              <span class="cf-split-optional">optional</span>
+              <button
+                type="button"
+                class="cf-form-field__tooltip"
+                title="Total fundraising goal across all families for progress tracking."
+                aria-label="Help: overall project target"
+              >?</button>
+            </label>
+            <div class="cf-amount-input">
+              <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
+              <input
+                id="project-target-amount"
+                formControlName="target_amount"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="e.g., 250000"
+              />
             </div>
           </div>
-        </section>
 
-        <!-- Section 3: Schedule -->
-        <section class="proj-form-section" aria-labelledby="proj-section-schedule">
-          <div class="proj-form-section__head">
-            <span class="proj-form-section__number">3</span>
-            <h2 id="proj-section-schedule" class="proj-form-section__title">Schedule</h2>
+          <div class="cf-split-field">
+            <label for="project-installment-frequency">
+              Installment frequency
+              <button
+                type="button"
+                class="cf-form-field__tooltip"
+                title="How often installments are due. Choose 'No schedule' to manage dates manually."
+                aria-label="Help: installment frequency"
+              >?</button>
+            </label>
+            <select id="project-installment-frequency" formControlName="installment_frequency">
+              <option value="">No schedule</option>
+              <option value="monthly">Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="half_yearly">Half-yearly</option>
+              <option value="yearly">Yearly</option>
+            </select>
           </div>
-          <div class="proj-form-section__grid">
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-start-date">Start date</label>
-              <div class="proj-date-input">
-                <input
-                  id="project-start-date"
-                  formControlName="start_date"
-                  type="date"
-                  aria-label="Select project start date"
-                  [class.cf-form-field__control--invalid]="isFieldInvalid('start_date')"
-                />
-                <span class="proj-date-input__icon" aria-hidden="true">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                </span>
-              </div>
-              <p class="cf-form-field__error" *ngIf="isFieldInvalid('start_date')">{{ fieldError('start_date') }}</p>
-            </div>
+        </div>
+      </section>
 
-            <div class="cf-form-field">
-              <label class="cf-form-field__label" for="project-end-date">End date</label>
-              <div class="proj-date-input">
-                <input
-                  id="project-end-date"
-                  formControlName="end_date"
-                  type="date"
-                  aria-label="Select project end date"
-                  [class.cf-form-field__control--invalid]="isFieldInvalid('end_date')"
-                />
-                <span class="proj-date-input__icon" aria-hidden="true">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
-                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="16" y1="2" x2="16" y2="6"></line>
-                    <line x1="8" y1="2" x2="8" y2="6"></line>
-                    <line x1="3" y1="10" x2="21" y2="10"></line>
-                  </svg>
-                </span>
-              </div>
-              <p class="cf-form-field__error" *ngIf="isFieldInvalid('end_date')">{{ fieldError('end_date') }}</p>
+      <!-- Section 3: Schedule -->
+      <section class="cf-split-section" aria-labelledby="proj-section-schedule">
+        <h3 id="proj-section-schedule" class="cf-split-section__title">Schedule</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field">
+            <label for="project-start-date">Start date</label>
+            <div class="proj-date-input">
+              <input
+                id="project-start-date"
+                formControlName="start_date"
+                type="date"
+                aria-label="Select project start date"
+                [class.cf-form-field__control--invalid]="isFieldInvalid('start_date')"
+              />
+              <span class="proj-date-input__icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </span>
             </div>
-
-            <div class="cf-form-field proj-form-field--full">
-              <div class="proj-toggle-row">
-                <div class="proj-toggle-row__copy">
-                  <strong>Auto-generate installments</strong>
-                  <span>Automatically create installment schedules based on amount and installment count.</span>
-                </div>
-                <label class="proj-toggle" aria-label="Auto-generate installments">
-                  <input
-                    type="checkbox"
-                    [checked]="isAutoInstallmentsEnabled"
-                    (change)="setAutoInstallments($any($event.target).checked)"
-                  />
-                  <span class="proj-toggle__track"></span>
-                </label>
-              </div>
-            </div>
+            <p class="cf-split-field__hint" *ngIf="isFieldInvalid('start_date')" role="alert">{{ fieldError('start_date') }}</p>
           </div>
-        </section>
 
-        <!-- Section 4: Status -->
-        <section class="proj-form-section" aria-labelledby="proj-section-status">
-          <div class="proj-form-section__head">
-            <span class="proj-form-section__number">4</span>
-            <h2 id="proj-section-status" class="proj-form-section__title">Status</h2>
-          </div>
-          <div class="proj-form-section__grid proj-form-section__grid--single">
-            <div class="cf-form-field">
-              <div class="proj-toggle-row">
-                <div class="proj-toggle-row__copy">
-                  <strong>{{ isStatusActive ? 'Active' : 'Inactive' }}</strong>
-                  <span>Active projects are available for contribution tracking.</span>
-                </div>
-                <label class="proj-toggle" [attr.aria-label]="isStatusActive ? 'Set project inactive' : 'Set project active'">
-                  <input
-                    type="checkbox"
-                    [checked]="isStatusActive"
-                    (change)="setStatusActive($any($event.target).checked)"
-                  />
-                  <span class="proj-toggle__track"></span>
-                </label>
-              </div>
+          <div class="cf-split-field">
+            <label for="project-end-date">End date</label>
+            <div class="proj-date-input">
+              <input
+                id="project-end-date"
+                formControlName="end_date"
+                type="date"
+                aria-label="Select project end date"
+                [class.cf-form-field__control--invalid]="isFieldInvalid('end_date')"
+              />
+              <span class="proj-date-input__icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </span>
             </div>
+            <p class="cf-split-field__hint" *ngIf="isFieldInvalid('end_date')" role="alert">{{ fieldError('end_date') }}</p>
           </div>
-        </section>
 
-        <!-- Family assignments (conditional) -->
-        <section class="proj-assignments" *ngIf="needsAssignments">
-          <h3>Family assignments & exceptions</h3>
-          <div class="assignment-toolbar cf-form-grid">
+          <label class="cf-split-toggle cf-split-toggle--block cf-split-field--full">
+            <input
+              type="checkbox"
+              [checked]="isAutoInstallmentsEnabled"
+              (change)="setAutoInstallments($any($event.target).checked)"
+            />
+            <span>Auto-generate installments <small>Automatically create installment schedules based on amount and installment count.</small></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Section 4: Status -->
+      <section class="cf-split-section" aria-labelledby="proj-section-status">
+        <h3 id="proj-section-status" class="cf-split-section__title">Status</h3>
+        <div class="cf-split-grid">
+          <label class="cf-split-toggle cf-split-toggle--block cf-split-field--full">
+            <input
+              type="checkbox"
+              [checked]="isStatusActive"
+              (change)="setStatusActive($any($event.target).checked)"
+            />
+            <span>{{ isStatusActive ? 'Active' : 'Inactive' }} <small>Active projects are available for contribution tracking.</small></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Family assignments (conditional) -->
+      <section class="cf-split-section" aria-labelledby="proj-section-assignments" *ngIf="needsAssignments">
+        <h3 id="proj-section-assignments" class="cf-split-section__title">Family assignments & exceptions</h3>
+        <div class="cf-split-grid assignment-toolbar">
+          <div class="cf-split-field">
             <select [(ngModel)]="selectedFamilyId" [ngModelOptions]="{standalone: true}" aria-label="Select family">
               <option value="">Select family</option>
               <option *ngFor="let family of families" [value]="family.id">{{ family.family_name }}</option>
             </select>
-            <input [(ngModel)]="assignmentAmount" [ngModelOptions]="{standalone: true}" type="number" placeholder="Target amount" aria-label="Target amount" />
-            <label class="checkbox"><input [(ngModel)]="assignmentExempt" [ngModelOptions]="{standalone: true}" type="checkbox" /> Exempt</label>
-            <input [(ngModel)]="assignmentEffectiveFrom" [ngModelOptions]="{standalone: true}" type="date" aria-label="Effective from" />
-            <button type="button" class="cf-btn" (click)="addAssignment()">Add</button>
           </div>
-          <table *ngIf="draftAssignments.length" class="table cf-table">
-            <thead><tr><th>Family</th><th>Target</th><th>Exempt</th><th>From</th><th></th></tr></thead>
-            <tbody>
-              <tr *ngFor="let row of draftAssignments; let i = index">
-                <td>{{ familyName(row.family_id) }}</td>
-                <td>{{ row.is_exempt ? '—' : (row.target_amount | number:'1.2-2') }}</td>
-                <td>{{ row.is_exempt ? 'Yes' : 'No' }}</td>
-                <td>{{ row.effective_from }}</td>
-                <td><button type="button" class="cf-btn" (click)="removeAssignment(i)">Remove</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </section>
-      </div>
+          <div class="cf-split-field">
+            <input [(ngModel)]="assignmentAmount" [ngModelOptions]="{standalone: true}" type="number" placeholder="Target amount" aria-label="Target amount" />
+          </div>
+          <label class="checkbox"><input [(ngModel)]="assignmentExempt" [ngModelOptions]="{standalone: true}" type="checkbox" /> Exempt</label>
+          <div class="cf-split-field">
+            <input [(ngModel)]="assignmentEffectiveFrom" [ngModelOptions]="{standalone: true}" type="date" aria-label="Effective from" />
+          </div>
+          <button type="button" class="cf-btn" (click)="addAssignment()">Add</button>
+        </div>
+        <table *ngIf="draftAssignments.length" class="table cf-table">
+          <thead><tr><th>Family</th><th>Target</th><th>Exempt</th><th>From</th><th></th></tr></thead>
+          <tbody>
+            <tr *ngFor="let row of draftAssignments; let i = index">
+              <td>{{ familyName(row.family_id) }}</td>
+              <td>{{ row.is_exempt ? '—' : (row.target_amount | number:'1.2-2') }}</td>
+              <td>{{ row.is_exempt ? 'Yes' : 'No' }}</td>
+              <td>{{ row.effective_from }}</td>
+              <td><button type="button" class="cf-btn" (click)="removeAssignment(i)">Remove</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
 
-      <!-- Sticky footer -->
-      <footer class="proj-form-footer">
-        <span class="proj-form-footer__hint">Review details before saving.</span>
-        <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+      <div class="cf-split-form-actions">
         <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
           {{ saving ? 'Saving…' : (editingProjectId ? 'Update Project' : 'Create Project') }}
         </button>
-      </footer>
+        <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+      </div>
     </form>
-  </article>
+  </app-modal-shell>
 
-  <!-- Projects list (when not in form mode) -->
-  <ng-container *ngIf="!showForm">
-    <!-- Loading -->
-    <div class="proj-loading" *ngIf="!projectsLoaded" role="status" aria-live="polite" aria-busy="true">
-      <p class="proj-loading__label">Loading projects…</p>
-      <app-loading-skeleton type="list" [rows]="3"></app-loading-skeleton>
-    </div>
+  <!-- Projects list -->
+  <!-- Loading -->
+  <div class="proj-loading" *ngIf="!projectsLoaded" role="status" aria-live="polite" aria-busy="true">
+    <p class="proj-loading__label">Loading projects…</p>
+    <app-loading-skeleton type="list" [rows]="3"></app-loading-skeleton>
+  </div>
 
-    <!-- Load error -->
-    <div class="proj-alert proj-alert--error" *ngIf="projectsLoaded && projectsLoadError" role="alert">
-      <span class="proj-alert__icon" aria-hidden="true">!</span>
-      <span>{{ projectsLoadError }}</span>
-      <button type="button" class="cf-btn proj-alert__retry" (click)="loadProjects()">Retry</button>
-    </div>
+  <!-- Load error -->
+  <div class="proj-alert proj-alert--error" *ngIf="projectsLoaded && projectsLoadError" role="alert">
+    <span class="proj-alert__icon" aria-hidden="true">!</span>
+    <span>{{ projectsLoadError }}</span>
+    <button type="button" class="cf-btn proj-alert__retry" (click)="loadProjects()">Retry</button>
+  </div>
 
-    <ng-container *ngIf="projectsLoaded && !projectsLoadError">
+  <ng-container *ngIf="projectsLoaded && !projectsLoadError">
       <!-- Search -->
       <div class="proj-list-toolbar" *ngIf="projects.length">
         <input type="search" [(ngModel)]="tableSearch" placeholder="Search by name, code, or status…" aria-label="Search projects" />
@@ -417,7 +391,6 @@
         <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
         <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
       </app-cf-empty-state>
-    </ng-container>
   </ng-container>
 
   <!-- Project dashboard drawer -->

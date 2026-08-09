@@ -272,7 +272,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   canAccessMinistries(user: User | null): boolean {
-    if (!this.authService.canAccessMinistries(user)) {
+    const hasActiveSupportSession = !!this.supportSessions.sessionId;
+    if (!this.authService.canAccessMinistries(user, { hasActiveSupportSession })) {
       return false;
     }
     if (user?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin()) {

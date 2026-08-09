@@ -1,7 +1,15 @@
+@import '../styles/stewardship-split-layout.scss';
+
 .projects-page {
   display: grid;
   gap: 1.25rem;
   max-width: 1200px;
+}
+
+/* Create/Edit Project modal — right-align footer actions per the enterprise
+   modal style guide's documented scoped-override exception (§9/§12.5). */
+.proj-modal .cf-split-form-actions {
+  justify-content: flex-end;
 }
 
 /* ── Stats strip ── */
@@ -73,155 +81,6 @@
   }
 }
 
-/* ── Form card ── */
-.proj-form-card {
-  border-radius: 14px;
-  border: 1px solid var(--cf-panel-border);
-  background: var(--cf-panel-bg);
-  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.07);
-  overflow: hidden;
-}
-
-.proj-form-card__body {
-  padding: 1.5rem;
-  display: grid;
-  gap: 1.75rem;
-}
-
-.proj-form-card__intro {
-  margin: 0;
-  padding: 0.65rem 0.85rem;
-  border-radius: 8px;
-  background: var(--cf-slate-50);
-  font-size: 0.84rem;
-  color: var(--cf-muted);
-}
-
-.proj-form-section {
-  display: grid;
-  gap: 1rem;
-
-  &__head {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding-bottom: 0.65rem;
-    border-bottom: 1px solid var(--cf-slate-100);
-  }
-
-  &__number {
-    width: 1.65rem;
-    height: 1.65rem;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background: var(--cf-indigo-soft);
-    color: var(--cf-indigo);
-    font-size: 0.72rem;
-    font-weight: 700;
-  }
-
-  &__title {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 700;
-    color: var(--cf-slate-900);
-  }
-
-  &__grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem 1.15rem;
-  }
-
-  &__grid--single {
-    grid-template-columns: 1fr;
-  }
-}
-
-.proj-form-field--full {
-  grid-column: 1 / -1;
-}
-
-/* ── Toggle switch ── */
-.proj-toggle-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.85rem 1rem;
-  border-radius: 10px;
-  border: 1px solid var(--cf-panel-border);
-  background: var(--cf-slate-50);
-}
-
-.proj-toggle-row__copy {
-  display: grid;
-  gap: 0.2rem;
-  min-width: 0;
-
-  strong {
-    font-size: 0.88rem;
-    color: var(--cf-slate-900);
-  }
-
-  span {
-    font-size: 0.78rem;
-    color: var(--cf-muted);
-    line-height: 1.4;
-  }
-}
-
-.proj-toggle {
-  position: relative;
-  flex-shrink: 0;
-  width: 2.75rem;
-  height: 1.5rem;
-  cursor: pointer;
-
-  input {
-    position: absolute;
-    opacity: 0;
-    width: 0;
-    height: 0;
-
-    &:focus-visible + .proj-toggle__track {
-      outline: 2px solid var(--cf-primary);
-      outline-offset: 2px;
-    }
-
-    &:checked + .proj-toggle__track {
-      background: var(--cf-primary);
-
-      &::after {
-        transform: translateX(1.25rem);
-      }
-    }
-  }
-
-  &__track {
-    display: block;
-    width: 100%;
-    height: 100%;
-    border-radius: 999px;
-    background: var(--cf-slate-300);
-    transition: background 0.2s ease;
-
-    &::after {
-      content: '';
-      position: absolute;
-      top: 0.15rem;
-      left: 0.15rem;
-      width: 1.2rem;
-      height: 1.2rem;
-      border-radius: 50%;
-      background: #fff;
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
-      transition: transform 0.2s ease;
-    }
-  }
-}
-
 /* ── Date input with icon ── */
 .proj-date-input {
   position: relative;
@@ -240,42 +99,6 @@
     color: var(--cf-muted);
     display: flex;
     align-items: center;
-  }
-}
-
-/* ── Sticky form footer ── */
-.proj-form-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 0.55rem;
-  padding: 1rem 1.5rem;
-  border-top: 1px solid var(--cf-slate-100);
-  background: var(--cf-slate-50);
-  position: sticky;
-  bottom: 0;
-  z-index: 2;
-}
-
-.proj-form-footer__hint {
-  margin-right: auto;
-  font-size: 0.78rem;
-  color: var(--cf-muted);
-}
-
-/* ── Assignments panel ── */
-.proj-assignments {
-  margin-top: 0.5rem;
-  padding: 1.15rem;
-  border-radius: 10px;
-  border: 1px dashed var(--cf-slate-300);
-  background: var(--cf-slate-50);
-
-  h3 {
-    margin: 0 0 0.75rem;
-    font-size: 0.92rem;
-    color: var(--cf-slate-900);
   }
 }
 
@@ -506,21 +329,3 @@
   }
 }
 
-@media (max-width: 768px) {
-  .proj-form-section__grid {
-    grid-template-columns: 1fr;
-  }
-
-  .proj-form-card__body {
-    padding: 1.1rem;
-  }
-
-  .proj-form-footer {
-    padding: 0.85rem 1.1rem;
-  }
-
-  .proj-form-footer__hint {
-    width: 100%;
-    margin-right: 0;
-  }
-}

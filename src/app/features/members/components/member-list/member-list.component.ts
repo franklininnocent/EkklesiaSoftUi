@@ -1,17 +1,22 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
+import { Subject, takeUntil } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
 import { MemberService, MemberFilters } from '../../services/member.service';
 import { BCCService } from '@core/services/bcc.service';
 import { FamilyMember, BCC } from '@core/models/family.model';
-import { PaginationComponent, ButtonComponent } from '@shared/components';
+import { PaginationComponent } from '@shared/components';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
-import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-member-list',
@@ -21,9 +26,14 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     FormsModule,
     PaginationComponent,
     AdvancedSearchPanelComponent,
-    ButtonComponent,
     SortableDirective,
     PageHeaderComponent,
+    ListToolbarComponent,
+    DataTableComponent,
+    StatusBadgeComponent,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    ModalShellComponent,
   ],
   templateUrl: './member-list.component.html',
   styleUrls: ['./member-list.component.scss'],
@@ -33,8 +43,6 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
 export class MemberListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
-  private focusTrapCleanup?: () => void;
-  private previouslyFocusedElement?: HTMLElement | null;
 
   // Data
   members: FamilyMember[] = [];
@@ -49,6 +57,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
 
   // UI State
   loading = false;
+  loaded = false;
   error: string | null = null;
   searchTerm = '';
   selectedStatus = '';
@@ -63,6 +72,15 @@ export class MemberListComponent implements OnInit, OnDestroy {
   // Advanced search panel state
   showAdvancedSearch = false;
   searchFields: SearchField[] = [];
+
+  get hasActiveFiltersOrSearch(): boolean {
+    return this.getActiveFilterCount() > 0 || this.searchTerm.trim().length > 0;
+  }
+
+  openAdvancedSearch(): void {
+    this.syncSearchFieldsWithFilters();
+    this.showAdvancedSearch = true;
+  }
 
   /**
    * Toggle advanced search panel
@@ -79,7 +97,6 @@ export class MemberListComponent implements OnInit, OnDestroy {
   showDetailModal = false;
   selectedMember: FamilyMember | null = null;
   loadingDetail = false;
-  @ViewChild('detailModalRef', { static: false }) detailModalRef?: ElementRef;
 
   // Expose DatePipe for template
   datePipe = new DatePipe('en-US');
@@ -134,12 +151,6 @@ export class MemberListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.focusTrapCleanup) {
-      this.focusTrapCleanup();
-    }
-    if (this.previouslyFocusedElement) {
-      restoreActiveElement(this.previouslyFocusedElement);
-    }
   }
 
   /**
@@ -206,6 +217,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
             this.error = 'Failed to load members.';
           }
           this.loading = false;
+          this.loaded = true;
           this.cdr.markForCheck();
         },
         error: (error) => {
@@ -219,9 +231,16 @@ export class MemberListComponent implements OnInit, OnDestroy {
           this.members = [];
           this.error = error?.error?.message || error?.message || 'Failed to load members. Please try again.';
           this.loading = false;
+          this.loaded = true;
           this.cdr.markForCheck();
         }
       });
+  }
+
+  onListSearchChange(value: string): void {
+    this.searchTerm = value ?? '';
+    this.currentPage = 1;
+    this.loadMembers();
   }
 
   /**
@@ -239,6 +258,20 @@ export class MemberListComponent implements OnInit, OnDestroy {
     this.searchTerm = '';
     this.currentPage = 1;
     this.loadMembers();
+  }
+
+  statusTone(status: string | undefined): StatusBadgeTone {
+    switch (status) {
+      case 'active':
+        return 'success';
+      case 'deceased':
+        return 'critical';
+      case 'migrated':
+        return 'info';
+      case 'inactive':
+      default:
+        return 'neutral';
+    }
   }
 
   /**
@@ -507,28 +540,12 @@ export class MemberListComponent implements OnInit, OnDestroy {
     this.selectedMember = member;
     this.showDetailModal = true;
     this.cdr.markForCheck();
-
-    // Set up focus trap
-    setTimeout(() => {
-      if (this.detailModalRef?.nativeElement) {
-        this.previouslyFocusedElement = saveActiveElement();
-        this.focusTrapCleanup = trapFocus(this.detailModalRef.nativeElement);
-      }
-    }, 100);
   }
 
   /**
    * Close detail modal
    */
   closeDetailModal(): void {
-    if (this.focusTrapCleanup) {
-      this.focusTrapCleanup();
-      this.focusTrapCleanup = undefined;
-    }
-    if (this.previouslyFocusedElement) {
-      restoreActiveElement(this.previouslyFocusedElement);
-      this.previouslyFocusedElement = null;
-    }
     this.showDetailModal = false;
     this.selectedMember = null;
     this.cdr.markForCheck();

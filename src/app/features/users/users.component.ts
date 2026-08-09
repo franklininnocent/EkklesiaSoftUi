@@ -2,6 +2,11 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { CommonModule } from '@angular/common';
 import { PaginationComponent } from '@shared/components';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
@@ -14,7 +19,18 @@ import { takeUntil } from 'rxjs/operators';
 @Component({
   selector: 'app-users',
   standalone: true,
-  imports: [CommonModule, PaginationComponent, SortableDirective, UserFormModalComponent, PageHeaderComponent],
+  imports: [
+    CommonModule,
+    PaginationComponent,
+    SortableDirective,
+    UserFormModalComponent,
+    PageHeaderComponent,
+    ListToolbarComponent,
+    DataTableComponent,
+    StatusBadgeComponent,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+  ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -27,7 +43,9 @@ export class UsersComponent implements OnInit, OnDestroy {
   totalUsers = 0;
   activeUsers = 0;
   inactiveUsers = 0;
-  
+  filteredTotal = 0;
+  search = '';
+
   // Modal state
   showUserModal = false;
   selectedUser: User | null = null;
@@ -49,12 +67,13 @@ export class UsersComponent implements OnInit, OnDestroy {
     private toastService: ToastService,
     private authService: AuthService
   ) {}
-  
-  /**
-   * Check if current user is Tenant Admin
-   */
+
   get isTenantAdmin(): boolean {
     return this.authService.isTenantAdmin();
+  }
+
+  get hasActiveSearch(): boolean {
+    return this.search.trim().length > 0;
   }
 
   ngOnInit(): void {
@@ -90,15 +109,31 @@ export class UsersComponent implements OnInit, OnDestroy {
       });
   }
 
+  onSearchChange(value: string): void {
+    this.search = value ?? '';
+    this.currentPage = 1;
+    this.applyFilters();
+    this.cdr.markForCheck();
+  }
+
   applyFilters(): void {
     let filtered = [...this.allUsers];
 
-    // Apply sorting
+    const query = this.search.trim().toLowerCase();
+    if (query) {
+      filtered = filtered.filter((user) => {
+        const name = (user.name || '').toLowerCase();
+        const email = (user.email || '').toLowerCase();
+        const contact = (user.contact_number || '').toLowerCase();
+        return name.includes(query) || email.includes(query) || contact.includes(query);
+      });
+    }
+
     if (this.sortColumn && this.sortDirection) {
       filtered = this.applySorting(filtered, this.sortColumn, this.sortDirection);
     }
 
-    // Apply pagination
+    this.filteredTotal = filtered.length;
     this.users = this.applyPagination(filtered, this.currentPage, this.pageSize);
   }
 
@@ -123,20 +158,18 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   toggleUserStatus(user: User): void {
     const newStatus = user.active === 1 ? 0 : 1;
-    
-    // Prevent deactivation of primary admin
+
     if (user.is_primary_admin && newStatus === 0) {
       this.toastService.error('The primary admin account cannot be deactivated. This account is essential for maintaining tenant administrative continuity.', 'Cannot Deactivate', 6000);
       return;
     }
-    
+
     this.usersService.updateStatus(user.id, newStatus)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success) {
             this.toastService.success(`User ${newStatus === 1 ? 'activated' : 'deactivated'} successfully`, 'Success', 4000);
-            // Reload users to get fresh data from server
             this.loadUsers();
             this.loadStatistics();
           } else {
@@ -152,30 +185,23 @@ export class UsersComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Delete a user (only for Tenant Admins)
-   */
   deleteUser(user: User): void {
-    // Check if user is Tenant Admin
     if (!this.isTenantAdmin) {
       this.toastService.error('Only Tenant Administrators can delete users.', 'Permission Denied', 5000);
       return;
     }
 
-    // Prevent deletion of primary admin
     if (user.is_primary_admin) {
       this.toastService.error('The primary admin account cannot be deleted. This account is essential for maintaining tenant administrative continuity.', 'Cannot Delete', 6000);
       return;
     }
 
-    // Prevent self-deletion
     const currentUser = this.authService.currentUserValue;
     if (currentUser && user.id === currentUser.id) {
       this.toastService.error('You cannot delete your own account.', 'Cannot Delete', 5000);
       return;
     }
 
-    // Confirmation dialog
     const userName = user.name || user.email || 'this user';
     if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
       return;
@@ -207,26 +233,26 @@ export class UsersComponent implements OnInit, OnDestroy {
       });
   }
 
-  // Pagination event handlers
   onPageChange(page: number): void {
     this.currentPage = page;
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   onPageSizeChange(size: number): void {
     this.pageSize = size;
-    this.currentPage = 1; // Reset to first page
+    this.currentPage = 1;
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
-  // Sorting event handler
   onSort(event: SortEvent): void {
     this.sortColumn = event.column;
     this.sortDirection = event.direction;
     this.applyFilters();
+    this.cdr.markForCheck();
   }
 
-  // Helper methods for sorting and pagination
   private applySorting(data: User[], column: string, direction: 'asc' | 'desc'): User[] {
     return [...data].sort((a, b) => {
       const aValue = this.getNestedValue(a, column);
@@ -259,23 +285,14 @@ export class UsersComponent implements OnInit, OnDestroy {
     return 0;
   }
 
-  /**
-   * Get role name for single role (legacy support)
-   * @deprecated Use getRoles() for multi-role support
-   */
   getRoleName(user: User): string {
     return user.role?.name || user.role_name || 'N/A';
   }
 
-  /**
-   * Get all roles for a user (multi-role support)
-   * Returns an array of role names
-   */
   getRoles(user: User): string[] {
     if (user.roles && user.roles.length > 0) {
       return user.roles.map(role => role.name);
     }
-    // Fallback to legacy single role
     if (user.role?.name) {
       return [user.role.name];
     }
@@ -285,25 +302,13 @@ export class UsersComponent implements OnInit, OnDestroy {
     return ['No Role'];
   }
 
-  /**
-   * Get role count for a user
-   */
-  getRoleCount(user: User): number {
-    return user.roles?.length || 0;
+  roleTone(index: number, role: string): StatusBadgeTone {
+    if (role === 'No Role') {
+      return 'neutral';
+    }
+    return index === 0 ? 'info' : 'neutral';
   }
 
-  /**
-   * Check if user has multiple roles
-   */
-  hasMultipleRoles(user: User): boolean {
-    return (user.roles?.length || 0) > 1;
-  }
-
-  getStatusText(user: User): string {
-    return user.active === 1 ? 'Active' : 'Inactive';
-  }
-
-  // Modal handlers
   openCreateUserModal(): void {
     this.selectedUser = null;
     this.showUserModal = true;
@@ -319,8 +324,7 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.selectedUser = null;
   }
 
-  onUserSaved(user: User): void {
-    // Reload the users list to reflect changes
+  onUserSaved(_user: User): void {
     this.loadUsers();
     this.loadStatistics();
     this.closeUserModal();
@@ -331,4 +335,3 @@ export class UsersComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 }
-

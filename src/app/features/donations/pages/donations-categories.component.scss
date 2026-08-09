@@ -1,5 +1,19 @@
 @import '../styles/stewardship-split-layout.scss';
 
+/* .cf-split-form-body is `display: grid` with implicit auto rows. When this
+ * form is short (few fields) inside the taller split-panel column, the
+ * default `align-content: normal` (= stretch) distributes the leftover
+ * vertical space into the grid rows, inflating the last row (the button
+ * bar) and stretching the buttons inside it. Pin rows to the top so they
+ * keep their natural, standard size instead of stretching. */
+.cf-split-form-body {
+  align-content: start;
+}
+
+.cf-split-form-actions {
+  justify-content: flex-end;
+}
+
 .category-load-error__text {
   margin: 0;
   color: var(--cf-critical);

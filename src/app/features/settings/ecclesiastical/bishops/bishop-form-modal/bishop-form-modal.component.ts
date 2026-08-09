@@ -6,11 +6,12 @@ import { Bishop, BishopCreateRequest, BishopUpdateRequest } from '@core/models/e
 import { ToastService } from '@core/services';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-bishop-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent],
   templateUrl: './bishop-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './bishop-form-modal.component.scss'

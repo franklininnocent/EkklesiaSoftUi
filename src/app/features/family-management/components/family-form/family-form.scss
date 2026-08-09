@@ -1,126 +1,5 @@
 @use '../../../../shared/styles/form-validation' as *;
-
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 20px;
-  animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.modal-content {
-  background: #ffffff;
-  border-radius: 14px;
-  max-width: 980px;
-  width: 100%;
-  max-height: 90vh;
-
-  &--wide {
-    max-width: 1120px;
-  }
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 24px 72px rgba(2, 6, 23, 0.35);
-  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  box-sizing: border-box;
-  overflow: hidden; // ensure inner scroll stays inside modal
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
-    opacity: 1;
-  }
-}
-
-// Modal Header
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #4338ca 100%);
-  background-size: 200% 200%;
-  animation: gradientShift 8s ease infinite;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(79, 70, 229, 0.2);
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-      radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%),
-      radial-gradient(circle at 80% 80%, rgba(255,255,255,0.06) 0%, transparent 50%);
-    pointer-events: none;
-  }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.6) 50%, rgba(255,255,255,0.25) 100%);
-  }
-
-  h2 {
-    margin: 0;
-    font-size: 22px;
-    line-height: 1.25;
-    font-weight: 700;
-    letter-spacing: 0.2px;
-    color: #ffffff;
-    text-shadow: 0 2px 8px rgba(0,0,0,0.15);
-  }
-
-  .close-btn {
-    background: rgba(255, 255, 255, 0.15);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    font-size: 18px;
-    cursor: pointer;
-    color: #ffffff;
-    padding: 0;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.25);
-      border-color: rgba(255, 255, 255, 0.4);
-      transform: rotate(90deg) scale(1.05);
-    }
-  }
-}
+@import '../../../donations/styles/stewardship-split-layout.scss';
 
 @keyframes gradientShift {
   0%, 100% { background-position: 0% 50%; }
@@ -235,107 +114,34 @@ form {
   to { opacity: 1; transform: translateY(0); }
 }
 
-// Form Grid
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px 20px;
-
-  .full-width { grid-column: 1 / -1; }
-
-  // Blue animated section accent (underline + subtle wash), similar to Tenant/BCC
-  position: relative;
-  padding-bottom: 12px;
-
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(135deg, rgba(79,70,229,0.06) 0%, rgba(99,102,241,0.06) 50%, rgba(67,56,202,0.06) 100%);
-    background-size: 200% 200%;
-    animation: gradientShift 8s ease infinite;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.3s ease;
+// Family Information tab fields — imported .cf-split-* classes (see
+// stewardship-split-layout.scss) supply grid/section/input styling. These two
+// modifiers extend that shared language, following its own naming
+// conventions (e.g. .cf-split-banner--error, .cf-split-field__hint), to cover
+// inline field-level validation, which none of the reference modals need but
+// which Add Family's existing behavior requires.
+.cf-split-field--invalid {
+  input,
+  select,
+  textarea {
+    border-color: var(--cf-critical);
   }
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--primary-color) 0%, var(--primary-dark) 100%);
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  &:hover::before { opacity: 1; }
-  &:hover::after { width: 100%; }
 }
 
-// Form Groups
-.form-group {
-  min-width: 0;
+.cf-split-field__error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--cf-critical);
+  line-height: 1.35;
+}
 
-  label {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 13px;
-    font-weight: 600;
-    color: #334155;
-    margin-bottom: 6px;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    .required { color: #ef4444; }
-  }
-
-  &:hover label {
-    color: var(--primary-color);
-    transform: translateX(2px);
-  }
-
-  .form-control {
-    width: 100%;
-    padding: 10px 12px;
-    border: 1px solid #cbd5e0;
-    border-radius: 8px;
-    font-size: 14px;
-    line-height: 1.4;
-    transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease, transform 0.15s ease;
-    box-sizing: border-box;
-    color: #0f172a;
-    background: #ffffff;
-
-    &:hover { border-color: #94a3b8; background: #f8fafc; transform: translateY(-1px); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
-    &:focus {
-      outline: none;
-      border-color: #4f46e5;
-      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.12), 0 0 0 3px rgba(79, 70, 229, 0.1);
-      background: #fbfdff;
-      transform: translateY(-2px);
-      animation: inputFocusPulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    &.error { border-color: #ef4444; }
-    &.error:focus { box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.18); }
-    &::placeholder { color: #9ca3af; }
-  }
-
-  textarea.form-control { resize: vertical; min-height: 120px; }
-
-  select.form-control {
-    appearance: none;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
-    background-position: right 10px center;
-    background-repeat: no-repeat;
-    background-size: 16px;
-    padding-right: 36px;
-    cursor: pointer;
-    &:focus { box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1), 0 4px 12px rgba(0,0,0,0.08); animation: inputFocusPulse 0.5s ease-out; }
-  }
-
-  .error-text { color: #dc2626; font-size: 12px; }
+// Lays the Family Details / Address Information sections side by side as two
+// columns. Reuses .cf-split-grid's own 2-column/gap values and its existing
+// global @media(max-width:768px) collapse-to-1-column rule (no duplicate
+// breakpoint override needed) — only adds align-items so a shorter section
+// doesn't stretch to match its neighbor's height.
+.cf-split-grid--sections {
+  align-items: start;
 }
 
 // Form Sections (match tenant modal behavior)
@@ -1315,98 +1121,10 @@ form {
   }
 }
 
-// Modal Footer
-.modal-footer {
-  padding: 14px 24px 18px 24px;
-  border-top: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: flex-end;
-  gap: 12px;
-  flex-shrink: 0;
-  background: #fbfdff;
-  border-bottom-left-radius: 12px;
-  border-bottom-right-radius: 12px;
-  position: static; // no overlay, sits below scroll area
-  bottom: auto;
-  z-index: auto;
-}
-
-// Buttons
-.btn {
-  padding: 10px 18px;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.18s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-
-  &.btn-primary {
-    background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #4338ca 100%);
-    background-size: 200% 200%;
-    animation: gradientShift 8s ease infinite;
-    color: #ffffff;
-
-    &:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 6px 18px rgba(79, 70, 229, 0.3);
-    }
-
-    &:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
-  }
-
-  &.btn-secondary {
-    background: #e5e7eb;
-    color: #374151;
-
-    &:hover:not(:disabled) { background: #e2e8f0; }
-    &:disabled { opacity: 0.55; cursor: not-allowed; }
-  }
-
-  .icon { font-size: 16px; }
-}
-
-.btn-icon {
-  padding: 6px 10px;
-  border: none;
-  background: #edf2f7;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-
-  &:hover {
-    background: #e2e8f0;
-    transform: scale(1.05);
-  }
-
-  &.btn-danger {
-    &:hover {
-      background: #fed7d7;
-    }
-  }
-}
 
 // Responsive
 @media (max-width: 768px) {
-  .modal-overlay { padding: 0; align-items: flex-end; }
-
-  .modal-content {
-    max-width: 100%;
-    max-height: 98vh;
-    border-bottom-left-radius: 0;
-    border-bottom-right-radius: 0;
-    margin: 0;
-  }
-
-  .form-grid { grid-template-columns: 1fr; gap: 14px; }
   .tab-content { padding: 16px; padding-bottom: 24px; }
-  .modal-header, .modal-footer { padding: 14px 16px; }
-
-  .modal-header h2 { font-size: 20px; }
 
   .em-members-workspace__header {
     flex-direction: column;

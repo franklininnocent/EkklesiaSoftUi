@@ -999,8 +999,8 @@
 .coc-shortcuts-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
-  z-index: 40;
+  background: var(--cf-overlay-bg);
+  z-index: var(--cf-z-drawer);
 }
 
 .coc-shortcuts {
@@ -1012,7 +1012,7 @@
   background: var(--coc-surface);
   border-left: 1px solid var(--coc-border);
   box-shadow: var(--coc-shadow-lg);
-  z-index: 50;
+  z-index: var(--cf-z-drawer);
   padding: 1.25rem;
   display: grid;
   align-content: start;

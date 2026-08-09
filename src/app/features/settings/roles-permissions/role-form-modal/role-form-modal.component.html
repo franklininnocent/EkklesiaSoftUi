@@ -1,258 +1,213 @@
-<div class="modal-overlay" *ngIf="show" (click)="close()" role="dialog" aria-modal="true" [attr.aria-labelledby]="isEditMode ? 'edit-role-title' : 'create-role-title'">
-  <div #modalContainer class="modal-container" (click)="onModalClick($event)">
-    <!-- Modal Header -->
-    <div class="modal-header">
-      <div class="header-content">
-        <div class="header-icon-wrapper">
-          <div class="header-icon" [class.edit-mode]="isEditMode">
-            <!-- Create Mode Icon: Shield with Star (Authority/Role) -->
-            <svg *ngIf="!isEditMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              <path d="M12 8l1.5 3 3.5.5-2.5 2.5.5 3.5-3-1.5-3 1.5.5-3.5L7 11l3.5-.5L12 8z"></path>
-            </svg>
-            <!-- Edit Mode Icon: Settings/Gear -->
-            <svg *ngIf="isEditMode" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M12 1v6m0 6v6m6-12l-4.5 4.5m0 3L18 19m-6-6l4.5 4.5m0-9L12 13M1 12h6m6 0h6m-6-6l-4.5 4.5m0 3L6 19"></path>
-            </svg>
-            <div class="icon-glow"></div>
-          </div>
-        </div>
-        <div class="header-text">
-          <h2 class="modal-title" [id]="isEditMode ? 'edit-role-title' : 'create-role-title'">{{ isEditMode ? 'Edit Role' : 'Create New Role' }}</h2>
-          <p class="modal-subtitle">{{ isEditMode ? 'Update role details and permissions' : 'Define a new custom role for your tenant' }}</p>
-        </div>
-      </div>
-      <button class="btn-close" (click)="close()" [disabled]="isSubmitting" type="button" aria-label="Close modal">
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
+<app-modal-shell
+  *ngIf="show"
+  [title]="isEditMode ? 'Edit Role' : 'Create New Role'"
+  [description]="isEditMode ? 'Update role details and permissions' : 'Define a new custom role for your tenant'"
+  size="full"
+  [isSubmitting]="isSubmitting"
+  (closeRequested)="close()"
+>
+  <form [formGroup]="roleForm" (ngSubmit)="onSubmit()">
+    <!-- Error Message -->
+    <div class="error-alert" *ngIf="errorMessage" role="alert" aria-live="polite">
+      <div class="error-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
+          <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-      </button>
+      </div>
+      <div class="error-content">
+        <p class="error-title">Error</p>
+        <p class="error-message">{{ errorMessage }}</p>
+      </div>
     </div>
 
-    <!-- Modal Body -->
-    <div class="modal-body">
-      <form [formGroup]="roleForm" (ngSubmit)="onSubmit()">
-        <!-- Error Message -->
-        <div class="error-alert" *ngIf="errorMessage" role="alert" aria-live="polite">
-          <div class="error-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
-              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-              <line x1="12" y1="9" x2="12" y2="13"></line>
-              <line x1="12" y1="17" x2="12.01" y2="17"></line>
-            </svg>
-          </div>
-          <div class="error-content">
-            <p class="error-title">Error</p>
-            <p class="error-message">{{ errorMessage }}</p>
+    <div class="safeguard-alert" *ngIf="isRoleIdentityLocked()" role="note" aria-live="polite">
+      <div class="safeguard-icon">🔒</div>
+      <div class="safeguard-content">
+        <p class="safeguard-title">Protected Role Safeguard</p>
+        <p class="safeguard-message">
+          Role name and level are locked for the Administrator role in tenant mode.
+          You can update description and permissions only.
+        </p>
+      </div>
+    </div>
+
+    <div class="identity-grid">
+      <!-- Role Name Field -->
+      <div class="form-group form-group--compact">
+        <label for="roleName" class="form-label">
+          <span class="label-text">Role Name</span>
+          <span class="label-required">*</span>
+        </label>
+        <input
+          id="roleName"
+          type="text"
+          class="form-control"
+          formControlName="name"
+          placeholder="e.g., Content Manager, Team Lead"
+          [class.error]="hasError('name')"
+          [class.is-valid]="name?.valid && name?.touched"
+          [disabled]="isRoleIdentityLocked()"
+        />
+        <span class="field-error" *ngIf="hasError('name')">
+          {{ getErrorMessage('name') }}
+        </span>
+        <p class="field-hint">Use letters, numbers, spaces, hyphens, and underscores</p>
+      </div>
+
+      <!-- Level Field -->
+      <div class="form-group form-group--compact">
+        <label for="roleLevel" class="form-label">
+          <span class="label-text">Role Level</span>
+          <span class="label-required">*</span>
+          <span class="level-badge">Level {{ level?.value }}</span>
+        </label>
+        <div class="level-control">
+          <input
+            id="roleLevel"
+            type="range"
+            class="form-range"
+            formControlName="level"
+            [min]="effectiveMinLevel"
+            [max]="maxLevel"
+            step="1"
+            [disabled]="isRoleIdentityLocked()"
+          />
+          <div class="level-markers">
+            <span *ngFor="let i of levelMarkers" class="level-marker" [class.active]="level?.value === i">
+              {{ i }}
+            </span>
           </div>
         </div>
+        <div class="level-description">
+          <span>{{ getLevelDescription(level?.value) }}</span>
+        </div>
+        <span class="field-error" *ngIf="hasError('level')">
+          {{ getErrorMessage('level') }}
+        </span>
+      </div>
+    </div>
 
-        <div class="safeguard-alert" *ngIf="isRoleIdentityLocked()" role="note" aria-live="polite">
-          <div class="safeguard-icon">🔒</div>
-          <div class="safeguard-content">
-            <p class="safeguard-title">Protected Role Safeguard</p>
-            <p class="safeguard-message">
-              Role name and level are locked for the Administrator role in tenant mode.
-              You can update description and permissions only.
+    <!-- Description Field -->
+    <div class="form-group form-group--compact">
+      <label for="roleDescription" class="form-label">
+        <span class="label-text">Description</span>
+        <span class="label-optional">(Optional)</span>
+      </label>
+      <textarea
+        id="roleDescription"
+        class="form-control textarea"
+        formControlName="description"
+        placeholder="Describe the role's purpose and responsibilities..."
+        rows="3"
+        [class.error]="hasError('description')"
+        [class.is-valid]="description?.valid && description?.touched && description?.value"
+      ></textarea>
+      <div class="field-footer">
+        <span class="field-error" *ngIf="hasError('description')">
+          {{ getErrorMessage('description') }}
+        </span>
+        <div class="char-counter" [class.warning]="descriptionRemainingChars < 50" [class.danger]="descriptionRemainingChars < 10">
+          <span class="counter-icon">📝</span>
+          <span>{{ descriptionCharCount }} / {{ maxDescriptionLength }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Permissions Section -->
+    <div class="permissions-section">
+      <div class="permissions-header" (click)="togglePermissionsPanel()">
+        <div class="permissions-title">
+          <span class="permissions-icon">🔐</span>
+          <span class="permissions-title-text">Assign Permissions</span>
+          <span class="permissions-count" *ngIf="selectedPermissionsCount > 0">
+            {{ selectedPermissionsCount }} selected
+          </span>
+        </div>
+        <span class="toggle-icon" [class.expanded]="showPermissions">
+          {{ showPermissions ? '▼' : '▶' }}
+        </span>
+      </div>
+
+      <div class="permissions-body" *ngIf="showPermissions">
+        <div *ngIf="permissionCatalogAccessDenied" class="permissions-info permissions-info--warning">
+          <span class="permissions-info__icon">🔒</span>
+          <div>
+            <p class="permissions-info__title">Permission Catalog Not Available</p>
+            <p class="permissions-info__text">
+              You can create or update this role, but your account cannot view assignable permissions.
+              Ask an administrator to grant access to view assignable permissions.
             </p>
           </div>
         </div>
 
-        <div class="identity-grid">
-          <!-- Role Name Field -->
-          <div class="form-group form-group--compact">
-            <label for="roleName" class="form-label">
-              <span class="label-text">Role Name</span>
-              <span class="label-required">*</span>
-            </label>
-            <input
-              id="roleName"
-              type="text"
-              class="form-control"
-              formControlName="name"
-              placeholder="e.g., Content Manager, Team Lead"
-              [class.error]="hasError('name')"
-              [class.is-valid]="name?.valid && name?.touched"
-              [disabled]="isRoleIdentityLocked()"
-            />
-            <span class="field-error" *ngIf="hasError('name')">
-              {{ getErrorMessage('name') }}
-            </span>
-            <p class="field-hint">Use letters, numbers, spaces, hyphens, and underscores</p>
-          </div>
-
-          <!-- Level Field -->
-          <div class="form-group form-group--compact">
-            <label for="roleLevel" class="form-label">
-              <span class="label-text">Role Level</span>
-              <span class="label-required">*</span>
-              <span class="level-badge">Level {{ level?.value }}</span>
-            </label>
-            <div class="level-control">
-              <input
-                id="roleLevel"
-                type="range"
-                class="form-range"
-                formControlName="level"
-                [min]="effectiveMinLevel"
-                [max]="maxLevel"
-                step="1"
-                [disabled]="isRoleIdentityLocked()"
-              />
-              <div class="level-markers">
-                <span *ngFor="let i of levelMarkers" class="level-marker" [class.active]="level?.value === i">
-                  {{ i }}
-                </span>
-              </div>
-            </div>
-            <div class="level-description">
-              <span>{{ getLevelDescription(level?.value) }}</span>
-            </div>
-            <span class="field-error" *ngIf="hasError('level')">
-              {{ getErrorMessage('level') }}
-            </span>
-          </div>
+        <!-- Loading State -->
+        <div *ngIf="loadingPermissions && !permissionCatalogAccessDenied" class="permissions-loading">
+          <div class="spinner"></div>
+          <p>Loading permissions...</p>
         </div>
 
-        <!-- Description Field -->
-        <div class="form-group form-group--compact">
-          <label for="roleDescription" class="form-label">
-            <span class="label-text">Description</span>
-            <span class="label-optional">(Optional)</span>
-          </label>
-          <textarea
-            id="roleDescription"
-            class="form-control textarea"
-            formControlName="description"
-            placeholder="Describe the role's purpose and responsibilities..."
-            rows="3"
-            [class.error]="hasError('description')"
-            [class.is-valid]="description?.valid && description?.touched && description?.value"
-          ></textarea>
-          <div class="field-footer">
-            <span class="field-error" *ngIf="hasError('description')">
-              {{ getErrorMessage('description') }}
-            </span>
-            <div class="char-counter" [class.warning]="descriptionRemainingChars < 50" [class.danger]="descriptionRemainingChars < 10">
-              <span class="counter-icon">📝</span>
-              <span>{{ descriptionCharCount }} / {{ maxDescriptionLength }}</span>
-            </div>
-          </div>
+        <!-- Error State -->
+        <div *ngIf="permissionsError && !loadingPermissions && !permissionCatalogAccessDenied" class="permissions-error">
+          <span class="error-icon">⚠️</span>
+          <p>{{ permissionsError }}</p>
+          <button class="btn-retry" (click)="loadPermissions()">Retry</button>
         </div>
 
-        <!-- Permissions Section -->
-        <div class="permissions-section">
-          <div class="permissions-header" (click)="togglePermissionsPanel()">
-            <div class="permissions-title">
-              <span class="permissions-icon">🔐</span>
-              <span class="permissions-title-text">Assign Permissions</span>
-              <span class="permissions-count" *ngIf="selectedPermissionsCount > 0">
-                {{ selectedPermissionsCount }} selected
-              </span>
-            </div>
-            <span class="toggle-icon" [class.expanded]="showPermissions">
-              {{ showPermissions ? '▼' : '▶' }}
-            </span>
-          </div>
-
-          <div class="permissions-body" *ngIf="showPermissions">
-            <div *ngIf="permissionCatalogAccessDenied" class="permissions-info permissions-info--warning">
-              <span class="permissions-info__icon">🔒</span>
-              <div>
-                <p class="permissions-info__title">Permission Catalog Not Available</p>
-                <p class="permissions-info__text">
-                  You can create or update this role, but your account cannot view assignable permissions.
-                  Ask an administrator to grant access to view assignable permissions.
-                </p>
-              </div>
-            </div>
-
-            <!-- Loading State -->
-            <div *ngIf="loadingPermissions && !permissionCatalogAccessDenied" class="permissions-loading">
-              <div class="spinner"></div>
-              <p>Loading permissions...</p>
-            </div>
-
-            <!-- Error State -->
-            <div *ngIf="permissionsError && !loadingPermissions && !permissionCatalogAccessDenied" class="permissions-error">
-              <span class="error-icon">⚠️</span>
-              <p>{{ permissionsError }}</p>
-              <button class="btn-retry" (click)="loadPermissions()">Retry</button>
-            </div>
-
-            <!-- Permissions Workspace -->
-            <div *ngIf="!loadingPermissions && !permissionsError && !permissionCatalogAccessDenied" class="permissions-list">
-              <app-role-permission-workspace
-                [modules]="modules"
-                [permissionsByModule]="permissionsByModule"
-                [selectedPermissionIds]="selectedPermissionIds"
-                [disabled]="isSubmitting"
-                [showSummary]="false"
-                (selectedPermissionIdsChange)="onWorkspaceSelectionChange($event)"
-              ></app-role-permission-workspace>
-            </div>
-          </div>
-        </div>
-
-        <!-- Info Box -->
-        <div class="info-box" *ngIf="!tenantMode">
-          <div class="info-icon">💡</div>
-          <div class="info-content">
-            <p class="info-title">Tenant-Specific Role</p>
-            <p class="info-text">This role will be created for your tenant only and can be customized to your organization's needs. Select permissions above to define what this role can do.</p>
-          </div>
-        </div>
-      </form>
-    </div>
-
-    <!-- Modal Footer -->
-    <div class="modal-footer">
-      <div class="footer-summary" *ngIf="showPermissions && !permissionCatalogAccessDenied">
-        <div class="footer-summary-pill">
-          <span class="footer-summary-label">Selected</span>
-          <strong>{{ selectedPermissionsCount }}</strong>
-        </div>
-        <div class="footer-summary-pill">
-          <span class="footer-summary-label">Modules</span>
-          <strong>{{ selectedModulesCount }}</strong>
-        </div>
-        <div class="footer-summary-pill footer-summary-pill--risk" *ngIf="highRiskSelectedCount > 0">
-          <span class="footer-summary-label">High Risk</span>
-          <strong>{{ highRiskSelectedCount }}</strong>
+        <!-- Permissions Workspace -->
+        <div *ngIf="!loadingPermissions && !permissionsError && !permissionCatalogAccessDenied" class="permissions-list">
+          <app-role-permission-workspace
+            [modules]="modules"
+            [permissionsByModule]="permissionsByModule"
+            [selectedPermissionIds]="selectedPermissionIds"
+            [disabled]="isSubmitting"
+            [showSummary]="false"
+            (selectedPermissionIdsChange)="onWorkspaceSelectionChange($event)"
+          ></app-role-permission-workspace>
         </div>
       </div>
-      <button 
-        type="button" 
-        class="btn-cancel" 
-        (click)="close()"
-        [disabled]="isSubmitting"
-        title="Cancel and close">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-        <span>Cancel</span>
-      </button>
-      <button 
-        type="submit" 
-        class="btn-save" 
-        (click)="onSubmit()"
-        [disabled]="roleForm.invalid || isSubmitting"
-        [title]="isEditMode ? 'Update role' : 'Create role'">
-        <span *ngIf="!isSubmitting">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="20 6 9 17 4 12"></polyline>
-          </svg>
-          <span>Submit</span>
-        </span>
-        <span *ngIf="isSubmitting" class="btn-loading">
-          <span class="spinner"></span>
-          <span>Submitting...</span>
-        </span>
-      </button>
     </div>
-  </div>
-</div>
 
+    <!-- Info Box -->
+    <div class="info-box" *ngIf="!tenantMode">
+      <div class="info-icon">💡</div>
+      <div class="info-content">
+        <p class="info-title">Tenant-Specific Role</p>
+        <p class="info-text">This role will be created for your tenant only and can be customized to your organization's needs. Select permissions above to define what this role can do.</p>
+      </div>
+    </div>
+  </form>
+
+  <div modalFooter>
+    <div class="footer-summary" *ngIf="showPermissions && !permissionCatalogAccessDenied">
+      <div class="footer-summary-pill">
+        <span class="footer-summary-label">Selected</span>
+        <strong>{{ selectedPermissionsCount }}</strong>
+      </div>
+      <div class="footer-summary-pill">
+        <span class="footer-summary-label">Modules</span>
+        <strong>{{ selectedModulesCount }}</strong>
+      </div>
+      <div class="footer-summary-pill footer-summary-pill--risk" *ngIf="highRiskSelectedCount > 0">
+        <span class="footer-summary-label">High Risk</span>
+        <strong>{{ highRiskSelectedCount }}</strong>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="cf-btn"
+      (click)="close()"
+      [disabled]="isSubmitting">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="onSubmit()"
+      [disabled]="roleForm.invalid || isSubmitting">
+      <span *ngIf="!isSubmitting">{{ isEditMode ? 'Update Role' : 'Create Role' }}</span>
+      <span *ngIf="isSubmitting">Submitting…</span>
+    </button>
+  </div>
+</app-modal-shell>

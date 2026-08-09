@@ -17,11 +17,12 @@ import {
   Organization,
 } from '@features/ministries-associations/models/ministries.model';
 import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
+import { ModalShellComponent } from '@shared/components';
 
 @Component({
   selector: 'app-enroll-from-family-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
   templateUrl: './enroll-from-family-modal.component.html',
   styleUrl: './enroll-from-family-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

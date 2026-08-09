@@ -351,6 +351,99 @@
   line-height: 1.35;
 }
 
+/*
+ * Shared ng-select skin for `.cf-split-*` forms — matches `.cf-split-field`
+ * input border/radius/padding/font/focus values exactly. Category itself has
+ * no `ng-select`; when a control needs one (platform, month, denomination,
+ * country, etc.), apply this class to the `<ng-select>` element instead of
+ * writing a per-modal `::ng-deep` override.
+ */
+.cf-split-select {
+  display: block;
+  width: 100%;
+
+  ::ng-deep {
+    .ng-select-container {
+      min-height: calc(0.5rem + 0.5rem + 0.9rem + 2px);
+      border: 1px solid var(--cf-panel-border);
+      border-radius: var(--cf-radius-sm);
+      background: #fff;
+      font-size: 0.9rem;
+      padding: 0 0.15rem;
+    }
+
+    &.ng-select-focused .ng-select-container {
+      border-color: var(--cf-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .ng-placeholder {
+      color: var(--cf-muted);
+    }
+
+    .ng-value-label {
+      color: var(--cf-slate-900);
+    }
+
+    .ng-dropdown-panel {
+      border: 1px solid var(--cf-panel-border);
+      border-radius: var(--cf-radius-sm);
+      box-shadow: var(--cf-shadow-modal, 0 12px 32px rgba(15, 23, 42, 0.12));
+    }
+  }
+}
+
+/*
+ * Shared image-upload field for `.cf-split-*` forms — preview thumbnail,
+ * bordered `.cf-btn` trigger, and an optional remove pill. Generic on
+ * purpose (not "patron image", "logo", or "avatar") so any future
+ * Category-style modal that needs a single image upload (church logo,
+ * member photo, organization badge, etc.) can reuse it as-is. Use inside a
+ * `.cf-split-field` / `.cf-split-field--full` wrapper with its own
+ * `<label>` and optional `.cf-split-field__hint` for format/size guidance.
+ */
+.cf-split-image-upload {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.cf-split-image-upload__preview {
+  position: relative;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: var(--cf-radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--cf-panel-border);
+  background: var(--cf-slate-50);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.cf-split-image-upload__remove {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  appearance: none;
+  border: 0;
+  border-radius: var(--cf-radius-sm);
+  background: rgba(15, 23, 42, 0.75);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cf-critical);
+  }
+}
+
 .cf-split-form-actions {
   display: flex;
   gap: 0.5rem;

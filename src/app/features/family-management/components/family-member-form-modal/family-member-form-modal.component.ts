@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { ModalShellComponent } from '@shared/components';
 import { AuthService } from '@core/services';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
@@ -77,7 +78,7 @@ function createLocalPhoneValidator(getDialCode: () => string): ValidatorFn {
 @Component({
   selector: 'app-family-member-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent],
+  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent],
   templateUrl: './family-member-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-member-form-modal.component.scss']

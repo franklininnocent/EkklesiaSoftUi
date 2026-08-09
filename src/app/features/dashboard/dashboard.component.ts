@@ -28,6 +28,7 @@ import {
   MinistriesAuditLogEntry,
   MinistriesDashboardSummary,
 } from '@features/ministries-associations/models/ministries.model';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 export type DashboardTab = 'overview' | 'operations';
 
@@ -145,6 +146,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private memberService = inject(MemberService);
   private sacramentService = inject(SacramentService);
   private authService = inject(AuthService);
+  private supportSessions = inject(SupportSessionService);
   private donationsService = inject(DonationsService);
   private ministriesApi = inject(MinistriesApiService);
   private router = inject(Router);
@@ -627,7 +629,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private resolveMinistriesAccess(user: User | null): void {
-    if (!this.authService.canAccessMinistries(user)) {
+    const hasActiveSupportSession = !!this.supportSessions.sessionId;
+    if (!this.authService.canAccessMinistries(user, { hasActiveSupportSession })) {
       this.showMinistriesSection = false;
       this.ministriesSummary = null;
       this.ministriesActivity = [];

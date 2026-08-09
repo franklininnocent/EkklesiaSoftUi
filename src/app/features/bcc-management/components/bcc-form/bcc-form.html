@@ -1,165 +1,164 @@
-<div class="modal-overlay" (click)="onCancel()">
-  <div class="modal-content" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>{{ bcc ? 'Edit' : 'Add' }} BCC</h2>
-      <button class="close-btn" type="button" (click)="onCancel()">✕</button>
-    </div>
+<app-modal-shell
+  [title]="bcc ? 'Edit BCC' : 'Add BCC'"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close BCC form"
+  [isSubmitting]="loading"
+  (closeRequested)="onCancel()"
+>
+  <form
+    id="bcc-modal-form"
+    class="cf-split-form-body"
+    [formGroup]="bccForm"
+    (ngSubmit)="onSubmit()"
+    novalidate
+    #formContent
+  >
+    <section class="cf-split-section" aria-labelledby="bcc-section-basic">
+      <h3 id="bcc-section-basic" class="cf-split-section__title">Basic &amp; Status</h3>
+      <div class="cf-split-grid">
+        <!-- BCC Code (Read-only, shown in edit mode only) -->
+        <div class="cf-split-field" *ngIf="bcc">
+          <label for="bcc_code">BCC Code</label>
+          <input
+            id="bcc_code"
+            type="text"
+            formControlName="bcc_code"
+            readonly
+          />
+          <p class="cf-split-field__hint">Auto-generated unique code</p>
+        </div>
 
-    <div class="error-banner" *ngIf="error">
-      <span class="error-icon">⚠️</span>
-      {{ error }}
-    </div>
+        <div class="cf-split-field" [class.cf-split-field--full]="!bcc">
+          <label for="bcc_name">BCC Name <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <input
+            id="bcc_name"
+            type="text"
+            formControlName="name"
+            aria-required="true"
+            placeholder="Enter BCC name"
+            [class.cf-split-field__control--invalid]="hasError('name')"
+          />
+          <p class="cf-split-field__error" *ngIf="hasError('name')">
+            {{ getErrorMessage('name') }}
+          </p>
+        </div>
 
-    <form [formGroup]="bccForm" (ngSubmit)="onSubmit()">
-      <div class="form-content" #formContent>
-        <div class="form-grid">
-          <!-- Basic Information Section -->
-          <div class="form-section-header full-width">
-            <h3>Basic & Status</h3>
-          </div>
+        <div class="cf-split-field cf-split-field--full">
+          <label for="bcc_description">Description <span class="cf-split-optional">optional</span></label>
+          <textarea
+            id="bcc_description"
+            formControlName="description"
+            rows="3"
+            placeholder="Brief description of the BCC"
+          ></textarea>
+          <p class="cf-split-field__hint">Provide a brief overview of this BCC</p>
+        </div>
 
-          <!-- BCC Code (Read-only, shown in edit mode only) -->
-          <div class="form-group" *ngIf="bcc">
-            <label>BCC Code</label>
-            <input 
-              type="text" 
-              formControlName="bcc_code" 
-              class="form-control"
-              readonly
-              [style.background-color]="'#f7fafc'"
-              [style.cursor]="'not-allowed'"
-            />
-            <small class="form-hint">Auto-generated unique code</small>
-          </div>
-
-          <div class="form-group" [class.full-width]="!bcc">
-            <label>BCC Name <span class="required">*</span></label>
-            <input 
-              type="text" 
-              formControlName="name" 
-              class="form-control"
-              [class.error]="hasError('name')"
-              placeholder="Enter BCC name"
-            />
-            <span class="field-error" *ngIf="hasError('name')">
-              {{ getErrorMessage('name') }}
-            </span>
-          </div>
-
-          <div class="form-group full-width">
-            <label>Description</label>
-            <textarea 
-              formControlName="description" 
-              class="form-control" 
-              rows="3"
-              placeholder="Brief description of the BCC"
-            ></textarea>
-            <small class="form-hint">Provide a brief overview of this BCC</small>
-          </div>
-
-          <div class="form-group">
-            <label>Status <span class="required">*</span></label>
-            <select 
-              formControlName="status" 
-              class="form-control"
-              [class.error]="hasError('status')"
-            >
-              <option value="active">Active</option>
-              <option value="inactive" [disabled]="bcc && getActiveFamilyCount() > 0">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-            <span class="field-error" *ngIf="hasError('status')">
-              {{ getErrorMessage('status') || (bccForm.get('status')?.errors?.['hasActiveFamilies'] ? 'Cannot set BCC to inactive with active families' : '') }}
-            </span>
-            <small class="form-hint" *ngIf="bcc && getActiveFamilyCount() > 0" style="color: #dc2626;">
-              ⚠️ This BCC has {{ getActiveFamilyCount() }} active {{ getActiveFamilyCount() === 1 ? 'family' : 'families' }}. Reassign or deactivate them before setting BCC to inactive.
-            </small>
-            <small class="form-hint" *ngIf="!bcc || getActiveFamilyCount() === 0">
-              Current status of the BCC
-            </small>
-          </div>
-
-          <!-- Location & Schedule -->
-          <div class="form-section-header full-width">
-            <h3>Location & Schedule</h3>
-          </div>
-
-          <div class="form-group full-width">
-            <label>Location/Street</label>
-            <input 
-              type="text" 
-              formControlName="location" 
-              class="form-control"
-              placeholder="Enter street address or location"
-            />
-            <small class="form-hint">Street address or location of the BCC</small>
-          </div>
-
-          <div class="form-group">
-            <label>Meeting Place</label>
-            <input 
-              type="text" 
-              formControlName="meeting_place" 
-              class="form-control"
-              placeholder="e.g., Church Hall, Community Center, Member's Home"
-            />
-            <small class="form-hint">Regular meeting location for this BCC</small>
-          </div>
-
-          <div class="form-group">
-            <label>Meeting Day</label>
-            <select formControlName="meeting_day" class="form-control">
-              <option value="">Select Day</option>
-              <option *ngFor="let day of weekDays" [value]="day.value">
-                {{ day.label }}
-              </option>
-            </select>
-            <small class="form-hint">Day of the week when BCC meets</small>
-          </div>
-
-          <div class="form-group">
-            <label>Meeting Time</label>
-            <input 
-              type="time" 
-              formControlName="meeting_time" 
-              class="form-control"
-            />
-            <small class="form-hint">Regular meeting time</small>
-          </div>
-
-          <div class="form-group">
-            <label>Meeting Frequency</label>
-            <select formControlName="meeting_frequency" class="form-control">
-              <option value="">Select Frequency</option>
-              <option *ngFor="let freq of frequencies" [value]="freq">
-                {{ freq }}
-              </option>
-            </select>
-            <small class="form-hint">How often the BCC meets</small>
-          </div>
+        <div class="cf-split-field">
+          <label for="bcc_status">Status <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <select
+            id="bcc_status"
+            formControlName="status"
+            aria-required="true"
+            [class.cf-split-field__control--invalid]="hasError('status')"
+          >
+            <option value="active">Active</option>
+            <option value="inactive" [disabled]="bcc && getActiveFamilyCount() > 0">Inactive</option>
+            <option value="suspended">Suspended</option>
+          </select>
+          <p class="cf-split-field__error" *ngIf="hasError('status')">
+            {{ getErrorMessage('status') || (bccForm.get('status')?.errors?.['hasActiveFamilies'] ? 'Cannot set BCC to inactive with active families' : '') }}
+          </p>
+          <p class="cf-split-field__error" *ngIf="bcc && getActiveFamilyCount() > 0">
+            This BCC has {{ getActiveFamilyCount() }} active {{ getActiveFamilyCount() === 1 ? 'family' : 'families' }}. Reassign or deactivate them before setting BCC to inactive.
+          </p>
+          <p class="cf-split-field__hint" *ngIf="!bcc || getActiveFamilyCount() === 0">
+            Current status of the BCC
+          </p>
         </div>
       </div>
+    </section>
 
-      <div class="modal-footer">
-        <button 
-          type="button" 
-          class="btn btn-secondary" 
-          (click)="onCancel()" 
-          [disabled]="loading"
-        >
-          Cancel
-        </button>
-        <button 
-          type="submit" 
-          class="btn btn-primary" 
-          [disabled]="!bccForm.valid || loading"
-        >
-          <span *ngIf="!loading">
-            <span class="icon">💾</span> Save BCC
-          </span>
-          <span *ngIf="loading">Saving...</span>
-        </button>
+    <section class="cf-split-section" aria-labelledby="bcc-section-location">
+      <h3 id="bcc-section-location" class="cf-split-section__title">Location &amp; Schedule</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="bcc_location">Location/Street <span class="cf-split-optional">optional</span></label>
+          <input
+            id="bcc_location"
+            type="text"
+            formControlName="location"
+            placeholder="Enter street address or location"
+          />
+          <p class="cf-split-field__hint">Street address or location of the BCC</p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="bcc_meeting_place">Meeting Place <span class="cf-split-optional">optional</span></label>
+          <input
+            id="bcc_meeting_place"
+            type="text"
+            formControlName="meeting_place"
+            placeholder="e.g., Church Hall, Community Center, Member's Home"
+          />
+          <p class="cf-split-field__hint">Regular meeting location for this BCC</p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="bcc_meeting_day">Meeting Day <span class="cf-split-optional">optional</span></label>
+          <select id="bcc_meeting_day" formControlName="meeting_day">
+            <option value="">Select Day</option>
+            <option *ngFor="let day of weekDays" [value]="day.value">
+              {{ day.label }}
+            </option>
+          </select>
+          <p class="cf-split-field__hint">Day of the week when BCC meets</p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="bcc_meeting_time">Meeting Time <span class="cf-split-optional">optional</span></label>
+          <input
+            id="bcc_meeting_time"
+            type="time"
+            formControlName="meeting_time"
+          />
+          <p class="cf-split-field__hint">Regular meeting time</p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="bcc_meeting_frequency">Meeting Frequency <span class="cf-split-optional">optional</span></label>
+          <select id="bcc_meeting_frequency" formControlName="meeting_frequency">
+            <option value="">Select Frequency</option>
+            <option *ngFor="let freq of frequencies" [value]="freq">
+              {{ freq }}
+            </option>
+          </select>
+          <p class="cf-split-field__hint">How often the BCC meets</p>
+        </div>
       </div>
-    </form>
-  </div>
-</div>
+    </section>
+
+    <p class="cf-split-form-alert cf-split-form-alert--error" *ngIf="error">{{ error }}</p>
+
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        form="bcc-modal-form"
+        class="cf-btn cf-btn-primary"
+        [disabled]="!bccForm.valid || loading"
+      >
+        {{ loading ? 'Saving…' : 'Save BCC' }}
+      </button>
+      <button
+        type="button"
+        class="cf-btn"
+        (click)="onCancel()"
+        [disabled]="loading"
+      >
+        Cancel
+      </button>
+    </div>
+  </form>
+</app-modal-shell>

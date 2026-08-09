@@ -7,6 +7,7 @@ import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components/filter-panel/filter-panel.component';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 interface PermissionGroup {
   module: string;
@@ -20,7 +21,7 @@ interface PermissionGroup {
 @Component({
   selector: 'app-assign-permissions-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, FilterPanelComponent],
+  imports: [CommonModule, FormsModule, FilterPanelComponent, ModalShellComponent],
   templateUrl: './assign-permissions-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './assign-permissions-modal.component.scss'

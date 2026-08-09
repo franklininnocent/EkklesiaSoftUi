@@ -5,11 +5,12 @@ import { SacramentTypeService } from '../../services/sacrament-type.service';
 import { SacramentType, SACRAMENT_CATEGORIES, MINISTER_TYPES } from '../../models/sacrament-type.model';
 import { ToastService } from '@core/services/toast.service';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-sacrament-type-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
   templateUrl: './sacrament-type-form.component.html',
   styleUrls: ['./sacrament-type-form.component.scss']
 })
