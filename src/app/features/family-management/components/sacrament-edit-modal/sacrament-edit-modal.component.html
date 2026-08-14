@@ -1,13 +1,20 @@
 <app-modal-shell
-  [title]="sacramentDisplayName + ' Details'"
-  [description]="isBaptism ? 'Update baptism record, godparents, and parish information.' : 'Update sacramental record for ' + member.first_name + ' ' + member.last_name + '.'"
+  [title]="sacramentDisplayName + ' — Profile summary'"
+  [description]="'Updates this member’s family profile summary for ' + member.first_name + ' ' + member.last_name + '. This is not the parish sacrament register.'"
   size="xl"
   [isSubmitting]="loading"
   (closeRequested)="cancel()"
 >
   <form id="sacrament-form" [formGroup]="form" (ngSubmit)="save()">
+    <div class="cf-inline-alert" role="note" style="margin-bottom: 0.75rem;">
+      <p>
+        <strong>Profile summary only.</strong>
+        Official parish register entries (certificates, book/page, void/correct) are managed in the
+        Sacrament Register.
+      </p>
+    </div>
     <div class="error-banner" *ngIf="error">
-      <span class="icon">⚠️</span>
+      <span class="icon" aria-hidden="true">!</span>
       <span>{{ error }}</span>
     </div>
 

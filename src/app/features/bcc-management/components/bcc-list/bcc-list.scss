@@ -38,6 +38,12 @@
   color: var(--cf-primary);
 }
 
+/* Panel container matching Add organization / Members list `.cf-panel` content block. */
+.bcc-list__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
 .bcc-list__capacity {
   display: grid;
   gap: 0.25rem;

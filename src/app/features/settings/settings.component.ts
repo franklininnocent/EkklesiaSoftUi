@@ -29,11 +29,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   
   settingsSections = [
     { title: 'Profile Settings', description: 'Manage your personal information', icon: 'user', route: null },
-    { title: 'Security', description: 'Password and authentication settings', icon: 'lock', route: null },
     { title: 'Notifications', description: 'Configure notification preferences', icon: 'bell', route: null },
     { title: 'My Subscription', description: 'View your church plan and access status', icon: 'credit-card', route: '/settings/my-subscription', requiresMySubscriptionAccess: true },
-    { title: 'Teams', description: 'Manage team members and roles', icon: 'users', route: null },
-    { title: 'Integrations', description: 'Connect third-party services', icon: 'link', route: null },
     { 
       title: 'Tenants', 
       description: 'Manage tenant organizations and subscriptions', 
@@ -70,11 +67,11 @@ export class SettingsComponent implements OnInit, OnDestroy {
       requiresEkklesiaRole: true
     },
     { 
-      title: 'Sacraments', 
-      description: 'Manage baptisms, confirmations, marriages, and all sacraments', 
+      title: 'Sacrament Settings', 
+      description: 'Configure sacrament availability for this church.', 
       icon: 'file', 
       route: '/settings/sacraments',
-      requiresTenantAccess: true
+      requiresTenantAccess: true,
     },
     { 
       title: 'Priests', 
@@ -97,7 +94,15 @@ export class SettingsComponent implements OnInit, OnDestroy {
       icon: 'shield',
       route: '/settings/support-access',
       requiresAnyPermission: ['support.grants.parish.view', 'support.grants.parish.manage'],
-    }
+    },
+    {
+      title: 'Data Export',
+      description: 'Download your parish business data as a portable ZIP',
+      icon: 'file',
+      route: '/settings/data-export',
+      requiresTenantAccess: true,
+      requiresAnyPermission: ['tenant.data.export'],
+    },
   ];
 
   constructor(
@@ -128,11 +133,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
   getIconSvg(iconType: string): SafeHtml {
     const icons: { [key: string]: string } = {
       'user': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>',
-      'lock': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>',
       'bell': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>',
       'credit-card': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>',
-      'users': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>',
-      'link': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>',
       'building': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line><line x1="15" y1="3" x2="15" y2="21"></line><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line></svg>',
       'shield': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>',
       'church': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>',

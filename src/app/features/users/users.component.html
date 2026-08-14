@@ -37,120 +37,121 @@
   </div>
 
   <ng-container *ngIf="!error && (!loading || allUsers.length)">
-    <app-data-table *ngIf="users.length">
-      <thead>
-        <tr>
-          <th
-            scope="col"
-            [appSortable]="'name'"
-            [direction]="sortColumn === 'name' ? sortDirection : null"
-            (sort)="onSort($event)"
-          >
-            Name
-          </th>
-          <th
-            scope="col"
-            [appSortable]="'email'"
-            [direction]="sortColumn === 'email' ? sortDirection : null"
-            (sort)="onSort($event)"
-          >
-            Email
-          </th>
-          <th
-            scope="col"
-            [appSortable]="'contact_number'"
-            [direction]="sortColumn === 'contact_number' ? sortDirection : null"
-            (sort)="onSort($event)"
-          >
-            Contact
-          </th>
-          <th
-            scope="col"
-            [appSortable]="'role'"
-            [direction]="sortColumn === 'role' ? sortDirection : null"
-            (sort)="onSort($event)"
-          >
-            Role
-          </th>
-          <th scope="col" class="cf-table__actions-col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let user of users">
-          <td>
-            <div class="users__name-cell">
-              <strong>{{ user.name }}</strong>
-              <app-status-badge
-                *ngIf="user.active === 0"
-                label="Inactive"
-                tone="neutral"
-              ></app-status-badge>
-            </div>
-          </td>
-          <td>{{ user.email }}</td>
-          <td>{{ user.contact_number || '—' }}</td>
-          <td>
-            <div class="users__roles">
-              <app-status-badge
-                *ngFor="let role of getRoles(user); let i = index"
-                [label]="role"
-                [tone]="roleTone(i, role)"
-              ></app-status-badge>
-            </div>
-          </td>
-          <td class="cf-table__actions-cell">
-            <div class="cf-row-actions">
-              <button
-                *ngIf="user.can_edit !== false"
-                type="button"
-                class="cf-btn cf-btn--sm"
-                (click)="openEditUserModal(user)"
-                title="Edit user"
-              >
-                Edit
-              </button>
+    <div class="cf-panel users__panel" *ngIf="users.length">
+      <app-data-table>
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              [appSortable]="'name'"
+              [direction]="sortColumn === 'name' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Name
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'email'"
+              [direction]="sortColumn === 'email' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Email
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'contact_number'"
+              [direction]="sortColumn === 'contact_number' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Contact
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'role'"
+              [direction]="sortColumn === 'role' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Role
+            </th>
+            <th scope="col" class="cf-table__actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let user of users">
+            <td>
+              <div class="users__name-cell">
+                <strong>{{ user.name }}</strong>
+                <app-status-badge
+                  *ngIf="user.active === 0"
+                  label="Inactive"
+                  tone="neutral"
+                ></app-status-badge>
+              </div>
+            </td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.contact_number || '—' }}</td>
+            <td>
+              <div class="users__roles">
+                <app-status-badge
+                  *ngFor="let role of getRoles(user); let i = index"
+                  [label]="role"
+                  [tone]="roleTone(i, role)"
+                ></app-status-badge>
+              </div>
+            </td>
+            <td class="cf-table__actions-cell">
+              <div class="cf-row-actions">
+                <button
+                  *ngIf="user.can_edit !== false"
+                  type="button"
+                  class="cf-btn cf-btn--sm"
+                  (click)="openEditUserModal(user)"
+                  title="Edit user"
+                >
+                  Edit
+                </button>
 
-              <button
-                *ngIf="!(user.is_primary_admin && user.active === 1)"
-                type="button"
-                class="cf-btn cf-btn--sm"
-                (click)="toggleUserStatus(user)"
-                [title]="user.active === 1 ? 'Deactivate user' : 'Activate user'"
-              >
-                {{ user.active === 1 ? 'Deactivate' : 'Activate' }}
-              </button>
+                <button
+                  *ngIf="!(user.is_primary_admin && user.active === 1)"
+                  type="button"
+                  class="cf-btn cf-btn--sm"
+                  (click)="toggleUserStatus(user)"
+                  [title]="user.active === 1 ? 'Deactivate user' : 'Activate user'"
+                >
+                  {{ user.active === 1 ? 'Deactivate' : 'Activate' }}
+                </button>
 
-              <button
-                *ngIf="isTenantAdmin && !user.is_primary_admin"
-                type="button"
-                class="cf-btn cf-btn--sm cf-btn-danger"
-                (click)="deleteUser(user)"
-                title="Delete user"
-              >
-                Delete
-              </button>
+                <button
+                  *ngIf="isTenantAdmin && !user.is_primary_admin"
+                  type="button"
+                  class="cf-btn cf-btn--sm cf-btn-danger"
+                  (click)="deleteUser(user)"
+                  title="Delete user"
+                >
+                  Delete
+                </button>
 
-              <span
-                *ngIf="user.can_edit === false && (user.is_primary_admin && user.active === 1) && !(isTenantAdmin && !user.is_primary_admin)"
-                class="cf-meta"
-              >
-                No actions available
-              </span>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </app-data-table>
+                <span
+                  *ngIf="user.can_edit === false && (user.is_primary_admin && user.active === 1) && !(isTenantAdmin && !user.is_primary_admin)"
+                  class="cf-meta"
+                >
+                  No actions available
+                </span>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
 
-    <app-pagination
-      *ngIf="users.length"
-      [currentPage]="currentPage"
-      [pageSize]="pageSize"
-      [totalItems]="filteredTotal"
-      [pageSizeOptions]="pageSizeOptions"
-      (pageChange)="onPageChange($event)"
-      (pageSizeChange)="onPageSizeChange($event)"
-    ></app-pagination>
+      <app-pagination
+        [currentPage]="currentPage"
+        [pageSize]="pageSize"
+        [totalItems]="filteredTotal"
+        [pageSizeOptions]="pageSizeOptions"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+    </div>
 
     <app-cf-empty-state
       *ngIf="!loading && !users.length"

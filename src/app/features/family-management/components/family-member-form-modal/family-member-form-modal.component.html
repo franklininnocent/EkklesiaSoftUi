@@ -10,6 +10,28 @@
   <form id="member-form" class="cf-split-form-body" [formGroup]="form" (ngSubmit)="onSave()" novalidate>
     <section class="cf-split-section" aria-labelledby="member-section-basic">
       <h3 id="member-section-basic" class="cf-split-section__title">Basic Information</h3>
+      <div class="cf-split-field cf-split-field--full" *ngIf="!isEditMode">
+        <label for="link_existing_person">Link existing person without a family <span class="cf-split-optional">optional</span></label>
+        <p class="cf-split-field__hint" *ngIf="form.get('person_id')?.value">
+          Linked parish person. Baptism and Eucharist records stay with this person.
+          <button type="button" class="cf-btn" (click)="clearLinkedPerson()">Unlink</button>
+        </p>
+        <input
+          *ngIf="!form.get('person_id')?.value"
+          type="search"
+          id="link_existing_person"
+          [(ngModel)]="personQuery"
+          (ngModelChange)="searchUnaffiliatedPersons()"
+          [ngModelOptions]="{standalone: true}"
+          placeholder="Type at least 2 letters…"
+        />
+        <p class="cf-split-field__hint" *ngIf="searchingPersons">Searching…</p>
+        <ul class="cf-participant-source__results" *ngIf="personResults.length">
+          <li *ngFor="let person of personResults" (click)="linkExistingPerson(person)">
+            <strong>{{ personDisplayName(person) }}</strong>
+          </li>
+        </ul>
+      </div>
       <div class="cf-split-grid">
         <div class="cf-split-field">
           <label for="member_first_name">First name <span class="cf-split-req" aria-hidden="true">*</span></label>

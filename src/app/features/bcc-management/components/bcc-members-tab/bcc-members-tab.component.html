@@ -1,0 +1,214 @@
+<div class="bcc-members">
+  <app-list-toolbar
+    searchPlaceholder="Search members or families…"
+    [searchValue]="search"
+    [filterCount]="activeFilterCount"
+    (searchChange)="onSearch($event)"
+    (filtersOpened)="onFiltersOpened()"
+  >
+    <button type="button" class="cf-btn" [class.cf-btn-primary]="view === 'people'" (click)="setView('people')">
+      Members
+    </button>
+    <button type="button" class="cf-btn" [class.cf-btn-primary]="view === 'families'" (click)="setView('families')">
+      Families
+    </button>
+    <button *ngIf="canAssign" type="button" class="cf-btn cf-btn-primary" (click)="openAssign()">
+      Add family
+    </button>
+  </app-list-toolbar>
+
+  <div class="bcc-members__filter-summary" *ngIf="activeFilterCount > 0" role="status">
+    <span class="cf-meta">Filtered by {{ filterSummary }}</span>
+    <button type="button" class="cf-btn cf-btn--sm" (click)="onFiltersCleared()">Clear filters</button>
+  </div>
+
+  <p class="cf-meta" *ngIf="bccStatus !== 'active'">This BCC is not active. Activate it to add families.</p>
+
+  <div class="cf-loading-block" *ngIf="loading" role="status">
+    <p class="cf-loading-block__label">Loading members…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert" *ngIf="loadError && !loading" role="alert">
+    <p>{{ loadError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <ng-container *ngIf="!loading && !loadError && view === 'people'">
+    <app-data-table *ngIf="people.length; else emptyPeople">
+      <thead>
+        <tr>
+          <th scope="col">Member</th>
+          <th scope="col">Life stage</th>
+          <th scope="col">Gender</th>
+          <th scope="col">Membership status</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let person of people">
+          <td>
+            <a
+              *ngIf="memberDetailLink(person) as memberLink; else memberNamePlain"
+              class="cf-link bcc-members__name-link"
+              [routerLink]="memberLink"
+              [queryParams]="memberDetailQuery(person)"
+            >
+              <strong>{{ person.display_name }}</strong>
+            </a>
+            <ng-template #memberNamePlain>
+              <strong>{{ person.display_name }}</strong>
+            </ng-template>
+          </td>
+          <td>
+            {{ lifeStage(person) }}
+            <span class="cf-meta" *ngIf="person.age !== null && person.age !== undefined"> · {{ person.age }} yrs</span>
+          </td>
+          <td>{{ genderLabel(person) }}</td>
+          <td>
+            <app-status-badge [label]="person.status | titlecase" [tone]="statusTone(person.status)"></app-status-badge>
+          </td>
+        </tr>
+      </tbody>
+    </app-data-table>
+    <ng-template #emptyPeople>
+      <app-cf-empty-state
+        [title]="hasActiveFilters ? 'No members match these filters' : 'No members yet'"
+        [description]="
+          hasActiveFilters
+            ? 'Try a different life stage, gender, or membership status, or clear the filters to see everyone.'
+            : 'Add families to this BCC. Everyone in those households will appear here as individual members.'
+        "
+        [hasActions]="hasActiveFilters || canAssign"
+      >
+        <button *ngIf="hasActiveFilters" type="button" class="cf-btn" (click)="clearAll()">Clear filters</button>
+        <button
+          *ngIf="canAssign && !hasActiveFilters"
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="openAssign()"
+        >
+          Add family
+        </button>
+      </app-cf-empty-state>
+    </ng-template>
+  </ng-container>
+
+  <ng-container *ngIf="!loading && !loadError && view === 'families'">
+    <app-data-table *ngIf="families.length; else emptyFamilies">
+      <thead>
+        <tr>
+          <th scope="col">Family</th>
+          <th scope="col">Code</th>
+          <th scope="col">Members</th>
+          <th scope="col">Joined</th>
+          <th scope="col">Status</th>
+          <th scope="col" *ngIf="canManage"><span class="sr-only">Actions</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of families">
+          <td>
+            <a
+              *ngIf="familyDetailLink(row.family?.id || row.family_id) as familyLink; else familyNamePlain"
+              class="cf-link bcc-members__name-link"
+              [routerLink]="familyLink"
+            >
+              <strong>{{ row.family?.family_name }}</strong>
+            </a>
+            <ng-template #familyNamePlain>
+              <strong>{{ row.family?.family_name }}</strong>
+            </ng-template>
+          </td>
+          <td>{{ row.family?.family_code }}</td>
+          <td>{{ row.family?.member_count || 0 }}</td>
+          <td>{{ row.joined_date }}</td>
+          <td>
+            <app-status-badge [label]="(row.family?.status || row.status) | titlecase" [tone]="statusTone(row.family?.status || row.status)"></app-status-badge>
+          </td>
+          <td *ngIf="canManage">
+            <button type="button" class="cf-btn cf-btn--sm" (click)="confirmRemoval(row)">Remove</button>
+          </td>
+        </tr>
+      </tbody>
+    </app-data-table>
+    <ng-template #emptyFamilies>
+      <app-cf-empty-state
+        [title]="hasActiveFilters ? 'No families match these filters' : 'No families yet'"
+        [description]="
+          hasActiveFilters
+            ? 'Try a different family status, or clear the filters to see every household.'
+            : 'Add families to this BCC to begin managing participation.'
+        "
+        [hasActions]="hasActiveFilters || canAssign"
+      >
+        <button *ngIf="hasActiveFilters" type="button" class="cf-btn" (click)="clearAll()">Clear filters</button>
+        <button
+          *ngIf="canAssign && !hasActiveFilters"
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="openAssign()"
+        >
+          Add family
+        </button>
+      </app-cf-empty-state>
+    </ng-template>
+  </ng-container>
+
+  <app-pagination
+    *ngIf="total > perPage"
+    [currentPage]="page"
+    [pageSize]="perPage"
+    [totalItems]="total"
+    (pageChange)="onPageChange($event)"
+  ></app-pagination>
+
+  <div class="bcc-members__assign cf-panel" *ngIf="showAssign" role="dialog" aria-label="Add family">
+    <h3>Add a family</h3>
+    <p class="cf-meta">BCCs are assigned by family. Everyone in the household becomes part of this BCC.</p>
+    <label>
+      Search families
+      <input class="cf-input" [(ngModel)]="lookupSearch" (keyup.enter)="searchFamilies()" />
+    </label>
+    <button type="button" class="cf-btn" (click)="searchFamilies()">Search</button>
+    <ul class="bcc-members__lookup">
+      <li *ngFor="let family of lookupResults">
+        <button type="button" class="bcc-members__lookup-item" (click)="selectedFamily = family">
+          <strong>{{ family.family_name }}</strong>
+          <span class="cf-meta">
+            {{ family.family_code }} · {{ family.member_count }} members
+            <ng-container *ngIf="!family.eligible"> · in {{ family.current_bcc_name }}</ng-container>
+          </span>
+        </button>
+      </li>
+    </ul>
+    <label *ngIf="selectedFamily && !selectedFamily.eligible">
+      <input type="checkbox" [(ngModel)]="transfer" />
+      Transfer {{ selectedFamily.family_name }} from {{ selectedFamily.current_bcc_name }}
+    </label>
+    <div class="bcc-overview__actions">
+      <button type="button" class="cf-btn" (click)="showAssign = false">Cancel</button>
+      <button type="button" class="cf-btn cf-btn-primary" [disabled]="!selectedFamily" (click)="assignSelected()">
+        Add family
+      </button>
+    </div>
+  </div>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onFiltersApplied($event)"
+    (clear)="onFiltersCleared()"
+    (close)="closeFilters()"
+  ></app-advanced-search-panel>
+
+  <app-confirmation-modal
+    [show]="!!confirmRemove"
+    title="Remove family"
+    [message]="'Remove ' + (confirmRemove?.family?.family_name || 'this family') + ' from this BCC? Leadership held by household members will also end.'"
+    confirmText="Remove"
+    confirmButtonClass="btn-danger"
+    (confirmed)="removeConfirmed($event)"
+    (cancelled)="confirmRemove = null"
+  ></app-confirmation-modal>
+</div>

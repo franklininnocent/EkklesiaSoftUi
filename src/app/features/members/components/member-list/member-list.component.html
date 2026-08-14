@@ -54,97 +54,98 @@
   </div>
 
   <ng-container *ngIf="loaded && !error">
-    <app-data-table *ngIf="members.length" [clickableRows]="true">
-      <thead>
-        <tr>
-          <th
-            scope="col"
-            [appSortable]="'last_name'"
-            [direction]="frontendSortColumn === 'last_name' ? sortDirection : null"
-            (sort)="onSort($event)"
+    <div class="cf-panel members-list__panel" *ngIf="members.length">
+      <app-data-table [clickableRows]="true">
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              [appSortable]="'last_name'"
+              [direction]="frontendSortColumn === 'last_name' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Name
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'father_name'"
+              [direction]="frontendSortColumn === 'father_name' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Father Name
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'address'"
+              [direction]="frontendSortColumn === 'address' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Address
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'bcc'"
+              [direction]="frontendSortColumn === 'bcc' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              BCC
+            </th>
+            <th scope="col">Contact</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let member of members"
+            tabindex="0"
+            (click)="viewMember(member)"
+            (keydown.enter)="viewMember(member)"
           >
-            Name
-          </th>
-          <th
-            scope="col"
-            [appSortable]="'father_name'"
-            [direction]="frontendSortColumn === 'father_name' ? sortDirection : null"
-            (sort)="onSort($event)"
-          >
-            Father Name
-          </th>
-          <th
-            scope="col"
-            [appSortable]="'address'"
-            [direction]="frontendSortColumn === 'address' ? sortDirection : null"
-            (sort)="onSort($event)"
-          >
-            Address
-          </th>
-          <th
-            scope="col"
-            [appSortable]="'bcc'"
-            [direction]="frontendSortColumn === 'bcc' ? sortDirection : null"
-            (sort)="onSort($event)"
-          >
-            BCC
-          </th>
-          <th scope="col">Contact</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          *ngFor="let member of members"
-          tabindex="0"
-          (click)="viewMember(member)"
-          (keydown.enter)="viewMember(member)"
-        >
-          <td>
-            <div class="members-list__name-cell">
-              <strong class="members-list__name">{{ getFullName(member) }}</strong>
+            <td>
+              <div class="members-list__name-cell">
+                <strong class="members-list__name">{{ getFullName(member) }}</strong>
+                <app-status-badge
+                  *ngIf="member.status && member.status !== 'active'"
+                  [label]="member.status | titlecase"
+                  [tone]="statusTone(member.status)"
+                ></app-status-badge>
+              </div>
+            </td>
+            <td>
+              <span *ngIf="getFatherName(member); else noFather">{{ getFatherName(member) }}</span>
+              <ng-template #noFather><span class="cf-meta">—</span></ng-template>
+            </td>
+            <td>
+              <span *ngIf="getMemberAddressForTable(member) as address; else noAddress">{{ address }}</span>
+              <ng-template #noAddress><span class="cf-meta">—</span></ng-template>
+            </td>
+            <td>
               <app-status-badge
-                *ngIf="member.status && member.status !== 'active'"
-                [label]="member.status | titlecase"
-                [tone]="statusTone(member.status)"
+                *ngIf="getBCCName(member) !== 'N/A'"
+                [label]="getBCCName(member)"
+                tone="info"
               ></app-status-badge>
-            </div>
-          </td>
-          <td>
-            <span *ngIf="getFatherName(member); else noFather">{{ getFatherName(member) }}</span>
-            <ng-template #noFather><span class="cf-meta">—</span></ng-template>
-          </td>
-          <td>
-            <span *ngIf="getMemberAddressForTable(member) as address; else noAddress">{{ address }}</span>
-            <ng-template #noAddress><span class="cf-meta">—</span></ng-template>
-          </td>
-          <td>
-            <app-status-badge
-              *ngIf="getBCCName(member) !== 'N/A'"
-              [label]="getBCCName(member)"
-              tone="info"
-            ></app-status-badge>
-            <span *ngIf="getBCCName(member) === 'N/A'" class="cf-meta">—</span>
-          </td>
-          <td>
-            <div class="members-list__contact" *ngIf="member.phone || member.email; else noContact">
-              <span *ngIf="member.phone">{{ member.phone }}</span>
-              <span *ngIf="member.email" class="cf-meta">{{ member.email }}</span>
-            </div>
-            <ng-template #noContact><span class="cf-meta">—</span></ng-template>
-          </td>
-        </tr>
-      </tbody>
-    </app-data-table>
+              <span *ngIf="getBCCName(member) === 'N/A'" class="cf-meta">—</span>
+            </td>
+            <td>
+              <div class="members-list__contact" *ngIf="member.phone || member.email; else noContact">
+                <span *ngIf="member.phone">{{ member.phone }}</span>
+                <span *ngIf="member.email" class="cf-meta">{{ member.email }}</span>
+              </div>
+              <ng-template #noContact><span class="cf-meta">—</span></ng-template>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
 
-    <app-pagination
-      *ngIf="members.length"
-      [currentPage]="currentPage"
-      [totalItems]="totalRecords"
-      [pageSize]="perPage"
-      [pageSizeOptions]="perPageOptions"
-      (pageChange)="onPageChange($event)"
-      (pageSizeChange)="onPerPageChange($event)"
-    ></app-pagination>
+      <app-pagination
+        [currentPage]="currentPage"
+        [totalItems]="totalRecords"
+        [pageSize]="perPage"
+        [pageSizeOptions]="perPageOptions"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPerPageChange($event)"
+      ></app-pagination>
+    </div>
 
     <app-cf-empty-state
       *ngIf="!loading && !members.length"
@@ -176,234 +177,247 @@
     (close)="showAdvancedSearch = false"
   ></app-advanced-search-panel>
 
-  <!-- Member Detail Modal -->
+  <!-- Member Detail Modal — large sectioned Category-style modal (see enterprise-modal-style-guide.md §11/§14) -->
   <app-modal-shell
     *ngIf="showDetailModal && selectedMember"
     [title]="getFullName(selectedMember)"
-    size="xl"
+    size="lg"
+    headerVariant="compact"
+    bodyPadding="none"
+    closeAriaLabel="Close member details"
     (closeRequested)="closeDetailModal()"
   >
-    <!-- Header meta row -->
-    <div class="header-meta cf-meta" *ngIf="selectedMember">
-      <span *ngIf="selectedMember.family?.family_code">{{ selectedMember.family?.family_code }}</span>
-      <span *ngIf="selectedMember.family?.family_code && getBCCName(selectedMember) !== 'N/A'"> · </span>
-      <span *ngIf="getBCCName(selectedMember) !== 'N/A'">{{ getBCCName(selectedMember) }}</span>
-      <app-status-badge
-        *ngIf="selectedMember.status"
-        [label]="selectedMember.status | titlecase"
-        [tone]="statusTone(selectedMember.status)"
-      ></app-status-badge>
-    </div>
+    <div class="cf-split-form-body member-detail-modal">
+      <div class="cf-split-identity">
+        <span class="cf-split-identity__avatar">
+          <img
+            *ngIf="getMemberPhotoUrl() as photoUrl; else memberMonogram"
+            [src]="photoUrl"
+            [alt]="getFullName(selectedMember)"
+          />
+          <ng-template #memberMonogram>
+            <span aria-hidden="true">{{ getMemberInitials(selectedMember) }}</span>
+          </ng-template>
+        </span>
 
-    <div class="document-layout">
-      <div class="column-left">
-        <div class="info-section">
-          <h3 class="cf-subsection-title">Personal Information</h3>
-          <div class="info-grid">
-            <div class="info-row">
-              <span class="info-label">Full Name</span>
-              <span class="info-value">{{ getFullName(selectedMember) }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.date_of_birth">
-              <span class="info-label">Date of Birth</span>
-              <span class="info-value">{{ formatDate(selectedMember.date_of_birth) }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.gender">
-              <span class="info-label">Gender</span>
-              <span class="info-value">{{ selectedMember.gender | titlecase }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.relationship_to_head">
-              <span class="info-label">Relationship</span>
-              <span class="info-value">{{ selectedMember.relationship_to_head | titlecase }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.marital_status">
-              <span class="info-label">Marital Status</span>
-              <span class="info-value">{{ selectedMember.marital_status | titlecase }}</span>
-            </div>
-            <div class="info-row" *ngIf="isFamilyHead(selectedMember)">
-              <span class="info-label">Role</span>
-              <span class="info-value">Family Head</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-section" *ngIf="selectedMember.phone || selectedMember.email || selectedMember.is_primary_contact">
-          <h3 class="cf-subsection-title">Contact Information</h3>
-          <div class="info-grid">
-            <div class="info-row" *ngIf="selectedMember.phone">
-              <span class="info-label">Phone</span>
-              <span class="info-value">{{ selectedMember.phone }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.email">
-              <span class="info-label">Email</span>
-              <span class="info-value">{{ selectedMember.email }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.is_primary_contact">
-              <span class="info-label">Primary Contact</span>
-              <span class="info-value">Yes</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-section" *ngIf="selectedMember.family as family">
-          <h3 class="cf-subsection-title">Family Information</h3>
-          <div class="info-grid">
-            <div class="info-row" *ngIf="family.family_code">
-              <span class="info-label">Family Code</span>
-              <span class="info-value">{{ family.family_code }}</span>
-            </div>
-            <div class="info-row" *ngIf="family.family_name">
-              <span class="info-label">Family Name</span>
-              <span class="info-value">{{ family.family_name }}</span>
-            </div>
-            <div class="info-row" *ngIf="getBCCName(selectedMember) !== 'N/A'">
-              <span class="info-label">BCC</span>
-              <span class="info-value">{{ getBCCName(selectedMember) }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-section" *ngIf="getMemberAddress()">
-          <h3 class="cf-subsection-title">Address</h3>
-          <div class="info-grid">
-            <div class="info-row">
-              <span class="info-label">Full Address</span>
-              <span class="info-value">{{ getMemberAddress() }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-section" *ngIf="selectedMember.occupation || selectedMember.education || selectedMember.skills_talents">
-          <h3 class="cf-subsection-title">Education &amp; Occupation</h3>
-          <div class="info-grid">
-            <div class="info-row" *ngIf="selectedMember.education">
-              <span class="info-label">Education</span>
-              <span class="info-value">{{ selectedMember.education }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.occupation">
-              <span class="info-label">Occupation</span>
-              <span class="info-value">{{ selectedMember.occupation }}</span>
-            </div>
-            <div class="info-row" *ngIf="selectedMember.skills_talents">
-              <span class="info-label">Skills/Talents</span>
-              <span class="info-value">{{ selectedMember.skills_talents }}</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="info-section" *ngIf="getParentInfo() as parentInfo">
-          <h3 class="cf-subsection-title">Parent Information</h3>
-          <div class="info-grid">
-            <div class="info-row" *ngIf="parentInfo.father">
-              <span class="info-label">Father's Name</span>
-              <span class="info-value">{{ parentInfo.father }}</span>
-            </div>
-            <div class="info-row" *ngIf="parentInfo.mother">
-              <span class="info-label">Mother's Name</span>
-              <span class="info-value">{{ parentInfo.mother }}</span>
-            </div>
-          </div>
+        <div class="cf-split-identity__copy">
+          <p class="cf-split-identity__name">{{ getFullName(selectedMember) }}</p>
+          <p class="cf-split-identity__meta">
+            <span *ngIf="selectedMember.family?.family_code">{{ selectedMember.family?.family_code }}</span>
+            <span
+              class="cf-split-identity__sep"
+              *ngIf="selectedMember.family?.family_code && getBCCName(selectedMember) !== 'N/A'"
+              aria-hidden="true"
+              >·</span
+            >
+            <span *ngIf="getBCCName(selectedMember) !== 'N/A'">{{ getBCCName(selectedMember) }}</span>
+            <span
+              class="cf-split-identity__sep"
+              *ngIf="
+                (selectedMember.family?.family_code || getBCCName(selectedMember) !== 'N/A') &&
+                selectedMember.relationship_to_head
+              "
+              aria-hidden="true"
+              >·</span
+            >
+            <span *ngIf="selectedMember.relationship_to_head">
+              {{ isFamilyHead(selectedMember) ? 'Family head' : (selectedMember.relationship_to_head | titlecase) }}
+            </span>
+            <app-status-badge
+              *ngIf="selectedMember.status"
+              [label]="selectedMember.status | titlecase"
+              [tone]="statusTone(selectedMember.status)"
+            ></app-status-badge>
+          </p>
         </div>
       </div>
 
-      <div class="column-right">
-        <div class="photo-section" *ngIf="getMemberPhotoUrl()">
-          <img [src]="getMemberPhotoUrl()" [alt]="getFullName(selectedMember)" class="member-photo" />
-        </div>
-
-        <div
-          class="info-section"
-          *ngIf="selectedMember.baptism_date || selectedMember.first_communion_date || selectedMember.confirmation_date || selectedMember.marriage_date"
-        >
-          <h3 class="cf-subsection-title">Sacraments</h3>
-          <div class="sacraments-list">
-            <div class="sacrament-entry" *ngIf="selectedMember.baptism_date">
-              <div class="sacrament-title-row">
-                <span class="sacrament-name">Baptism</span>
-                <app-status-badge label="Completed" tone="success"></app-status-badge>
-              </div>
-              <div class="info-grid">
-                <div class="info-row" *ngIf="formatSacramentDate(selectedMember.baptism_date) as d">
-                  <span class="info-label">Date</span><span class="info-value">{{ d }}</span>
-                </div>
-                <div class="info-row" *ngIf="selectedMember.baptism_church_name">
-                  <span class="info-label">Church</span>
-                  <span class="info-value">{{ selectedMember.baptism_church_name }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="sacrament-entry" *ngIf="selectedMember.first_communion_date">
-              <div class="sacrament-title-row">
-                <span class="sacrament-name">First Communion</span>
-                <app-status-badge label="Completed" tone="success"></app-status-badge>
-              </div>
-              <div class="info-grid">
-                <div class="info-row" *ngIf="formatSacramentDate(selectedMember.first_communion_date) as d">
-                  <span class="info-label">Date</span><span class="info-value">{{ d }}</span>
-                </div>
-                <div class="info-row" *ngIf="selectedMember.first_communion_place">
-                  <span class="info-label">Location</span>
-                  <span class="info-value">{{ selectedMember.first_communion_place }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="sacrament-entry" *ngIf="selectedMember.confirmation_date">
-              <div class="sacrament-title-row">
-                <span class="sacrament-name">Confirmation</span>
-                <app-status-badge label="Completed" tone="success"></app-status-badge>
-              </div>
-              <div class="info-grid">
-                <div class="info-row" *ngIf="formatSacramentDate(selectedMember.confirmation_date) as d">
-                  <span class="info-label">Date</span><span class="info-value">{{ d }}</span>
-                </div>
-                <div class="info-row" *ngIf="selectedMember.confirmation_place">
-                  <span class="info-label">Place</span>
-                  <span class="info-value">{{ selectedMember.confirmation_place }}</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="sacrament-entry" *ngIf="selectedMember.marriage_date">
-              <div class="sacrament-title-row">
-                <span class="sacrament-name">Marriage</span>
-                <app-status-badge label="Completed" tone="success"></app-status-badge>
-              </div>
-              <div class="info-grid">
-                <div class="info-row" *ngIf="formatSacramentDate(selectedMember.marriage_date) as d">
-                  <span class="info-label">Date</span><span class="info-value">{{ d }}</span>
-                </div>
-                <div class="info-row" *ngIf="selectedMember.marriage_spouse_name">
-                  <span class="info-label">Spouse</span>
-                  <span class="info-value">{{ selectedMember.marriage_spouse_name }}</span>
-                </div>
-                <div class="info-row" *ngIf="selectedMember.marriage_place">
-                  <span class="info-label">Location</span>
-                  <span class="info-value">{{ selectedMember.marriage_place }}</span>
-                </div>
-              </div>
-            </div>
+      <section class="cf-split-section" aria-labelledby="member-section-personal">
+        <h3 id="member-section-personal" class="cf-split-section__title">Personal information</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field">
+            <dt>Full name</dt>
+            <dd>{{ getFullName(selectedMember) }}</dd>
           </div>
-        </div>
+          <div class="cf-split-field" *ngIf="selectedMember.date_of_birth">
+            <dt>Date of birth</dt>
+            <dd>{{ formatDate(selectedMember.date_of_birth) }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.gender">
+            <dt>Gender</dt>
+            <dd>{{ selectedMember.gender | titlecase }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.relationship_to_head">
+            <dt>Relationship</dt>
+            <dd>{{ selectedMember.relationship_to_head | titlecase }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.marital_status">
+            <dt>Marital status</dt>
+            <dd>{{ selectedMember.marital_status | titlecase }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="isFamilyHead(selectedMember)">
+            <dt>Role</dt>
+            <dd>Family head</dd>
+          </div>
+        </dl>
+      </section>
 
-        <div class="info-section" *ngIf="selectedMember.notes">
-          <h3 class="cf-subsection-title">Notes</h3>
-          <p class="notes-text">{{ selectedMember.notes }}</p>
-        </div>
-      </div>
-    </div>
-
-    <div modalFooter>
-      <button type="button" class="cf-btn" (click)="closeDetailModal()">Close</button>
-      <button
-        *ngIf="selectedMember && (selectedMember.family_id || selectedMember.family?.id)"
-        type="button"
-        class="cf-btn cf-btn-primary"
-        (click)="viewFamilyDetails()"
+      <section
+        class="cf-split-section"
+        aria-labelledby="member-section-contact"
+        *ngIf="selectedMember.phone || selectedMember.email || selectedMember.is_primary_contact"
       >
-        View family
-      </button>
+        <h3 id="member-section-contact" class="cf-split-section__title">Contact</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field" *ngIf="selectedMember.phone">
+            <dt>Phone</dt>
+            <dd>{{ selectedMember.phone }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.email">
+            <dt>Email</dt>
+            <dd>{{ selectedMember.email }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.is_primary_contact">
+            <dt>Primary contact</dt>
+            <dd>Yes</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        class="cf-split-section"
+        aria-labelledby="member-section-household"
+        *ngIf="selectedMember.family || getMemberAddress()"
+      >
+        <h3 id="member-section-household" class="cf-split-section__title">Household</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field" *ngIf="selectedMember.family?.family_code">
+            <dt>Family code</dt>
+            <dd>{{ selectedMember.family?.family_code }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.family?.family_name">
+            <dt>Family name</dt>
+            <dd>{{ selectedMember.family?.family_name }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="getBCCName(selectedMember) !== 'N/A'">
+            <dt>BCC</dt>
+            <dd>{{ getBCCName(selectedMember) }}</dd>
+          </div>
+          <div class="cf-split-field cf-split-field--full" *ngIf="getMemberAddress() as address">
+            <dt>Address</dt>
+            <dd>{{ address }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        class="cf-split-section"
+        aria-labelledby="member-section-parents"
+        *ngIf="getParentInfo() as parentInfo"
+      >
+        <h3 id="member-section-parents" class="cf-split-section__title">Parents</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field" *ngIf="parentInfo.father">
+            <dt>Father's name</dt>
+            <dd>{{ parentInfo.father }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="parentInfo.mother">
+            <dt>Mother's name</dt>
+            <dd>{{ parentInfo.mother }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        class="cf-split-section"
+        aria-labelledby="member-section-work"
+        *ngIf="selectedMember.occupation || selectedMember.education || selectedMember.skills_talents"
+      >
+        <h3 id="member-section-work" class="cf-split-section__title">Education &amp; occupation</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field" *ngIf="selectedMember.education">
+            <dt>Education</dt>
+            <dd>{{ selectedMember.education }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.occupation">
+            <dt>Occupation</dt>
+            <dd>{{ selectedMember.occupation }}</dd>
+          </div>
+          <div class="cf-split-field cf-split-field--full" *ngIf="selectedMember.skills_talents">
+            <dt>Skills / talents</dt>
+            <dd>{{ selectedMember.skills_talents }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        class="cf-split-section"
+        aria-labelledby="member-section-sacraments"
+        *ngIf="
+          selectedMember.baptism_date ||
+          selectedMember.first_communion_date ||
+          selectedMember.confirmation_date ||
+          selectedMember.marriage_date
+        "
+      >
+        <h3 id="member-section-sacraments" class="cf-split-section__title">Sacraments</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field" *ngIf="selectedMember.baptism_date">
+            <dt>Baptism</dt>
+            <dd>{{ formatSacramentDate(selectedMember.baptism_date) }}</dd>
+            <p class="cf-split-field__hint" *ngIf="selectedMember.baptism_church_name">
+              {{ selectedMember.baptism_church_name }}
+            </p>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.first_communion_date">
+            <dt>First communion</dt>
+            <dd>{{ formatSacramentDate(selectedMember.first_communion_date) }}</dd>
+            <p class="cf-split-field__hint" *ngIf="selectedMember.first_communion_place">
+              {{ selectedMember.first_communion_place }}
+            </p>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.confirmation_date">
+            <dt>Confirmation</dt>
+            <dd>{{ formatSacramentDate(selectedMember.confirmation_date) }}</dd>
+            <p class="cf-split-field__hint" *ngIf="selectedMember.confirmation_place">
+              {{ selectedMember.confirmation_place }}
+            </p>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.marriage_date">
+            <dt>Marriage</dt>
+            <dd>{{ formatSacramentDate(selectedMember.marriage_date) }}</dd>
+            <p class="cf-split-field__hint" *ngIf="selectedMember.marriage_spouse_name || selectedMember.marriage_place">
+              <ng-container *ngIf="selectedMember.marriage_spouse_name">
+                {{ selectedMember.marriage_spouse_name }}
+              </ng-container>
+              <ng-container *ngIf="selectedMember.marriage_spouse_name && selectedMember.marriage_place"> · </ng-container>
+              <ng-container *ngIf="selectedMember.marriage_place">{{ selectedMember.marriage_place }}</ng-container>
+            </p>
+          </div>
+        </dl>
+      </section>
+
+      <section class="cf-split-section" aria-labelledby="member-section-notes" *ngIf="selectedMember.notes">
+        <h3 id="member-section-notes" class="cf-split-section__title">Notes</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field cf-split-field--full">
+            <dt>Notes</dt>
+            <dd class="cf-split-value--multiline">{{ selectedMember.notes }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <div class="cf-split-form-actions">
+        <button
+          *ngIf="selectedMember.family_id || selectedMember.family?.id"
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="viewFamilyDetails()"
+        >
+          View family
+        </button>
+        <button type="button" class="cf-btn" (click)="closeDetailModal()">Close</button>
+      </div>
     </div>
   </app-modal-shell>
 </section>

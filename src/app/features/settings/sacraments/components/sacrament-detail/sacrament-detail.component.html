@@ -1,25 +1,122 @@
-<div class="sacrament-detail-container">
-  <!-- Header -->
-  <div class="detail-header">
-    <button class="back-btn" (click)="onBack()">← Back to List</button>
-    <div class="header-actions">
-      <button class="btn btn-secondary" (click)="onPrint()">
-        <span class="btn-icon">🖨️</span> Print
-      </button>
-      <button class="btn btn-secondary" (click)="onExportPDF()">
-        <span class="btn-icon">📄</span> Export PDF
-      </button>
-    </div>
-  </div>
+<section class="sacrament-detail-container cf-page">
+  <app-page-header
+    class="no-print"
+    [title]="detailTitle()"
+    [subtitle]="detailSubtitle()"
+    [backLink]="['/sacraments']"
+    backLabel="Back to list"
+  >
+    <button type="button" class="cf-btn" (click)="onPrint()">Print</button>
+    <button type="button" class="cf-btn" (click)="onExportPDF()">Export PDF</button>
+  </app-page-header>
 
   <!-- Loading -->
   <div *ngIf="loading" class="loading-container">
     <div class="spinner"></div>
-    <p>Loading sacrament details...</p>
+    <p>Loading sacrament details…</p>
   </div>
 
   <!-- Content -->
   <div *ngIf="!loading && sacrament" class="detail-content">
+    <!-- Official certificate issuance (Phase 8) -->
+    <section
+      class="official-certificate-panel no-print"
+      *ngIf="supportsOfficialCertificate()"
+      aria-labelledby="official-cert-title"
+    >
+      <h2 id="official-cert-title" class="official-certificate-panel__title">Official certificate</h2>
+      <p class="official-certificate-panel__hint">
+        Preview shows what will go on the certificate. Generate creates a locked PDF that stays the same
+        even if a member’s name changes later.
+      </p>
+      <div class="official-certificate-panel__actions">
+        <button
+          type="button"
+          class="cf-btn"
+          [disabled]="certificateBusy"
+          (click)="onPreviewCertificate()"
+        >
+          Preview
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          [disabled]="certificateBusy"
+          (click)="onGenerateCertificate()"
+        >
+          Generate
+        </button>
+        <button
+          type="button"
+          class="cf-btn"
+          *ngIf="latestIssued() as issued"
+          [disabled]="certificateBusy"
+          (click)="onDownloadCertificate(issued)"
+        >
+          Download
+        </button>
+        <button
+          type="button"
+          class="cf-btn"
+          *ngIf="latestIssued() as issued"
+          [disabled]="certificateBusy"
+          (click)="onReissueCertificate(issued)"
+        >
+          Reissue
+        </button>
+      </div>
+
+      <ul class="official-certificate-panel__list" *ngIf="certificates.length">
+        <li *ngFor="let cert of certificates" class="official-certificate-panel__list-item">
+          <span class="official-certificate-panel__version">Version {{ cert.version }}</span>
+          <app-status-badge
+            [label]="certificateStatusLabel(cert.status)"
+            [tone]="certificateStatusTone(cert.status)"
+          ></app-status-badge>
+          <button
+            type="button"
+            class="cf-btn cf-btn-ghost"
+            *ngIf="cert.status !== 'draft_preview' && cert.has_file"
+            [disabled]="certificateBusy"
+            (click)="onDownloadCertificate(cert)"
+          >
+            Download
+          </button>
+        </li>
+      </ul>
+
+      <div class="official-certificate-panel__preview" *ngIf="previewProjection as preview">
+        <h3 class="official-certificate-panel__preview-title">Certificate preview</h3>
+        <dl class="official-certificate-panel__preview-fields">
+          <div>
+            <dt>Recipient</dt>
+            <dd>{{ previewField(preview, 'recipient') }}</dd>
+          </div>
+          <div>
+            <dt>Type</dt>
+            <dd>{{ previewField(preview, 'type') }}</dd>
+          </div>
+          <div>
+            <dt>Date</dt>
+            <dd>{{ previewField(preview, 'date') }}</dd>
+          </div>
+          <div>
+            <dt>Certificate number</dt>
+            <dd>{{ previewField(preview, 'certificate_number') }}</dd>
+          </div>
+          <div>
+            <dt>Status</dt>
+            <dd>
+              <app-status-badge
+                [label]="previewField(preview, 'status_label')"
+                [tone]="certificateStatusTone(previewField(preview, 'status_raw'))"
+              ></app-status-badge>
+            </dd>
+          </div>
+        </dl>
+      </div>
+    </section>
+
     <!-- Marriage Certificate Design -->
     <ng-container *ngIf="isMarriage(); else defaultCertificate">
       <!-- Marriage Certificate -->
@@ -294,7 +391,7 @@
 
         <!-- Recipient Information -->
         <div class="detail-section">
-          <h3 class="section-title">👤 Recipient Information</h3>
+          <h3 class="section-title">Recipient</h3>
           <div class="detail-grid">
             <div class="detail-item">
               <label>Full Name</label>
@@ -313,14 +410,14 @@
 
         <!-- Sacrament Details -->
         <div class="detail-section">
-          <h3 class="section-title">✝️ Sacrament Details</h3>
+          <h3 class="section-title">Sacrament details</h3>
           <div class="detail-grid">
             <div class="detail-item">
-              <label>Date Administered</label>
+              <label>Date</label>
               <p>{{ formatDate(sacrament.date_administered) }}</p>
             </div>
             <div class="detail-item" *ngIf="sacrament.place_administered">
-              <label>Place Administered</label>
+              <label>Place</label>
               <p>{{ sacrament.place_administered }}</p>
             </div>
           </div>
@@ -328,7 +425,7 @@
 
         <!-- Minister Information -->
         <div class="detail-section" *ngIf="sacrament.minister_name">
-          <h3 class="section-title">⛪ Minister</h3>
+          <h3 class="section-title">Minister</h3>
           <div class="detail-grid">
             <div class="detail-item">
               <label>Minister</label>
@@ -342,7 +439,7 @@
 
         <!-- Parents (for Baptism) -->
         <div class="detail-section" *ngIf="sacrament.father_name || sacrament.mother_name">
-          <h3 class="section-title">👨‍👩‍👦 Parents</h3>
+          <h3 class="section-title">Parents</h3>
           <div class="detail-grid">
             <div class="detail-item" *ngIf="sacrament.father_name">
               <label>Father</label>
@@ -357,7 +454,7 @@
 
         <!-- Godparents/Sponsors -->
         <div class="detail-section" *ngIf="sacrament.godparent1_name || sacrament.godparent2_name">
-          <h3 class="section-title">🤝 Godparents / Sponsors</h3>
+          <h3 class="section-title">Godparents / Sponsors</h3>
           <div class="detail-grid">
             <div class="detail-item" *ngIf="sacrament.godparent1_name">
               <label>First Godparent</label>
@@ -372,58 +469,54 @@
 
         <!-- Registry Information -->
         <div class="detail-section">
-          <h3 class="section-title">📖 Registry Information</h3>
+          <h3 class="section-title">Registry</h3>
           <div class="detail-grid">
             <div class="detail-item" *ngIf="sacrament.certificate_number">
-              <label>Certificate Number</label>
+              <label>Certificate number</label>
               <p>{{ sacrament.certificate_number }}</p>
             </div>
             <div class="detail-item" *ngIf="sacrament.book_number">
-              <label>Book Number</label>
+              <label>Book</label>
               <p>{{ sacrament.book_number }}</p>
             </div>
             <div class="detail-item" *ngIf="sacrament.page_number">
-              <label>Page Number</label>
+              <label>Page</label>
               <p>{{ sacrament.page_number }}</p>
+            </div>
+            <div class="detail-item" *ngIf="sacrament.registry_entry">
+              <label>Entry</label>
+              <p>{{ sacrament.registry_entry }}</p>
             </div>
           </div>
         </div>
 
         <!-- Witnesses -->
         <div class="detail-section" *ngIf="sacrament.witnesses">
-          <h3 class="section-title">👥 Witnesses</h3>
+          <h3 class="section-title">Witnesses</h3>
           <p class="witnesses-text">{{ sacrament.witnesses }}</p>
         </div>
 
         <!-- Notes -->
         <div class="detail-section" *ngIf="sacrament.notes">
-          <h3 class="section-title">📝 Notes</h3>
+          <h3 class="section-title">Notes</h3>
           <p class="notes-text">{{ sacrament.notes }}</p>
         </div>
 
-        <!-- Audit Trail -->
-        <div class="detail-section audit-trail">
-          <h3 class="section-title">📋 Audit Trail</h3>
+        <!-- Record history (no technical user IDs) -->
+        <div class="detail-section audit-trail no-print">
+          <h3 class="section-title">Record history</h3>
           <div class="audit-grid">
             <div class="audit-item" *ngIf="sacrament.created_at">
-              <span class="audit-label">Created</span>
+              <span class="audit-label">Recorded</span>
               <span class="audit-value">{{ formatDate(sacrament.created_at) }}</span>
-              <span class="audit-by" *ngIf="sacrament.created_by">
-                by User ID: {{ sacrament.created_by }}
-              </span>
             </div>
             <div class="audit-item" *ngIf="sacrament.updated_at">
-              <span class="audit-label">Last Updated</span>
+              <span class="audit-label">Last updated</span>
               <span class="audit-value">{{ formatDate(sacrament.updated_at) }}</span>
-              <span class="audit-by" *ngIf="sacrament.updated_by">
-                by User ID: {{ sacrament.updated_by }}
-              </span>
             </div>
           </div>
         </div>
       </ng-template>
     </ng-template>
   </div>
-</div>
-
-
+</section>

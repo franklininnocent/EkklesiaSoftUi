@@ -45,6 +45,7 @@ export interface Family {
 export interface FamilyMember {
   id: string;
   family_id: string;
+  person_id?: string;
   
   // Personal Information
   first_name: string;
@@ -285,6 +286,7 @@ export interface FamilyFilters {
 export interface BCCFilters {
   search?: string;
   status?: string;
+  meeting_day?: string;
   parish_zone_id?: string;
   has_space?: boolean;
   sort_by?: string;

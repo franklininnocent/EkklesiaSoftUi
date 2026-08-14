@@ -1,0 +1,93 @@
+@import '../../donations/styles/stewardship-split-layout.scss';
+
+.data-export__hero-actions,
+.data-export__history-head,
+.data-export__progress-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--cf-space-3, 0.75rem);
+}
+
+.data-export__hero-actions .cf-form-section__title,
+.data-export__history-head .cf-form-section__title,
+.data-export__progress-head .cf-form-section__title {
+  margin: 0 0 0.25rem;
+}
+
+.data-export__muted {
+  color: var(--cf-muted, #64748b);
+  font-size: 0.85rem;
+}
+
+.data-export__table-wrap {
+  overflow-x: auto;
+}
+
+.data-export__id {
+  font-size: 0.8rem;
+}
+
+.data-export__status {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--cf-radius-sm, 8px);
+  background: var(--cf-slate-100, #f1f5f9);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.data-export__status[data-status='completed'] {
+  background: color-mix(in srgb, var(--cf-success, #16a34a) 16%, white);
+  color: var(--cf-success, #15803d);
+}
+
+.data-export__status[data-status='failed'] {
+  background: color-mix(in srgb, var(--cf-critical, #dc2626) 14%, white);
+  color: var(--cf-critical, #b91c1c);
+}
+
+.data-export__status[data-status='processing'],
+.data-export__status[data-status='queued'] {
+  background: color-mix(in srgb, var(--cf-primary, #2563eb) 12%, white);
+  color: var(--cf-primary, #1d4ed8);
+}
+
+.data-export__progress-list {
+  list-style: none;
+  margin: 0.75rem 0 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.data-export__progress-list li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 0.75rem;
+  align-items: center;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--cf-panel-border, #e2e8f0);
+  border-radius: var(--cf-radius-sm, 8px);
+  font-size: 0.88rem;
+}
+
+.cf-inline-alert {
+  margin-bottom: var(--cf-space-3, 0.75rem);
+}
+
+.cf-inline-alert p {
+  margin: 0;
+}
+
+.data-export__modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}

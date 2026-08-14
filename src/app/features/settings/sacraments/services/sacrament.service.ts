@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpParams, HttpErrorResponse, HttpHeaders } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { environment } from '@environments/environment';
@@ -11,9 +11,15 @@ import {
   SacramentListParams,
   SacramentResponse,
   SacramentListResponse,
-  SacramentTypeResponse
+  SacramentTypeResponse,
+  SacramentCertificateResponse,
+  SacramentCertificateListResponse,
 } from '../models/sacrament.model';
 import { handleApiError } from '../utils/error-handler.util';
+
+export interface SacramentCreateOptions {
+  idempotencyKey?: string;
+}
 
 /**
  * Sacrament Service
@@ -114,8 +120,16 @@ export class SacramentService {
    * });
    * ```
    */
-  createSacrament(data: SacramentCreateRequest): Observable<SacramentResponse> {
-    return this.http.post<SacramentResponse>(this.baseUrl, data)
+  createSacrament(
+    data: SacramentCreateRequest,
+    options?: SacramentCreateOptions
+  ): Observable<SacramentResponse> {
+    let headers = new HttpHeaders();
+    if (options?.idempotencyKey) {
+      headers = headers.set('Idempotency-Key', options.idempotencyKey);
+    }
+
+    return this.http.post<SacramentResponse>(this.baseUrl, data, { headers })
       .pipe(
         catchError((error: HttpErrorResponse) => {
           const errorMessage = handleApiError(error, 'Failed to create sacrament');
@@ -174,6 +188,141 @@ export class SacramentService {
       );
   }
 
+  // ==================== Lifecycle (ADR-07) ====================
+
+  /**
+   * Historical correction with reason + optimistic lock.
+   */
+  correctSacrament(
+    id: number,
+    payload: {
+      lock_version: number;
+      reason: string;
+      participants?: SacramentCreateRequest['participants'];
+      [key: string]: unknown;
+    }
+  ): Observable<SacramentResponse> {
+    return this.http
+      .post<SacramentResponse>(`${this.baseUrl}/${id}/correct`, payload)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          return throwError(() => error);
+        })
+      );
+  }
+
+  /**
+   * Business void — record remains visible as voided.
+   */
+  voidSacrament(
+    id: number,
+    payload: { lock_version: number; reason: string }
+  ): Observable<SacramentResponse> {
+    return this.http
+      .post<SacramentResponse>(`${this.baseUrl}/${id}/void`, payload)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          return throwError(() => error);
+        })
+      );
+  }
+
+  /**
+   * Restore soft-deleted record (does not unvoid).
+   */
+  restoreSacrament(
+    id: number,
+    payload?: { lock_version?: number }
+  ): Observable<SacramentResponse> {
+    return this.http
+      .post<SacramentResponse>(`${this.baseUrl}/${id}/restore`, payload || {})
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          const errorMessage = handleApiError(error, 'Failed to restore sacrament');
+          return throwError(() => new Error(errorMessage));
+        })
+      );
+  }
+
+  /**
+   * Patch notes / registry / place metadata only.
+   */
+  patchMetadata(
+    id: number,
+    payload: {
+      lock_version: number;
+      notes?: string;
+      book_number?: string;
+      page_number?: string;
+      registry_entry?: string;
+      certificate_number?: string;
+      place_administered?: string;
+      [key: string]: unknown;
+    }
+  ): Observable<SacramentResponse> {
+    return this.http
+      .patch<SacramentResponse>(`${this.baseUrl}/${id}/metadata`, payload)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          return throwError(() => error);
+        })
+      );
+  }
+
+  // ==================== Certificates (Phase 8) ====================
+
+  listCertificates(sacramentId: number): Observable<SacramentCertificateListResponse> {
+    return this.http.get<SacramentCertificateListResponse>(`${this.baseUrl}/${sacramentId}/certificates`)
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          return throwError(() => new Error(handleApiError(error, 'Failed to load certificates')));
+        })
+      );
+  }
+
+  previewCertificate(sacramentId: number): Observable<SacramentCertificateResponse> {
+    return this.http.post<SacramentCertificateResponse>(
+      `${this.baseUrl}/${sacramentId}/certificates/preview`,
+      {}
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to preview certificate')));
+      })
+    );
+  }
+
+  generateCertificate(sacramentId: number): Observable<SacramentCertificateResponse> {
+    return this.http.post<SacramentCertificateResponse>(
+      `${this.baseUrl}/${sacramentId}/certificates/generate`,
+      {}
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to generate certificate')));
+      })
+    );
+  }
+
+  reissueCertificate(certificateId: number): Observable<SacramentCertificateResponse> {
+    return this.http.post<SacramentCertificateResponse>(
+      `${this.baseUrl}/certificates/${certificateId}/reissue`,
+      {}
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to reissue certificate')));
+      })
+    );
+  }
+
+  downloadCertificate(certificateId: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/certificates/${certificateId}/download`, {
+      responseType: 'blob',
+    }).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to download certificate')));
+      })
+    );
+  }
+
   // ==================== Reference Data ====================
 
   /**
@@ -188,8 +337,13 @@ export class SacramentService {
    * });
    * ```
    */
-  getSacramentTypes(): Observable<SacramentTypeResponse> {
-    return this.http.get<SacramentTypeResponse>(`${this.baseUrl}/types`)
+  getSacramentTypes(options?: { includeInactive?: boolean }): Observable<SacramentTypeResponse> {
+    let params = new HttpParams();
+    if (options?.includeInactive) {
+      params = params.set('include_inactive', '1');
+    }
+
+    return this.http.get<SacramentTypeResponse>(`${this.baseUrl}/types`, { params })
       .pipe(
         catchError((error: HttpErrorResponse) => {
           const errorMessage = handleApiError(error, 'Failed to load sacrament types');

@@ -1,37 +1,26 @@
 import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, inject, ViewChild, ElementRef, AfterViewChecked, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { User, Role, Permission, UserRequest } from '@core/models';
+import { User, Role, UserRequest } from '@core/models';
 import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
-import { PhoneInputComponent, ButtonComponent, ModalShellComponent } from '@shared/components';
-import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
+import { PhoneInputComponent, ModalShellComponent } from '@shared/components';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
-import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { trapFocus, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 /**
  * UserFormModalComponent - Create/Edit User with Multi-Role Selection
- * 
- * This component provides a modal interface for creating and editing users
- * with support for assigning multiple roles simultaneously.
- * 
- * Features:
- * - Create and Edit modes
- * - Multi-role selection with checkboxes
- * - Form validation
- * - Password complexity requirements
- * - Responsive design
- * 
- * @author Development Team
- * @date 2025-10-25
+ *
+ * Category-style large sectioned modal (enterprise-modal-style-guide.md §14).
+ * Role assignment remains multi-select checkboxes; presentation only.
  */
 @Component({
   selector: 'app-user-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, PhoneInputComponent, ButtonComponent, ModalShellComponent, FormFieldComponent],
+  imports: [CommonModule, FormsModule, PhoneInputComponent, ModalShellComponent],
   templateUrl: './user-form-modal.component.html',
   styleUrl: './user-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -208,6 +197,10 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
 
   // Role selection handlers
   toggleRole(roleId: number): void {
+    if (this.isEditingSelf) {
+      return;
+    }
+
     if (this.selectedRoleIds.has(roleId)) {
       this.selectedRoleIds.delete(roleId);
     } else {
@@ -216,10 +209,19 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     
     this.formData.role_ids = Array.from(this.selectedRoleIds);
     this.validateField('role_ids');
+    this.cdr.markForCheck();
   }
 
   isRoleSelected(roleId: number): boolean {
     return this.selectedRoleIds.has(roleId);
+  }
+
+  onActiveToggle(): void {
+    if (this.isEditingSelf) {
+      return;
+    }
+    this.formData.active = this.formData.active === 1 ? 0 : 1;
+    this.cdr.markForCheck();
   }
 
 

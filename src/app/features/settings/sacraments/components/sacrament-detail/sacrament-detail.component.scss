@@ -3,6 +3,13 @@
   margin: 0 auto;
   padding: 1.5rem;
 
+  &.cf-page {
+    padding: var(--cf-page-pad, 1.5rem);
+    gap: var(--cf-page-gap, 1.25rem);
+    display: flex;
+    flex-direction: column;
+  }
+
   // Responsive padding
   @media (max-width: 768px) {
     padding: 1rem;
@@ -13,66 +20,91 @@
   }
 }
 
-.detail-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
+.official-certificate-panel {
+  margin-bottom: 1.5rem;
+  padding: 1rem 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
 
-  .back-btn {
-    background: transparent;
-    border: none;
-    color: #667eea;
-    font-size: 0.938rem;
-    font-weight: 600;
-    cursor: pointer;
-    padding: 0.5rem 0;
-    transition: all 0.2s;
-
-    &:hover {
-      transform: translateX(-4px);
-    }
-  }
-
-  .header-actions {
-    display: flex;
-    gap: 0.75rem;
-  }
-}
-
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 8px;
-  font-size: 0.938rem;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  transition: all 0.2s;
-
-  &.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-
-    &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-    }
-  }
-
-  &.btn-secondary {
-    background: #f3f4f6;
-    color: #374151;
-
-    &:hover {
-      background: #e5e7eb;
-    }
-  }
-
-  .btn-icon {
+  &__title {
+    margin: 0 0 0.35rem;
     font-size: 1.125rem;
+  }
+
+  &__hint {
+    margin: 0 0 0.75rem;
+    color: #555;
+    font-size: 0.9rem;
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  &__list {
+    margin: 0 0 0.75rem;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  &__list-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+  }
+
+  &__version {
+    font-weight: 500;
+    color: #374151;
+    min-width: 5.5rem;
+  }
+
+  &__preview {
+    margin-top: 0.75rem;
+    padding: 1rem 1.15rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+
+  &__preview-title {
+    margin: 0 0 0.75rem;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1f2937;
+  }
+
+  &__preview-fields {
+    display: grid;
+    gap: 0.65rem;
+    margin: 0;
+
+    > div {
+      display: grid;
+      grid-template-columns: 9.5rem 1fr;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    dt {
+      margin: 0;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #6b7280;
+    }
+
+    dd {
+      margin: 0;
+      font-size: 0.95rem;
+      color: #1f2937;
+    }
   }
 }
 
@@ -659,7 +691,7 @@ $font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helve
   gap: 1.5rem;
 }
 
-// Print styles - Optimized
+// Print styles - Optimized (keep Marriage/Baptism certificate layouts intact)
 @media print {
   * {
     -webkit-print-color-adjust: exact !important;
@@ -667,7 +699,10 @@ $font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helve
     color-adjust: exact !important;
   }
 
-  .detail-header {
+  .no-print,
+  .official-certificate-panel,
+  app-page-header,
+  .cf-page-header {
     display: none !important;
   }
 
@@ -677,9 +712,7 @@ $font-family-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helve
     padding: 0;
   }
 
-  .btn,
-  .header-actions,
-  .back-btn {
+  .cf-btn {
     display: none !important;
   }
   

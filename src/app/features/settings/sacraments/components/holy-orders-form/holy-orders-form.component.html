@@ -1,0 +1,173 @@
+<div class="holy-orders-page cf-page">
+  <app-page-header
+    title="Register Holy Orders"
+    subtitle="Record an ordination with the candidate, ordaining bishop, and parish registry details."
+    [backLink]="['/sacraments']"
+    backLabel="Back to sacraments"
+  >
+  </app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!holyOrdersEnabled" role="alert">
+    <p>Holy Orders is not available for new registration in this church.</p>
+  </div>
+
+  <ng-container *ngIf="holyOrdersEnabled">
+  <nav class="ho-steps" aria-label="Holy Orders steps">
+    <ol class="ho-steps__list">
+      <li
+        *ngFor="let s of steps; let i = index"
+        class="ho-steps__item"
+        [class.active]="step === i + 1"
+        [attr.aria-current]="step === i + 1 ? 'step' : null"
+      >
+        {{ i + 1 }}. {{ s }}
+      </li>
+    </ol>
+  </nav>
+
+  <div class="ho-panel" *ngIf="step === 1">
+    <h2>Ordination details</h2>
+    <p class="hint">Choose the order being conferred and the date of the ordination.</p>
+    <label>
+      Ordination type
+      <select [(ngModel)]="formData['ordination_type']" name="ordination_type">
+        <option value="DIACONATE">Diaconate</option>
+        <option value="PRESBYTERATE">Presbyterate</option>
+        <option value="EPISCOPATE">Episcopate</option>
+      </select>
+    </label>
+    <label>
+      Date of ordination
+      <input type="date" [(ngModel)]="formData['date_administered']" name="date_administered" required />
+    </label>
+  </div>
+
+  <div class="ho-panel" *ngIf="step === 2">
+    <h2>Candidate</h2>
+    <p class="hint">Who is being ordained? Link a parish member or enter an external name.</p>
+    <app-participant-source-control
+      [allowedSources]="['member', 'external']"
+      [value]="candidateDraft"
+      (valueChange)="onCandidateChange($event)"
+    ></app-participant-source-control>
+  </div>
+
+  <div class="ho-panel" *ngIf="step === 3">
+    <h2>Ordaining bishop</h2>
+    <p class="hint">The bishop (or archbishop) who conferred the order.</p>
+    <app-minister-picker
+      controlId="ordaining_bishop"
+      label="Who conferred this ordination?"
+      [ministerRoles]="['bishop', 'archbishop']"
+      [value]="ministerDraft"
+      (valueChange)="onMinisterChange($event)"
+    ></app-minister-picker>
+  </div>
+
+  <div class="ho-panel" *ngIf="step === 4">
+    <h2>Additional ministers</h2>
+    <p class="hint">Optional co-consecrators, from parish leadership or entered as external names.</p>
+    <div *ngFor="let draft of coConsecratorDrafts; let i = index" class="co-row">
+      <app-minister-picker
+        [controlId]="'co_consecrator_' + i"
+        label="Co-consecrator"
+        [ministerRoles]="['bishop', 'archbishop']"
+        [value]="draft"
+        (valueChange)="coConsecratorDrafts[i] = $event"
+      ></app-minister-picker>
+      <button type="button" class="link-btn" (click)="removeCoConsecrator(i)">Remove</button>
+    </div>
+    <button type="button" class="link-btn" (click)="addCoConsecrator()">Add co-consecrator</button>
+  </div>
+
+  <div class="ho-panel" *ngIf="step === 5">
+    <h2>Diocese and place</h2>
+    <p class="hint">Where the ordination took place.</p>
+    <label>
+      Diocese
+      <input type="text" [(ngModel)]="formData['diocese_name']" name="diocese_name" />
+    </label>
+    <label>
+      Place
+      <input type="text" [(ngModel)]="formData['place_administered']" name="place_administered" />
+    </label>
+    <label>
+      Place detail
+      <input
+        type="text"
+        [(ngModel)]="formData['place_detail']"
+        name="place_detail"
+        placeholder="e.g. Cathedral of St. Mary"
+      />
+    </label>
+  </div>
+
+  <div class="ho-panel" *ngIf="step === 6">
+    <h2>Registry</h2>
+    <p class="hint">Book, page, and entry numbers from the parish Holy Orders register.</p>
+    <label>
+      Book
+      <input type="text" [(ngModel)]="formData['book_number']" name="book_number" />
+    </label>
+    <label>
+      Page
+      <input type="text" [(ngModel)]="formData['page_number']" name="page_number" />
+    </label>
+    <label>
+      Entry
+      <input type="text" [(ngModel)]="formData['registry_entry']" name="registry_entry" />
+    </label>
+    <label>
+      Certificate number
+      <input type="text" [(ngModel)]="formData['certificate_number']" name="certificate_number" />
+    </label>
+  </div>
+
+  <div class="ho-panel" *ngIf="step === 7">
+    <h2>Review</h2>
+    <p class="hint">Confirm the details below before saving to the parish register.</p>
+    <dl class="ho-summary">
+      <div>
+        <dt>Ordination</dt>
+        <dd>{{ ordinationTypeLabel(formData['ordination_type']) }}</dd>
+      </div>
+      <div>
+        <dt>Date</dt>
+        <dd>{{ formData['date_administered'] || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Place</dt>
+        <dd>{{ formData['place_administered'] || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Diocese</dt>
+        <dd>{{ formData['diocese_name'] || '—' }}</dd>
+      </div>
+      <div>
+        <dt>Book / Page / Entry</dt>
+        <dd>{{ registrySummary() }}</dd>
+      </div>
+      <div *ngIf="formData['certificate_number']">
+        <dt>Certificate number</dt>
+        <dd>{{ formData['certificate_number'] }}</dd>
+      </div>
+    </dl>
+    <app-sacrament-review-panel
+      [dateAdministered]="formData['date_administered'] ? (formData['date_administered'] + '') : null"
+      [placeAdministered]="formData['place_administered'] ? (formData['place_administered'] + '') : null"
+      [participants]="reviewParticipants()"
+    ></app-sacrament-review-panel>
+  </div>
+
+  <div class="ho-panel" *ngIf="step === 8">
+    <h2>Confirm and save</h2>
+    <p>Everything looks ready. Save to add this Holy Orders record to the parish register.</p>
+    <app-button variant="save" [loading]="saving" (clicked)="save()">Save Holy Orders</app-button>
+  </div>
+
+  <div class="ho-actions">
+    <app-button *ngIf="step > 1" variant="back" (clicked)="back()">Back</app-button>
+    <app-button *ngIf="step < totalSteps" variant="primary" (clicked)="next()">Continue</app-button>
+  </div>
+  </ng-container>
+</div>

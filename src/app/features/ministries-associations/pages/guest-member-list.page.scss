@@ -1,0 +1,5 @@
+/* Panel container matching Add organization / list pages `.cf-panel` content block. */
+.guest-member-list__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}

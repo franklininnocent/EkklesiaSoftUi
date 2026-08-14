@@ -66,6 +66,7 @@ export function prepareFamilyMemberPayload(
   };
 
   return {
+    person_id: value.person_id || undefined,
     first_name: (value.first_name || '').trim(),
     middle_name: sanitize(value.middle_name),
     last_name: (value.last_name || '').trim(),

@@ -1,581 +1,644 @@
-<div class="sacrament-list-container cf-page">
+<section class="sacrament-list cf-page">
   <app-page-header
-    title="Sacraments"
-    subtitle="Manage baptisms, confirmations, marriages, and all sacraments">
-    <div class="sacrament-page-header-actions">
-      <div class="search-box-header">
-        <span class="search-icon">🔍</span>
-        <input 
-          type="text" 
-          [(ngModel)]="searchTerm"
-          (input)="onQuickSearch()"
-          placeholder="Search by recipient name, sacrament type, minister, certificate number..."
-          class="search-input-header"
-          aria-label="Quick search sacraments">
-        <button 
-          *ngIf="searchTerm" 
-          class="clear-search-btn"
-          (click)="clearSearch()"
-          aria-label="Clear search">
-          ✕
-        </button>
-      </div>
-      <app-button variant="filter" (clicked)="showAdvancedSearch = true" [class.active]="showAdvancedSearch">
-        <span class="btn-icon">🔍</span>
-        Filters
-        <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
-      </app-button>
-      <button class="btn btn-primary" (click)="onCreateSacrament()" type="button" aria-label="Create new sacrament">
-        <span class="btn-icon">➕</span>
+    title="Parish Sacrament Register"
+    subtitle="Baptisms, marriages, confirmations, and other sacramental records for this parish."
+  >
+    <app-list-toolbar
+      searchPlaceholder="Search by recipient, type, minister, or certificate…"
+      [searchValue]="searchTerm"
+      [filterCount]="drawerFilterCount"
+      (searchChange)="onSearchChange($event)"
+      (filtersOpened)="openFilters()"
+    >
+      <button type="button" class="cf-btn cf-btn-primary" (click)="onCreateSacrament()">
+        Add Sacrament
       </button>
-    </div>
+      <div class="sacrament-list__overflow">
+        <button
+          type="button"
+          class="cf-btn"
+          [attr.aria-expanded]="showOverflowMenu"
+          aria-haspopup="true"
+          aria-label="More register actions"
+          (click)="showOverflowMenu = !showOverflowMenu"
+        >
+          More
+        </button>
+        <div class="sacrament-list__overflow-menu" *ngIf="showOverflowMenu" role="menu">
+          <a
+            *ngIf="holyOrdersEnabled"
+            role="menuitem"
+            class="sacrament-list__overflow-item"
+            routerLink="/sacraments/holy-orders/create"
+            (click)="showOverflowMenu = false"
+          >
+            Register Holy Orders
+          </a>
+          <a
+            *ngIf="canMigrate"
+            role="menuitem"
+            class="sacrament-list__overflow-item"
+            routerLink="/sacraments/migration"
+            (click)="showOverflowMenu = false"
+          >
+            Migration queue
+          </a>
+        </div>
+      </div>
+    </app-list-toolbar>
   </app-page-header>
 
-  <!-- Active Filter Chips - Inline Compact Design -->
-  <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
-    <div class="chips-inline-wrapper">
-      <span class="chips-label">
-        <span class="filter-icon">🔍</span>
-        Active Filters ({{ getActiveFilters().length }}):
-      </span>
-      <div class="chips-list">
-        <div 
-          *ngFor="let filter of getActiveFilters()" 
-          class="filter-chip animate-scale-in"
-          [attr.aria-label]="filter.label + ': ' + filter.displayValue"
-          tabindex="0"
-          (keydown.enter)="removeFilter(filter)"
-          (keydown.space)="removeFilter(filter); $event.preventDefault()"
-          role="button">
-          <span class="chip-content">
-            <span class="chip-label">{{ filter.label }}:</span>
-            <span class="chip-value">{{ filter.displayValue }}</span>
-          </span>
-          <button 
-            type="button"
-            class="chip-remove"
-            (click)="removeFilter(filter)"
-            [attr.aria-label]="'Remove filter: ' + filter.label"
-            tabindex="-1">
-            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-      </div>
-      <button 
-        type="button"
-        class="btn-clear-all-chips"
-        (click)="clearAllFilters()"
-        aria-label="Clear all filters">
-        Clear All
-      </button>
-    </div>
-  </div>
-
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading sacraments...</p>
-  </div>
-
-  <!-- Bulk Actions Bar -->
-  <div *ngIf="selectedSacraments.size > 0" class="bulk-actions-bar">
-    <div class="bulk-actions-info">
-      <span class="selected-count">{{ selectedSacraments.size }} selected</span>
-    </div>
-    <div class="bulk-actions-buttons">
-      <app-button variant="secondary" size="sm" (clicked)="onBulkStatusUpdate('active')" ariaLabel="Set status to Active">
-        Set Active
-      </app-button>
-      <app-button variant="secondary" size="sm" (clicked)="onBulkStatusUpdate('cancelled')" ariaLabel="Set status to Cancelled">
-        Set Cancelled
-      </app-button>
-      <app-button variant="secondary" size="sm" (clicked)="onBulkStatusUpdate('conditional')" ariaLabel="Set status to Conditional">
-        Set Conditional
-      </app-button>
-      <app-button variant="export" size="sm" (clicked)="onBulkExport()" ariaLabel="Export selected">
-        Export Selected
-      </app-button>
-      <app-button variant="delete" size="sm" (clicked)="onBulkDelete()" ariaLabel="Delete selected">
-        Delete Selected
-      </app-button>
-      <app-button variant="secondary" size="sm" (clicked)="clearSelection()" ariaLabel="Clear selection">
-        Clear Selection
-      </app-button>
-    </div>
-  </div>
-
-  <!-- Sacraments Table -->
-  <div *ngIf="!loading" class="table-responsive">
-    <table class="sacrament-table">
-      <thead>
-        <tr>
-          <th class="checkbox-col">
-            <input 
-              type="checkbox" 
-              [checked]="selectAll"
-              (change)="toggleSelectAll($event)"
-              title="Select all">
-          </th>
-          <th (click)="onSort('recipient_name')" class="sortable" [attr.aria-sort]="isSorted('recipient_name') ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
-            <span class="th-content">
-              Recipient
-              <span class="sort-icon" *ngIf="isSorted('recipient_name')">
-                <svg *ngIf="sortDir === 'asc'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 15l-6-6-6 6"></path>
-                </svg>
-                <svg *ngIf="sortDir === 'desc'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 9l6 6 6-6"></path>
-                </svg>
-              </span>
-              <span class="sort-icon unsorted" *ngIf="!isSorted('recipient_name')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M8 9l4-4 4 4"></path>
-                  <path d="M8 15l4 4 4-4"></path>
-                </svg>
-              </span>
-            </span>
-          </th>
-          <th (click)="onSort('sacrament_type_id')" class="sortable" [attr.aria-sort]="isSorted('sacrament_type_id') ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
-            <span class="th-content">
-              Sacrament
-              <span class="sort-icon" *ngIf="isSorted('sacrament_type_id')">
-                <svg *ngIf="sortDir === 'asc'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 15l-6-6-6 6"></path>
-                </svg>
-                <svg *ngIf="sortDir === 'desc'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 9l6 6 6-6"></path>
-                </svg>
-              </span>
-              <span class="sort-icon unsorted" *ngIf="!isSorted('sacrament_type_id')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M8 9l4-4 4 4"></path>
-                  <path d="M8 15l4 4 4-4"></path>
-                </svg>
-              </span>
-            </span>
-          </th>
-          <th (click)="onSort('date_administered')" class="sortable" [attr.aria-sort]="isSorted('date_administered') ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
-            <span class="th-content">
-              Date
-              <span class="sort-icon" *ngIf="isSorted('date_administered')">
-                <svg *ngIf="sortDir === 'asc'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M18 15l-6-6-6 6"></path>
-                </svg>
-                <svg *ngIf="sortDir === 'desc'" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M6 9l6 6 6-6"></path>
-                </svg>
-              </span>
-              <span class="sort-icon unsorted" *ngIf="!isSorted('date_administered')">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M8 9l4-4 4 4"></path>
-                  <path d="M8 15l4 4 4-4"></path>
-                </svg>
-              </span>
-            </span>
-          </th>
-          <th>Place</th>
-          <th>Minister</th>
-          <th>Certificate #</th>
-          <th class="actions-col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr *ngFor="let sacrament of sacraments; trackBy: trackBySacramentId" class="data-row" [class.row-selected]="selectedSacraments.has(sacrament.id)">
-          <td class="checkbox-cell">
-            <input 
-              type="checkbox" 
-              [checked]="selectedSacraments.has(sacrament.id)"
-              (change)="toggleSacramentSelection(sacrament.id, $event)"
-              title="Select this sacrament">
-          </td>
-          <td class="name-cell first-column-with-status">
-            <button 
-              type="button"
-              class="recipient-name-link" 
-              (click)="viewSacrament(sacrament)"
-              [attr.aria-label]="'View details for ' + (sacrament.recipient_name || 'sacrament')"
-              title="Click to view sacrament details">
-              {{ sacrament.recipient_name }}
-            </button>
-            <span 
-              *ngIf="sacrament.status !== 'active'"
-              class="status-indicator-dot status-indicator-dot-inactive"
-              [attr.aria-label]="'Inactive'"
-              [title]="'Inactive'">
-              <span class="status-indicator-sr-only">Inactive</span>
-            </span>
-          </td>
-          <td>{{ sacrament.sacrament_type?.name || getSacramentTypeName(sacrament.sacrament_type_id) }}</td>
-          <td>{{ sacrament.date_administered | date: 'MMM d, y' }}</td>
-          <td>{{ sacrament.place_administered || 'N/A' }}</td>
-          <td>
-            <span *ngIf="sacrament.minister_title">{{ sacrament.minister_title }}</span>
-            {{ sacrament.minister_name || 'N/A' }}
-          </td>
-          <td>{{ sacrament.certificate_number || 'N/A' }}</td>
-          <td class="actions-cell">
-            <div class="action-buttons">
-              <button 
-                (click)="viewCertificate(sacrament)" 
-                class="action-btn action-view-certificate" 
-                title="View Certificate" 
-                aria-label="View certificate for {{ sacrament.recipient_name || 'sacrament' }}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                </svg>
-              </button>
-              <button 
-                *ngIf="isTenantAdmin"
-                (click)="onDeleteSacrament(sacrament)" 
-                class="btn-delete" 
-                title="Delete Sacrament" 
-                aria-label="Delete sacrament for {{ sacrament.recipient_name || 'sacrament' }}">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon">
-                  <polyline points="3 6 5 6 21 6"></polyline>
-                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                  <line x1="10" y1="11" x2="10" y2="17"></line>
-                  <line x1="14" y1="11" x2="14" y2="17"></line>
-                </svg>
-              </button>
-            </div>
-          </td>
-        </tr>
-        <tr *ngIf="sacraments.length === 0" class="empty-row">
-          <td colspan="8" class="empty-message">
-            <div class="empty-state">
-              <div class="empty-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-              </div>
-              <h3>No Records Found</h3>
-              <p>No sacraments match your current filters.</p>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
-  <!-- Pagination -->
-  <app-pagination
-    *ngIf="!loading && totalItems > 0"
-    [currentPage]="currentPage"
-    [pageSize]="perPage"
-    [totalItems]="totalItems"
-      [pageSizeOptions]="pageSizeOptions"
-    [showPageSizeSelector]="true"
-    [showPageInfo]="true"
-    (pageChange)="onPageChange($event)"
-    (pageSizeChange)="onPageSizeChange($event)">
-  </app-pagination>
-
-  <!-- Delete Confirmation Modal -->
-  <app-modal-shell
-    *ngIf="showDeleteModal"
-    title="Confirm Deletion"
-    size="xs"
-    [isSubmitting]="false"
-    (closeRequested)="cancelDelete()"
+  <div
+    class="sacrament-list__chips"
+    *ngIf="getActiveFilters().length > 0"
+    role="region"
+    aria-label="Active filters"
   >
-    <div class="warning-box">
-      <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-        <line x1="12" y1="9" x2="12" y2="13"></line>
-        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-      </svg>
-      <div class="warning-content">
-        <h4>Warning: This action will permanently delete the sacrament record</h4>
-        <p>You are about to delete the sacrament for:</p>
-        <p class="recipient-name"><strong>{{ sacramentToDelete?.recipient_name }}</strong></p>
-        <div class="consequences-list">
-          <p><strong>This will:</strong></p>
-          <ul>
-            <li>Permanently remove this sacrament from the system</li>
-            <li>Delete all associated certificate information</li>
-            <li>Remove any links to family or BCC records</li>
-            <li>This action cannot be automatically undone</li>
-          </ul>
-        </div>
-        <p class="final-warning">Are you absolutely sure you want to proceed?</p>
+    <span class="cf-meta">Active filters</span>
+    <div class="sacrament-list__chip-list">
+      <span
+        class="cf-badge cf-badge--info"
+        *ngFor="let filter of getActiveFilters()"
+        [attr.aria-label]="filter.label + ': ' + filter.displayValue"
+      >
+        {{ filter.label }}: {{ filter.displayValue }}
+        <button
+          type="button"
+          class="sacrament-list__chip-remove"
+          (click)="removeFilter(filter)"
+          [attr.aria-label]="'Remove filter: ' + filter.label"
+        >
+          ×
+        </button>
+      </span>
+    </div>
+    <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllFilters()" aria-label="Clear all filters">
+      Clear all
+    </button>
+  </div>
+
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading && !loaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading sacramental records…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="7"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="loaded">
+    <div class="cf-inline-alert cf-panel" *ngIf="loadError" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+    </div>
+
+    <div
+      *ngIf="!loadError && selectedSacraments.size > 0"
+      class="sacrament-list__bulk cf-panel"
+      role="region"
+      aria-label="Bulk actions"
+    >
+      <span class="sacrament-list__bulk-count">{{ selectedSacraments.size }} selected</span>
+      <div class="sacrament-list__bulk-actions">
+        <button type="button" class="cf-btn cf-btn--sm" (click)="onBulkStatusUpdate('registered')">
+          Set Registered
+        </button>
+        <button type="button" class="cf-btn cf-btn--sm" (click)="onBulkStatusUpdate('conditional')">
+          Set Conditional
+        </button>
+        <button type="button" class="cf-btn cf-btn--sm" (click)="onBulkExport()">Export</button>
+        <button
+          *ngIf="isTenantAdmin"
+          type="button"
+          class="cf-btn cf-btn--sm cf-btn-danger"
+          (click)="onBulkDelete()"
+        >
+          Remove selected
+        </button>
+        <button type="button" class="cf-btn cf-btn--sm cf-btn-ghost" (click)="clearSelection()">
+          Clear selection
+        </button>
       </div>
     </div>
-    <div modalFooter>
-      <button type="button" class="cf-btn" (click)="cancelDelete()">Cancel</button>
-      <button type="button" class="cf-btn cf-btn-danger" (click)="confirmDelete()">Delete Permanently</button>
+
+    <ng-container *ngIf="!loadError">
+      <div class="cf-panel sacrament-list__panel" *ngIf="sacraments.length">
+        <app-data-table [clickableRows]="false">
+          <thead>
+            <tr>
+              <th scope="col" class="sacrament-list__check-col">
+                <input
+                  type="checkbox"
+                  [checked]="selectAll"
+                  (change)="toggleSelectAll($event)"
+                  aria-label="Select all sacraments on this page"
+                />
+              </th>
+              <th
+                scope="col"
+                class="sortable"
+                (click)="onSort('recipient_name')"
+                [attr.aria-sort]="isSorted('recipient_name') ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
+              >
+                Recipient / Parties
+              </th>
+              <th
+                scope="col"
+                class="sortable"
+                (click)="onSort('sacrament_type_id')"
+                [attr.aria-sort]="isSorted('sacrament_type_id') ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
+              >
+                Sacrament
+              </th>
+              <th
+                scope="col"
+                class="sortable"
+                (click)="onSort('date_administered')"
+                [attr.aria-sort]="isSorted('date_administered') ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'"
+              >
+                Date
+              </th>
+              <th scope="col">Minister</th>
+              <th scope="col">Status</th>
+              <th scope="col">Certificate</th>
+              <th scope="col">Registry</th>
+              <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let sacrament of sacraments; trackBy: trackBySacramentId"
+              [class.sacrament-list__row--selected]="selectedSacraments.has(sacrament.id)"
+            >
+              <td class="sacrament-list__check-col">
+                <input
+                  type="checkbox"
+                  [checked]="selectedSacraments.has(sacrament.id)"
+                  (change)="toggleSacramentSelection(sacrament.id, $event)"
+                  [attr.aria-label]="'Select ' + (sacrament.recipient_name || 'sacrament')"
+                />
+              </td>
+              <td>
+                <button
+                  type="button"
+                  class="sacrament-list__name"
+                  (click)="viewCertificate(sacrament)"
+                  [attr.aria-label]="'View record for ' + (sacrament.recipient_name || 'sacrament')"
+                >
+                  <strong>{{ sacrament.recipient_name || '—' }}</strong>
+                </button>
+              </td>
+              <td>{{ sacrament.sacrament_type?.name || getSacramentTypeName(sacrament.sacrament_type_id) }}</td>
+              <td>{{ sacrament.date_administered | date: 'MMM d, y' }}</td>
+              <td>
+                <span *ngIf="sacrament.minister_title">{{ sacrament.minister_title }} </span>
+                {{ sacrament.minister_name || '—' }}
+              </td>
+              <td>
+                <app-status-badge
+                  [label]="statusLabel(sacrament.status)"
+                  [tone]="statusTone(sacrament.status)"
+                ></app-status-badge>
+              </td>
+              <td>{{ sacrament.certificate_number || 'None' }}</td>
+              <td>{{ registrySummary(sacrament) }}</td>
+              <td class="cf-table__actions-cell">
+                <div class="cf-row-actions">
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    (click)="viewCertificate(sacrament)"
+                    [attr.aria-label]="'Certificate for ' + (sacrament.recipient_name || 'sacrament')"
+                  >
+                    Certificate
+                  </button>
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    (click)="onEditSacrament(sacrament)"
+                    [attr.aria-label]="'Edit ' + (sacrament.recipient_name || 'sacrament')"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    *ngIf="canCorrectSacrament(sacrament)"
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    (click)="openCorrectDialog(sacrament)"
+                    [attr.aria-label]="'Correct ' + (sacrament.recipient_name || 'sacrament')"
+                  >
+                    Correct
+                  </button>
+                  <button
+                    *ngIf="canVoidSacrament(sacrament)"
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    (click)="openVoidDialog(sacrament)"
+                    [attr.aria-label]="'Void ' + (sacrament.recipient_name || 'sacrament')"
+                  >
+                    Void
+                  </button>
+                  <button
+                    *ngIf="isTenantAdmin"
+                    type="button"
+                    class="cf-btn cf-btn--sm cf-btn-danger"
+                    (click)="onDeleteSacrament(sacrament)"
+                    [attr.aria-label]="'Remove ' + (sacrament.recipient_name || 'sacrament')"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+
+        <app-pagination
+          [currentPage]="currentPage"
+          [pageSize]="perPage"
+          [totalItems]="totalItems"
+          [pageSizeOptions]="pageSizeOptions"
+          [showPageSizeSelector]="true"
+          [showPageInfo]="true"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        ></app-pagination>
+      </div>
+
+      <app-cf-empty-state
+        *ngIf="!sacraments.length"
+        icon="◇"
+        [title]="hasActiveFilters ? 'No records match your filters' : 'No sacramental records yet'"
+        [description]="
+          hasActiveFilters
+            ? 'Try clearing search or filters, or adjust the date range.'
+            : 'Add the first baptism, marriage, or other sacrament to this parish register.'
+        "
+      >
+        <button
+          *ngIf="!hasActiveFilters"
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="onCreateSacrament()"
+        >
+          Add Sacrament
+        </button>
+        <button
+          *ngIf="hasActiveFilters"
+          type="button"
+          class="cf-btn"
+          (click)="clearAllFilters()"
+        >
+          Clear filters
+        </button>
+      </app-cf-empty-state>
+    </ng-container>
+  </ng-container>
+
+  <app-confirmation-modal
+    *ngIf="showDeleteModal"
+    [show]="showDeleteModal"
+    title="Remove from register view?"
+    [message]="
+      'Remove the sacrament for ' +
+      (sacramentToDelete?.recipient_name || 'this recipient') +
+      ' from the register view? This is a soft delete; the record can be restored. To mark a record invalid while keeping it visible, use Void instead.'
+    "
+    confirmText="Remove"
+    cancelText="Cancel"
+    confirmButtonClass="btn-danger"
+    (confirmed)="confirmDelete()"
+    (cancelled)="cancelDelete()"
+  ></app-confirmation-modal>
+
+  <app-confirmation-modal
+    *ngIf="showBulkConfirmModal"
+    [show]="showBulkConfirmModal"
+    [title]="bulkConfirmTitle"
+    [message]="bulkConfirmMessage"
+    confirmText="Confirm"
+    cancelText="Cancel"
+    confirmButtonClass="btn-danger"
+    (confirmed)="confirmBulkAction()"
+    (cancelled)="cancelBulkAction()"
+  ></app-confirmation-modal>
+
+  <app-modal-shell
+    *ngIf="showExportFormatModal"
+    title="Export format"
+    size="xs"
+    headerVariant="compact"
+    bodyPadding="none"
+    closeAriaLabel="Close export format"
+    (closeRequested)="cancelExportFormat()"
+  >
+    <div class="cf-split-form-body">
+      <p class="cf-split-field__hint">Choose how to export the selected records.</p>
+      <div class="cf-split-form-actions">
+        <button type="button" class="cf-btn cf-btn-primary" (click)="confirmExportFormat('pdf')">PDF</button>
+        <button type="button" class="cf-btn" (click)="confirmExportFormat('csv')">Excel (CSV)</button>
+        <button type="button" class="cf-btn" (click)="cancelExportFormat()">Cancel</button>
+      </div>
     </div>
   </app-modal-shell>
 
-  <!-- Sacrament Form Modal -->
   <app-sacrament-form-modal
     *ngIf="showFormModal"
     [sacrament]="sacramentToEdit"
+    [correctionReason]="correctionReason"
     (save)="onFormSave()"
-    (cancel)="onFormCancel()">
-  </app-sacrament-form-modal>
+    (savedAndContinue)="onFormSavedContinue()"
+    (cancel)="onFormCancel()"
+  ></app-sacrament-form-modal>
 
-  <!-- Advanced Search Side Panel -->
+  <app-void-sacrament-dialog
+    [show]="showVoidDialog"
+    [sacrament]="sacramentToVoid"
+    [submitting]="voiding"
+    (confirmed)="confirmVoid($event)"
+    (cancelled)="cancelVoid()"
+  ></app-void-sacrament-dialog>
+
+  <app-correct-sacrament-dialog
+    [show]="showCorrectDialog"
+    [sacrament]="sacramentToCorrect"
+    (confirmed)="confirmCorrect($event)"
+    (cancelled)="cancelCorrect()"
+  ></app-correct-sacrament-dialog>
+
   <app-advanced-search-panel
     mode="sidepanel"
     [fields]="searchFields"
     [isExpanded]="showAdvancedSearch"
     (search)="onAdvancedSearch($event)"
     (clear)="onClearAdvancedSearch()"
-    (close)="showAdvancedSearch = false">
-  </app-advanced-search-panel>
+    (close)="showAdvancedSearch = false"
+  ></app-advanced-search-panel>
 
-  <!-- Sacrament Detail Modal -->
   <app-modal-shell
     #detailModal
     *ngIf="showDetailModal"
     [title]="detailSacrament?.recipient_name || 'Sacrament Details'"
-    [description]="detailSacrament?.sacrament_type?.name || (detailSacrament && detailSacrament.sacrament_type_id != null ? getSacramentTypeName(detailSacrament.sacrament_type_id) : '')"
-    size="xl"
+    [description]="
+      detailSacrament?.sacrament_type?.name ||
+      (detailSacrament && detailSacrament.sacrament_type_id != null
+        ? getSacramentTypeName(detailSacrament.sacrament_type_id)
+        : '')
+    "
+    size="lg"
+    headerVariant="compact"
+    bodyPadding="none"
+    closeAriaLabel="Close sacrament details"
     [isSubmitting]="false"
     (closeRequested)="closeDetailModal()"
   >
-      <!-- Loading State -->
-      <div class="modal-loading" *ngIf="loadingDetail">
-        <div class="spinner"></div>
-        <p>Loading sacrament details...</p>
+    <div class="cf-split-form-body sacrament-detail-modal" *ngIf="loadingDetail">
+      <div class="sacrament-detail-loading">
+        <div class="sacrament-detail-loading__spinner" aria-hidden="true"></div>
+        <p>Loading sacrament details…</p>
+      </div>
+      <div class="cf-split-form-actions">
+        <button type="button" class="cf-btn" (click)="closeDetailModal()">Close</button>
+      </div>
+    </div>
+
+    <div class="cf-split-form-body sacrament-detail-modal" *ngIf="!loadingDetail && detailSacrament">
+      <div class="sacrament-detail-identity" *ngIf="detailSacrament.status">
+        <app-status-badge
+          [label]="statusLabel(detailSacrament.status)"
+          [tone]="statusTone(detailSacrament.status)"
+        ></app-status-badge>
       </div>
 
-      <!-- Modal Body -->
-      <div *ngIf="!loadingDetail && detailSacrament">
-        <!-- Status Badge -->
-        <div class="status-section">
-          <span class="status-badge" [ngClass]="'status-' + detailSacrament.status">
-            {{ detailSacrament.status | titlecase }}
-          </span>
-        </div>
-
-        <!-- Main Content Grid -->
-        <div class="detail-grid">
-          <!-- Basic Information -->
-          <div class="detail-section">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                </svg>
-              </span>
-              Basic Information
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item">
-                <span class="detail-label">Recipient Name</span>
-                <span class="detail-value">{{ detailSacrament.recipient_name || 'N/A' }}</span>
-              </div>
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label">Sacrament Type</span>
-                <span class="detail-value">{{ detailSacrament.sacrament_type?.name || (detailSacrament.sacrament_type_id != null ? getSacramentTypeName(detailSacrament.sacrament_type_id) : 'N/A') }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.date_administered">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.date_administered">Date Administered</span>
-                <span class="detail-value" *ngIf="detailSacrament.date_administered">{{ detailSacrament.date_administered | date: 'mediumDate' }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.place_administered">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.place_administered">Place</span>
-                <span class="detail-value" *ngIf="detailSacrament.place_administered">{{ detailSacrament.place_administered }}</span>
-              </div>
-              <div class="detail-item detail-item-inline" *ngIf="detailSacrament.recipient_birth_date || detailSacrament.recipient_birth_place || detailSacrament.recipient_gender">
-                <span class="detail-label" *ngIf="detailSacrament.recipient_birth_date">Birth Date</span>
-                <span class="detail-value" *ngIf="detailSacrament.recipient_birth_date">{{ detailSacrament.recipient_birth_date | date: 'mediumDate' }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.recipient_birth_date && (detailSacrament.recipient_birth_place || detailSacrament.recipient_gender)">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.recipient_birth_place">Birth Place</span>
-                <span class="detail-value" *ngIf="detailSacrament.recipient_birth_place">{{ detailSacrament.recipient_birth_place }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.recipient_birth_place && detailSacrament.recipient_gender">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.recipient_gender">Gender</span>
-                <span class="detail-value" *ngIf="detailSacrament.recipient_gender">{{ detailSacrament.recipient_gender | titlecase }}</span>
-              </div>
-            </div>
+      <section
+        class="sacrament-detail-summary"
+        *ngIf="
+          detailSacrament.date_administered ||
+          detailSacrament.place_administered ||
+          detailSacrament.minister_name
+        "
+        aria-labelledby="sacrament-detail-summary"
+      >
+        <h3 id="sacrament-detail-summary" class="cf-split-section__title">Summary</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field" *ngIf="detailSacrament.date_administered">
+            <span class="sacrament-detail-label">Date</span>
+            <span class="sacrament-detail-value">{{ detailSacrament.date_administered | date: 'mediumDate' }}</span>
           </div>
-
-          <!-- Minister Information -->
-          <div class="detail-section" *ngIf="detailSacrament.minister_name || detailSacrament.minister_title">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-              </span>
-              Minister Information
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label" *ngIf="detailSacrament.minister_name">Minister Name</span>
-                <span class="detail-value" *ngIf="detailSacrament.minister_name">{{ detailSacrament.minister_name }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.minister_name && detailSacrament.minister_title">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.minister_title">Title</span>
-                <span class="detail-value" *ngIf="detailSacrament.minister_title">{{ detailSacrament.minister_title }}</span>
-              </div>
-            </div>
+          <div class="cf-split-field" *ngIf="detailSacrament.place_administered">
+            <span class="sacrament-detail-label">Place</span>
+            <span class="sacrament-detail-value">{{ detailSacrament.place_administered }}</span>
           </div>
-
-          <!-- Parents Information (for Baptism) -->
-          <div class="detail-section" *ngIf="detailSacrament.father_name || detailSacrament.mother_name">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-              </span>
-              Parents Information
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label" *ngIf="detailSacrament.father_name">Father's Name</span>
-                <span class="detail-value" *ngIf="detailSacrament.father_name">{{ detailSacrament.father_name }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.father_name && detailSacrament.mother_name">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.mother_name">Mother's Name</span>
-                <span class="detail-value" *ngIf="detailSacrament.mother_name">{{ detailSacrament.mother_name }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Godparents/Sponsors -->
-          <div class="detail-section" *ngIf="detailSacrament.godparent1_name || detailSacrament.godparent2_name">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-              </span>
-              Godparents / Sponsors
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label" *ngIf="detailSacrament.godparent1_name">Godparent / Sponsor 1</span>
-                <span class="detail-value" *ngIf="detailSacrament.godparent1_name">{{ detailSacrament.godparent1_name }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.godparent1_name && detailSacrament.godparent2_name">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.godparent2_name">Godparent / Sponsor 2</span>
-                <span class="detail-value" *ngIf="detailSacrament.godparent2_name">{{ detailSacrament.godparent2_name }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Marriage Details (if applicable) -->
-          <div class="detail-section" *ngIf="detailSacrament.marriage_groom_full_name || detailSacrament.marriage_bride_full_name">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                  <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                </svg>
-              </span>
-              Marriage Details
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label" *ngIf="detailSacrament.marriage_groom_full_name">Groom's Name</span>
-                <span class="detail-value" *ngIf="detailSacrament.marriage_groom_full_name">{{ detailSacrament.marriage_groom_full_name }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.marriage_groom_full_name && detailSacrament.marriage_bride_full_name">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.marriage_bride_full_name">Bride's Name</span>
-                <span class="detail-value" *ngIf="detailSacrament.marriage_bride_full_name">{{ detailSacrament.marriage_bride_full_name }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Witnesses -->
-          <div class="detail-section" *ngIf="detailSacrament.witnesses">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="9" cy="7" r="4"></circle>
-                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                  <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                </svg>
-              </span>
-              Witnesses
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item">
-                <span class="detail-value">{{ detailSacrament.witnesses }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Record Information -->
-          <div class="detail-section" *ngIf="detailSacrament.certificate_number || detailSacrament.book_number || detailSacrament.page_number">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-              </span>
-              Record Information
-            </h3>
-            <div class="detail-items">
-              <div class="detail-item detail-item-inline">
-                <span class="detail-label" *ngIf="detailSacrament.certificate_number">Certificate Number</span>
-                <span class="detail-value" *ngIf="detailSacrament.certificate_number">{{ detailSacrament.certificate_number }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.certificate_number && (detailSacrament.book_number || detailSacrament.page_number)">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.book_number">Book Number</span>
-                <span class="detail-value" *ngIf="detailSacrament.book_number">{{ detailSacrament.book_number }}</span>
-                <span class="detail-separator" *ngIf="detailSacrament.book_number && detailSacrament.page_number">•</span>
-                <span class="detail-label" *ngIf="detailSacrament.page_number">Page Number</span>
-                <span class="detail-value" *ngIf="detailSacrament.page_number">{{ detailSacrament.page_number }}</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Notes -->
-          <div class="detail-section" *ngIf="detailSacrament.notes">
-            <h3 class="section-title">
-              <span class="section-icon">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                </svg>
-              </span>
-              Notes
-            </h3>
-            <div class="notes-content">
-              {{ detailSacrament.notes }}
-            </div>
+          <div class="cf-split-field" *ngIf="detailSacrament.minister_name">
+            <span class="sacrament-detail-label">Minister</span>
+            <span class="sacrament-detail-value">{{ detailSacrament.minister_name }}</span>
           </div>
         </div>
+      </section>
+
+      <div class="sacrament-detail-complete">
+        <h3 class="sacrament-detail-complete__title">Complete record</h3>
+
+        <section class="cf-split-section sacrament-detail-complete__section" aria-labelledby="sacrament-detail-basic">
+          <h4 id="sacrament-detail-basic" class="cf-split-section__title">Basic information</h4>
+          <div class="cf-split-grid">
+            <div class="cf-split-field">
+              <span class="sacrament-detail-label">Recipient / Parties</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.recipient_name || '—' }}</span>
+            </div>
+            <div class="cf-split-field">
+              <span class="sacrament-detail-label">Sacrament</span>
+              <span class="sacrament-detail-value">{{
+                detailSacrament.sacrament_type?.name ||
+                  (detailSacrament.sacrament_type_id != null
+                    ? getSacramentTypeName(detailSacrament.sacrament_type_id)
+                    : '—')
+              }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.recipient_birth_date">
+              <span class="sacrament-detail-label">Birth date</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.recipient_birth_date | date: 'mediumDate' }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.recipient_gender">
+              <span class="sacrament-detail-label">Gender</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.recipient_gender | titlecase }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="showParticipantsInDetail()"
+          aria-labelledby="sacrament-detail-participants"
+        >
+          <h4 id="sacrament-detail-participants" class="cf-split-section__title">People on this record</h4>
+          <p class="cf-split-field__hint">
+            Names below are historical snapshots from when the record was saved, not live profile data.
+          </p>
+          <div class="cf-split-grid sacrament-detail-grid--2">
+            <div class="cf-split-field" *ngFor="let person of detailSacrament?.participants">
+              <span class="sacrament-detail-label">{{ participantRoleLabel(person.role) | titlecase }}</span>
+              <span class="sacrament-detail-value">{{ participantDisplayName(person) }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="detailSacrament.minister_name || detailSacrament.minister_title"
+          aria-labelledby="sacrament-detail-minister"
+        >
+          <h4 id="sacrament-detail-minister" class="cf-split-section__title">Who administered this</h4>
+          <div class="cf-split-grid sacrament-detail-grid--2">
+            <div class="cf-split-field" *ngIf="detailSacrament.minister_name">
+              <span class="sacrament-detail-label">Name</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.minister_name }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.minister_title">
+              <span class="sacrament-detail-label">Title</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.minister_title }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="detailSacrament.father_name || detailSacrament.mother_name"
+          aria-labelledby="sacrament-detail-parents"
+        >
+          <h4 id="sacrament-detail-parents" class="cf-split-section__title">Parents</h4>
+          <div class="cf-split-grid sacrament-detail-grid--2">
+            <div class="cf-split-field" *ngIf="detailSacrament.father_name">
+              <span class="sacrament-detail-label">Father</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.father_name }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.mother_name">
+              <span class="sacrament-detail-label">Mother</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.mother_name }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="detailSacrament.godparent1_name || detailSacrament.godparent2_name"
+          aria-labelledby="sacrament-detail-godparents"
+        >
+          <h4 id="sacrament-detail-godparents" class="cf-split-section__title">Godparents / Sponsors</h4>
+          <div class="cf-split-grid sacrament-detail-grid--2">
+            <div class="cf-split-field" *ngIf="detailSacrament.godparent1_name">
+              <span class="sacrament-detail-label">Godparent / Sponsor 1</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.godparent1_name }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.godparent2_name">
+              <span class="sacrament-detail-label">Godparent / Sponsor 2</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.godparent2_name }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="detailSacrament.marriage_groom_full_name || detailSacrament.marriage_bride_full_name"
+          aria-labelledby="sacrament-detail-marriage"
+        >
+          <h4 id="sacrament-detail-marriage" class="cf-split-section__title">Marriage parties</h4>
+          <div class="cf-split-grid sacrament-detail-grid--2">
+            <div class="cf-split-field" *ngIf="detailSacrament.marriage_groom_full_name">
+              <span class="sacrament-detail-label">Groom</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.marriage_groom_full_name }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.marriage_bride_full_name">
+              <span class="sacrament-detail-label">Bride</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.marriage_bride_full_name }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="detailSacrament.witnesses"
+          aria-labelledby="sacrament-detail-witnesses"
+        >
+          <h4 id="sacrament-detail-witnesses" class="cf-split-section__title">Witnesses</h4>
+          <div class="cf-split-grid">
+            <div class="cf-split-field cf-split-field--full">
+              <span class="sacrament-detail-value">{{ detailSacrament.witnesses }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="detailSacrament.certificate_number || detailSacrament.book_number || detailSacrament.page_number"
+          aria-labelledby="sacrament-detail-record"
+        >
+          <h4 id="sacrament-detail-record" class="cf-split-section__title">Registry information</h4>
+          <div class="cf-split-grid">
+            <div class="cf-split-field" *ngIf="detailSacrament.certificate_number">
+              <span class="sacrament-detail-label">Certificate number</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.certificate_number }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.book_number">
+              <span class="sacrament-detail-label">Book</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.book_number }}</span>
+            </div>
+            <div class="cf-split-field" *ngIf="detailSacrament.page_number">
+              <span class="sacrament-detail-label">Page</span>
+              <span class="sacrament-detail-value">{{ detailSacrament.page_number }}</span>
+            </div>
+          </div>
+        </section>
+
+        <section
+          class="cf-split-section sacrament-detail-complete__section"
+          *ngIf="detailSacrament.notes"
+          aria-labelledby="sacrament-detail-notes"
+        >
+          <h4 id="sacrament-detail-notes" class="cf-split-section__title">Notes</h4>
+          <div class="cf-split-grid">
+            <div class="cf-split-field cf-split-field--full">
+              <span class="sacrament-detail-value sacrament-detail-value--notes">{{ detailSacrament.notes }}</span>
+            </div>
+          </div>
+        </section>
       </div>
 
-    <div modalFooter>
-      <button type="button" class="cf-btn" (click)="closeDetailModal()">Close</button>
-      <button
-        *ngIf="detailSacrament"
-        type="button"
-        class="cf-btn"
-        (click)="viewCertificate(detailSacrament!); closeDetailModal()">
-        View Certificate
-      </button>
-      <button
-        *ngIf="detailSacrament"
-        type="button"
-        class="cf-btn cf-btn-primary"
-        (click)="editSacrament(detailSacrament!); closeDetailModal()">
-        Edit
-      </button>
+      <div class="cf-split-form-actions">
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="editSacrament(detailSacrament!); closeDetailModal()"
+        >
+          Edit
+        </button>
+        <button
+          *ngIf="canCorrectSacrament(detailSacrament)"
+          type="button"
+          class="cf-btn"
+          (click)="openCorrectDialog(detailSacrament!)"
+        >
+          Correct
+        </button>
+        <button
+          *ngIf="canVoidSacrament(detailSacrament)"
+          type="button"
+          class="cf-btn cf-btn-danger"
+          (click)="openVoidDialog(detailSacrament!)"
+        >
+          Void
+        </button>
+        <button
+          type="button"
+          class="cf-btn"
+          (click)="viewCertificate(detailSacrament!); closeDetailModal()"
+        >
+          View certificate
+        </button>
+        <button type="button" class="cf-btn" (click)="closeDetailModal()">Close</button>
+      </div>
     </div>
   </app-modal-shell>
-</div>
-
+</section>

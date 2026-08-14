@@ -63,120 +63,121 @@
   </div>
 
   <ng-container *ngIf="loaded && !error">
-    <app-data-table *ngIf="families.length" [clickableRows]="true">
-      <thead>
-        <tr>
-          <th scope="col" class="sortable" (click)="sortBy('family_code')">
-            Family Code {{ getSortIcon('family_code') }}
-          </th>
-          <th scope="col" class="sortable" (click)="sortBy('head_of_family')">
-            Head of Family {{ getSortIcon('head_of_family') }}
-          </th>
-          <th scope="col" class="sortable" (click)="sortBy('bcc_name')">
-            BCC {{ getSortIcon('bcc_name') }}
-          </th>
-          <th scope="col">Members</th>
-          <th scope="col">Contact</th>
-          <th *ngIf="isTenantAdmin" scope="col" class="cf-table__actions-col">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          *ngFor="let family of families"
-          tabindex="0"
-          (click)="viewFamily(family)"
-          (keydown.enter)="viewFamily(family)"
-        >
-          <td>
-            <div class="family-list__code-cell">
-              <strong class="family-list__code">{{ family.family_code }}</strong>
+    <div class="cf-panel family-list__panel" *ngIf="families.length">
+      <app-data-table [clickableRows]="true">
+        <thead>
+          <tr>
+            <th scope="col" class="sortable" (click)="sortBy('family_code')">
+              Family Code {{ getSortIcon('family_code') }}
+            </th>
+            <th scope="col" class="sortable" (click)="sortBy('head_of_family')">
+              Head of Family {{ getSortIcon('head_of_family') }}
+            </th>
+            <th scope="col" class="sortable" (click)="sortBy('bcc_name')">
+              BCC {{ getSortIcon('bcc_name') }}
+            </th>
+            <th scope="col">Members</th>
+            <th scope="col">Contact</th>
+            <th *ngIf="isTenantAdmin" scope="col" class="cf-table__actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let family of families"
+            tabindex="0"
+            (click)="viewFamily(family)"
+            (keydown.enter)="viewFamily(family)"
+          >
+            <td>
+              <div class="family-list__code-cell">
+                <strong class="family-list__code">{{ family.family_code }}</strong>
+                <app-status-badge
+                  *ngIf="family.status === 'inactive'"
+                  label="Inactive"
+                  tone="neutral"
+                ></app-status-badge>
+                <app-status-badge
+                  *ngIf="family.status === 'migrated'"
+                  label="Migrated"
+                  tone="info"
+                ></app-status-badge>
+              </div>
+            </td>
+            <td>
+              <div class="family-list__head" *ngIf="family.head_of_family; else noHead">
+                <ng-container *ngIf="getHeadImageUrl(family) && !isAvatarBroken(family); else initialsAvatar">
+                  <img
+                    class="family-list__avatar family-list__avatar--photo"
+                    [src]="getHeadImageUrl(family)"
+                    [alt]="family.head_of_family + ' avatar'"
+                    (error)="onAvatarError(family)"
+                  />
+                </ng-container>
+                <ng-template #initialsAvatar>
+                  <div
+                    class="family-list__avatar family-list__avatar--initials"
+                    [ngClass]="getAvatarColorClass(family.head_of_family)"
+                  >
+                    {{ getInitials(family.head_of_family!) }}
+                  </div>
+                </ng-template>
+                <div class="family-list__head-info">
+                  <strong>{{ family.head_of_family }}</strong>
+                  <span class="cf-meta" *ngIf="family.family_name">{{ family.family_name }}</span>
+                </div>
+              </div>
+              <ng-template #noHead><span class="cf-meta">—</span></ng-template>
+            </td>
+            <td>
               <app-status-badge
-                *ngIf="family.status === 'inactive'"
-                label="Inactive"
-                tone="neutral"
-              ></app-status-badge>
-              <app-status-badge
-                *ngIf="family.status === 'migrated'"
-                label="Migrated"
+                *ngIf="family.bcc"
+                [label]="family.bcc.name"
                 tone="info"
               ></app-status-badge>
-            </div>
-          </td>
-          <td>
-            <div class="family-list__head" *ngIf="family.head_of_family; else noHead">
-              <ng-container *ngIf="getHeadImageUrl(family) && !isAvatarBroken(family); else initialsAvatar">
-                <img
-                  class="family-list__avatar family-list__avatar--photo"
-                  [src]="getHeadImageUrl(family)"
-                  [alt]="family.head_of_family + ' avatar'"
-                  (error)="onAvatarError(family)"
-                />
-              </ng-container>
-              <ng-template #initialsAvatar>
-                <div
-                  class="family-list__avatar family-list__avatar--initials"
-                  [ngClass]="getAvatarColorClass(family.head_of_family)"
-                >
-                  {{ getInitials(family.head_of_family!) }}
+              <span *ngIf="!family.bcc" class="cf-meta">Not assigned</span>
+            </td>
+            <td>{{ family.members?.length || 0 }}</td>
+            <td>
+              <ng-container *ngIf="getHeadContactInfo(family) as contact">
+                <div class="family-list__contact" *ngIf="contact.phone || contact.email; else noContact">
+                  <span *ngIf="contact.phone">{{ contact.phone }}</span>
+                  <span *ngIf="contact.email" class="cf-meta">{{ contact.email }}</span>
                 </div>
-              </ng-template>
-              <div class="family-list__head-info">
-                <strong>{{ family.head_of_family }}</strong>
-                <span class="cf-meta" *ngIf="family.family_name">{{ family.family_name }}</span>
+                <ng-template #noContact><span class="cf-meta">—</span></ng-template>
+              </ng-container>
+            </td>
+            <td
+              *ngIf="isTenantAdmin"
+              class="cf-table__actions-cell"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            >
+              <div class="cf-row-actions">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn--sm cf-btn-danger"
+                  (click)="deleteFamily(family)"
+                  title="Delete family"
+                >
+                  Delete
+                </button>
               </div>
-            </div>
-            <ng-template #noHead><span class="cf-meta">—</span></ng-template>
-          </td>
-          <td>
-            <app-status-badge
-              *ngIf="family.bcc"
-              [label]="family.bcc.name"
-              tone="info"
-            ></app-status-badge>
-            <span *ngIf="!family.bcc" class="cf-meta">Not assigned</span>
-          </td>
-          <td>{{ family.members?.length || 0 }}</td>
-          <td>
-            <ng-container *ngIf="getHeadContactInfo(family) as contact">
-              <div class="family-list__contact" *ngIf="contact.phone || contact.email; else noContact">
-                <span *ngIf="contact.phone">{{ contact.phone }}</span>
-                <span *ngIf="contact.email" class="cf-meta">{{ contact.email }}</span>
-              </div>
-              <ng-template #noContact><span class="cf-meta">—</span></ng-template>
-            </ng-container>
-          </td>
-          <td
-            *ngIf="isTenantAdmin"
-            class="cf-table__actions-cell"
-            (click)="$event.stopPropagation()"
-            (keydown)="$event.stopPropagation()"
-          >
-            <div class="cf-row-actions">
-              <button
-                type="button"
-                class="cf-btn cf-btn--sm cf-btn-danger"
-                (click)="deleteFamily(family)"
-                title="Delete family"
-              >
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </app-data-table>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
 
-    <app-pagination
-      *ngIf="families.length"
-      [currentPage]="currentPage"
-      [pageSize]="perPage"
-      [totalItems]="totalRecords"
-      [pageSizeOptions]="perPageOptions"
-      [showPageSizeSelector]="true"
-      [showPageInfo]="true"
-      (pageChange)="onPageChange($event)"
-      (pageSizeChange)="onPageSizeChange($event)"
-    ></app-pagination>
+      <app-pagination
+        [currentPage]="currentPage"
+        [pageSize]="perPage"
+        [totalItems]="totalRecords"
+        [pageSizeOptions]="perPageOptions"
+        [showPageSizeSelector]="true"
+        [showPageInfo]="true"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+    </div>
 
     <app-cf-empty-state
       *ngIf="!loading && !families.length"

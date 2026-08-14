@@ -8,8 +8,7 @@ import { MainLayoutComponent } from './layout/main-layout/main-layout.component'
 import { FamilyListComponent } from './features/family-management/components/family-list/family-list';
 import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
 import { FamilyBreadcrumbResolver } from './features/family-management/resolvers/family-breadcrumb.resolver';
-import { BCCListComponent } from './features/bcc-management/components/bcc-list/bcc-list';
-import { BccDetail } from './features/bcc-management/components/bcc-detail/bcc-detail';
+import { bccGuard } from './core/guards/bcc.guard';
 
 export const routes: Routes = [
   {
@@ -38,6 +37,10 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
+      },
+      {
+        path: 'sacraments',
+        loadChildren: () => import('./features/settings/sacraments/sacraments.routes').then(m => m.SACRAMENTS_ROUTES)
       },
       {
         path: 'users',
@@ -77,11 +80,8 @@ export const routes: Routes = [
       },
       {
         path: 'bccs',
-        component: BCCListComponent
-      },
-      {
-        path: 'bccs/:id',
-        component: BccDetail
+        canActivate: [bccGuard],
+        loadChildren: () => import('./features/bcc-management/bcc.routes').then((m) => m.BCC_ROUTES)
       },
       {
         path: 'members',
@@ -124,6 +124,10 @@ export const routes: Routes = [
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
       },
       {
+        path: 'sacraments',
+        loadChildren: () => import('./features/settings/sacraments/sacraments.routes').then(m => m.SACRAMENTS_ROUTES)
+      },
+      {
         path: 'users',
         loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
       },
@@ -142,11 +146,8 @@ export const routes: Routes = [
       },
       {
         path: 'bccs',
-        component: BCCListComponent
-      },
-      {
-        path: 'bccs/:id',
-        component: BccDetail
+        canActivate: [bccGuard],
+        loadChildren: () => import('./features/bcc-management/bcc.routes').then((m) => m.BCC_ROUTES)
       },
       {
         path: 'donations',

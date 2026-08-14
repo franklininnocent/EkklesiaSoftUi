@@ -1,0 +1,24 @@
+// Shared chrome for sacrament people controls (participant / minister / affiliation)
+// and the Add Sacrament modal radio rows. Uses CF tokens so nested controls match
+// the enterprise `.cf-split-*` modal family (see enterprise-modal-style-guide.md).
+
+.sacrament-radio-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem 1.15rem;
+}
+
+.sacrament-radio {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+  color: var(--cf-slate-700);
+  cursor: pointer;
+
+  input {
+    width: auto;
+    margin-top: 0.15rem;
+    flex-shrink: 0;
+  }
+}

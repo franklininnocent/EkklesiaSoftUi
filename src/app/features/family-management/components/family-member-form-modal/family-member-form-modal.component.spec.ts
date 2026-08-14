@@ -1,10 +1,11 @@
 import { TestBed } from '@angular/core/testing';
+import { HttpClientTestingModule } from '@angular/common/http/testing';
 import { FamilyMemberFormModalComponent } from './family-member-form-modal.component';
 
 describe('FamilyMemberFormModalComponent (basics)', () => {
   it('validates phone and emits save on valid form', () => {
     TestBed.configureTestingModule({
-      imports: [FamilyMemberFormModalComponent]
+      imports: [FamilyMemberFormModalComponent, HttpClientTestingModule]
     });
     const fixture = TestBed.createComponent(FamilyMemberFormModalComponent);
     const component = fixture.componentInstance;

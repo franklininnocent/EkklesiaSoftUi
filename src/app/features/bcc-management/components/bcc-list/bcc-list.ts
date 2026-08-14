@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
@@ -16,6 +17,7 @@ import { DataTableComponent } from '@shared/components/data-table/data-table.com
 import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { BccSubNavComponent } from '../bcc-sub-nav/bcc-sub-nav.component';
 
 @Component({
   selector: 'app-bcc-list',
@@ -34,6 +36,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
     StatusBadgeComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
+    BccSubNavComponent,
   ],
   templateUrl: './bcc-list.html',
   styleUrls: ['./bcc-list.scss'],
@@ -74,7 +77,9 @@ export class BCCListComponent implements OnInit, OnDestroy {
     private bccService: BCCService,
     private fb: FormBuilder,
     private toastService: ToastService,
-    private authService: AuthService
+    private authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute,
   ) {
     this.filterForm = this.fb.group({
       search: [''],
@@ -100,6 +105,18 @@ export class BCCListComponent implements OnInit, OnDestroy {
     this.loadStatistics();
     this.loadBCCs();
     this.setupSearchDebounce();
+
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      if (params.get('create') === '1' && this.authService.hasPermission('bcc.create')) {
+        this.createBCC();
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { create: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      }
+    });
   }
 
   initializeSearchFields(): void {
@@ -365,10 +382,7 @@ export class BCCListComponent implements OnInit, OnDestroy {
   }
 
   viewBCC(bcc: BCC): void {
-    this.detailBCC = bcc;
-    this.showDetailModal = true;
-    this.loadBCCDetail(bcc.id);
-    this.cdr.markForCheck();
+    void this.router.navigate(['/bccs', bcc.id]);
   }
 
   loadBCCDetail(bccId: string): void {

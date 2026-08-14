@@ -1,0 +1,322 @@
+<section class="bcc-dashboard cf-page">
+  <app-page-header title="BCCs" subtitle="Community intelligence & pastoral overview">
+    <span class="bcc-dashboard__freshness cf-meta" *ngIf="freshnessLabel && !loading">{{ freshnessLabel }}</span>
+    <button type="button" class="cf-btn" (click)="refresh()" [disabled]="loading">Refresh</button>
+    <button *ngIf="canCreate" type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">
+      + Add BCC
+    </button>
+  </app-page-header>
+
+  <app-bcc-sub-nav></app-bcc-sub-nav>
+
+  <app-bcc-dashboard-filters
+    [search]="search"
+    [status]="status"
+    [period]="period"
+    [coordinator]="coordinator"
+    [coordinators]="summary?.coordinators || []"
+    [chips]="chips"
+    (filtersChange)="onFiltersChange($event)"
+    (searchChange)="onSearchChange($event)"
+    (reset)="resetFilters()"
+    (clearChip)="clearChip($event)"
+  ></app-bcc-dashboard-filters>
+
+  <div class="cf-loading-block cf-panel" *ngIf="loading" role="status">
+    <p class="cf-loading-block__label">Loading BCC intelligence…</p>
+    <app-loading-skeleton type="card" [rows]="4" [columns]="4"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!loading && loadError" role="alert">
+    <p>{{ loadError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <ng-container *ngIf="!loading && !loadError && summary">
+    <app-cf-empty-state
+      *ngIf="!hasBccs; else intelligence"
+      title="No BCC communities yet"
+      description="Create your first BCC to begin building your parish community overview."
+      icon="⌂"
+    >
+      <button *ngIf="canCreate" type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">
+        + Add BCC
+      </button>
+    </app-cf-empty-state>
+
+    <ng-template #intelligence>
+      <!-- L1 Executive snapshot -->
+      <section class="bcc-kpi-rail cf-panel" aria-label="Executive snapshot">
+        <button type="button" class="bcc-kpi-rail__item bcc-kpi-rail__item--action" (click)="openList()" aria-label="View all BCCs">
+          <span class="bcc-kpi-rail__label">BCCs</span>
+          <span class="bcc-kpi-rail__value">{{ summary.snapshot?.bccs_total ?? summary.bccs.total }}</span>
+          <span class="bcc-kpi-rail__meta">Communities</span>
+        </button>
+
+        <div class="bcc-kpi-rail__item">
+          <span class="bcc-kpi-rail__label">Families</span>
+          <span class="bcc-kpi-rail__value">{{ summary.snapshot?.families_connected ?? summary.families.in_bcc }}</span>
+          <span class="bcc-kpi-rail__meta">Connected</span>
+        </div>
+
+        <div class="bcc-kpi-rail__item">
+          <span class="bcc-kpi-rail__label">People</span>
+          <span class="bcc-kpi-rail__value" [attr.title]="definition('people')">
+            {{ summary.snapshot?.people_connected ?? summary.members.total }}
+          </span>
+          <span class="bcc-kpi-rail__meta">Connected</span>
+        </div>
+
+        <div class="bcc-kpi-rail__item bcc-kpi-rail__item--emphasis" [attr.title]="definition('coverage')">
+          <span class="bcc-kpi-rail__label">Coverage</span>
+          <span class="bcc-kpi-rail__value bcc-kpi-rail__value--coverage">
+            <ng-container *ngIf="coveragePercent !== null; else naCoverage">{{ coveragePercent }}%</ng-container>
+            <ng-template #naCoverage>N/A</ng-template>
+          </span>
+          <span class="bcc-kpi-rail__meta" *ngIf="coveragePointChange !== null">
+            <span
+              class="bcc-kpi-rail__delta"
+              [class.bcc-kpi-rail__delta--up]="coveragePointChange > 0"
+              [class.bcc-kpi-rail__delta--down]="coveragePointChange < 0"
+            >
+              {{ formatSigned(coveragePointChange) }} pp
+            </span>
+            vs prior
+          </span>
+          <span class="bcc-kpi-rail__meta" *ngIf="coveragePointChange === null">Parish families</span>
+        </div>
+
+        <div class="bcc-kpi-rail__item">
+          <span class="bcc-kpi-rail__label">Active members</span>
+          <span class="bcc-kpi-rail__value bcc-kpi-rail__value--sm">
+            {{ summary.snapshot?.active_members ?? summary.members.active }}
+          </span>
+          <span class="bcc-kpi-rail__meta">In register</span>
+        </div>
+
+        <div class="bcc-kpi-rail__item" [attr.title]="definition('people')">
+          <span class="bcc-kpi-rail__label">Avg BCC size</span>
+          <span class="bcc-kpi-rail__value bcc-kpi-rail__value--sm">
+            <ng-container *ngIf="summary.snapshot?.average_bcc_size != null; else naAvg">
+              {{ summary.snapshot?.average_bcc_size }}
+            </ng-container>
+            <ng-template #naAvg>—</ng-template>
+          </span>
+          <span class="bcc-kpi-rail__meta">People / BCC</span>
+        </div>
+      </section>
+
+      <!-- People + Leadership -->
+      <div class="bcc-dash__split">
+        <section class="bcc-dash__people cf-panel" aria-label="People composition">
+          <header class="bcc-dash__section-head">
+            <h2>People composition</h2>
+            <button
+              type="button"
+              class="bcc-dash__info"
+              [attr.title]="definition('life_stage')"
+              [attr.aria-label]="definition('life_stage')"
+            >
+              ⓘ
+            </button>
+          </header>
+
+          <ng-container *ngIf="summary.demographics; else noDemo">
+            <div class="bcc-dash__people-row">
+              <div class="bcc-dash__people-col">
+                <h3 class="bcc-dash__subhead">Gender</h3>
+                <ul class="bcc-dash__bars">
+                  <li *ngFor="let key of ['male', 'female', 'other', 'unknown']">
+                    <div class="bcc-dash__bar-label">
+                      <span>{{ key }}</span>
+                      <span>{{ summary.demographics.gender[key]?.percent || 0 }}%</span>
+                    </div>
+                    <div class="cf-progress"><span [style.width.%]="summary.demographics.gender[key]?.percent || 0"></span></div>
+                  </li>
+                </ul>
+              </div>
+              <div class="bcc-dash__people-col">
+                <h3 class="bcc-dash__subhead">Life stage</h3>
+                <app-bcc-life-stage-chart [slices]="lifeStageSlices"></app-bcc-life-stage-chart>
+              </div>
+            </div>
+          </ng-container>
+          <ng-template #noDemo>
+            <p class="cf-meta">Unable to load demographic information.</p>
+            <button type="button" class="cf-btn" (click)="load()">Retry</button>
+          </ng-template>
+        </section>
+
+        <section class="bcc-dash__leadership cf-panel" aria-label="Leadership">
+          <header class="bcc-dash__section-head">
+            <h2>Leadership</h2>
+            <button
+              type="button"
+              class="bcc-dash__info"
+              [attr.title]="definition('leadership_coverage')"
+              [attr.aria-label]="definition('leadership_coverage')"
+            >
+              ⓘ
+            </button>
+          </header>
+
+          <app-bcc-leadership-chart [data]="leadershipChartData"></app-bcc-leadership-chart>
+
+          <button type="button" class="cf-btn bcc-dash__lead-action" (click)="setAttention('no_primary')">
+            Review leadership →
+          </button>
+        </section>
+      </div>
+
+      <!-- Growth + Attention -->
+      <div class="bcc-dash__split bcc-dash__split--growth">
+        <app-bcc-growth-panel
+          [families]="summary.growth?.families || []"
+          [people]="summary.growth?.people || []"
+          [insufficientHistory]="!!summary.growth?.insufficient_history"
+          [measure]="growthMeasure"
+          (measureChange)="onGrowthMeasure($event)"
+        ></app-bcc-growth-panel>
+
+        <section class="bcc-dash__attention cf-panel" aria-label="Needs attention">
+          <header class="bcc-dash__section-head">
+            <h2>Needs attention</h2>
+            <button type="button" class="cf-btn cf-btn--sm" (click)="openList()">View all</button>
+          </header>
+
+          <ul class="bcc-dash__attention-list" *ngIf="attentionItems.length; else noAttention">
+            <li *ngFor="let item of attentionItems">
+              <button type="button" class="bcc-dash__attention-item" (click)="setAttention(item.type)">
+                <strong>{{ item.count }}</strong>
+                <span>{{ item.label }}</span>
+                <span class="bcc-dash__severity" [attr.data-severity]="item.severity">{{ item.severity }}</span>
+              </button>
+            </li>
+          </ul>
+          <ng-template #noAttention>
+            <p class="cf-meta">No operational items need attention right now.</p>
+          </ng-template>
+        </section>
+      </div>
+
+      <!-- Community overview + size distribution -->
+      <div class="bcc-dash__split bcc-dash__split--overview">
+        <section
+          id="bcc-community-overview"
+          class="bcc-dash__overview cf-panel"
+          [class.bcc-dash__overview--filtered]="!!trend || attention === 'no_primary' || attention === 'empty'"
+          aria-label="BCC community overview"
+        >
+          <header class="bcc-dash__section-head bcc-dash__section-head--stacked">
+            <div>
+              <h2>BCC community overview</h2>
+              <p class="cf-meta">{{ overviewSubtitle }}</p>
+            </div>
+            <button
+              *ngIf="trend || attention === 'no_primary' || attention === 'empty'; else overviewViewAll"
+              type="button"
+              class="cf-btn cf-btn--sm"
+              (click)="clearOverviewFilters()"
+            >
+              Clear filter
+            </button>
+            <ng-template #overviewViewAll>
+              <button type="button" class="cf-btn cf-btn--sm" (click)="openList()">View all</button>
+            </ng-template>
+          </header>
+
+          <div class="bcc-dash__table-wrap" *ngIf="summary.community_overview?.rows?.length; else noRows">
+            <table class="bcc-dash__table">
+              <thead>
+                <tr>
+                  <th scope="col">BCC</th>
+                  <th scope="col">Families</th>
+                  <th scope="col">People</th>
+                  <th scope="col">Trend</th>
+                  <th scope="col">Leader</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Attention</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of summary.community_overview?.rows" (click)="openBcc(row.id)" tabindex="0" (keydown.enter)="openBcc(row.id)">
+                  <td>
+                    <strong>{{ row.name }}</strong>
+                    <div class="cf-meta">{{ row.bcc_code }}</div>
+                  </td>
+                  <td>{{ row.families }}</td>
+                  <td>{{ row.people }}</td>
+                  <td>
+                    <span *ngIf="row.trend_pct !== null && row.trend_pct !== undefined; else noTrend"
+                      [class.bcc-trend--up]="(row.trend_pct ?? 0) > 0"
+                      [class.bcc-trend--down]="(row.trend_pct ?? 0) < 0"
+                    >
+                      {{ formatSigned(row.trend_pct, '%') }}
+                    </span>
+                    <ng-template #noTrend><span class="cf-meta">—</span></ng-template>
+                  </td>
+                  <td>{{ row.primary_leader_name || '—' }}</td>
+                  <td>
+                    <app-status-badge
+                      [label]="row.status"
+                      [tone]="row.status === 'active' ? 'success' : row.status === 'suspended' ? 'warning' : 'neutral'"
+                    ></app-status-badge>
+                  </td>
+                  <td>
+                    <span class="cf-meta" *ngIf="!row.attention_flags?.length">—</span>
+                    <span class="bcc-dash__flag" *ngFor="let flag of row.attention_flags">{{ flag.replace('_', ' ') }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <ng-template #noRows>
+            <p class="cf-meta">No BCCs match the current filters.</p>
+          </ng-template>
+        </section>
+
+        <section class="bcc-dash__size cf-panel" *ngIf="sizeDistributionRows.length" aria-label="BCC size distribution">
+          <header class="bcc-dash__section-head">
+            <h2>BCC size distribution</h2>
+          </header>
+          <ul class="bcc-dash__size-bars" role="list">
+            <li *ngFor="let row of sizeDistributionRows">
+              <span class="bcc-dash__size-label">{{ row.label }}</span>
+              <div
+                class="bcc-dash__size-track"
+                role="meter"
+                [attr.aria-valuenow]="row.count"
+                aria-valuemin="0"
+                [attr.aria-valuemax]="sizeDistributionMax"
+                [attr.aria-label]="row.label + ': ' + row.count + ' BCCs'"
+              >
+                <span class="bcc-dash__size-fill" [style.width.%]="row.percent"></span>
+              </div>
+              <strong class="bcc-dash__size-count">{{ row.count }}</strong>
+            </li>
+          </ul>
+        </section>
+      </div>
+
+      <!-- Recent activity -->
+      <section class="bcc-dash__activity cf-panel" aria-label="Recent activity">
+        <header class="bcc-dash__section-head">
+          <h2>Recent activity</h2>
+          <button type="button" class="cf-btn cf-btn--sm" (click)="openAudit()">View all</button>
+        </header>
+        <ul class="bcc-dash__activity-list" *ngIf="summary.recent_activity?.length; else noAct">
+          <li *ngFor="let item of summary.recent_activity">
+            <strong>{{ eventLabel(item.event) }}</strong>
+            <span class="cf-meta">
+              {{ item.bcc_name || 'BCC' }} · {{ item.actor_name || 'System' }}
+              <ng-container *ngIf="item.created_at"> · {{ item.created_at | date: 'medium' }}</ng-container>
+            </span>
+          </li>
+        </ul>
+        <ng-template #noAct>
+          <p class="cf-meta">No recent BCC activity.</p>
+        </ng-template>
+      </section>
+    </ng-template>
+  </ng-container>
+</section>

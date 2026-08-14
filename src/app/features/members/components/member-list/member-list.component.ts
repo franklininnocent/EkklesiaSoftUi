@@ -123,6 +123,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
         key: 'status',
         label: 'Status',
         type: 'select',
+        group: 'Membership',
         options: [
           { value: 'active', label: 'Active' },
           { value: 'inactive', label: 'Inactive' },
@@ -135,6 +136,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
         key: 'bcc_id',
         label: 'BCC',
         type: 'select',
+        group: 'Membership',
         options: [], // Will be populated after BCCs are loaded
         value: this.selectedBccId
       },
@@ -142,6 +144,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
         key: 'is_head',
         label: 'Family Head',
         type: 'boolean',
+        group: 'Household',
         placeholder: 'Family Heads Only',
         value: this.showHeadOnly
       }
@@ -436,6 +439,16 @@ export class MemberListComponent implements OnInit, OnDestroy {
   getFullName(member: FamilyMember): string {
     const parts = [member.first_name, member.middle_name, member.last_name].filter(Boolean);
     return parts.join(' ') || 'N/A';
+  }
+
+  /** Up to two initials for the detail modal avatar when no photo exists. */
+  getMemberInitials(member: FamilyMember): string {
+    const letters = [member.first_name, member.last_name]
+      .map((part) => (part || '').trim()[0])
+      .filter((char) => !!char && /[a-z0-9]/i.test(char))
+      .slice(0, 2)
+      .join('');
+    return (letters || 'M').toUpperCase();
   }
 
   /**

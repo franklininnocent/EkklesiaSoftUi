@@ -14,6 +14,7 @@ export interface SacramentTypeDto {
   requires_minister?: boolean;
   minister_type?: string;
   active?: boolean;
+  enabled_for_tenant?: boolean;
   created_at?: string;
   updated_at?: string;
 }

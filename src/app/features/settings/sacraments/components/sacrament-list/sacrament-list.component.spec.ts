@@ -2,9 +2,13 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideMockStore, MockStore } from '@ngrx/store/testing';
 import { of } from 'rxjs';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { SacramentListComponent } from './sacrament-list.component';
 import { SacramentService } from '../../services/sacrament.service';
+import { SacramentDefinitionService } from '../../services/sacrament-definition.service';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
+import { AuthService } from '@core/services/auth.service';
+import { ToastService } from '@core/services/toast.service';
 
 describe('SacramentListComponent', () => {
   let component: SacramentListComponent;
@@ -22,7 +26,7 @@ describe('SacramentListComponent', () => {
     recipient_name: `Recipient ${i + 1}`,
     sacrament_type_id: (i % 3) + 1,
     date_administered: '2025-01-0' + ((i % 9) + 1),
-    status: i % 2 === 0 ? 'active' : 'cancelled'
+    status: i % 2 === 0 ? 'registered' : 'voided'
   }));
 
   const pagedResponse = {
@@ -40,11 +44,33 @@ describe('SacramentListComponent', () => {
     getSacraments: jasmine.createSpy('getSacraments').and.returnValue(of(pagedResponse))
   } as unknown as SacramentService;
 
+  const definitionStub = {
+    load: jasmine.createSpy('load').and.returnValue(of({ success: true, data: [], meta: { participants_v1: false } })),
+    isParticipantsV1Enabled: () => false
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SacramentListComponent],
       providers: [
         { provide: SacramentService, useValue: sacramentServiceStub },
+        { provide: SacramentDefinitionService, useValue: definitionStub },
+        { provide: Router, useValue: { navigate: jasmine.createSpy('navigate') } },
+        {
+          provide: ActivatedRoute,
+          useValue: {
+            queryParamMap: of(convertToParamMap({})),
+            snapshot: { queryParamMap: convertToParamMap({}) },
+          },
+        },
+        {
+          provide: AuthService,
+          useValue: {
+            isTenantAdmin: () => true,
+            hasPermission: () => true,
+          },
+        },
+        { provide: ToastService, useValue: { success: () => undefined, error: () => undefined, info: () => undefined } },
         provideMockStore({ initialState: {} })
       ],
       schemas: [NO_ERRORS_SCHEMA]
@@ -64,7 +90,7 @@ describe('SacramentListComponent', () => {
 
   it('should load types and sacraments on init', () => {
     fixture.detectChanges();
-    expect((sacramentServiceStub.getSacramentTypes as any)).toHaveBeenCalled();
+    expect((sacramentServiceStub.getSacramentTypes as any)).toHaveBeenCalledWith({ includeInactive: true });
     expect((sacramentServiceStub.getSacraments as any)).toHaveBeenCalled();
     expect(component.sacramentTypes.length).toBe(3);
     expect(component.sacraments.length).toBe(20);

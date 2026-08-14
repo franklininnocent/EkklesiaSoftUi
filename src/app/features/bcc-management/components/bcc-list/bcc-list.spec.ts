@@ -1,7 +1,10 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { BCCListComponent } from './bcc-list';
 import { BCCService } from '../../../../core/services/bcc.service';
+import { AuthService } from '@core/services/auth.service';
+import { ToastService } from '@core/services/toast.service';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 
@@ -34,7 +37,12 @@ describe('BCCListComponent', () => {
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [CommonModule, FormsModule, ReactiveFormsModule, BCCListComponent],
-      providers: [{ provide: BCCService, useClass: BCCServiceMock }]
+      providers: [
+        provideRouter([]),
+        { provide: BCCService, useClass: BCCServiceMock },
+        { provide: AuthService, useValue: { isTenantAdmin: () => true } },
+        { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn() } },
+      ]
     }).compileComponents();
 
     fixture = TestBed.createComponent(BCCListComponent);
@@ -51,8 +59,7 @@ describe('BCCListComponent', () => {
 
   it('applies quick search and triggers debounced load', fakeAsync(() => {
     service.getBCCs.mockClear();
-    component.searchTerm = 'mary';
-    component.onQuickSearch();
+    component.onListSearchChange('mary');
     tick(300);
     expect(service.getBCCs).toHaveBeenCalled();
     expect(service.lastFilters.search).toBe('mary');

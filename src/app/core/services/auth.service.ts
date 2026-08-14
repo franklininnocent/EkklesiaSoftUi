@@ -313,12 +313,11 @@ export class AuthService {
     const user = this.currentUserValue;
     if (!user) return false;
     
-    // Check both formats for compatibility
+    // Never treat generic has_ekklesia_role as SuperAdmin (covers Manager/User too).
     return this.hasRole('SuperAdmin') || 
            this.hasRole('Super Admin') ||
            user.role_name === 'SuperAdmin' ||
-           user.role?.name === 'SuperAdmin' ||
-           user.has_ekklesia_role === true;
+           user.role?.name === 'SuperAdmin';
   }
 
   /**
@@ -330,12 +329,11 @@ export class AuthService {
     const user = this.currentUserValue;
     if (!user) return false;
     
-    // Check both formats for compatibility
+    // Never treat generic has_ekklesia_role as EkklesiaAdmin.
     return this.hasRole('EkklesiaAdmin') || 
            this.hasRole('Ekklesia Admin') ||
            user.role_name === 'EkklesiaAdmin' ||
-           user.role?.name === 'EkklesiaAdmin' ||
-           user.has_ekklesia_role === true;
+           user.role?.name === 'EkklesiaAdmin';
   }
 
   /**
@@ -381,7 +379,39 @@ export class AuthService {
   }
 
   canManageRbac(user: User | null = this.currentUserValue): boolean {
-    return this.canAccessRbac(user);
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return true;
+    }
+
+    const isEkklesiaManager =
+      user.role_name === 'EkklesiaManager' ||
+      user.role?.name === 'EkklesiaManager' ||
+      !!user.roles?.some((role) => role.name === 'EkklesiaManager');
+
+    if (isEkklesiaManager) {
+      return true;
+    }
+
+    // Tenant manage requires administrator role OR explicit manage/assign permissions.
+    // View-only (roles.view / permissions.view) must not unlock mutating UI.
+    if (user.tenant_id && this.isTenantAdmin()) {
+      return true;
+    }
+
+    return this.hasAnyPermission([
+      'roles.create',
+      'roles.update',
+      'roles.delete',
+      'roles.assign',
+      'permissions.assign',
+      'permissions.create',
+      'permissions.update',
+      'permissions.delete',
+    ]);
   }
 
   /**
@@ -487,6 +517,48 @@ export class AuthService {
     ];
 
     return permissionNames.some((permissionName) =>
+      (user.permissions || []).some((permission) => permission?.name === permissionName)
+    );
+  }
+
+  canAccessBcc(
+    user: User | null = this.currentUserValue,
+    options: { hasActiveSupportSession?: boolean } = {}
+  ): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return !!user.tenant_id || !!options.hasActiveSupportSession;
+    }
+
+    if (!user.tenant_id) {
+      return false;
+    }
+
+    const tenantRoleNames = ['Administrator', 'Parish Priest', 'Church Pastor'];
+    const hasTenantBccRole = tenantRoleNames.some(
+      (roleName) =>
+        (user.roles || []).some((role) => role?.name === roleName) ||
+        user.role_name === roleName ||
+        user.role?.name === roleName
+    );
+
+    const primaryAdminRaw = (user as any).is_primary_admin;
+    const isPrimaryAdmin = primaryAdminRaw === true || primaryAdminRaw === 1 || primaryAdminRaw === '1';
+    if (isPrimaryAdmin || hasTenantBccRole) {
+      return true;
+    }
+
+    return [
+      'bcc.view',
+      'bcc.create',
+      'bcc.edit',
+      'bcc.delete',
+      'bcc.manage_members',
+      'bcc.manage_leadership',
+    ].some((permissionName) =>
       (user.permissions || []).some((permission) => permission?.name === permissionName)
     );
   }

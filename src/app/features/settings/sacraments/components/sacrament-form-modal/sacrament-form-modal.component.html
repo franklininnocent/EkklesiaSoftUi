@@ -1,479 +1,1133 @@
 <app-modal-shell
-  [title]="isEditMode ? 'Edit' : 'Add'"
-  [description]="isEditMode ? 'Update the sacramental record details' : 'Enter the sacramental record information'"
+  [title]="modalTitle"
   size="xl"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close sacrament form"
   [isSubmitting]="saving || loading"
   (closeRequested)="onCancel()"
 >
-  <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading...</p>
+  <div *ngIf="loading" class="cf-split-form-body sacrament-modal-form">
+    <div class="sacrament-modal-loading">
+      <div class="sacrament-modal-loading__spinner" aria-hidden="true"></div>
+      <p>Loading...</p>
+    </div>
+    <div class="cf-split-form-actions">
+      <button type="button" class="cf-btn cf-btn-primary" disabled>
+        {{ isCorrectionMode ? 'Save correction' : (isEditMode ? 'Save changes' : 'Add Sacrament') }}
+      </button>
+      <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">
+        Cancel
+      </button>
+    </div>
   </div>
 
-  <!-- Form -->
-  <form *ngIf="!loading" class="sacrament-form" (ngSubmit)="onSave()">
-        <!-- Sacrament Information -->
-        <div class="form-section">
-          <h3 class="section-title">✝️ Sacrament Information</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label class="required">Sacrament Type</label>
-              <select 
-                [(ngModel)]="formData['sacrament_type_id']" 
-                (ngModelChange)="onSacramentTypeChange()"
-                name="sacrament_type_id" 
-                class="form-control" 
-                required>
-                <option [ngValue]="undefined">Select a sacrament...</option>
-                <option *ngFor="let type of sacramentTypes" [ngValue]="type.id">
-                  {{ type.name }}
-                </option>
-              </select>
-            </div>
+  <form
+    *ngIf="!loading"
+    id="sacrament-modal-form"
+    class="cf-split-form-body sacrament-modal-form"
+    (ngSubmit)="onSave()"
+    novalidate
+  >
+    <div class="cf-inline-alert" *ngIf="isCorrectionMode" role="status">
+      <p>
+        Historical correction — your reason and field changes will be recorded on the audit trail.
+      </p>
+    </div>
 
-            <div class="form-group">
-              <label class="required">Date Administered</label>
-              <input
-                type="date"
-                [(ngModel)]="formData['date_administered']"
-                name="date_administered"
-                class="form-control"
-                required>
-            </div>
-
-            <div class="form-group">
-              <label>Place Administered</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['place_administered']"
-                name="place_administered"
-                class="form-control"
-                placeholder="Church name or location">
-            </div>
-
-            <div class="form-group">
-              <label>Status</label>
-              <select [(ngModel)]="formData['status']" name="status" class="form-control">
-                <option value="active">Active</option>
-                <option value="cancelled">Cancelled</option>
-                <option value="conditional">Conditional</option>
-              </select>
-            </div>
-          </div>
+    <!-- Sacrament Information -->
+    <section class="cf-split-section" aria-labelledby="sacrament-section-info">
+      <h3 id="sacrament-section-info" class="cf-split-section__title">Sacrament Information</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="sacrament_type_id">
+            Sacrament Type <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="sacrament_type_id"
+            [(ngModel)]="formData['sacrament_type_id']"
+            (ngModelChange)="onSacramentTypeChange()"
+            name="sacrament_type_id"
+            [items]="sacramentTypes"
+            bindLabel="name"
+            bindValue="id"
+            [placeholder]="sacramentTypePlaceholder"
+            [loading]="loadingSacramentTypes"
+            [disabled]="!canSelectSacramentType"
+            [clearable]="false"
+            [searchable]="true"
+            class="cf-split-select"
+            aria-required="true"
+          ></ng-select>
+          <p class="cf-split-field__hint" *ngIf="loadingSacramentTypes">
+            Loading sacraments for this church…
+          </p>
+          <p class="cf-split-field__error" *ngIf="sacramentTypesError">
+            {{ sacramentTypesError }}
+            <button type="button" class="cf-btn" (click)="loadSacramentTypes()">Try again</button>
+          </p>
+          <p class="cf-split-field__hint" *ngIf="showNoActiveSacramentsMessage">
+            No sacraments are available to add for this church. An administrator can turn them on in Sacrament Settings.
+          </p>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('sacrament_type_id')">
+            {{ fieldErrors['sacrament_type_id'] }}
+          </p>
         </div>
 
-        <!-- Recipient Information -->
-        <div class="form-section">
-          <h3 class="section-title">👤 Recipient Information</h3>
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label class="required">Full Name</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['recipient_name']"
-                name="recipient_name"
-                class="form-control"
-                placeholder="Enter full name"
-                required>
-            </div>
-
-            <div class="form-group">
-              <label>Date of Birth</label>
-              <input
-                type="date"
-                [(ngModel)]="formData['recipient_birth_date']"
-                name="recipient_birth_date"
-                class="form-control">
-            </div>
-
-            <div class="form-group">
-              <label>Place of Birth</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['recipient_birth_place']"
-                name="recipient_birth_place"
-                class="form-control"
-                placeholder="City, State">
-            </div>
-
-            <div class="form-group">
-              <label>Gender</label>
-              <select
-                [(ngModel)]="formData['recipient_gender']"
-                name="recipient_gender"
-                class="form-control">
-                <option [ngValue]="undefined">Select gender...</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <!-- Family Selection -->
-            <div class="form-group full-width" style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #e5e7eb;">
-              <label>Family Association</label>
-              <div class="family-selection-container">
-                <div class="family-type-selection">
-                  <label class="radio-label">
-                    <input 
-                      type="radio" 
-                      name="familySelectionType" 
-                      [value]="null"
-                      [checked]="familySelectionType === null"
-                      (change)="clearFamilySelection()">
-                    <span>No Family Association</span>
-                  </label>
-                  <label class="radio-label">
-                    <input 
-                      type="radio" 
-                      name="familySelectionType" 
-                      value="existing"
-                      [checked]="familySelectionType === 'existing'"
-                      (change)="onFamilySelectionTypeChange('existing')">
-                    <span>Existing Family</span>
-                  </label>
-                  <label class="radio-label">
-                    <input 
-                      type="radio" 
-                      name="familySelectionType" 
-                      value="new"
-                      [checked]="familySelectionType === 'new'"
-                      (change)="onFamilySelectionTypeChange('new')">
-                    <span>New Family</span>
-                  </label>
-                </div>
-
-                <!-- Existing Family Selection -->
-                <div *ngIf="familySelectionType === 'existing'" class="family-selection-fields">
-                  <div class="form-group">
-                    <label>BCC</label>
-                    <select 
-                      [(ngModel)]="selectedBccId" 
-                      (ngModelChange)="onBCCChange()"
-                      name="bcc_id" 
-                      class="form-control"
-                      [disabled]="loadingBCCs">
-                      <option [ngValue]="null">Select a BCC...</option>
-                      <option *ngFor="let bcc of bccs" [ngValue]="bcc.id">
-                        {{ bcc.bcc_code }} - {{ bcc.name }}
-                      </option>
-                    </select>
-                    <small *ngIf="loadingBCCs" class="text-muted">Loading BCCs...</small>
-                  </div>
-
-                  <div class="form-group" *ngIf="selectedBccId">
-                    <label>Family</label>
-                    <select 
-                      [(ngModel)]="selectedFamilyId" 
-                      (ngModelChange)="onFamilyChange()"
-                      name="family_id" 
-                      class="form-control"
-                      [disabled]="loadingFamilies">
-                      <option [ngValue]="null">Select a family...</option>
-                      <option *ngFor="let family of families" [ngValue]="family.id">
-                        {{ family.family_name }} ({{ family.family_code }})
-                      </option>
-                    </select>
-                    <small *ngIf="loadingFamilies" class="text-muted">Loading families...</small>
-                    <small *ngIf="!loadingFamilies && families.length === 0 && selectedBccId" class="text-warning">
-                      No families found for this BCC.
-                    </small>
-                  </div>
-                </div>
-
-                <!-- New Family Form -->
-                <div *ngIf="familySelectionType === 'new' && showFamilyForm" class="new-family-form-container">
-                  <app-family-form
-                    [family]="null"
-                    (save)="onFamilyCreated($event)"
-                    (cancel)="onFamilyFormCancel()">
-                  </app-family-form>
-                </div>
-
-                <!-- After New Family Created -->
-                <div *ngIf="familySelectionType === 'new' && newlyCreatedFamily && !showFamilyForm" class="newly-created-family-info">
-                  <div class="alert alert-success">
-                    <strong>Family Created:</strong> {{ newlyCreatedFamily.family_name }} ({{ newlyCreatedFamily.family_code }})
-                  </div>
-                  <div class="form-group" *ngIf="!newlyCreatedFamily.bcc_id">
-                    <label>BCC (Optional)</label>
-                    <select 
-                      [(ngModel)]="selectedBccId" 
-                      (ngModelChange)="onBCCChange()"
-                      name="bcc_id_new" 
-                      class="form-control"
-                      [disabled]="loadingBCCs">
-                      <option [ngValue]="null">Select a BCC (optional)...</option>
-                      <option *ngFor="let bcc of bccs" [ngValue]="bcc.id">
-                        {{ bcc.bcc_code }} - {{ bcc.name }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- Godparent Fields (for Baptism only) -->
-            <div class="form-group" *ngIf="isBaptism()">
-              <label>Primary Godparent</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['godparent1_name']"
-                name="godparent1_name"
-                class="form-control"
-                placeholder="Enter primary godparent's name">
-            </div>
-
-            <div class="form-group" *ngIf="isBaptism()">
-              <label>Secondary Godparent</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['godparent2_name']"
-                name="godparent2_name"
-                class="form-control"
-                placeholder="Enter secondary godparent's name">
-            </div>
-          </div>
+        <div class="cf-split-field">
+          <label for="date_administered">
+            Date Administered <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="date"
+            id="date_administered"
+            [(ngModel)]="formData['date_administered']"
+            name="date_administered"
+            aria-required="true"
+            required
+          />
         </div>
 
-        <!-- Minister Information -->
-        <div class="form-section">
-          <h3 class="section-title">⛪ Minister Information</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Minister Name</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['minister_name']"
-                name="minister_name"
-                class="form-control"
-                placeholder="Rev. John Doe">
-            </div>
-
-            <div class="form-group">
-              <label>Minister Title</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['minister_title']"
-                name="minister_title"
-                class="form-control"
-                placeholder="Parish Priest, Bishop, etc.">
-            </div>
-          </div>
+        <div class="cf-split-field">
+          <label for="place_administered">
+            Place Administered
+            <span class="cf-split-req" *ngIf="requiresPlaceAdministered()" aria-hidden="true">*</span>
+            <span class="cf-split-optional" *ngIf="!requiresPlaceAdministered()">optional</span>
+          </label>
+          <input
+            type="text"
+            id="place_administered"
+            [(ngModel)]="formData['place_administered']"
+            name="place_administered"
+            placeholder="Church name or location"
+            [attr.aria-required]="requiresPlaceAdministered() ? true : null"
+            [required]="requiresPlaceAdministered()"
+          />
+          <p class="cf-split-field__error" *ngIf="hasFieldError('place_administered')">
+            {{ fieldErrors['place_administered'] }}
+          </p>
         </div>
 
-        <!-- Parents Information (for Baptism) -->
-        <div class="form-section" *ngIf="requiresParents()">
-          <h3 class="section-title">👨‍👩‍👧 Parents Information <span class="required-indicator">*</span></h3>
-          
-          <!-- Toggle between dropdown and manual entry (only show when family is selected) -->
-          <div *ngIf="familySelectionType === 'existing' && selectedFamilyId && familyMembers.length > 0" class="parent-selection-mode-toggle">
-            <label class="toggle-label">
-              <input 
-                type="radio" 
-                name="parentSelectionMode" 
-                value="dropdown"
-                [checked]="parentSelectionMode === 'dropdown'"
-                (change)="parentSelectionMode = 'dropdown'; autoPopulateParents();">
-              <span>Select from Family Members</span>
+        <div class="cf-split-field" *ngIf="hasWorkflowSection('place_classification')">
+          <label for="place_classification">
+            Location type <span class="cf-split-optional">optional</span>
+          </label>
+          <select
+            id="place_classification"
+            [(ngModel)]="formData['place_classification']"
+            name="place_classification"
+          >
+            <option value="">Select…</option>
+            <option value="parish">Parish</option>
+            <option value="home">Home</option>
+            <option value="hospital">Hospital</option>
+            <option value="institution">Institution</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+
+        <div class="cf-split-field" *ngIf="hasWorkflowSection('event_subtype')">
+          <label for="event_subtype">
+            Event type <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select
+            id="event_subtype"
+            [(ngModel)]="formData['event_subtype']"
+            name="event_subtype"
+          >
+            <option value="FIRST_COMMUNION">First Holy Communion</option>
+          </select>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="sacrament_status">Status</label>
+          <select
+            id="sacrament_status"
+            [(ngModel)]="formData['status']"
+            name="status"
+            (ngModelChange)="onStatusChange($event)"
+          >
+            <option value="registered">Registered</option>
+            <option value="conditional">Conditional</option>
+          </select>
+          <p class="cf-split-field__hint">
+            To mark a saved record invalid, use Void from the record actions — do not use status for voiding.
+          </p>
+        </div>
+
+        <div class="cf-split-field cf-split-field--full" *ngIf="formData['status'] === 'conditional'">
+          <label for="conditional_reason">
+            Why is this conditional? <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="text"
+            id="conditional_reason"
+            [(ngModel)]="formData['conditional_reason']"
+            name="conditional_reason"
+            placeholder="Brief reason (e.g. documentation pending)"
+            aria-required="true"
+          />
+          <p class="cf-split-field__hint">Shown to staff reviewing the register. Keep it brief and pastoral.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recipient Information -->
+    <section
+      class="cf-split-section"
+      *ngIf="!workflowPlan || hasWorkflowSection('recipient')"
+      aria-labelledby="sacrament-section-recipient"
+    >
+      <h3 id="sacrament-section-recipient" class="cf-split-section__title">
+        {{ recipientSectionTitle() }}
+      </h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="recipient_name">
+            Full Name <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="text"
+            id="recipient_name"
+            [(ngModel)]="formData['recipient_name']"
+            name="recipient_name"
+            placeholder="Enter full name"
+            aria-required="true"
+            required
+            [readonly]="personLocked"
+          />
+          <p class="cf-split-field__hint" *ngIf="personLocked">
+            Taken from the selected person. Sacrament registration does not change the person profile.
+          </p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="recipient_birth_date">
+            Date of Birth
+            <span class="cf-split-req" *ngIf="requiresRecipientIdentityFields()" aria-hidden="true">*</span>
+            <span class="cf-split-optional" *ngIf="!requiresRecipientIdentityFields()">optional</span>
+          </label>
+          <input
+            type="date"
+            id="recipient_birth_date"
+            [(ngModel)]="formData['recipient_birth_date']"
+            name="recipient_birth_date"
+            [attr.aria-required]="requiresRecipientIdentityFields() ? true : null"
+            [required]="requiresRecipientIdentityFields()"
+          />
+          <p class="cf-split-field__error" *ngIf="hasFieldError('recipient_birth_date')">
+            {{ fieldErrors['recipient_birth_date'] }}
+          </p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="recipient_birth_place">
+            Place of Birth
+            <span class="cf-split-req" *ngIf="requiresRecipientIdentityFields()" aria-hidden="true">*</span>
+            <span class="cf-split-optional" *ngIf="!requiresRecipientIdentityFields()">optional</span>
+          </label>
+          <input
+            type="text"
+            id="recipient_birth_place"
+            [(ngModel)]="formData['recipient_birth_place']"
+            name="recipient_birth_place"
+            placeholder="City, State"
+            [attr.aria-required]="requiresRecipientIdentityFields() ? true : null"
+            [required]="requiresRecipientIdentityFields()"
+          />
+          <p class="cf-split-field__error" *ngIf="hasFieldError('recipient_birth_place')">
+            {{ fieldErrors['recipient_birth_place'] }}
+          </p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="recipient_gender">
+            Gender
+            <span class="cf-split-req" *ngIf="requiresRecipientIdentityFields()" aria-hidden="true">*</span>
+            <span class="cf-split-optional" *ngIf="!requiresRecipientIdentityFields()">optional</span>
+          </label>
+          <select
+            id="recipient_gender"
+            [(ngModel)]="formData['recipient_gender']"
+            name="recipient_gender"
+            [attr.aria-required]="requiresRecipientIdentityFields() ? true : null"
+            [required]="requiresRecipientIdentityFields()"
+          >
+            <option [ngValue]="undefined">Select gender...</option>
+            <option value="male">Male</option>
+            <option value="female">Female</option>
+            <option value="other">Other</option>
+          </select>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('recipient_gender')">
+            {{ fieldErrors['recipient_gender'] }}
+          </p>
+        </div>
+
+        <div class="cf-split-field" *ngIf="isEucharist()">
+          <label for="baptism_date">
+            Baptism Date <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="date"
+            id="baptism_date"
+            [(ngModel)]="formData['baptism_date']"
+            name="baptism_date"
+            aria-required="true"
+            required
+          />
+          <p class="cf-split-field__error" *ngIf="hasFieldError('baptism_date')">
+            {{ fieldErrors['baptism_date'] }}
+          </p>
+        </div>
+
+        <!-- Family Association -->
+        <div class="cf-split-field cf-split-field--full">
+          <label id="family_association_label">
+            Family Association
+            <span class="cf-split-optional" *ngIf="!usesPersonRecipientWorkflow()">optional</span>
+            <span class="cf-split-req" *ngIf="usesPersonRecipientWorkflow()" aria-hidden="true">*</span>
+          </label>
+          <p class="cf-split-field__hint">
+            Choose how this recipient relates to a family in this church. This does not replace the person record.
+          </p>
+          <div class="sacrament-radio-row" role="radiogroup" aria-labelledby="family_association_label">
+            <label class="sacrament-radio">
+              <input
+                type="radio"
+                name="familySelectionType"
+                [value]="null"
+                [checked]="familySelectionType === null"
+                (change)="clearFamilySelection()"
+              />
+              <span>No Family Association</span>
             </label>
-            <label class="toggle-label">
-              <input 
-                type="radio" 
-                name="parentSelectionMode" 
-                value="manual"
-                [checked]="parentSelectionMode === 'manual'"
-                (change)="parentSelectionMode = 'manual'; selectedFatherId = null; selectedMotherId = null;">
-              <span>Enter Manually</span>
+            <label class="sacrament-radio">
+              <input
+                type="radio"
+                name="familySelectionType"
+                value="existing"
+                [checked]="familySelectionType === 'existing'"
+                (change)="onFamilySelectionTypeChange('existing')"
+              />
+              <span>Existing Family</span>
+            </label>
+            <label class="sacrament-radio">
+              <input
+                type="radio"
+                name="familySelectionType"
+                value="new"
+                [checked]="familySelectionType === 'new'"
+                (change)="onFamilySelectionTypeChange('new')"
+              />
+              <span>New Family</span>
             </label>
           </div>
+          <p class="cf-split-field__hint" *ngIf="familySelectionType === null">
+            This person belongs to this church and is not in a family. No family will be created.
+          </p>
+          <p class="cf-split-field__hint" *ngIf="familySelectionType === 'existing'">
+            Choose a family already registered here, then choose the recipient from that family.
+          </p>
+          <p class="cf-split-field__hint" *ngIf="familySelectionType === 'new'">
+            Create a new family in this church and add this person as a member. Saved together with the sacrament.
+          </p>
 
-          <div class="form-grid">
-            <!-- Dropdown Selection Mode -->
-            <ng-container *ngIf="parentSelectionMode === 'dropdown' && familySelectionType === 'existing' && selectedFamilyId && familyMembers.length > 0">
-              <div class="form-group">
-                <label class="required">Father's Name</label>
-                <select
-                  [(ngModel)]="selectedFatherId"
-                  (ngModelChange)="onFatherSelect()"
-                  name="selectedFatherId"
-                  class="form-control"
-                  [class.input-error]="hasFieldError('father_name')"
-                  required>
-                  <option [ngValue]="null">Select father from family...</option>
-                  <option *ngFor="let father of getAvailableFathers()" [ngValue]="father.id">
-                    {{ getMemberFullName(father) }}
-                  </option>
-                </select>
-                <span *ngIf="hasFieldError('father_name')" class="error-message">
-                  {{ getFieldError('father_name') }}
-                </span>
-                <small class="form-hint" *ngIf="getAvailableFathers().length === 0">
-                  No father found in family members. Please enter manually.
-                </small>
+          <div *ngIf="familySelectionType === 'existing'" class="sacrament-nested-block">
+            <div class="cf-split-grid">
+              <div class="cf-split-field">
+                <label for="bcc_id">Community group <span class="cf-split-optional">optional</span></label>
+                <ng-select
+                  id="bcc_id"
+                  [(ngModel)]="selectedBccId"
+                  (ngModelChange)="onBCCChange()"
+                  name="bcc_id"
+                  [items]="bccs"
+                  bindLabel="name"
+                  bindValue="id"
+                  [loading]="loadingBCCs"
+                  [disabled]="loadingBCCs"
+                  placeholder="Filter by community group…"
+                  [clearable]="true"
+                  [searchable]="true"
+                  class="cf-split-select"
+                >
+                  <ng-template ng-label-tmp let-item="item">
+                    {{ bccOptionLabel(item) }}
+                  </ng-template>
+                  <ng-template ng-option-tmp let-item="item">
+                    {{ bccOptionLabel(item) }}
+                  </ng-template>
+                </ng-select>
               </div>
 
-              <div class="form-group">
-                <label class="required">Mother's Name</label>
-                <select
-                  [(ngModel)]="selectedMotherId"
-                  (ngModelChange)="onMotherSelect()"
-                  name="selectedMotherId"
-                  class="form-control"
-                  [class.input-error]="hasFieldError('mother_name')"
-                  required>
-                  <option [ngValue]="null">Select mother from family...</option>
-                  <option *ngFor="let mother of getAvailableMothers()" [ngValue]="mother.id">
-                    {{ getMemberFullName(mother) }}
-                  </option>
-                </select>
-                <span *ngIf="hasFieldError('mother_name')" class="error-message">
-                  {{ getFieldError('mother_name') }}
-                </span>
-                <small class="form-hint" *ngIf="getAvailableMothers().length === 0">
-                  No mother found in family members. Please enter manually.
-                </small>
+              <div class="cf-split-field">
+                <label for="family_id">
+                  Family
+                  <span class="cf-split-req" *ngIf="usesPersonRecipientWorkflow()" aria-hidden="true">*</span>
+                </label>
+                <ng-select
+                  id="family_id"
+                  [(ngModel)]="selectedFamilyId"
+                  (ngModelChange)="onFamilyChange()"
+                  name="family_id"
+                  [items]="families"
+                  bindLabel="family_name"
+                  bindValue="id"
+                  [loading]="loadingFamilies"
+                  [disabled]="loadingFamilies"
+                  placeholder="Search and select a family…"
+                  [clearable]="true"
+                  [searchable]="true"
+                  class="cf-split-select"
+                >
+                  <ng-template ng-label-tmp let-item="item">
+                    {{ familyOptionLabel(item) }}
+                  </ng-template>
+                  <ng-template ng-option-tmp let-item="item">
+                    {{ familyOptionLabel(item) }}
+                  </ng-template>
+                </ng-select>
+                <p class="cf-split-field__hint" *ngIf="loadingFamilies">Loading families…</p>
               </div>
-            </ng-container>
 
-            <!-- Manual Entry Mode -->
-            <ng-container *ngIf="parentSelectionMode === 'manual' || !selectedFamilyId || familyMembers.length === 0 || familySelectionType !== 'existing'">
-              <div class="form-group">
-                <label class="required">Father's Name</label>
+              <div class="cf-split-field cf-split-field--full" *ngIf="usesPersonRecipientWorkflow() && selectedFamilyId">
+                <label for="recipient_member_id">
+                  Recipient in this family <span class="cf-split-req" aria-hidden="true">*</span>
+                </label>
+                <ng-select
+                  id="recipient_member_id"
+                  [(ngModel)]="selectedRecipientMemberId"
+                  (ngModelChange)="onRecipientMemberChange()"
+                  name="recipient_member_id"
+                  [items]="familyMembers"
+                  bindValue="id"
+                  [loading]="loadingMembers"
+                  placeholder="Select the person receiving this sacrament…"
+                  [clearable]="true"
+                  [searchable]="true"
+                  class="cf-split-select"
+                >
+                  <ng-template ng-label-tmp let-item="item">
+                    {{ memberOptionLabel(item) }}
+                  </ng-template>
+                  <ng-template ng-option-tmp let-item="item">
+                    {{ memberOptionLabel(item) }}
+                  </ng-template>
+                </ng-select>
+                <p class="cf-split-field__hint">
+                  Selecting a member prefills their person record. It does not change their saved profile.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="familySelectionType === 'new' && usesPersonRecipientWorkflow()" class="sacrament-nested-block">
+            <div class="cf-split-grid">
+              <div class="cf-split-field cf-split-field--full">
+                <label for="new_family_name">Family name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                <input id="new_family_name" type="text" name="new_family_name" [(ngModel)]="newFamilyDraft.family_name" placeholder="Family surname" />
+              </div>
+              <div class="cf-split-field">
+                <label for="new_family_address">Address <span class="cf-split-optional">optional</span></label>
+                <input id="new_family_address" type="text" name="new_family_address" [(ngModel)]="newFamilyDraft.address_line_1" />
+              </div>
+              <div class="cf-split-field">
+                <label for="new_family_city">City <span class="cf-split-optional">optional</span></label>
+                <input id="new_family_city" type="text" name="new_family_city" [(ngModel)]="newFamilyDraft.city" />
+              </div>
+              <div class="cf-split-field">
+                <label for="new_person_first">Recipient first name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                <input id="new_person_first" name="new_person_first" [(ngModel)]="personDraft.first_name" />
+              </div>
+              <div class="cf-split-field">
+                <label for="new_person_last">Recipient last name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                <input id="new_person_last" name="new_person_last" [(ngModel)]="personDraft.last_name" />
+              </div>
+            </div>
+          </div>
+
+          <div *ngIf="familySelectionType === 'new' && !usesPersonRecipientWorkflow() && showFamilyForm" class="sacrament-nested-block sacrament-nested-block--scroll">
+            <app-family-form
+              [family]="null"
+              (save)="onFamilyCreated($event)"
+              (cancel)="onFamilyFormCancel()"
+            ></app-family-form>
+          </div>
+
+          <div
+            *ngIf="familySelectionType === 'new' && newlyCreatedFamily && !showFamilyForm && !usesPersonRecipientWorkflow()"
+            class="sacrament-nested-block sacrament-nested-block--success"
+          >
+            <p class="cf-split-form-alert cf-split-form-alert--success">
+              Family Created: {{ newlyCreatedFamily.family_name }} ({{ newlyCreatedFamily.family_code }})
+            </p>
+          </div>
+
+          <div *ngIf="usesPersonRecipientWorkflow() && familySelectionType === null" class="sacrament-nested-block">
+            <div class="cf-split-field cf-split-field--full">
+              <label for="person_search">Find an existing parish person</label>
+              <div class="cf-participant-source__selected" *ngIf="resolvedPerson">
+                <div>
+                  <strong>{{ resolvedPerson.full_name_display || (resolvedPerson.first_name + ' ' + resolvedPerson.last_name) }}</strong>
+                  <p class="cf-split-field__hint">Existing person. Sacrament will be saved to this person. Profile is not changed.</p>
+                </div>
+                <button type="button" class="cf-btn" (click)="clearResolvedPerson()">Change</button>
+              </div>
+              <ng-container *ngIf="!resolvedPerson">
                 <input
-                  type="text"
-                  [(ngModel)]="formData['father_name']"
-                  name="father_name"
-                  class="form-control"
-                  [class.input-error]="hasFieldError('father_name')"
-                  (blur)="validateField('father_name', formData['father_name'])"
-                  placeholder="Enter father's full name"
-                  required>
-                <span *ngIf="hasFieldError('father_name')" class="error-message">
-                  {{ getFieldError('father_name') }}
-                </span>
+                  type="search"
+                  id="person_search"
+                  name="person_search"
+                  [(ngModel)]="personQuery"
+                  (ngModelChange)="searchPersons()"
+                  placeholder="Type at least 2 letters…"
+                />
+                <p class="cf-split-field__hint" *ngIf="searchingPersons">Searching…</p>
+                <ul class="cf-participant-source__results" *ngIf="personResults.length">
+                  <li *ngFor="let person of personResults" (mousedown)="selectResolvedPerson(person)">
+                    <strong>{{ person.full_name_display || (person.first_name + ' ' + person.last_name) }}</strong>
+                  </li>
+                </ul>
+              </ng-container>
+            </div>
+            <div class="cf-split-grid" *ngIf="!resolvedPerson">
+              <div class="cf-split-field">
+                <label for="person_first_name">First name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                <input id="person_first_name" name="person_first_name" [(ngModel)]="personDraft.first_name" />
               </div>
-
-              <div class="form-group">
-                <label class="required">Mother's Name</label>
-                <input
-                  type="text"
-                  [(ngModel)]="formData['mother_name']"
-                  name="mother_name"
-                  class="form-control"
-                  [class.input-error]="hasFieldError('mother_name')"
-                  (blur)="validateField('mother_name', formData['mother_name'])"
-                  placeholder="Enter mother's full name"
-                  required>
-                <span *ngIf="hasFieldError('mother_name')" class="error-message">
-                  {{ getFieldError('mother_name') }}
-                </span>
+              <div class="cf-split-field">
+                <label for="person_middle_name">Middle name <span class="cf-split-optional">optional</span></label>
+                <input id="person_middle_name" name="person_middle_name" [(ngModel)]="personDraft.middle_name" />
               </div>
-            </ng-container>
+              <div class="cf-split-field">
+                <label for="person_last_name">Last name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                <input id="person_last_name" name="person_last_name" [(ngModel)]="personDraft.last_name" />
+              </div>
+              <div class="cf-split-field">
+                <label for="person_phone">Phone <span class="cf-split-optional">optional</span></label>
+                <input id="person_phone" name="person_phone" [(ngModel)]="personDraft.phone" />
+              </div>
+              <div class="cf-split-field">
+                <label for="person_email">Email <span class="cf-split-optional">optional</span></label>
+                <input id="person_email" name="person_email" type="email" [(ngModel)]="personDraft.email" />
+              </div>
+              <div class="cf-split-field cf-split-field--full">
+                <label for="person_address">Address <span class="cf-split-optional">optional</span></label>
+                <input id="person_address" name="person_address" [(ngModel)]="personDraft.address_line_1" />
+              </div>
+            </div>
+          </div>
+
+          <div class="cf-split-form-alert" *ngIf="personMatches.length">
+            <p><strong>Possible existing person found.</strong> Do not create a duplicate.</p>
+            <ul>
+              <li *ngFor="let match of personMatches">
+                {{ match.full_name }}
+                <span *ngIf="match.date_of_birth"> · {{ match.date_of_birth }}</span>
+                <button type="button" class="cf-btn" (click)="chooseMatchedPerson(match)">Use existing person</button>
+              </li>
+            </ul>
+            <button type="button" class="cf-btn cf-btn-primary" (click)="confirmCreateNewPerson()">Create new person</button>
           </div>
         </div>
 
-        <!-- Godparents/Sponsors (for Confirmation only - Baptism godparents shown in Recipient Information) -->
-        <div class="form-section" *ngIf="requiresGodparents() && !isBaptism()">
-          <h3 class="section-title">🤝 Godparents / Sponsors</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Godparent / Sponsor 1</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['godparent1_name']"
-                name="godparent1_name"
-                class="form-control"
-                placeholder="Enter first godparent's name">
-            </div>
-
-            <div class="form-group">
-              <label>Godparent / Sponsor 2</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['godparent2_name']"
-                name="godparent2_name"
-                class="form-control"
-                placeholder="Enter second godparent's name">
-            </div>
-          </div>
+        <!-- Godparent Fields (for Baptism only) -->
+        <div class="cf-split-field" *ngIf="isBaptism()">
+          <label for="godparent1_name_baptism">
+            Godfather <span class="cf-split-optional">recommended</span>
+          </label>
+          <input
+            type="text"
+            id="godparent1_name_baptism"
+            [(ngModel)]="formData['godparent1_name']"
+            name="godparent1_name"
+            placeholder="Enter godfather's name"
+          />
         </div>
 
-        <!-- Witnesses -->
-        <div class="form-section">
-          <h3 class="section-title">👥 Witnesses</h3>
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label>Witnesses</label>
-              <textarea
-                [(ngModel)]="formData['witnesses']"
-                name="witnesses"
-                class="form-control"
-                rows="2"
-                placeholder="Enter witness names (separate with commas if multiple)"></textarea>
-            </div>
-          </div>
+        <div class="cf-split-field" *ngIf="isBaptism()">
+          <label for="godparent2_name_baptism">
+            Godmother <span class="cf-split-optional">recommended</span>
+          </label>
+          <input
+            type="text"
+            id="godparent2_name_baptism"
+            [(ngModel)]="formData['godparent2_name']"
+            name="godparent2_name"
+            placeholder="Enter godmother's name"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- Bride (Marriage) -->
+    <section
+      class="cf-split-section"
+      *ngIf="useSharedPeopleControls && hasWorkflowSection('bride')"
+      aria-labelledby="sacrament-section-bride"
+    >
+      <h3 id="sacrament-section-bride" class="cf-split-section__title">
+        Bride <span class="cf-split-req" aria-hidden="true">*</span>
+      </h3>
+      <p class="cf-split-field__hint">
+        Choose an existing member or an external person, then set whether their church affiliation is this parish or another parish/diocese.
+      </p>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <app-participant-source-control
+            label="Bride"
+            role="bride"
+            [allowedSources]="partyAllowedSources('bride')"
+            [requireIdentityFields]="true"
+            [value]="brideDraft"
+            (valueChange)="onBrideDraftChange($event)"
+          ></app-participant-source-control>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_bride_full_name')">
+            {{ getFieldError('marriage_bride_full_name') }}
+          </p>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('bride_date_of_birth')">
+            {{ getFieldError('bride_date_of_birth') }}
+          </p>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('bride_gender')">
+            {{ getFieldError('bride_gender') }}
+          </p>
+        </div>
+        <div class="cf-split-field cf-split-field--full">
+          <app-church-affiliation-control
+            label="Bride church affiliation"
+            controlId="bride"
+            [homeParishName]="homeParishDisplayName"
+            [requireDioceseWhenOther]="true"
+            [value]="brideAffiliationDraft"
+            (valueChange)="onBrideAffiliationChange($event)"
+          ></app-church-affiliation-control>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_bride_church_name')">
+            {{ getFieldError('marriage_bride_church_name') }}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Groom (Marriage) -->
+    <section
+      class="cf-split-section"
+      *ngIf="useSharedPeopleControls && hasWorkflowSection('groom')"
+      aria-labelledby="sacrament-section-groom"
+    >
+      <h3 id="sacrament-section-groom" class="cf-split-section__title">
+        Groom <span class="cf-split-req" aria-hidden="true">*</span>
+      </h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <app-participant-source-control
+            label="Groom"
+            role="groom"
+            [allowedSources]="partyAllowedSources('groom')"
+            [requireIdentityFields]="true"
+            [value]="groomDraft"
+            (valueChange)="onGroomDraftChange($event)"
+          ></app-participant-source-control>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_groom_full_name')">
+            {{ getFieldError('marriage_groom_full_name') }}
+          </p>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('groom_date_of_birth')">
+            {{ getFieldError('groom_date_of_birth') }}
+          </p>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('groom_gender')">
+            {{ getFieldError('groom_gender') }}
+          </p>
+        </div>
+        <div class="cf-split-field cf-split-field--full">
+          <app-church-affiliation-control
+            label="Groom church affiliation"
+            controlId="groom"
+            [homeParishName]="homeParishDisplayName"
+            [requireDioceseWhenOther]="true"
+            [value]="groomAffiliationDraft"
+            (valueChange)="onGroomAffiliationChange($event)"
+          ></app-church-affiliation-control>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_groom_church_name')">
+            {{ getFieldError('marriage_groom_church_name') }}
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Minister Information -->
+    <section class="cf-split-section" *ngIf="!workflowPlan || hasWorkflowSection('minister')" aria-labelledby="sacrament-section-minister">
+      <h3 id="sacrament-section-minister" class="cf-split-section__title">Who administered this</h3>
+      <div class="cf-split-grid" *ngIf="useSharedPeopleControls">
+        <div class="cf-split-field cf-split-field--full">
+          <ng-container *ngFor="let epoch of [peopleControlsEpoch]">
+            <app-minister-picker
+              [ministerRoles]="ministerRoles()"
+              [value]="ministerDraft"
+              (valueChange)="onMinisterDraftChange($event)"
+            ></app-minister-picker>
+          </ng-container>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('minister_name')">
+            {{ getFieldError('minister_name') }}
+          </p>
+        </div>
+      </div>
+      <div class="cf-split-grid" *ngIf="!useSharedPeopleControls">
+        <div class="cf-split-field">
+          <label for="minister_name">
+            Minister Name <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="minister_name"
+            [(ngModel)]="formData['minister_name']"
+            name="minister_name"
+            placeholder="Rev. John Doe"
+          />
         </div>
 
-        <!-- Record Information -->
-        <div class="form-section">
-          <h3 class="section-title">📋 Record Information</h3>
-          <div class="form-grid">
-            <div class="form-group">
-              <label>Certificate Number</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['certificate_number']"
-                name="certificate_number"
-                class="form-control"
-                placeholder="e.g., CERT-2024-001">
-            </div>
+        <div class="cf-split-field">
+          <label for="minister_title">
+            Minister Title <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="minister_title"
+            [(ngModel)]="formData['minister_title']"
+            name="minister_title"
+            placeholder="Parish Priest, Bishop, etc."
+          />
+        </div>
+      </div>
+    </section>
 
-            <div class="form-group">
-              <label>Book Number</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['book_number']"
-                name="book_number"
-                class="form-control"
-                placeholder="e.g., BOOK-5">
-            </div>
+    <!-- Affiliation (legacy single-party; unused when bride/groom have own affiliation) -->
+    <section
+      class="cf-split-section"
+      *ngIf="useSharedPeopleControls && hasWorkflowSection('affiliation') && !hasWorkflowSection('bride')"
+      aria-labelledby="sacrament-section-affiliation"
+    >
+      <h3 id="sacrament-section-affiliation" class="cf-split-section__title">Church Affiliation</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <app-church-affiliation-control
+            label="Church affiliation"
+            controlId="party"
+            [homeParishName]="homeParishDisplayName"
+            [requireDioceseWhenOther]="true"
+            [value]="affiliationDraft"
+            (valueChange)="onAffiliationDraftChange($event)"
+          ></app-church-affiliation-control>
+        </div>
+      </div>
+    </section>
 
-            <div class="form-group">
-              <label>Page Number</label>
-              <input
-                type="text"
-                [(ngModel)]="formData['page_number']"
-                name="page_number"
-                class="form-control"
-                placeholder="e.g., 123">
-            </div>
+    <!-- Parents Information (Baptism and Eucharist) -->
+    <section class="cf-split-section" *ngIf="requiresParents()" aria-labelledby="sacrament-section-parents">
+      <h3 id="sacrament-section-parents" class="cf-split-section__title">
+        Parents Information <span class="cf-split-req" aria-hidden="true">*</span>
+      </h3>
+
+      <div
+        *ngIf="familySelectionType === 'existing' && selectedFamilyId && familyMembers.length > 0"
+        class="sacrament-radio-row"
+        role="radiogroup"
+        aria-label="Parent selection mode"
+      >
+        <label class="sacrament-radio">
+          <input
+            type="radio"
+            name="parentSelectionMode"
+            value="dropdown"
+            [checked]="parentSelectionMode === 'dropdown'"
+            (change)="parentSelectionMode = 'dropdown'; autoPopulateParents();"
+          />
+          <span>Select from Family Members</span>
+        </label>
+        <label class="sacrament-radio">
+          <input
+            type="radio"
+            name="parentSelectionMode"
+            value="manual"
+            [checked]="parentSelectionMode === 'manual'"
+            (change)="parentSelectionMode = 'manual'; selectedFatherId = null; selectedMotherId = null;"
+          />
+          <span>Enter Manually</span>
+        </label>
+      </div>
+
+      <div class="cf-split-grid">
+        <ng-container *ngIf="parentSelectionMode === 'dropdown' && familySelectionType === 'existing' && selectedFamilyId && familyMembers.length > 0">
+          <div class="cf-split-field">
+            <label for="selectedFatherId">
+              Father's Name <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <ng-select
+              id="selectedFatherId"
+              [(ngModel)]="selectedFatherId"
+              (ngModelChange)="onFatherSelect()"
+              name="selectedFatherId"
+              [items]="getAvailableFathers()"
+              bindValue="id"
+              [searchFn]="searchFamilyMember"
+              placeholder="Select father from family…"
+              [clearable]="true"
+              [searchable]="true"
+              class="cf-split-select"
+              [class.cf-split-field__control--invalid]="hasFieldError('father_name')"
+            >
+              <ng-template ng-label-tmp let-item="item">
+                {{ getMemberFullName(item) }}
+              </ng-template>
+              <ng-template ng-option-tmp let-item="item">
+                {{ getMemberFullName(item) }}
+              </ng-template>
+            </ng-select>
+            <p class="cf-split-field__error" *ngIf="hasFieldError('father_name')">
+              {{ getFieldError('father_name') }}
+            </p>
+            <p class="cf-split-field__hint" *ngIf="getAvailableFathers().length === 0">
+              No father found in family members. Please enter manually.
+            </p>
           </div>
+
+          <div class="cf-split-field">
+            <label for="selectedMotherId">
+              Mother's Name <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <ng-select
+              id="selectedMotherId"
+              [(ngModel)]="selectedMotherId"
+              (ngModelChange)="onMotherSelect()"
+              name="selectedMotherId"
+              [items]="getAvailableMothers()"
+              bindValue="id"
+              [searchFn]="searchFamilyMember"
+              placeholder="Select mother from family…"
+              [clearable]="true"
+              [searchable]="true"
+              class="cf-split-select"
+              [class.cf-split-field__control--invalid]="hasFieldError('mother_name')"
+            >
+              <ng-template ng-label-tmp let-item="item">
+                {{ getMemberFullName(item) }}
+              </ng-template>
+              <ng-template ng-option-tmp let-item="item">
+                {{ getMemberFullName(item) }}
+              </ng-template>
+            </ng-select>
+            <p class="cf-split-field__error" *ngIf="hasFieldError('mother_name')">
+              {{ getFieldError('mother_name') }}
+            </p>
+            <p class="cf-split-field__hint" *ngIf="getAvailableMothers().length === 0">
+              No mother found in family members. Please enter manually.
+            </p>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="parentSelectionMode === 'manual' || !selectedFamilyId || familyMembers.length === 0 || familySelectionType !== 'existing'">
+          <div class="cf-split-field">
+            <label for="father_name">
+              Father's Name <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              type="text"
+              id="father_name"
+              [(ngModel)]="formData['father_name']"
+              name="father_name"
+              [class.cf-split-field__control--invalid]="hasFieldError('father_name')"
+              (blur)="validateField('father_name', formData['father_name'])"
+              placeholder="Enter father's full name"
+              aria-required="true"
+              required
+            />
+            <p class="cf-split-field__error" *ngIf="hasFieldError('father_name')">
+              {{ getFieldError('father_name') }}
+            </p>
+          </div>
+
+          <div class="cf-split-field">
+            <label for="mother_name">
+              Mother's Name <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              type="text"
+              id="mother_name"
+              [(ngModel)]="formData['mother_name']"
+              name="mother_name"
+              [class.cf-split-field__control--invalid]="hasFieldError('mother_name')"
+              (blur)="validateField('mother_name', formData['mother_name'])"
+              placeholder="Enter mother's full name"
+              aria-required="true"
+              required
+            />
+            <p class="cf-split-field__error" *ngIf="hasFieldError('mother_name')">
+              {{ getFieldError('mother_name') }}
+            </p>
+          </div>
+        </ng-container>
+      </div>
+    </section>
+
+    <div class="cf-split-banner" *ngIf="isRestrictedPrivacy()" role="alert">
+      <strong>Restricted pastoral record.</strong>
+      Enter administrative details only (who, when, where, registry).
+      Do not enter confession content or sensitive spiritual notes.
+    </div>
+
+    <!-- Sponsors (Confirmation) — Baptism godparents shown in Recipient Information -->
+    <section
+      class="cf-split-section"
+      *ngIf="(hasWorkflowSection('sponsors') || (requiresGodparents() && !isBaptism())) && !isBaptism()"
+      aria-labelledby="sacrament-section-godparents"
+    >
+      <h3 id="sacrament-section-godparents" class="cf-split-section__title">
+        {{ isConfirmation() ? 'Sponsors' : 'Godparents / Sponsors' }}
+      </h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="godparent1_name">
+            {{ isConfirmation() ? 'Sponsor 1' : 'Godparent / Sponsor 1' }}
+            <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="godparent1_name"
+            [(ngModel)]="formData['godparent1_name']"
+            name="godparent1_name"
+            [placeholder]="isConfirmation() ? 'Enter first sponsor’s name' : 'Enter first godparent’s name'"
+          />
         </div>
 
-        <!-- Additional Notes -->
-        <div class="form-section">
-          <h3 class="section-title">📝 Additional Notes</h3>
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label>Notes</label>
-              <textarea
-                [(ngModel)]="formData['notes']"
-                name="notes"
-                class="form-control"
-                rows="3"
-                placeholder="Any additional information or special notes about this sacrament"></textarea>
-            </div>
+        <div class="cf-split-field">
+          <label for="godparent2_name">
+            {{ isConfirmation() ? 'Sponsor 2' : 'Godparent / Sponsor 2' }}
+            <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="godparent2_name"
+            [(ngModel)]="formData['godparent2_name']"
+            name="godparent2_name"
+            [placeholder]="isConfirmation() ? 'Enter second sponsor’s name' : 'Enter second godparent’s name'"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- Witnesses -->
+    <section
+      class="cf-split-section"
+      *ngIf="!workflowPlan || hasWorkflowSection('witnesses')"
+      aria-labelledby="sacrament-section-witnesses"
+    >
+      <h3 id="sacrament-section-witnesses" class="cf-split-section__title">
+        Witnesses <span class="cf-split-optional">optional</span>
+      </h3>
+      <p class="cf-split-field__hint" *ngIf="useSharedPeopleControls && isMarriage()">
+        Each witness is an external person for this marriage only (not a parish Person or family member).
+        Enter full name, address, gender, and contact number. Date of birth is not needed.
+      </p>
+      <div class="cf-split-grid" *ngIf="useSharedPeopleControls && isMarriage(); else legacyWitnesses">
+        <div class="cf-split-field cf-split-field--full" *ngFor="let witness of witnessDrafts; let i = index">
+          <app-participant-source-control
+            [label]="'Witness ' + (i + 1)"
+            role="witness"
+            [controlId]="'witness_' + i"
+            [allowedSources]="partyAllowedSources('witness')"
+            [showDateOfBirth]="false"
+            [requireGender]="true"
+            [requireAddress]="true"
+            [requireContactNumber]="true"
+            [value]="witness"
+            (valueChange)="onWitnessDraftChange(i, $event)"
+          ></app-participant-source-control>
+          <p class="cf-split-field__error" *ngIf="hasFieldError('witness_' + i)">
+            {{ getFieldError('witness_' + i) }}
+          </p>
+          <button type="button" class="cf-btn" (click)="removeWitness(i)">Remove witness</button>
+        </div>
+        <div class="cf-split-field cf-split-field--full">
+          <button type="button" class="cf-btn" (click)="addWitness()">Add witness</button>
+        </div>
+      </div>
+      <ng-template #legacyWitnesses>
+        <div class="cf-split-grid">
+          <div class="cf-split-field cf-split-field--full">
+            <label for="witnesses">
+              Witnesses <span class="cf-split-optional">optional</span>
+            </label>
+            <textarea
+              id="witnesses"
+              [(ngModel)]="formData['witnesses']"
+              name="witnesses"
+              rows="2"
+              placeholder="Enter witness names (separate with commas if multiple)"
+            ></textarea>
           </div>
         </div>
-      </form>
+      </ng-template>
+    </section>
 
-  <div modalFooter>
-    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
-    <button type="button" class="cf-btn cf-btn-primary" (click)="onSave()" [disabled]="saving || loading">
-      {{ isEditMode ? 'Update' : 'Create' }} Record
-    </button>
-  </div>
+    <!-- Registry Information (secondary to primary sacrament details) -->
+    <section
+      class="cf-split-section"
+      *ngIf="(!workflowPlan || hasWorkflowSection('registry')) && !isReconciliation()"
+      aria-labelledby="sacrament-section-record"
+    >
+      <h3 id="sacrament-section-record" class="cf-split-section__title">Registry information</h3>
+      <p class="cf-split-field__hint">
+        Optional book and certificate references from the parish register.
+      </p>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="certificate_number">
+            Certificate number <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="certificate_number"
+            [(ngModel)]="formData['certificate_number']"
+            name="certificate_number"
+            placeholder="Parish certificate number"
+          />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="book_number">
+            Book <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="book_number"
+            [(ngModel)]="formData['book_number']"
+            name="book_number"
+            placeholder="Register book"
+          />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="page_number">
+            Page <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="page_number"
+            [(ngModel)]="formData['page_number']"
+            name="page_number"
+            placeholder="Page"
+          />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="registry_entry">
+            Entry <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="registry_entry"
+            [(ngModel)]="formData['registry_entry']"
+            name="registry_entry"
+            placeholder="Entry / line number"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section
+      class="cf-split-section"
+      *ngIf="isReconciliation() && (!workflowPlan || hasWorkflowSection('registry'))"
+      aria-labelledby="sacrament-section-record-restricted"
+    >
+      <h3 id="sacrament-section-record-restricted" class="cf-split-section__title">Registry information</h3>
+      <p class="cf-split-field__hint">
+        Certificates are not issued for Reconciliation. Record book/page only if your parish uses them for administrative tracking.
+      </p>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="book_number_rec">Book <span class="cf-split-optional">optional</span></label>
+          <input
+            type="text"
+            id="book_number_rec"
+            [(ngModel)]="formData['book_number']"
+            name="book_number_rec"
+          />
+        </div>
+        <div class="cf-split-field">
+          <label for="page_number_rec">Page <span class="cf-split-optional">optional</span></label>
+          <input
+            type="text"
+            id="page_number_rec"
+            [(ngModel)]="formData['page_number']"
+            name="page_number_rec"
+          />
+        </div>
+      </div>
+    </section>
+
+    <!-- Additional Notes -->
+    <section
+      class="cf-split-section"
+      *ngIf="!workflowPlan || hasWorkflowSection('notes')"
+      aria-labelledby="sacrament-section-notes"
+    >
+      <h3 id="sacrament-section-notes" class="cf-split-section__title">
+        {{ isReconciliation() ? 'Administrative notes' : 'Additional notes' }}
+      </h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="notes">
+            Notes <span class="cf-split-optional">optional</span>
+          </label>
+          <textarea
+            id="notes"
+            [(ngModel)]="formData['notes']"
+            name="notes"
+            rows="3"
+            [attr.maxlength]="isReconciliation() ? 250 : null"
+            [placeholder]="
+              isReconciliation()
+                ? 'Administrative note only — never confession content (max 250 characters)'
+                : 'Any additional information about this sacrament'
+            "
+          ></textarea>
+          <p class="cf-split-field__hint" *ngIf="isReconciliation()">
+            Maximum 250 characters. Do not record the content of confession.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Review (definition-driven; Marriage etc.) — panel owns its section heading -->
+    <div
+      class="cf-split-section"
+      *ngIf="useSharedPeopleControls && hasWorkflowSection('review')"
+    >
+      <app-sacrament-review-panel
+        [participants]="reviewParticipants()"
+        [dateAdministered]="reviewDateAdministered()"
+        [placeAdministered]="reviewPlaceAdministered()"
+      ></app-sacrament-review-panel>
+    </div>
+
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        class="cf-btn cf-btn-primary"
+        [disabled]="!canSubmitSacrament"
+      >
+        {{ primarySaveLabel }}
+      </button>
+      <button
+        type="button"
+        class="cf-btn"
+        *ngIf="supportsBatchSave()"
+        [disabled]="!canSubmitSacrament"
+        (click)="onSaveAndAddAnother()"
+      >
+        Save and Add Another
+      </button>
+      <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">
+        Cancel
+      </button>
+    </div>
+  </form>
 </app-modal-shell>
-

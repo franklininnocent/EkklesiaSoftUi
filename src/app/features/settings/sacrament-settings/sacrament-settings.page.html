@@ -1,0 +1,93 @@
+<section class="sacrament-settings cf-page">
+  <app-page-header
+    title="Sacraments Settings"
+    subtitle="Configure which sacrament types are available for this church."
+  ></app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!canView" role="alert">
+    <p>You do not have permission to view sacrament settings.</p>
+  </div>
+
+  <ng-container *ngIf="canView">
+    <div class="cf-inline-alert" *ngIf="error" role="alert"><p>{{ error }}</p></div>
+
+    <section class="cf-panel">
+      <h2 class="cf-form-section__title">This church's sacraments</h2>
+      <p class="cf-form-section__intro">
+        You are configuring availability, not viewing sacramental records.
+        Inactive types stay off Add Sacrament. Existing records remain available in the
+        <a routerLink="/sacraments">Sacrament Register</a>.
+      </p>
+
+      <div
+        class="cf-loading-block"
+        *ngIf="loading && !loaded"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <p class="cf-loading-block__label">Loading sacrament settings…</p>
+        <app-loading-skeleton type="table" [rows]="7" [columns]="4"></app-loading-skeleton>
+      </div>
+
+      <app-cf-empty-state
+        *ngIf="loaded && !loading && !rows.length"
+        title="No sacrament types"
+        description="No sacrament types are configured for this church yet."
+        [hasActions]="false"
+      ></app-cf-empty-state>
+
+      <app-data-table *ngIf="loaded && rows.length" [ariaBusy]="loading || savingId !== null">
+        <thead>
+          <tr>
+            <th scope="col">Sacrament</th>
+            <th scope="col">Description</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="cf-table__actions-col">Available</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of rows">
+            <td>
+              <strong>{{ row.name }}</strong>
+              <div class="sacrament-settings__meta">{{ categoryLabel(row.category) }}</div>
+            </td>
+            <td>{{ row.description || '—' }}</td>
+            <td>
+              <app-status-badge
+                [label]="row.is_active ? 'Active' : 'Inactive'"
+                [tone]="row.is_active ? 'success' : 'neutral'"
+              ></app-status-badge>
+            </td>
+            <td class="cf-table__actions-cell">
+              <label class="cf-switch-field sacrament-settings__switch">
+                <input
+                  type="checkbox"
+                  [checked]="row.is_active"
+                  [disabled]="!canManage || savingId === row.sacrament_type_id"
+                  [attr.aria-label]="(row.is_active ? 'Deactivate ' : 'Activate ') + row.name"
+                  (change)="onToggle(row, $event)"
+                />
+                <span class="cf-switch-field__copy">
+                  <span class="cf-switch-field__label">{{ row.is_active ? 'On' : 'Off' }}</span>
+                </span>
+              </label>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+    </section>
+  </ng-container>
+
+  <app-confirmation-modal
+    [show]="confirmOpen"
+    [title]="deactivateTitle"
+    [message]="deactivateMessage"
+    confirmText="Deactivate"
+    cancelText="Cancel"
+    confirmButtonClass="btn-danger"
+    (confirmed)="onDeactivateConfirmed($event)"
+    (cancelled)="confirmOpen = false; pendingDeactivate = null"
+    (closed)="confirmOpen = false; pendingDeactivate = null"
+  ></app-confirmation-modal>
+</section>

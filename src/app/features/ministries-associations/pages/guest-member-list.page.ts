@@ -54,6 +54,7 @@ type LinkedFilter = '' | 'linked' | 'unlinked';
     MinistriesSubNavComponent,
   ],
   templateUrl: './guest-member-list.page.html',
+  styleUrl: './guest-member-list.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class GuestMemberListPageComponent implements OnInit, OnDestroy {

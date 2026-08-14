@@ -1,15 +1,17 @@
 import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { ModalShellComponent } from '@shared/components';
 import { AuthService } from '@core/services';
+import { ParishPersonService, ParishPerson } from '@features/settings/sacraments/services/person.service';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
 export interface FamilyMemberFormValue {
   // CRITICAL: ID must be string (UUID) to match FamilyMember model
   id?: string | null;
+  person_id?: string | null;
   first_name: string;
   middle_name?: string;
   last_name: string;
@@ -78,7 +80,7 @@ function createLocalPhoneValidator(getDialCode: () => string): ValidatorFn {
 @Component({
   selector: 'app-family-member-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent],
   templateUrl: './family-member-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-member-form-modal.component.scss']
@@ -102,15 +104,20 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
   get callingCode(): string { return this.phoneCodeService.getPhoneCodeSync(); }
   errorMessage: string | null = null;
   private lastMemberId: string | null = null; // Track last member ID to prevent unnecessary patches
+  personQuery = '';
+  personResults: ParishPerson[] = [];
+  searchingPersons = false;
 
   constructor(
     private fb: FormBuilder, 
     private phoneCodeService: PhoneCodeService,
-    private authService: AuthService
+    private authService: AuthService,
+    private personService: ParishPersonService
   ) {
     this.form = this.fb.group({
       // ID stored as string (UUID), not number
       id: [null as string | null],
+      person_id: [null as string | null],
       first_name: ['', Validators.required],
       middle_name: [''],
       last_name: ['', Validators.required],
@@ -499,6 +506,49 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
   isFieldInvalid(controlName: string): boolean {
     const control = this.form.get(controlName);
     return !!(control && control.invalid && control.touched);
+  }
+
+  searchUnaffiliatedPersons(): void {
+    const term = this.personQuery.trim();
+    if (term.length < 2 || this.isEditMode) {
+      this.personResults = [];
+      return;
+    }
+    this.searchingPersons = true;
+    this.personService.search(term, true).subscribe({
+      next: (res) => {
+        this.personResults = res.data || [];
+        this.searchingPersons = false;
+      },
+      error: () => {
+        this.personResults = [];
+        this.searchingPersons = false;
+      },
+    });
+  }
+
+  linkExistingPerson(person: ParishPerson): void {
+    this.form.patchValue({
+      person_id: person.id,
+      first_name: person.first_name,
+      middle_name: person.middle_name || '',
+      last_name: person.last_name,
+      date_of_birth: person.date_of_birth || '',
+      gender: person.gender || '',
+      phone: person.phone || '',
+      email: person.email || '',
+    });
+    this.personQuery = '';
+    this.personResults = [];
+  }
+
+  clearLinkedPerson(): void {
+    this.form.patchValue({ person_id: null });
+  }
+
+  personDisplayName(person: ParishPerson): string {
+    return person.full_name_display
+      || [person.first_name, person.middle_name, person.last_name].filter(Boolean).join(' ');
   }
 
   onSave(): void {

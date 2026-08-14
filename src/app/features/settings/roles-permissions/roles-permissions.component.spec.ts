@@ -29,7 +29,8 @@ describe('RolesPermissionsComponent', () => {
       isEkklesiaAdmin: jest.fn().mockReturnValue(overrides?.isEkklesiaAdmin ?? false),
       isTenantAdmin: jest.fn().mockReturnValue(overrides?.isTenantAdmin ?? false),
       hasPermission: jest.fn().mockReturnValue(overrides?.hasPermission ?? false),
-      canManageRbac: jest.fn().mockReturnValue((overrides?.isTenantAdmin ?? false) || (overrides?.isSuperAdmin ?? false) || (overrides?.isEkklesiaAdmin ?? false))
+      canManageRbac: jest.fn().mockReturnValue((overrides?.isTenantAdmin ?? false) || (overrides?.isSuperAdmin ?? false) || (overrides?.isEkklesiaAdmin ?? false)),
+      refreshUser: jest.fn()
     };
     const cdrMock = {
       detectChanges: jest.fn(),
@@ -93,5 +94,29 @@ describe('RolesPermissionsComponent', () => {
     }, 'fallback');
 
     expect(message).toBe('Role name is required.');
+  });
+
+  it('reads flattened interceptor error shape for 422 messages', () => {
+    const component = createComponent({ currentUser: { tenant_id: 10 }, isTenantAdmin: true });
+    const message = (component as any).getFriendlyErrorMessage({
+      status: 422,
+      message: 'Validation error',
+      errors: { name: ['Role name is required.'] }
+    }, 'fallback');
+
+    expect(message).toBe('Role name is required.');
+  });
+
+  it('uses full role catalog for user assignment checkboxes', () => {
+    const component = createComponent({ currentUser: { tenant_id: 10 }, isTenantAdmin: true });
+    component.isTenantMode = true;
+    component.allRoles = [
+      { id: 1, name: 'Admin', active: 1 } as any,
+      { id: 2, name: 'Volunteer', active: 1 } as any,
+      { id: 3, name: 'Inactive', active: 0 } as any,
+    ];
+    component.roles = [{ id: 1, name: 'Admin', active: 1 } as any];
+
+    expect(component.assignableRoles.map((r) => r.id)).toEqual([1, 2]);
   });
 });

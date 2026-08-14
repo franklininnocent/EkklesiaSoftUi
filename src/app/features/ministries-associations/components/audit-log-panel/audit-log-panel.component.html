@@ -24,7 +24,7 @@
     </div>
 
     <ng-container *ngIf="!loadError">
-      <ng-container *ngIf="entries.length; else emptyEntries">
+      <div class="cf-panel audit-log-panel__panel" *ngIf="entries.length; else emptyEntries">
         <app-data-table [ariaBusy]="loading">
           <thead>
             <tr>
@@ -52,7 +52,7 @@
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
         ></app-pagination>
-      </ng-container>
+      </div>
 
       <ng-template #emptyEntries>
         <app-cf-empty-state

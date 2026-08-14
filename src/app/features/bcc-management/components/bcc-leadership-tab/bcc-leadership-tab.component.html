@@ -1,0 +1,565 @@
+<div class="bcc-leadership">
+  <div class="cf-loading-block cf-panel" *ngIf="loading" role="status">
+    <p class="cf-loading-block__label">Loading leadership…</p>
+    <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="loadError && !loading" role="alert">
+    <p>{{ loadError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <div class="bcc-leadership__layout" *ngIf="!loading && !loadError">
+    <!-- Left: add / update / end form -->
+    <aside class="bcc-leadership__form-col cf-panel" aria-labelledby="bcc-leadership-form-title">
+      <header class="bcc-leadership__form-head">
+        <h2 id="bcc-leadership-form-title">{{ formTitle }}</h2>
+        <p class="cf-meta" *ngIf="canManage && mode === 'assign'">
+          Assign a household member from this BCC to a leadership role.
+        </p>
+        <p class="cf-meta" *ngIf="canManage && mode === 'edit'">
+          Updating the term for {{ editingLeader?.member_name }}.
+        </p>
+        <p class="cf-meta" *ngIf="canManage && mode === 'handover'">
+          Replacing {{ editingLeader?.member_name }} with another member of this BCC.
+        </p>
+        <p class="cf-meta" *ngIf="canManage && mode === 'end'">
+          Ending the term for {{ editingLeader?.member_name }}.
+        </p>
+        <p class="cf-meta" *ngIf="!canManage">
+          {{
+            bccStatus !== 'active'
+              ? 'Activate this BCC to manage leadership.'
+              : 'You do not have permission to assign or update leadership.'
+          }}
+        </p>
+      </header>
+
+      <!-- Assign / edit term form -->
+      <form class="bcc-leadership__form" *ngIf="canManage && (mode === 'assign' || mode === 'edit')" (ngSubmit)="submit()" novalidate>
+        <div class="bcc-leadership__field" *ngIf="isEditing">
+          <span class="bcc-leadership__label">Member</span>
+          <p class="bcc-leadership__readonly">
+            <strong>{{ editingLeader?.member_name }}</strong>
+            <span class="cf-meta" *ngIf="editingLeader?.family_name"> · {{ editingLeader?.family_name }}</span>
+          </p>
+        </div>
+
+        <div class="bcc-leadership__field" *ngIf="!isEditing">
+          <label class="bcc-leadership__label" for="bcc-leadership-member">Member</label>
+          <ng-select
+            id="bcc-leadership-member"
+            class="bcc-leadership__member-select"
+            name="familyMemberId"
+            [items]="eligible"
+            bindValue="id"
+            bindLabel="display_name"
+            [(ngModel)]="familyMemberId"
+            [loading]="loadingEligible"
+            [disabled]="saving || loadingEligible"
+            [clearable]="true"
+            [searchable]="true"
+            [searchFn]="searchEligibleMembers"
+            placeholder="Select a household member"
+            notFoundText="No matching members in this BCC"
+            [attr.aria-required]="true"
+          >
+            <ng-template ng-label-tmp let-item="item">
+              {{ memberOptionLabel(item) }}
+            </ng-template>
+            <ng-template ng-option-tmp let-item="item">
+              {{ memberOptionLabel(item) }}
+            </ng-template>
+          </ng-select>
+          <p class="cf-meta" *ngIf="loadingEligible">Loading members for this BCC…</p>
+          <p class="cf-meta bcc-leadership__field-error" *ngIf="!loadingEligible && eligibleError" role="alert">
+            {{ eligibleError }}
+            <button type="button" class="cf-btn cf-btn--sm" (click)="loadEligible()">Retry</button>
+          </p>
+          <p class="cf-meta" *ngIf="!loadingEligible && !eligibleError && !eligible.length">
+            No members in this BCC yet. Add families on the Members tab first.
+          </p>
+          <p class="bcc-leadership__field-error" *ngIf="submitted && !familyMemberId" role="alert">
+            Member is required.
+          </p>
+        </div>
+
+        <label class="bcc-leadership__field">
+          <span class="bcc-leadership__label">Role <span aria-hidden="true">*</span></span>
+          <select class="cf-input" name="role" [(ngModel)]="role" [disabled]="saving" required>
+            <option *ngFor="let item of roles" [value]="item">{{ item | titlecase }}</option>
+          </select>
+        </label>
+
+        <div class="bcc-leadership__field-grid">
+          <label class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Appointment date <span aria-hidden="true">*</span></span>
+            <input
+              class="cf-input"
+              type="date"
+              name="appointmentDate"
+              [(ngModel)]="appointmentDate"
+              [disabled]="saving"
+              required
+            />
+          </label>
+
+          <label class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Effective from <span aria-hidden="true">*</span></span>
+            <input
+              class="cf-input"
+              type="date"
+              name="effectiveFrom"
+              [(ngModel)]="effectiveFrom"
+              [disabled]="saving"
+              required
+            />
+          </label>
+        </div>
+        <p class="bcc-leadership__field-error" *ngIf="submitted && (!appointmentDate || !effectiveFrom)" role="alert">
+          Appointment date and effective from are required.
+        </p>
+        <p class="bcc-leadership__field-error" *ngIf="appointmentAfterEffective" role="alert">
+          Appointment date must be on or before the effective from date.
+        </p>
+
+        <div class="bcc-leadership__field-grid">
+          <label class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Effective to</span>
+            <input
+              class="cf-input"
+              type="date"
+              name="effectiveTo"
+              [(ngModel)]="effectiveTo"
+              [disabled]="saving"
+            />
+          </label>
+
+          <label class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Term label</span>
+            <input
+              class="cf-input"
+              type="text"
+              name="termLabel"
+              maxlength="50"
+              [(ngModel)]="termLabel"
+              [disabled]="saving"
+              placeholder="e.g. 2026–2028"
+            />
+          </label>
+        </div>
+        <p class="bcc-leadership__field-error" *ngIf="effectiveToBeforeFrom" role="alert">
+          Effective to must be on or after the effective from date.
+        </p>
+
+        <label class="bcc-leadership__field">
+          <span class="bcc-leadership__label">Appointment reference</span>
+          <input
+            class="cf-input"
+            type="text"
+            name="appointmentReference"
+            maxlength="100"
+            [(ngModel)]="appointmentReference"
+            [disabled]="saving"
+            placeholder="Decree / minutes reference"
+          />
+        </label>
+
+        <label class="bcc-leadership__check">
+          <input
+            type="checkbox"
+            name="isInterim"
+            [(ngModel)]="isInterim"
+            [disabled]="saving"
+          />
+          Interim appointment
+        </label>
+
+        <label class="bcc-leadership__field">
+          <span class="bcc-leadership__label">Remarks</span>
+          <textarea
+            class="cf-input"
+            name="remarks"
+            rows="2"
+            [(ngModel)]="remarks"
+            [disabled]="saving"
+            placeholder="Optional responsibilities or remarks"
+          ></textarea>
+        </label>
+
+        <div class="bcc-leadership__form-actions">
+          <button
+            *ngIf="isEditing"
+            type="button"
+            class="cf-btn"
+            [disabled]="saving"
+            (click)="cancelEdit()"
+          >
+            Cancel
+          </button>
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="!canSubmit">
+            {{ submitLabel }}
+          </button>
+        </div>
+      </form>
+
+      <!-- Handover form -->
+      <form class="bcc-leadership__form" *ngIf="canManage && mode === 'handover'" (ngSubmit)="submit()" novalidate>
+        <fieldset class="bcc-leadership__fieldset">
+          <legend>Outgoing</legend>
+          <div class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Current holder</span>
+            <p class="bcc-leadership__readonly">
+              <strong>{{ editingLeader?.member_name }}</strong>
+              <span class="cf-meta"> · {{ editingLeader?.role | titlecase }}</span>
+            </p>
+          </div>
+          <div class="bcc-leadership__field-grid">
+            <label class="bcc-leadership__field">
+              <span class="bcc-leadership__label">Effective to <span aria-hidden="true">*</span></span>
+              <input
+                class="cf-input"
+                type="date"
+                name="endEffectiveTo"
+                [(ngModel)]="endEffectiveTo"
+                [disabled]="saving"
+                required
+              />
+            </label>
+            <label class="bcc-leadership__field">
+              <span class="bcc-leadership__label">Exit reason <span aria-hidden="true">*</span></span>
+              <select class="cf-input" name="exitReason" [(ngModel)]="exitReason" [disabled]="saving" required>
+                <option value="">Select reason…</option>
+                <option *ngFor="let reason of exitReasons" [value]="reason.value">{{ reason.label }}</option>
+              </select>
+            </label>
+          </div>
+          <p class="bcc-leadership__field-error" *ngIf="submitted && (!endEffectiveTo || !exitReason)" role="alert">
+            Outgoing end date and exit reason are required.
+          </p>
+          <p class="bcc-leadership__field-error" *ngIf="endBeforeTermStart" role="alert">
+            Outgoing end date must be on or after the term start date.
+          </p>
+        </fieldset>
+
+        <fieldset class="bcc-leadership__fieldset">
+          <legend>Incoming</legend>
+          <div class="bcc-leadership__field">
+            <label class="bcc-leadership__label" for="bcc-leadership-incoming-member">Member</label>
+            <ng-select
+              id="bcc-leadership-incoming-member"
+              class="bcc-leadership__member-select"
+              name="incomingFamilyMemberId"
+              [items]="incomingEligible"
+              bindValue="id"
+              bindLabel="display_name"
+              [(ngModel)]="familyMemberId"
+              [loading]="loadingEligible"
+              [disabled]="saving || loadingEligible"
+              [clearable]="true"
+              [searchable]="true"
+              [searchFn]="searchEligibleMembers"
+              placeholder="Select a household member"
+              notFoundText="No matching members in this BCC"
+              [attr.aria-required]="true"
+            >
+              <ng-template ng-label-tmp let-item="item">
+                {{ memberOptionLabel(item) }}
+              </ng-template>
+              <ng-template ng-option-tmp let-item="item">
+                {{ memberOptionLabel(item) }}
+              </ng-template>
+            </ng-select>
+            <p class="cf-meta" *ngIf="!loadingEligible && !eligibleError && !incomingEligible.length">
+              No other members in this BCC are available to receive this role.
+            </p>
+            <p class="bcc-leadership__field-error" *ngIf="submitted && !familyMemberId" role="alert">
+              Incoming member is required.
+            </p>
+          </div>
+
+          <label class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Role <span aria-hidden="true">*</span></span>
+            <select class="cf-input" name="handoverRole" [(ngModel)]="role" [disabled]="saving" required>
+              <option *ngFor="let item of roles" [value]="item">{{ item | titlecase }}</option>
+            </select>
+          </label>
+
+          <div class="bcc-leadership__field-grid">
+            <label class="bcc-leadership__field">
+              <span class="bcc-leadership__label">Appointment date <span aria-hidden="true">*</span></span>
+              <input
+                class="cf-input"
+                type="date"
+                name="handoverAppointmentDate"
+                [(ngModel)]="appointmentDate"
+                [disabled]="saving"
+                required
+              />
+            </label>
+            <label class="bcc-leadership__field">
+              <span class="bcc-leadership__label">Effective from <span aria-hidden="true">*</span></span>
+              <input
+                class="cf-input"
+                type="date"
+                name="handoverEffectiveFrom"
+                [(ngModel)]="effectiveFrom"
+                [disabled]="saving"
+                required
+              />
+            </label>
+          </div>
+          <p class="bcc-leadership__field-error" *ngIf="appointmentAfterEffective" role="alert">
+            Appointment date must be on or before the effective from date.
+          </p>
+
+          <div class="bcc-leadership__field-grid">
+            <label class="bcc-leadership__field">
+              <span class="bcc-leadership__label">Effective to</span>
+              <input
+                class="cf-input"
+                type="date"
+                name="handoverEffectiveTo"
+                [(ngModel)]="effectiveTo"
+                [disabled]="saving"
+              />
+            </label>
+            <label class="bcc-leadership__field">
+              <span class="bcc-leadership__label">Term label</span>
+              <input
+                class="cf-input"
+                type="text"
+                name="handoverTermLabel"
+                maxlength="50"
+                [(ngModel)]="termLabel"
+                [disabled]="saving"
+                placeholder="e.g. 2026–2028"
+              />
+            </label>
+          </div>
+          <p class="bcc-leadership__field-error" *ngIf="effectiveToBeforeFrom" role="alert">
+            Effective to must be on or after the effective from date.
+          </p>
+
+          <label class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Appointment reference</span>
+            <input
+              class="cf-input"
+              type="text"
+              name="handoverAppointmentReference"
+              maxlength="100"
+              [(ngModel)]="appointmentReference"
+              [disabled]="saving"
+            />
+          </label>
+
+          <label class="bcc-leadership__check">
+            <input type="checkbox" name="handoverIsInterim" [(ngModel)]="isInterim" [disabled]="saving" />
+            Interim appointment
+          </label>
+
+          <label class="bcc-leadership__field">
+            <span class="bcc-leadership__label">Remarks</span>
+            <textarea
+              class="cf-input"
+              name="handoverRemarks"
+              rows="2"
+              [(ngModel)]="remarks"
+              [disabled]="saving"
+            ></textarea>
+          </label>
+        </fieldset>
+
+        <div class="bcc-leadership__form-actions">
+          <button type="button" class="cf-btn" [disabled]="saving" (click)="cancelEdit()">Cancel</button>
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="!canSubmit">
+            {{ submitLabel }}
+          </button>
+        </div>
+      </form>
+      <form class="bcc-leadership__form" *ngIf="canManage && mode === 'end'" (ngSubmit)="submit()" novalidate>
+        <div class="bcc-leadership__field">
+          <span class="bcc-leadership__label">Member</span>
+          <p class="bcc-leadership__readonly">
+            <strong>{{ editingLeader?.member_name }}</strong>
+            <span class="cf-meta"> · {{ editingLeader?.role | titlecase }}</span>
+          </p>
+        </div>
+
+        <label class="bcc-leadership__field">
+          <span class="bcc-leadership__label">Effective to <span aria-hidden="true">*</span></span>
+          <input
+            class="cf-input"
+            type="date"
+            name="endEffectiveTo"
+            [(ngModel)]="endEffectiveTo"
+            [disabled]="saving"
+            required
+          />
+        </label>
+        <p class="bcc-leadership__field-error" *ngIf="submitted && !endEffectiveTo" role="alert">
+          End date is required.
+        </p>
+        <p class="bcc-leadership__field-error" *ngIf="endBeforeTermStart" role="alert">
+          End date must be on or after the term start date.
+        </p>
+
+        <label class="bcc-leadership__field">
+          <span class="bcc-leadership__label">Exit reason <span aria-hidden="true">*</span></span>
+          <select class="cf-input" name="exitReason" [(ngModel)]="exitReason" [disabled]="saving" required>
+            <option value="">Select reason…</option>
+            <option *ngFor="let reason of exitReasons" [value]="reason.value">{{ reason.label }}</option>
+          </select>
+        </label>
+        <p class="bcc-leadership__field-error" *ngIf="submitted && !exitReason" role="alert">
+          Exit reason is required.
+        </p>
+
+        <label class="bcc-leadership__field">
+          <span class="bcc-leadership__label">Remarks</span>
+          <textarea
+            class="cf-input"
+            name="endRemarks"
+            rows="2"
+            [(ngModel)]="endRemarks"
+            [disabled]="saving"
+            placeholder="Optional remarks"
+          ></textarea>
+        </label>
+
+        <div class="bcc-leadership__form-actions">
+          <button type="button" class="cf-btn" [disabled]="saving" (click)="cancelEdit()">
+            Cancel
+          </button>
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="!canSubmit">
+            {{ submitLabel }}
+          </button>
+        </div>
+      </form>
+    </aside>
+
+    <!-- Right: leadership records -->
+    <section class="bcc-leadership__list-col" aria-label="Leadership records">
+      <div class="bcc-leadership__summary cf-panel" *ngIf="primaryLeader as primary">
+        <span class="cf-meta">Primary leader</span>
+        <strong class="bcc-leadership__primary-name">{{ primary.member_name }}</strong>
+        <span class="cf-meta">
+          {{ primary.family_name || 'Family not listed' }}
+          · {{ leaders.length }} active {{ leaders.length === 1 ? 'leader' : 'leaders' }}
+        </span>
+      </div>
+
+      <div class="cf-panel bcc-leadership__records">
+        <header class="bcc-leadership__records-head">
+          <h2>Current leadership</h2>
+          <span class="cf-meta" *ngIf="leaders.length">{{ leaders.length }} active</span>
+        </header>
+
+        <app-data-table *ngIf="leaders.length; else emptyLeaders">
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Role</th>
+              <th scope="col">Family</th>
+              <th scope="col">Term</th>
+              <th scope="col">Status</th>
+              <th scope="col" *ngIf="canManage"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let leader of leaders"
+              [class.bcc-leadership__row--primary]="leader.role === 'leader'"
+              [class.bcc-leadership__row--selected]="editingLeader?.id === leader.id"
+            >
+              <td><strong>{{ leader.member_name }}</strong></td>
+              <td>
+                {{ leader.role | titlecase }}
+                <app-status-badge *ngIf="leader.is_interim" label="Interim" tone="info"></app-status-badge>
+              </td>
+              <td>{{ leader.family_name || '—' }}</td>
+              <td>
+                {{ termRange(leader) }}
+                <span class="cf-meta" *ngIf="leader.term_label"> · {{ leader.term_label }}</span>
+              </td>
+              <td>
+                <app-status-badge [label]="statusLabel(leader)" [tone]="statusTone(leader)"></app-status-badge>
+              </td>
+              <td *ngIf="canManage" class="bcc-leadership__row-actions">
+                <button type="button" class="cf-btn cf-btn--sm" (click)="startEdit(leader)">
+                  Edit
+                </button>
+                <button type="button" class="cf-btn cf-btn--sm" (click)="startHandover(leader)">
+                  Hand over
+                </button>
+                <button type="button" class="cf-btn cf-btn--sm" (click)="startEnd(leader)">
+                  End
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+
+        <ng-template #emptyLeaders>
+          <app-cf-empty-state
+            title="No leadership assignments"
+            description="Assign a primary leader or other roles using the form on the left."
+          ></app-cf-empty-state>
+        </ng-template>
+      </div>
+
+      <div class="cf-panel bcc-leadership__records" *ngIf="timeline.length">
+        <header class="bcc-leadership__records-head">
+          <h2>Leadership history</h2>
+        </header>
+        <app-data-table>
+          <thead>
+            <tr>
+              <th scope="col">Name</th>
+              <th scope="col">Role</th>
+              <th scope="col">From</th>
+              <th scope="col">To</th>
+              <th scope="col">Status</th>
+              <th scope="col">Exit reason</th>
+              <th scope="col">Remarks</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of timeline">
+              <td>{{ row.member_name }}</td>
+              <td>
+                {{ row.role | titlecase }}
+                <app-status-badge *ngIf="row.is_interim" label="Interim" tone="info"></app-status-badge>
+              </td>
+              <td>{{ row.effective_from || row.term_start_date || row.appointed_date || '—' }}</td>
+              <td>{{ row.effective_to || row.term_end_date || (row.is_active ? 'Open' : '—') }}</td>
+              <td>
+                <app-status-badge [label]="statusLabel(row)" [tone]="statusTone(row)"></app-status-badge>
+              </td>
+              <td>{{ row.is_active ? '—' : exitReasonLabel(row) }}</td>
+              <td>
+                <span
+                  *ngIf="remarksText(row) as remark; else noRemarks"
+                  class="bcc-leadership__remark"
+                >
+                  <button
+                    type="button"
+                    class="bcc-leadership__remark-icon"
+                    [attr.aria-label]="'Remarks: ' + remark"
+                    [attr.title]="remark"
+                  >
+                    ⓘ
+                    <span class="bcc-leadership__remark-tip" role="tooltip">{{ remark }}</span>
+                  </button>
+                </span>
+                <ng-template #noRemarks>
+                  <span class="cf-meta">—</span>
+                </ng-template>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+      </div>
+    </section>
+  </div>
+</div>

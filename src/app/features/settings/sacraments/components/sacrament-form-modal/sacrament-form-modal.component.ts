@@ -1,19 +1,25 @@
 import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { HttpErrorResponse } from '@angular/common/http';
 import { SacramentService } from '../../services/sacrament.service';
 import { Sacrament, SacramentType, SacramentCreateRequest, SacramentUpdateRequest } from '../../models/sacrament.model';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { take, takeUntil } from 'rxjs';
 import { Subject } from 'rxjs';
+import { Router } from '@angular/router';
 import { BCCService } from '@core/services/bcc.service';
 import { FamilyService } from '@core/services/family.service';
 import { BCC, Family, FamilyMember } from '@core/models/family.model';
 import { FamilyFormComponent } from '@features/family-management/components/family-form/family-form';
+import { ParishPersonService, ParishPerson, PersonMatch } from '../../services/person.service';
 import { ChurchLeadershipService } from '@core/services/church/church-leadership.service';
+import { TenantService } from '@core/services/tenant.service';
 import { SacramentFormService, SacramentFormData } from '../../services/sacrament-form.service';
 import { 
   SacramentStatus, 
@@ -23,6 +29,7 @@ import {
   DATE_VALIDATION 
 } from '../../constants/sacrament.constants';
 import { handleApiError } from '../../utils/error-handler.util';
+import { sacramentTypesForSelector } from '../../utils/sacrament-type-availability.util';
 import {
   validateDateNotFuture,
   validateCertificateNumber,
@@ -31,28 +38,62 @@ import {
   validateTextLength,
   validateRequired
 } from '../../utils/validation.util';
-import { ButtonComponent } from '@shared/components';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { SacramentDefinitionService } from '../../services/sacrament-definition.service';
+import { SacramentWorkflowResolver } from '../../services/sacrament-workflow-resolver.service';
+import {
+  SacramentParticipantDraft,
+  SacramentWorkflowPlan,
+  SacramentWorkflowSectionKey,
+} from '../../models/sacrament-definition.model';
+import { ParticipantSourceControlComponent } from '../shared/participant-source-control/participant-source-control.component';
+import {
+  ChurchAffiliationControlComponent,
+  ChurchAffiliationValue,
+} from '../shared/church-affiliation-control/church-affiliation-control.component';
+import { MinisterPickerComponent } from '../shared/minister-picker/minister-picker.component';
+import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/sacrament-review-panel.component';
 
 @Component({
   selector: 'app-sacrament-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, FamilyFormComponent, ButtonComponent, ModalShellComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NgSelectModule,
+    FamilyFormComponent,
+    ModalShellComponent,
+    ParticipantSourceControlComponent,
+    ChurchAffiliationControlComponent,
+    MinisterPickerComponent,
+    SacramentReviewPanelComponent,
+  ],
   templateUrl: './sacrament-form-modal.component.html',
   styleUrl: './sacrament-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy {
   @Input() sacrament: Sacrament | null = null;
+  /** When set with edit mode, save uses correct API (historical correction + audit). */
+  @Input() correctionReason: string | null = null;
   @Output() save = new EventEmitter<void>();
+  /** Emitted after Save and Add Another — refresh list, keep modal open. */
+  @Output() savedAndContinue = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
 
   sacramentTypes: SacramentType[] = [];
+  loadingSacramentTypes = false;
+  sacramentTypesLoaded = false;
+  sacramentTypesError: string | null = null;
   loading = false;
   saving = false;
   isEditMode = false;
   currentTenantId: number | null = null;
   private destroy$ = new Subject<void>();
+  /** When true, create success clears people and keeps the form open. */
+  private continueAfterSave = false;
+  /** Remount shared people controls after batch continue. */
+  peopleControlsEpoch = 0;
 
   // Family/BCC selection properties
   familySelectionType: 'new' | 'existing' | null = 'existing';
@@ -65,15 +106,59 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   showFamilyForm = false;
   newlyCreatedFamily: Family | null = null;
   
-  // Family member selection for auto-population
+  // Family member selection for parent auto-population (recipient uses ParticipantSourceControl)
   familyMembers: FamilyMember[] = [];
-  selectedMemberId: string | null = null;
   loadingMembers = false;
+  selectedRecipientMemberId: string | null = null;
+  resolvedPerson: ParishPerson | null = null;
+  personLocked = false;
+  personQuery = '';
+  personResults: ParishPerson[] = [];
+  searchingPersons = false;
+  personMatches: PersonMatch[] = [];
+  acknowledgePersonMatch = false;
+  useMatchedPersonId: string | null = null;
+  newFamilyDraft = {
+    family_name: '',
+    head_of_family: '',
+    address_line_1: '',
+    address_line_2: '',
+    city: '',
+    postal_code: '',
+    bcc_id: null as string | null,
+  };
+  personDraft = {
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    date_of_birth: '',
+    place_of_birth: '',
+    gender: '' as '' | 'male' | 'female' | 'other',
+    father_name: '',
+    mother_name: '',
+    phone: '',
+    email: '',
+    address_line_1: '',
+    city: '',
+  };
   
   // Parent selection mode (for Baptism)
   parentSelectionMode: 'dropdown' | 'manual' = 'dropdown';
   selectedFatherId: string | null = null;
   selectedMotherId: string | null = null;
+
+  /** Phase 5 — definitions-driven shared controls (legacy flat fields still saved). */
+  workflowPlan: SacramentWorkflowPlan | null = null;
+  ministerDraft: SacramentParticipantDraft | null = null;
+  affiliationDraft: ChurchAffiliationValue | null = null;
+  /** Phase 7 — Marriage bride/groom with independent affiliation. */
+  brideDraft: SacramentParticipantDraft | null = null;
+  groomDraft: SacramentParticipantDraft | null = null;
+  brideAffiliationDraft: ChurchAffiliationValue | null = null;
+  groomAffiliationDraft: ChurchAffiliationValue | null = null;
+  witnessDrafts: SacramentParticipantDraft[] = [];
+  useSharedPeopleControls = true;
+  homeParishDisplayName = '';
 
   // Constants for template
   readonly statusOptions = SACRAMENT_STATUS_OPTIONS;
@@ -89,12 +174,18 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   constructor(
     private readonly sacramentService: SacramentService,
     private readonly toastService: ToastService,
+    private readonly authService: AuthService,
+    private readonly router: Router,
     private readonly store: Store<AppState>,
     private readonly cdr: ChangeDetectorRef,
     private readonly bccService: BCCService,
     private readonly familyService: FamilyService,
     private readonly leadershipService: ChurchLeadershipService,
-    private readonly formService: SacramentFormService
+    private readonly tenantService: TenantService,
+    private readonly formService: SacramentFormService,
+    private readonly definitionService: SacramentDefinitionService,
+    private readonly workflowResolver: SacramentWorkflowResolver,
+    private readonly personService: ParishPersonService
   ) {}
 
   /**
@@ -104,28 +195,109 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     return this.formService.getMaxDate();
   }
 
+  get isCorrectionMode(): boolean {
+    return this.isEditMode && !!this.correctionReason?.trim();
+  }
+
+  get modalTitle(): string {
+    if (this.isCorrectionMode) {
+      return 'Correct Sacrament';
+    }
+    return this.isEditMode ? 'Edit Sacrament' : 'Add Sacrament';
+  }
+
+  get primarySaveLabel(): string {
+    if (this.saving) {
+      return 'Saving…';
+    }
+    if (this.isCorrectionMode) {
+      return 'Save correction';
+    }
+    return this.isEditMode ? 'Save changes' : 'Add Sacrament';
+  }
+
+  get sacramentTypePlaceholder(): string {
+    if (this.loadingSacramentTypes) {
+      return 'Loading sacraments…';
+    }
+    if (this.sacramentTypesError) {
+      return 'Could not load sacraments';
+    }
+    if (this.sacramentTypesLoaded && this.sacramentTypes.length === 0) {
+      return 'No sacraments available';
+    }
+    return 'Select a sacrament…';
+  }
+
+  get canSelectSacramentType(): boolean {
+    return !this.loadingSacramentTypes
+      && !this.sacramentTypesError
+      && this.sacramentTypes.length > 0;
+  }
+
+  get showNoActiveSacramentsMessage(): boolean {
+    return !this.isEditMode
+      && this.sacramentTypesLoaded
+      && !this.loadingSacramentTypes
+      && !this.sacramentTypesError
+      && this.sacramentTypes.length === 0;
+  }
+
+  get canSubmitSacrament(): boolean {
+    if (this.saving || this.loading || this.loadingSacramentTypes) {
+      return false;
+    }
+    if (this.isEditMode) {
+      return true;
+    }
+    return !this.sacramentTypesError && this.sacramentTypes.length > 0;
+  }
+
+  bccOptionLabel(bcc: BCC): string {
+    return `${bcc.bcc_code} - ${bcc.name}`;
+  }
+
+  familyOptionLabel(family: Family): string {
+    return `${family.family_name} (${family.family_code})`;
+  }
+
+  /** ng-select search across full member name for parent pickers. */
+  searchFamilyMember = (term: string, item: FamilyMember): boolean => {
+    const q = (term || '').toLowerCase().trim();
+    if (!q) {
+      return true;
+    }
+    return this.getMemberFullName(item).toLowerCase().includes(q);
+  };
+
   /**
    * Handle status change from dropdown
    */
   onStatusChange(value: string | SacramentStatus): void {
-    if (value === 'active' || value === SacramentStatus.ACTIVE) {
-      this.formData['status'] = SacramentStatus.ACTIVE;
-    } else if (value === 'cancelled' || value === SacramentStatus.CANCELLED) {
-      this.formData['status'] = SacramentStatus.CANCELLED;
-    } else if (value === 'conditional' || value === SacramentStatus.CONDITIONAL) {
-      this.formData['status'] = SacramentStatus.CONDITIONAL;
-    } else {
-      this.formData['status'] = SacramentStatus.ACTIVE;
-    }
+    const normalized = value === SacramentStatus.REGISTERED
+      || value === SacramentStatus.CONDITIONAL
+      || value === SacramentStatus.VOIDED
+      ? value
+      : (value === 'active' || value === 'registered'
+        ? SacramentStatus.REGISTERED
+        : value === 'cancelled' || value === 'voided'
+          ? SacramentStatus.VOIDED
+          : value === 'conditional'
+            ? SacramentStatus.CONDITIONAL
+            : SacramentStatus.REGISTERED);
+    this.formData['status'] = normalized;
   }
 
   ngOnInit(): void {
+    this.isEditMode = !!this.sacrament;
     this.loadCurrentUser();
     this.loadSacramentTypes();
+    this.loadDefinitions();
     this.loadBCCs();
-    
+    this.loadFamilies();
+    this.loadChurchPlacePrefill();
+
     if (this.sacrament) {
-      this.isEditMode = true;
       // Fetch full sacrament details to ensure all fields are loaded
       this.fetchFullSacramentData();
     } else {
@@ -186,15 +358,22 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   }
 
   /**
-   * Load sacrament types for dropdown
+   * Load sacrament types for dropdown from tenant Sacrament Settings
+   * (via /sacraments/types enabled_for_tenant). Inactive types are omitted.
    */
   loadSacramentTypes(): void {
-    this.sacramentService.getSacramentTypes()
+    this.loadingSacramentTypes = true;
+    this.sacramentTypesError = null;
+    this.sacramentService.getSacramentTypes({
+      includeInactive: this.isEditMode,
+    })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: (response) => {
         if (response.success) {
-          this.sacramentTypes = response.data;
+          const types = response.data || [];
+          const currentTypeId = this.isEditMode ? this.sacrament?.sacrament_type_id : null;
+          this.sacramentTypes = sacramentTypesForSelector(types, { includeTypeId: currentTypeId });
           // If we have a sacrament loaded, set the type and reload the form data
           // This ensures isMarriage() works correctly and marriage fields are visible
           if (this.sacrament && this.isEditMode && this.sacrament.sacrament_type_id) {
@@ -207,12 +386,22 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
               this.loadSacramentData();
             }, 100);
           }
-          this.cdr.markForCheck();
+        } else {
+          this.sacramentTypes = [];
+          this.sacramentTypesError = 'Could not load sacraments for this church.';
+          this.toastService.error(this.sacramentTypesError);
         }
+        this.sacramentTypesLoaded = true;
+        this.loadingSacramentTypes = false;
+        this.cdr.markForCheck();
       },
       error: (error) => {
         console.error('Error loading sacrament types:', error);
-        this.toastService.error('Failed to load sacrament types.');
+        this.sacramentTypes = [];
+        this.sacramentTypesLoaded = true;
+        this.loadingSacramentTypes = false;
+        this.sacramentTypesError = handleApiError(error, 'Could not load sacraments for this church.');
+        this.toastService.error(this.sacramentTypesError);
         this.cdr.markForCheck();
       }
     });
@@ -265,8 +454,8 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
    * This ensures isMarriage() works correctly when form is populated
    */
   private waitForTypesAndLoadData(): void {
-    // If types are already loaded, set sacrament type first, then populate
-    if (this.sacramentTypes.length > 0) {
+    // If types are already loaded (including an empty active list), populate
+    if (this.sacramentTypesLoaded) {
       // Set sacrament_type_id first to trigger isMarriage() check
       if (this.sacrament && this.sacrament.sacrament_type_id) {
         this.formData['sacrament_type_id'] = this.sacrament.sacrament_type_id;
@@ -286,7 +475,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     const maxAttempts = 50;
     const checkInterval = setInterval(() => {
       attempts++;
-      if (this.sacramentTypes.length > 0) {
+      if (this.sacramentTypesLoaded) {
         clearInterval(checkInterval);
         // Set sacrament_type_id first to trigger isMarriage() check
         if (this.sacrament && this.sacrament.sacrament_type_id) {
@@ -326,6 +515,18 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     // Use form service to populate all form data
     setTimeout(() => {
       this.formData = this.formService.populateFormFromSacrament(sacrament);
+
+      if (this.isMarriage()) {
+        const drafts = this.formService.hydrateMarriageDrafts(sacrament, this.formData);
+        this.brideDraft = drafts.bride;
+        this.groomDraft = drafts.groom;
+        this.witnessDrafts = drafts.witnesses;
+        this.brideAffiliationDraft = drafts.brideAffiliation;
+        this.groomAffiliationDraft = drafts.groomAffiliation;
+        if (drafts.minister) {
+          this.ministerDraft = drafts.minister;
+        }
+      }
       
       // Set family selection if family_id exists
       if (sacrament.family_id) {
@@ -413,22 +614,18 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
           );
 
           if (primaryLeader) {
-            // Prefill minister information
-            // Use full_name for minister_name
             this.formData['minister_name'] = primaryLeader.full_name || '';
-            
-            // Use title if available, otherwise use role, otherwise empty string
             this.formData['minister_title'] = primaryLeader.title || primaryLeader.role || '';
-            
-            // Force change detection to update the form
+            this.ministerDraft = {
+              role: 'minister',
+              source: 'internal_leadership',
+              sort_order: 0,
+              church_leadership_id: primaryLeader.id,
+              display_name: primaryLeader.full_name || '',
+              external_title: primaryLeader.title || primaryLeader.role || undefined,
+              external_minister_role: primaryLeader.role || undefined,
+            };
             this.cdr.detectChanges();
-            
-            console.log('Primary Pastor loaded:', {
-              name: this.formData['minister_name'],
-              title: this.formData['minister_title']
-            });
-          } else {
-            console.log('No primary pastor found in church leadership');
           }
         } else {
           console.log('No church leaders found or API response was unsuccessful');
@@ -456,10 +653,18 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.showFamilyForm = false;
     this.newlyCreatedFamily = null;
     this.familyMembers = [];
-    this.selectedMemberId = null;
     this.parentSelectionMode = 'dropdown';
     this.selectedFatherId = null;
     this.selectedMotherId = null;
+    this.ministerDraft = null;
+    this.affiliationDraft = null;
+    this.brideDraft = null;
+    this.groomDraft = null;
+    this.brideAffiliationDraft = null;
+    this.groomAffiliationDraft = null;
+    this.witnessDrafts = [];
+    this.continueAfterSave = false;
+    this.peopleControlsEpoch += 1;
     this.cdr.detectChanges();
   }
 
@@ -467,6 +672,27 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
    * Save sacrament (create or update)
    */
   onSave(): void {
+    this.continueAfterSave = false;
+    this.submitSave();
+  }
+
+  /** Baptism batch: save, keep type/date/place/minister/book, clear people. */
+  onSaveAndAddAnother(): void {
+    this.continueAfterSave = true;
+    this.submitSave();
+  }
+
+  supportsBatchSave(): boolean {
+    return !this.isEditMode && !!this.workflowPlan?.batchSupported;
+  }
+
+  private submitSave(): void {
+    if (this.isReconciliation() && !this.authService.hasPermission('sacraments.view_restricted')) {
+      this.toastService.error('Restricted access is required to register Reconciliation.');
+      this.continueAfterSave = false;
+      return;
+    }
+
     // For Marriage, backend expects recipient_name; synthesize it from groom & bride
     if (this.isMarriage()) {
       const groom = (this.formData['marriage_groom_full_name'] || '').toString().trim();
@@ -474,19 +700,23 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       if (groom || bride) {
         this.formData['recipient_name'] = [groom, bride].filter(Boolean).join(' & ');
       } else {
-        // Fallback to a generic value to satisfy validation; UI still guides user
         this.formData['recipient_name'] = 'Marriage';
       }
     }
 
     if (!this.validateForm()) {
+      this.continueAfterSave = false;
       return;
     }
 
     this.saving = true;
 
     if (this.isEditMode && this.sacrament) {
-      this.updateSacrament();
+      if (this.isCorrectionMode) {
+        this.correctSacrament();
+      } else {
+        this.updateSacrament();
+      }
     } else {
       this.createSacrament();
     }
@@ -499,21 +729,39 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (!this.currentTenantId) return;
 
     const data: SacramentCreateRequest = this.buildRequestPayload();
+    const idempotencyKey = this.newIdempotencyKey();
 
-    this.sacramentService.createSacrament(data)
+    this.sacramentService.createSacrament(data, { idempotencyKey })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.toastService.success('Sacrament created successfully.');
-            this.save.emit();
+            this.toastService.success(
+              this.continueAfterSave
+                ? 'Baptism saved. Enter the next recipient.'
+                : 'Sacrament created successfully.'
+            );
+            if (this.continueAfterSave) {
+              this.clearPeopleForBatchContinue();
+              this.savedAndContinue.emit();
+            } else {
+              this.save.emit();
+            }
           }
+          this.continueAfterSave = false;
           this.saving = false;
           this.cdr.markForCheck();
         },
         error: (error) => {
           console.error('Error creating sacrament:', error);
-          this.toastService.error(error.error?.message || 'Failed to create sacrament.');
+          const code = error?.error?.code || error?.code;
+          if (code === 'possible_person_match') {
+            this.personMatches = error?.error?.context?.matches || error?.context?.matches || [];
+            this.toastService.error('A possible existing person was found. Choose Use Existing Person or Create New Person.');
+          } else {
+            this.toastService.error(error?.error?.message || error?.message || 'Failed to create sacrament.');
+          }
+          this.continueAfterSave = false;
           this.saving = false;
           this.cdr.markForCheck();
         }
@@ -546,8 +794,64 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         const errorMessage = handleApiError(error, 'Failed to update sacrament');
         this.toastService.error(errorMessage);
         this.saving = false;
+        this.cdr.markForCheck();
       }
     });
+  }
+
+  /**
+   * Historical correction (ADR-07) — requires reason + optimistic lock.
+   */
+  correctSacrament(): void {
+    if (!this.sacrament) return;
+
+    const reason = this.correctionReason?.trim();
+    if (!reason) {
+      this.toastService.error('A correction reason is required.');
+      this.saving = false;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const payload = this.buildRequestPayload();
+    const lockVersion = this.sacrament.lock_version ?? 0;
+
+    this.sacramentService
+      .correctSacrament(this.sacrament.id, {
+        ...payload,
+        lock_version: lockVersion,
+        reason,
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.toastService.success('Sacrament corrected. The change is on the audit trail.');
+            this.save.emit();
+          }
+          this.saving = false;
+          this.cdr.markForCheck();
+        },
+        error: (error: unknown) => {
+          this.handleLifecycleConflict(error, 'Failed to correct sacrament');
+          this.saving = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private handleLifecycleConflict(error: unknown, fallback: string): void {
+    const status =
+      error instanceof HttpErrorResponse
+        ? error.status
+        : (error as { status?: number })?.status;
+    if (status === 409) {
+      this.toastService.error(
+        'This record was changed by someone else. Reload and try again.'
+      );
+      return;
+    }
+    this.toastService.error(handleApiError(error, fallback));
   }
 
   /**
@@ -562,42 +866,132 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (!sacramentTypeValidation.valid) {
       this.fieldErrors['sacrament_type_id'] = sacramentTypeValidation.message || '';
       isValid = false;
+    } else if (!this.isSelectedSacramentAvailableForRegistration()) {
+      this.fieldErrors['sacrament_type_id'] =
+        'This sacrament is not available for this church.';
+      isValid = false;
     }
 
-    // For Baptism, validate father and mother names are mandatory
+    if (this.usesPersonRecipientWorkflow()) {
+      const composed = [this.personDraft.first_name, this.personDraft.middle_name, this.personDraft.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      if (composed && !String(this.formData['recipient_name'] || '').trim()) {
+        this.formData['recipient_name'] = composed;
+      }
+      if (this.personDraft.date_of_birth && !this.formData['recipient_birth_date']) {
+        this.formData['recipient_birth_date'] = this.personDraft.date_of_birth;
+      }
+      if (this.personDraft.place_of_birth && !this.formData['recipient_birth_place']) {
+        this.formData['recipient_birth_place'] = this.personDraft.place_of_birth;
+      }
+      if (this.personDraft.gender && !this.formData['recipient_gender']) {
+        this.formData['recipient_gender'] = this.personDraft.gender;
+      }
+      if (this.personDraft.father_name && !this.formData['father_name']) {
+        this.formData['father_name'] = this.personDraft.father_name;
+      }
+      if (this.personDraft.mother_name && !this.formData['mother_name']) {
+        this.formData['mother_name'] = this.personDraft.mother_name;
+      }
+    }
+
+    // Baptism: minister is required.
     if (this.isBaptism()) {
-      const fatherName = (this.formData['father_name'] || '').toString().trim();
-      const motherName = (this.formData['mother_name'] || '').toString().trim();
-      
-      const fatherValidation = validateRequired(fatherName, 'Father\'s name');
-      if (!fatherValidation.valid) {
-        this.fieldErrors['father_name'] = fatherValidation.message || '';
-        isValid = false;
-      }
-      
-      const motherValidation = validateRequired(motherName, 'Mother\'s name');
-      if (!motherValidation.valid) {
-        this.fieldErrors['mother_name'] = motherValidation.message || '';
+      const ministerOk = this.hasMinisterForSave();
+      if (!ministerOk) {
+        this.fieldErrors['minister_name'] = 'Minister is required for Baptism.';
         isValid = false;
       }
     }
 
-    // For Marriage sacraments, validate bride and groom names explicitly
+    // Marriage: bride/groom required via drafts; minister required; bride ≠ groom
     if (this.isMarriage()) {
-      const brideName = (this.formData['marriage_bride_full_name'] || '').toString().trim();
-      const groomName = (this.formData['marriage_groom_full_name'] || '').toString().trim();
-      
-      const brideValidation = validateRequired(brideName, 'Bride\'s full name');
-      if (!brideValidation.valid) {
-        this.fieldErrors['marriage_bride_full_name'] = brideValidation.message || '';
+      const brideName = this.partyDisplayName(this.brideDraft, this.formData['marriage_bride_full_name']);
+      const groomName = this.partyDisplayName(this.groomDraft, this.formData['marriage_groom_full_name']);
+
+      if (!brideName) {
+        this.fieldErrors['marriage_bride_full_name'] = 'Bride is required.';
         isValid = false;
       }
-      
-      const groomValidation = validateRequired(groomName, 'Groom\'s full name');
-      if (!groomValidation.valid) {
-        this.fieldErrors['marriage_groom_full_name'] = groomValidation.message || '';
+      if (!groomName) {
+        this.fieldErrors['marriage_groom_full_name'] = 'Groom is required.';
         isValid = false;
       }
+      if (brideName && groomName && this.brideEqualsGroom()) {
+        this.fieldErrors['marriage_bride_full_name'] = 'Bride and groom must be different people.';
+        isValid = false;
+      }
+      if (!this.hasMinisterForSave()) {
+        this.fieldErrors['minister_name'] = 'Minister is required for Marriage.';
+        isValid = false;
+      }
+      if (!this.affiliationValid(this.brideAffiliationDraft, 'bride')) {
+        this.fieldErrors['marriage_bride_church_name'] =
+          'Parish name and diocese are required when bride affiliation is other.';
+        isValid = false;
+      }
+      if (!this.affiliationValid(this.groomAffiliationDraft, 'groom')) {
+        this.fieldErrors['marriage_groom_church_name'] =
+          'Parish name and diocese are required when groom affiliation is other.';
+        isValid = false;
+      }
+
+      const placeAdminValidation = validateRequired(this.formData['place_administered'], 'Place administered');
+      if (!placeAdminValidation.valid) {
+        this.fieldErrors['place_administered'] = placeAdminValidation.message || '';
+        isValid = false;
+      }
+
+      const brideDob = validateRequired(this.brideDraft?.external_date_of_birth, "Bride's date of birth");
+      if (!brideDob.valid) {
+        this.fieldErrors['bride_date_of_birth'] = brideDob.message || '';
+        isValid = false;
+      }
+      const brideGender = validateRequired(this.brideDraft?.external_gender, "Bride's gender");
+      if (!brideGender.valid) {
+        this.fieldErrors['bride_gender'] = brideGender.message || '';
+        isValid = false;
+      }
+      const groomDob = validateRequired(this.groomDraft?.external_date_of_birth, "Groom's date of birth");
+      if (!groomDob.valid) {
+        this.fieldErrors['groom_date_of_birth'] = groomDob.message || '';
+        isValid = false;
+      }
+      const groomGender = validateRequired(this.groomDraft?.external_gender, "Groom's gender");
+      if (!groomGender.valid) {
+        this.fieldErrors['groom_gender'] = groomGender.message || '';
+        isValid = false;
+      }
+
+      this.witnessDrafts.forEach((witness, index) => {
+        const name = (witness.external_full_name || witness.display_name || '').toString().trim();
+        const address = (witness.external_address || '').toString().trim();
+        const gender = (witness.external_gender || '').toString().trim();
+        const contact = (witness.external_contact_number || '').toString().trim();
+        if (!name && !address && !gender && !contact) {
+          return;
+        }
+        const missing: string[] = [];
+        if (!name) {
+          missing.push('full name');
+        }
+        if (!address) {
+          missing.push('address');
+        }
+        if (!gender) {
+          missing.push('gender');
+        }
+        if (!contact) {
+          missing.push('contact number');
+        }
+        if (missing.length) {
+          this.fieldErrors[`witness_${index}`] =
+            `Witness ${index + 1} needs ${missing.join(', ')}.`;
+          isValid = false;
+        }
+      });
     } else {
       // For non-marriage sacraments, validate recipient name
       const recipientValidation = validateRequired(this.formData['recipient_name'], 'Recipient name');
@@ -616,6 +1010,64 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
           this.fieldErrors['recipient_name'] = lengthValidation.message || '';
           isValid = false;
         }
+      }
+    }
+
+    // Baptism and Eucharist: place, DOB, birth place, gender, and parents are mandatory
+    if (this.requiresRecipientIdentityFields()) {
+      const placeAdminValidation = validateRequired(this.formData['place_administered'], 'Place administered');
+      if (!placeAdminValidation.valid) {
+        this.fieldErrors['place_administered'] = placeAdminValidation.message || '';
+        isValid = false;
+      }
+
+      const birthDateValidation = validateRequired(this.formData['recipient_birth_date'], 'Date of birth');
+      if (!birthDateValidation.valid) {
+        this.fieldErrors['recipient_birth_date'] = birthDateValidation.message || '';
+        isValid = false;
+      }
+
+      const birthPlaceValidation = validateRequired(this.formData['recipient_birth_place'], 'Place of birth');
+      if (!birthPlaceValidation.valid) {
+        this.fieldErrors['recipient_birth_place'] = birthPlaceValidation.message || '';
+        isValid = false;
+      } else {
+        const placeLength = validateTextLength(
+          String(this.formData['recipient_birth_place'] || ''),
+          1,
+          255,
+          'Place of birth'
+        );
+        if (!placeLength.valid) {
+          this.fieldErrors['recipient_birth_place'] = placeLength.message || '';
+          isValid = false;
+        }
+      }
+
+      const genderValidation = validateRequired(this.formData['recipient_gender'], 'Gender');
+      if (!genderValidation.valid) {
+        this.fieldErrors['recipient_gender'] = genderValidation.message || '';
+        isValid = false;
+      }
+
+      const fatherValidation = validateRequired(this.formData['father_name'], "Father's name");
+      if (!fatherValidation.valid) {
+        this.fieldErrors['father_name'] = fatherValidation.message || '';
+        isValid = false;
+      }
+
+      const motherValidation = validateRequired(this.formData['mother_name'], "Mother's name");
+      if (!motherValidation.valid) {
+        this.fieldErrors['mother_name'] = motherValidation.message || '';
+        isValid = false;
+      }
+    }
+
+    if (this.isEucharist()) {
+      const baptismDateValidation = validateRequired(this.formData['baptism_date'], 'Baptism date');
+      if (!baptismDateValidation.valid) {
+        this.fieldErrors['baptism_date'] = 'Baptism date is required.';
+        isValid = false;
       }
     }
 
@@ -687,6 +1139,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
 
     // Show first error if validation failed
     if (!isValid) {
+      Object.keys(this.fieldErrors).forEach((key) => this.touchedFields.add(key));
       const firstError = Object.values(this.fieldErrors)[0];
       if (firstError) {
         this.toastService.error(firstError);
@@ -759,7 +1212,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         }
         break;
       case 'father_name':
-        if (this.isBaptism()) {
+        if (this.requiresRecipientIdentityFields()) {
           const requiredValidation = validateRequired(String(value || ''), 'Father\'s name');
           if (!requiredValidation.valid) {
             this.fieldErrors[fieldName] = requiredValidation.message || '';
@@ -767,7 +1220,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         }
         break;
       case 'mother_name':
-        if (this.isBaptism()) {
+        if (this.requiresRecipientIdentityFields()) {
           const requiredValidation = validateRequired(String(value || ''), 'Mother\'s name');
           if (!requiredValidation.valid) {
             this.fieldErrors[fieldName] = requiredValidation.message || '';
@@ -815,22 +1268,86 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   }
 
   /**
-   * Check if sacrament type requires godparents (Baptism, Confirmation)
+   * New registrations (and type changes) must use a church-active sacrament.
+   * Historical records may keep their original type after it is turned off.
+   */
+  private isSelectedSacramentAvailableForRegistration(): boolean {
+    const typeId = Number(this.formData['sacrament_type_id']);
+    if (!typeId) {
+      return false;
+    }
+    if (this.isEditMode && this.sacrament?.sacrament_type_id === typeId) {
+      return true;
+    }
+    const selected = this.sacramentTypes.find((type) => type.id === typeId);
+    return !!selected && selected.enabled_for_tenant !== false;
+  }
+
+  /**
+   * Check if sacrament type requires godparents/sponsors UI (Baptism godparents or Confirmation sponsors)
    */
   requiresGodparents(): boolean {
+    return this.isBaptism()
+      || this.isConfirmation()
+      || this.hasWorkflowSection('sponsors')
+      || this.hasWorkflowSection('godparents');
+  }
+
+  normalizedTypeCode(): string {
     const type = this.getSelectedSacramentType();
-    if (!type) return false;
-    const code = type.code?.toUpperCase();
-    return ['BAPTISM', 'CONFIRMATION'].includes(code);
+    if (!type?.code) return '';
+    const code = type.code.toUpperCase().trim();
+    if (['MARRIAGE', 'WEDDING'].includes(code)) return 'MATRIMONY';
+    if (['FIRST_COMMUNION', 'FIRSTCOMMUNION'].includes(code)) return 'EUCHARIST';
+    if (['CONFESSION'].includes(code)) return 'RECONCILIATION';
+    return code;
+  }
+
+  isConfirmation(): boolean {
+    return this.normalizedTypeCode() === 'CONFIRMATION';
+  }
+
+  isEucharist(): boolean {
+    return this.normalizedTypeCode() === 'EUCHARIST';
+  }
+
+  isAnointing(): boolean {
+    return this.normalizedTypeCode() === 'ANOINTING';
+  }
+
+  isReconciliation(): boolean {
+    return this.normalizedTypeCode() === 'RECONCILIATION';
+  }
+
+  isHolyOrders(): boolean {
+    return this.normalizedTypeCode() === 'HOLY_ORDERS';
+  }
+
+  isProgressiveParticipantCreate(): boolean {
+    return this.isConfirmation() || this.isEucharist() || this.isAnointing() || this.isReconciliation();
+  }
+
+  privacyClass(): string {
+    return this.workflowPlan?.definition?.privacy_class || 'standard';
+  }
+
+  isRestrictedPrivacy(): boolean {
+    return this.privacyClass() === 'restricted';
   }
 
   /**
    * Check if sacrament type requires parents (Baptism)
    */
   requiresParents(): boolean {
-    const type = this.getSelectedSacramentType();
-    if (!type) return false;
-    return type.code?.toUpperCase() === 'BAPTISM';
+    return this.isBaptism() || this.isEucharist();
+  }
+
+  requiresRecipientIdentityFields(): boolean {
+    return this.isBaptism() || this.isEucharist();
+  }
+
+  requiresPlaceAdministered(): boolean {
+    return this.isBaptism() || this.isEucharist() || this.isMarriage();
   }
 
   /**
@@ -842,6 +1359,10 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     const code = type.code.toUpperCase().trim();
     // Handle both 'BAPTISM' and 'baptism' codes
     return code === 'BAPTISM';
+  }
+
+  usesPersonRecipientWorkflow(): boolean {
+    return !this.isEditMode && (this.isBaptism() || this.isEucharist());
   }
 
   /**
@@ -857,17 +1378,388 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     return marriageCodes.includes(code) || marriageCodes.some(mc => name.includes(mc));
   }
 
+  /** Type-adaptive primary party section title (UX-4–7). */
+  recipientSectionTitle(): string {
+    if (this.isConfirmation()) return 'Confirmand';
+    if (this.isEucharist()) return 'Communicant';
+    if (this.isAnointing()) return 'Recipient';
+    if (this.isReconciliation()) return 'Penitent';
+    if (this.isBaptism()) return 'Recipient (baptism)';
+    return 'Recipient';
+  }
+
   /**
    * Handle sacrament type change to trigger UI updates
    */
   onSacramentTypeChange(): void {
-    // Force change detection to update conditional fields
-    const selectedType = this.getSelectedSacramentType();
-    if (selectedType) {
-      console.log('Selected sacrament type:', selectedType.name, 'Code:', selectedType.code);
-      console.log('Is Baptism?', this.isBaptism());
+    if (!this.isEditMode && this.isHolyOrders()) {
+      this.cancel.emit();
+      void this.router.navigate(['/sacraments/holy-orders/create']);
+      return;
     }
+    this.refreshWorkflowPlan();
+    if (this.isEucharist() && !this.formData['event_subtype']) {
+      this.formData['event_subtype'] = 'FIRST_COMMUNION';
+    }
+    if (this.isReconciliation() && !this.authService.hasPermission('sacraments.view_restricted')) {
+      this.toastService.error('Restricted access is required to register Reconciliation.');
+      this.formData['sacrament_type_id'] = null as unknown as number;
+    }
+    this.ensureMarriageWitnessSlots();
+    this.cdr.markForCheck();
+  }
+
+  loadDefinitions(): void {
+    this.definitionService.load()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: () => {
+          this.refreshWorkflowPlan();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.workflowPlan = this.workflowResolver.resolve(null);
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  refreshWorkflowPlan(): void {
+    const type = this.getSelectedSacramentType();
+    const code = type?.code || null;
+    this.definitionService.getByCode(code)
+      .pipe(take(1), takeUntil(this.destroy$))
+      .subscribe((definition) => {
+        this.workflowPlan = this.workflowResolver.resolve(definition, code);
+        this.ensureMarriageWitnessSlots();
+        this.cdr.markForCheck();
+      });
+  }
+
+  hasWorkflowSection(section: SacramentWorkflowSectionKey): boolean {
+    return this.workflowResolver.hasSection(this.workflowPlan, section);
+  }
+
+  ministerRoles(): string[] {
+    return this.workflowPlan?.definition?.minister_roles?.length
+      ? this.workflowPlan.definition.minister_roles
+      : ['priest', 'deacon', 'pastor', 'other'];
+  }
+
+  onMinisterDraftChange(draft: SacramentParticipantDraft): void {
+    this.ministerDraft = draft;
+    if (draft.display_name) {
+      this.formData['minister_name'] = draft.display_name;
+    }
+    if (draft.external_title) {
+      this.formData['minister_title'] = draft.external_title;
+    }
+    this.cdr.markForCheck();
+  }
+
+  onAffiliationDraftChange(value: ChurchAffiliationValue): void {
+    this.affiliationDraft = value;
+    this.cdr.markForCheck();
+  }
+
+  onBrideDraftChange(draft: SacramentParticipantDraft): void {
+    this.brideDraft = { ...draft, role: 'bride' };
+    if (draft.display_name) {
+      this.formData['marriage_bride_full_name'] = draft.display_name;
+    }
+    this.syncMarriageRecipientName();
+    this.cdr.markForCheck();
+  }
+
+  onGroomDraftChange(draft: SacramentParticipantDraft): void {
+    this.groomDraft = { ...draft, role: 'groom' };
+    if (draft.display_name) {
+      this.formData['marriage_groom_full_name'] = draft.display_name;
+    }
+    this.syncMarriageRecipientName();
+    this.cdr.markForCheck();
+  }
+
+  onBrideAffiliationChange(value: ChurchAffiliationValue): void {
+    this.brideAffiliationDraft = value;
+    if (value.affiliation_type === 'home_parish' || value.affiliation_type === 'other') {
+      this.formData['marriage_bride_church_type'] = value.affiliation_type;
+    }
+    this.formData['marriage_bride_church_name'] = value.affiliation_parish_name || '';
+    this.formData['marriage_bride_church_address'] = value.affiliation_parish_address || '';
+    this.cdr.markForCheck();
+  }
+
+  onGroomAffiliationChange(value: ChurchAffiliationValue): void {
+    this.groomAffiliationDraft = value;
+    if (value.affiliation_type === 'home_parish' || value.affiliation_type === 'other') {
+      this.formData['marriage_groom_church_type'] = value.affiliation_type;
+    }
+    this.formData['marriage_groom_church_name'] = value.affiliation_parish_name || '';
+    this.formData['marriage_groom_church_address'] = value.affiliation_parish_address || '';
+    this.cdr.markForCheck();
+  }
+
+  addWitness(): void {
+    this.witnessDrafts = [
+      ...this.witnessDrafts,
+      this.emptyExternalWitness(this.witnessDrafts.length),
+    ];
+    this.cdr.markForCheck();
+  }
+
+  private emptyExternalWitness(sortOrder: number): SacramentParticipantDraft {
+    return { role: 'witness', source: 'external', sort_order: sortOrder };
+  }
+
+  /** Show two external witness forms on Add Marriage so name/address/gender/contact are visible. */
+  private ensureMarriageWitnessSlots(): void {
+    if (this.isEditMode || !this.isMarriage() || this.witnessDrafts.length > 0) {
+      return;
+    }
+    this.witnessDrafts = [
+      this.emptyExternalWitness(0),
+      this.emptyExternalWitness(1),
+    ];
+  }
+
+  removeWitness(index: number): void {
+    this.witnessDrafts = this.witnessDrafts.filter((_, i) => i !== index);
+    this.cdr.markForCheck();
+  }
+
+  onWitnessDraftChange(index: number, draft: SacramentParticipantDraft): void {
+    const next = [...this.witnessDrafts];
+    next[index] = { ...draft, role: 'witness', sort_order: index };
+    this.witnessDrafts = next;
+    this.cdr.markForCheck();
+  }
+
+  partyAllowedSources(role: 'bride' | 'groom' | 'witness'): string[] {
+    const slot = this.workflowPlan?.definition?.participants.find((p) => p.role === role);
+    if (slot?.allowed_sources?.length) {
+      return slot.allowed_sources;
+    }
+    if (role === 'witness' && this.isMarriage()) {
+      return ['external'];
+    }
+    return ['member', 'external'];
+  }
+
+  private syncMarriageRecipientName(): void {
+    const groom = this.partyDisplayName(this.groomDraft, this.formData['marriage_groom_full_name']);
+    const bride = this.partyDisplayName(this.brideDraft, this.formData['marriage_bride_full_name']);
+    if (groom || bride) {
+      this.formData['recipient_name'] = [groom, bride].filter(Boolean).join(' & ');
+    }
+  }
+
+  private partyDisplayName(
+    draft: SacramentParticipantDraft | null,
+    fallback: string | number | null | undefined
+  ): string {
+    return (draft?.display_name || draft?.external_full_name || fallback || '').toString().trim();
+  }
+
+  private brideEqualsGroom(): boolean {
+    const brideId = this.brideDraft?.source === 'member' ? this.brideDraft.family_member_id : null;
+    const groomId = this.groomDraft?.source === 'member' ? this.groomDraft.family_member_id : null;
+    if (brideId && groomId && brideId === groomId) {
+      return true;
+    }
+    const brideName = this.partyDisplayName(this.brideDraft, this.formData['marriage_bride_full_name']).toLowerCase();
+    const groomName = this.partyDisplayName(this.groomDraft, this.formData['marriage_groom_full_name']).toLowerCase();
+    return !!brideName && !!groomName && brideName === groomName
+      && this.brideDraft?.source === 'external'
+      && this.groomDraft?.source === 'external';
+  }
+
+  private affiliationValid(
+    value: ChurchAffiliationValue | null,
+    _party: 'bride' | 'groom'
+  ): boolean {
+    if (!value || value.affiliation_type !== 'other') {
+      return true;
+    }
+    return !!(value.affiliation_parish_name?.trim() && value.affiliation_diocese_name?.trim());
+  }
+
+  reviewParticipants(): SacramentParticipantDraft[] {
+    const rows: SacramentParticipantDraft[] = [];
+
+    if (this.hasWorkflowSection('bride') && this.brideDraft) {
+      rows.push({ ...this.brideDraft, ...(this.brideAffiliationDraft || {}) });
+    }
+    if (this.hasWorkflowSection('groom') && this.groomDraft) {
+      rows.push({ ...this.groomDraft, ...(this.groomAffiliationDraft || {}) });
+    }
+
+    if (this.hasWorkflowSection('recipient')) {
+      const recipientName = String(this.formData['recipient_name'] || '').trim();
+      if (recipientName) {
+        rows.push({
+          role: 'recipient',
+          source: 'external',
+          display_name: recipientName,
+          external_full_name: recipientName,
+          external_date_of_birth: this.formData['recipient_birth_date']
+            ? String(this.formData['recipient_birth_date'])
+            : undefined,
+          external_gender: (this.formData['recipient_gender'] || undefined) as
+            | 'male'
+            | 'female'
+            | 'other'
+            | undefined,
+          ...(this.affiliationDraft || {}),
+        });
+      }
+    }
+
+    const fatherName = String(this.formData['father_name'] || '').trim();
+    if (fatherName || this.selectedFatherId) {
+      rows.push({
+        role: 'father',
+        source: this.selectedFatherId ? 'member' : 'external',
+        family_member_id: this.selectedFatherId,
+        display_name: fatherName || undefined,
+        external_full_name: this.selectedFatherId ? undefined : fatherName,
+      });
+    }
+
+    const motherName = String(this.formData['mother_name'] || '').trim();
+    if (motherName || this.selectedMotherId) {
+      rows.push({
+        role: 'mother',
+        source: this.selectedMotherId ? 'member' : 'external',
+        family_member_id: this.selectedMotherId,
+        display_name: motherName || undefined,
+        external_full_name: this.selectedMotherId ? undefined : motherName,
+      });
+    }
+
+    const godfather = String(this.formData['godparent1_name'] || '').trim();
+    if (godfather) {
+      rows.push({
+        role: 'godfather',
+        source: 'external',
+        display_name: godfather,
+        external_full_name: godfather,
+      });
+    }
+
+    const godmother = String(this.formData['godparent2_name'] || '').trim();
+    if (godmother) {
+      rows.push({
+        role: 'godmother',
+        source: 'external',
+        display_name: godmother,
+        external_full_name: godmother,
+      });
+    }
+
+    this.witnessDrafts.forEach((w) => {
+      if (w.display_name || w.external_full_name || w.family_member_id) {
+        rows.push(w);
+      }
+    });
+
+    if (this.ministerDraft) {
+      rows.push(this.ministerDraft);
+    }
+    return rows;
+  }
+
+  reviewDateAdministered(): string | null {
+    const value = this.formData['date_administered'];
+    return typeof value === 'string' && value ? value : null;
+  }
+
+  reviewPlaceAdministered(): string | null {
+    const value = this.formData['place_administered'];
+    return typeof value === 'string' && value ? value : null;
+  }
+
+  private hasMinisterForSave(): boolean {
+    if (this.ministerDraft?.source === 'internal_leadership') {
+      return !!this.ministerDraft.church_leadership_id;
+    }
+    if (this.ministerDraft?.source === 'external') {
+      return !!(this.ministerDraft.external_full_name || this.ministerDraft.display_name)?.trim();
+    }
+    return !!(this.formData['minister_name'] || '').toString().trim();
+  }
+
+  private loadChurchPlacePrefill(): void {
+    if (this.isEditMode || this.sacrament) {
+      return;
+    }
+    this.tenantService.getChurchProfile()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const name = response?.data?.name?.trim();
+          if (!name) {
+            return;
+          }
+          this.homeParishDisplayName = name;
+          if (!this.formData['place_administered']) {
+            this.formData['place_administered'] = name;
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          // Place remains manually editable
+        },
+      });
+  }
+
+  /**
+   * After Save and Add Another: retain type/date/place/minister/book; clear people PII.
+   */
+  private clearPeopleForBatchContinue(): void {
+    const retainType = this.formData['sacrament_type_id'];
+    const retainDate = this.formData['date_administered'];
+    const retainPlace = this.formData['place_administered'];
+    const retainMinisterName = this.formData['minister_name'];
+    const retainMinisterTitle = this.formData['minister_title'];
+    const retainBook = this.formData['book_number'];
+    const retainMinisterDraft = this.ministerDraft;
+
+    this.formData = this.formService.initializeFormData();
+    this.formData['sacrament_type_id'] = retainType;
+    this.formData['date_administered'] = retainDate;
+    this.formData['place_administered'] = retainPlace;
+    this.formData['minister_name'] = retainMinisterName;
+    this.formData['minister_title'] = retainMinisterTitle;
+    this.formData['book_number'] = retainBook;
+    this.formData['status'] = SacramentStatus.REGISTERED;
+
+    this.affiliationDraft = null;
+    this.ministerDraft = retainMinisterDraft;
+
+    this.familySelectionType = 'existing';
+    this.selectedBccId = null;
+    this.selectedFamilyId = null;
+    this.families = [];
+    this.showFamilyForm = false;
+    this.newlyCreatedFamily = null;
+    this.familyMembers = [];
+    this.parentSelectionMode = 'dropdown';
+    this.selectedFatherId = null;
+    this.selectedMotherId = null;
+    this.fieldErrors = {};
+    this.touchedFields = new Set();
+
+    this.peopleControlsEpoch += 1;
+    this.refreshWorkflowPlan();
     this.cdr.detectChanges();
+  }
+
+  private newIdempotencyKey(): string {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+      return crypto.randomUUID();
+    }
+    return `sac-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   }
 
   /**
@@ -927,6 +1819,149 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   }
 
 
+  loadFamilies(): void {
+    this.loadingFamilies = true;
+    this.familyService.getFamilies({ status: 'active', per_page: 100, sort_by: 'family_name', sort_order: 'asc' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.families = response.data || [];
+          this.loadingFamilies = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.families = [];
+          this.loadingFamilies = false;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  onRecipientMemberChange(): void {
+    this.resolvedPerson = null;
+    this.personLocked = false;
+    if (!this.selectedRecipientMemberId) {
+      return;
+    }
+    const member = this.familyMembers.find((m) => m.id === this.selectedRecipientMemberId);
+    if (!member) {
+      return;
+    }
+    this.applyMemberAsRecipient(member);
+  }
+
+  applyMemberAsRecipient(member: FamilyMember): void {
+    const fullName = this.getMemberFullName(member);
+    this.formData['recipient_name'] = fullName;
+    this.formData['recipient_birth_date'] = member.date_of_birth || '';
+    this.formData['recipient_gender'] = member.gender || undefined;
+    this.personDraft.first_name = member.first_name;
+    this.personDraft.middle_name = member.middle_name || '';
+    this.personDraft.last_name = member.last_name;
+    this.personDraft.date_of_birth = member.date_of_birth || '';
+    this.personDraft.gender = (member.gender as typeof this.personDraft.gender) || '';
+    this.personLocked = true;
+    if (member.person_id) {
+      this.personService.get(member.person_id).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (res) => {
+          this.resolvedPerson = res.data;
+          if (res.data.place_of_birth) {
+            this.formData['recipient_birth_place'] = res.data.place_of_birth;
+            this.personDraft.place_of_birth = res.data.place_of_birth;
+          }
+          if (res.data.father_name) {
+            this.formData['father_name'] = res.data.father_name;
+          }
+          if (res.data.mother_name) {
+            this.formData['mother_name'] = res.data.mother_name;
+          }
+          this.cdr.markForCheck();
+        }
+      });
+    }
+    this.cdr.detectChanges();
+  }
+
+  searchPersons(): void {
+    const term = this.personQuery.trim();
+    if (term.length < 2) {
+      this.personResults = [];
+      return;
+    }
+    this.searchingPersons = true;
+    this.personService.search(term).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => {
+        this.personResults = res.data || [];
+        this.searchingPersons = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.personResults = [];
+        this.searchingPersons = false;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  selectResolvedPerson(person: ParishPerson): void {
+    this.resolvedPerson = person;
+    this.personLocked = true;
+    this.personQuery = '';
+    this.personResults = [];
+    this.formData['recipient_name'] = person.full_name_display
+      || [person.first_name, person.middle_name, person.last_name].filter(Boolean).join(' ');
+    this.formData['recipient_birth_date'] = person.date_of_birth || '';
+    this.formData['recipient_birth_place'] = person.place_of_birth || '';
+    this.formData['recipient_gender'] = person.gender || undefined;
+    this.personDraft = {
+      first_name: person.first_name,
+      middle_name: person.middle_name || '',
+      last_name: person.last_name,
+      date_of_birth: person.date_of_birth || '',
+      place_of_birth: person.place_of_birth || '',
+      gender: (person.gender || '') as typeof this.personDraft.gender,
+      father_name: person.father_name || '',
+      mother_name: person.mother_name || '',
+      phone: person.phone || '',
+      email: person.email || '',
+      address_line_1: person.address_line_1 || '',
+      city: person.city || '',
+    };
+    this.cdr.detectChanges();
+  }
+
+  clearResolvedPerson(): void {
+    this.resolvedPerson = null;
+    this.personLocked = false;
+    this.useMatchedPersonId = null;
+    this.personMatches = [];
+    this.acknowledgePersonMatch = false;
+  }
+
+  chooseMatchedPerson(match: PersonMatch): void {
+    this.useMatchedPersonId = match.id;
+    this.acknowledgePersonMatch = true;
+    this.personService.get(match.id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (res) => this.selectResolvedPerson(res.data),
+    });
+  }
+
+  confirmCreateNewPerson(): void {
+    this.acknowledgePersonMatch = true;
+    this.useMatchedPersonId = null;
+    this.personMatches = [];
+    this.personLocked = false;
+  }
+
+  memberOptionLabel(member: FamilyMember): string {
+    const name = this.getMemberFullName(member);
+    const extras = [
+      member.relationship_to_head,
+      member.date_of_birth || undefined,
+    ].filter(Boolean);
+    return extras.length ? `${name} (${extras.join(' · ')})` : name;
+  }
+
   /**
    * Clear family selection (No Family Association)
    */
@@ -939,6 +1974,8 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.newlyCreatedFamily = null;
     this.formData['family_id'] = null;
     this.formData['bcc_id'] = null;
+    this.selectedRecipientMemberId = null;
+    this.clearResolvedPerson();
     this.cdr.detectChanges();
   }
 
@@ -962,8 +1999,13 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.formData['family_id'] = null;
     this.formData['bcc_id'] = null;
     
+    this.selectedRecipientMemberId = null;
+    this.clearResolvedPerson();
     if (type === 'new') {
-      this.showFamilyForm = true;
+      this.showFamilyForm = false;
+    }
+    if (type === 'existing') {
+      this.loadFamilies();
     }
     
     this.cdr.detectChanges();
@@ -980,7 +2022,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (this.selectedBccId) {
       this.loadFamiliesByBCC(this.selectedBccId);
     } else {
-      this.families = [];
+      this.loadFamilies();
     }
     
     this.cdr.detectChanges();
@@ -995,6 +2037,8 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     // Load family members when a family is selected
     if (this.selectedFamilyId) {
       this.loadFamilyMembers(this.selectedFamilyId);
+      this.selectedRecipientMemberId = null;
+      this.clearResolvedPerson();
       // Reset parent selections when family changes
       this.selectedFatherId = null;
       this.selectedMotherId = null;
@@ -1004,8 +2048,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       }
     } else {
       this.familyMembers = [];
-      this.selectedMemberId = null;
-      this.selectedFatherId = null;
+        this.selectedFatherId = null;
       this.selectedMotherId = null;
       this.parentSelectionMode = 'manual';
     }
@@ -1042,56 +2085,6 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
           this.cdr.markForCheck();
         }
       });
-  }
-
-  /**
-   * Handle family member selection and auto-populate recipient fields
-   */
-  onMemberSelect(): void {
-    if (!this.selectedMemberId || !this.familyMembers.length) {
-      return;
-    }
-
-    const member = this.familyMembers.find(m => m.id === this.selectedMemberId);
-    if (!member) {
-      return;
-    }
-
-    // Auto-populate recipient information from family member
-    // Build full name from first, middle, last names
-    const nameParts = [member.first_name, member.middle_name, member.last_name].filter(Boolean);
-    this.formData['recipient_name'] = nameParts.join(' ');
-    
-    // Populate birth date if available
-    if (member.date_of_birth) {
-      this.formData['recipient_birth_date'] = member.date_of_birth;
-    }
-    
-    // Populate birth place if available (from family address or member notes)
-    if (member.family?.city) {
-      this.formData['recipient_birth_place'] = member.family.city;
-    }
-    
-    // Populate gender if available
-    if (member.gender) {
-      this.formData['recipient_gender'] = member.gender;
-    }
-
-    // For Baptism, populate godparents if available
-    if (this.isBaptism()) {
-      if (member.baptism_godparent_primary) {
-        this.formData['godparent1_name'] = member.baptism_godparent_primary;
-      }
-      if (member.baptism_godparent_secondary) {
-        this.formData['godparent2_name'] = member.baptism_godparent_secondary;
-      }
-      
-      // Auto-populate parents from family members if available
-      this.autoPopulateParents();
-    }
-
-    this.cdr.detectChanges();
-    this.toastService.success('Recipient information populated from family member.');
   }
 
   /**
@@ -1179,15 +2172,6 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       this.selectedMotherId = mother.id;
       this.formData['mother_name'] = this.getMemberFullName(mother);
     }
-  }
-
-  /**
-   * Toggle parent selection mode (kept for backward compatibility, but now handled directly in template)
-   */
-  toggleParentSelectionMode(): void {
-    // This method is now handled directly in the template via (change) events
-    // Keeping it for any programmatic calls if needed
-    this.cdr.detectChanges();
   }
 
   /**
@@ -1287,12 +2271,120 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       throw new Error('Tenant ID is required');
     }
 
-    return this.formService.buildRequestPayload(
+    if (this.usesPersonRecipientWorkflow() && !this.resolvedPerson) {
+      const composed = [this.personDraft.first_name, this.personDraft.middle_name, this.personDraft.last_name]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      if (composed) {
+        this.formData['recipient_name'] = composed;
+      }
+      if (this.personDraft.date_of_birth) {
+        this.formData['recipient_birth_date'] = this.personDraft.date_of_birth;
+      }
+      if (this.personDraft.place_of_birth) {
+        this.formData['recipient_birth_place'] = this.personDraft.place_of_birth;
+      }
+      if (this.personDraft.gender) {
+        this.formData['recipient_gender'] = this.personDraft.gender;
+      }
+      if (this.personDraft.father_name) {
+        this.formData['father_name'] = this.personDraft.father_name;
+      }
+      if (this.personDraft.mother_name) {
+        this.formData['mother_name'] = this.personDraft.mother_name;
+      }
+    }
+
+    const payload = this.formService.buildRequestPayload(
       this.formData,
       this.currentTenantId,
       this.formData['family_id'] ? String(this.formData['family_id']) : null,
       this.formData['bcc_id'] ? String(this.formData['bcc_id']) : null
     );
+
+    if (this.usesPersonRecipientWorkflow()) {
+      payload.family_association = this.familySelectionType === null ? 'none' : this.familySelectionType;
+      payload.family_member_id = this.selectedRecipientMemberId;
+      payload.person_id = this.resolvedPerson?.id || undefined;
+      payload.acknowledge_person_match = this.acknowledgePersonMatch || undefined;
+      payload.use_person_id = this.useMatchedPersonId || undefined;
+      if (this.familySelectionType === 'new') {
+        payload.family = { ...this.newFamilyDraft, bcc_id: this.newFamilyDraft.bcc_id || undefined };
+        payload.relationship_to_head = 'self';
+      }
+      if (!this.resolvedPerson) {
+        payload.person = {
+          first_name: this.personDraft.first_name,
+          middle_name: this.personDraft.middle_name || undefined,
+          last_name: this.personDraft.last_name,
+          date_of_birth: this.personDraft.date_of_birth || undefined,
+          place_of_birth: this.personDraft.place_of_birth || undefined,
+          gender: this.personDraft.gender || undefined,
+          father_name: this.personDraft.father_name || undefined,
+          mother_name: this.personDraft.mother_name || undefined,
+          phone: this.personDraft.phone || undefined,
+          email: this.personDraft.email || undefined,
+          address_line_1: this.personDraft.address_line_1 || undefined,
+          city: this.personDraft.city || undefined,
+        };
+      }
+    }
+
+    if (!this.isEditMode && this.isBaptism() && this.useSharedPeopleControls) {
+      const participants = this.formService.buildBaptismParticipants({
+        recipient: null,
+        affiliation: this.affiliationDraft,
+        minister: this.ministerDraft,
+        formData: this.formData,
+        selectedFatherId: this.selectedFatherId,
+        selectedMotherId: this.selectedMotherId,
+      });
+      if (participants.length > 0) {
+        payload.participants = participants;
+      }
+    }
+
+    if ((!this.isEditMode || this.isCorrectionMode) && this.isMarriage() && this.useSharedPeopleControls) {
+      const participants = this.formService.buildMarriageParticipants({
+        bride: this.brideDraft,
+        groom: this.groomDraft,
+        brideAffiliation: this.brideAffiliationDraft,
+        groomAffiliation: this.groomAffiliationDraft,
+        witnesses: this.witnessDrafts,
+        minister: this.ministerDraft,
+        formData: this.formData,
+      });
+      if (participants.length > 0) {
+        payload.participants = participants;
+      }
+    }
+
+    if (!this.isEditMode && this.isProgressiveParticipantCreate() && this.useSharedPeopleControls) {
+      const participants = this.formService.buildProgressiveParticipants({
+        recipient: null,
+        minister: this.ministerDraft,
+        formData: this.formData,
+        includeSponsors: this.isConfirmation(),
+        includeParents: this.isEucharist(),
+        selectedFatherId: this.selectedFatherId,
+        selectedMotherId: this.selectedMotherId,
+      });
+      if (participants.length > 0) {
+        payload.participants = participants;
+      }
+      if (this.isEucharist()) {
+        payload.event_subtype = String(this.formData['event_subtype'] || 'FIRST_COMMUNION');
+      }
+      if (this.isAnointing() && this.formData['place_classification']) {
+        payload.place_classification = String(this.formData['place_classification']);
+      }
+      if (this.isReconciliation() && payload.notes) {
+        payload.notes = String(payload.notes).slice(0, 250);
+      }
+    }
+
+    return payload;
   }
 }
 

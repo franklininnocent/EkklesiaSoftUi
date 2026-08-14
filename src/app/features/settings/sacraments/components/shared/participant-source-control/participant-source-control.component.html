@@ -1,0 +1,218 @@
+<div class="cf-participant-source">
+  <p class="cf-participant-source__label" [id]="'label_' + fieldId">{{ label }}</p>
+
+  <div
+    class="sacrament-radio-row"
+    role="radiogroup"
+    [attr.aria-labelledby]="'label_' + fieldId"
+    *ngIf="showSourceToggle"
+  >
+    <label class="sacrament-radio" *ngIf="canUseMember">
+      <input
+        type="radio"
+        [name]="'source_' + fieldId"
+        value="member"
+        [checked]="source === 'member'"
+        (change)="onSourceChange('member')"
+      />
+      <span>Existing member</span>
+    </label>
+    <label class="sacrament-radio" *ngIf="canUseExternal">
+      <input
+        type="radio"
+        [name]="'source_' + fieldId"
+        value="external"
+        [checked]="source === 'external'"
+        (change)="onSourceChange('external')"
+      />
+      <span>External person</span>
+    </label>
+  </div>
+
+  <div class="cf-split-grid" *ngIf="source === 'member'">
+    <div class="cf-split-field cf-split-field--full">
+      <label [attr.for]="'member_search_' + fieldId">Search parish members</label>
+
+      <div
+        class="cf-participant-source__selected"
+        *ngIf="selectedMember; else searchBox"
+        role="status"
+      >
+        <div>
+          <strong>{{ memberDisplayName(selectedMember) }}</strong>
+          <p class="cf-split-field__hint">
+            Linked parish member. The register stores a historical snapshot at save time.
+          </p>
+        </div>
+        <button type="button" class="cf-btn" (click)="clearMember()">Change</button>
+      </div>
+
+      <ng-template #searchBox>
+        <div class="cf-participant-source__combobox">
+          <input
+            type="search"
+            [id]="'member_search_' + fieldId"
+            [(ngModel)]="query"
+            (ngModelChange)="onQueryInput()"
+            (keydown)="onSearchKeydown($event)"
+            (blur)="onSearchBlur()"
+            [name]="'member_search_' + fieldId"
+            placeholder="Type at least 2 letters…"
+            autocomplete="off"
+            role="combobox"
+            aria-autocomplete="list"
+            [attr.aria-expanded]="showResults && results.length > 0"
+            [attr.aria-controls]="'member_listbox_' + fieldId"
+            [attr.aria-activedescendant]="activeDescendantId"
+          />
+          <p class="cf-split-field__hint" *ngIf="searching">Searching…</p>
+          <ul
+            class="cf-participant-source__results"
+            *ngIf="showResults && results.length"
+            role="listbox"
+            [id]="'member_listbox_' + fieldId"
+          >
+            <li
+              *ngFor="let member of results; let i = index"
+              role="option"
+              [id]="'member_opt_' + fieldId + '_' + i"
+              [attr.aria-selected]="i === activeIndex"
+              [class.is-active]="i === activeIndex"
+              (mousedown)="selectMember(member)"
+            >
+              <strong>{{ memberDisplayName(member) }}</strong>
+            </li>
+          </ul>
+          <p
+            class="cf-split-field__hint"
+            *ngIf="showResults && !searching && query.trim().length >= 2 && !results.length"
+          >
+            No matching members found. Switch to External person if they are not in this parish.
+          </p>
+        </div>
+      </ng-template>
+    </div>
+  </div>
+
+  <div class="cf-split-grid" *ngIf="source === 'external'">
+    <div class="cf-split-field cf-split-field--full">
+      <p class="cf-split-field__hint">
+        External person — recorded on this sacrament only. This does not add them to the parish directory.
+      </p>
+      <label [attr.for]="'ext_name_' + fieldId">
+        Full name <span class="cf-split-req" aria-hidden="true">*</span>
+      </label>
+      <input
+        type="text"
+        [id]="'ext_name_' + fieldId"
+        [(ngModel)]="externalName"
+        (ngModelChange)="onExternalChange()"
+        [name]="'ext_name_' + fieldId"
+        placeholder="Enter full name"
+        aria-required="true"
+      />
+    </div>
+    <div class="cf-split-field cf-split-field--full" *ngIf="requireAddress">
+      <label [attr.for]="'ext_address_' + fieldId">
+        Address <span class="cf-split-req" aria-hidden="true">*</span>
+      </label>
+      <textarea
+        [id]="'ext_address_' + fieldId"
+        [(ngModel)]="externalAddress"
+        (ngModelChange)="onExternalChange()"
+        [name]="'ext_address_' + fieldId"
+        rows="2"
+        placeholder="Enter address"
+        aria-required="true"
+        required
+      ></textarea>
+    </div>
+    <div class="cf-split-field" *ngIf="showDateOfBirth">
+      <label [attr.for]="'ext_dob_' + fieldId">
+        Date of birth
+        <span class="cf-split-req" *ngIf="requireIdentityFields" aria-hidden="true">*</span>
+        <span class="cf-split-optional" *ngIf="!requireIdentityFields">optional</span>
+      </label>
+      <input
+        type="date"
+        [id]="'ext_dob_' + fieldId"
+        [(ngModel)]="externalDob"
+        (ngModelChange)="onExternalChange()"
+        [name]="'ext_dob_' + fieldId"
+        [attr.aria-required]="requireIdentityFields ? true : null"
+        [required]="requireIdentityFields"
+      />
+    </div>
+    <div class="cf-split-field">
+      <label [attr.for]="'ext_gender_' + fieldId">
+        Gender
+        <span class="cf-split-req" *ngIf="genderRequired" aria-hidden="true">*</span>
+        <span class="cf-split-optional" *ngIf="!genderRequired">optional</span>
+      </label>
+      <select
+        [id]="'ext_gender_' + fieldId"
+        [(ngModel)]="externalGender"
+        (ngModelChange)="onExternalChange()"
+        [name]="'ext_gender_' + fieldId"
+        [attr.aria-required]="genderRequired ? true : null"
+        [required]="genderRequired"
+      >
+        <option value="">Select…</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div class="cf-split-field" *ngIf="requireContactNumber">
+      <label [attr.for]="'ext_contact_' + fieldId">
+        Contact number <span class="cf-split-req" aria-hidden="true">*</span>
+      </label>
+      <input
+        type="tel"
+        [id]="'ext_contact_' + fieldId"
+        [(ngModel)]="externalContactNumber"
+        (ngModelChange)="onExternalChange()"
+        [name]="'ext_contact_' + fieldId"
+        placeholder="Enter contact number"
+        aria-required="true"
+        required
+        autocomplete="tel"
+      />
+    </div>
+  </div>
+
+  <div class="cf-split-grid" *ngIf="requireIdentityFields && source === 'member' && selectedMember">
+    <div class="cf-split-field">
+      <label [attr.for]="'member_dob_' + fieldId">
+        Date of birth <span class="cf-split-req" aria-hidden="true">*</span>
+      </label>
+      <input
+        type="date"
+        [id]="'member_dob_' + fieldId"
+        [(ngModel)]="externalDob"
+        (ngModelChange)="onExternalChange()"
+        [name]="'member_dob_' + fieldId"
+        aria-required="true"
+        required
+      />
+    </div>
+    <div class="cf-split-field">
+      <label [attr.for]="'member_gender_' + fieldId">
+        Gender <span class="cf-split-req" aria-hidden="true">*</span>
+      </label>
+      <select
+        [id]="'member_gender_' + fieldId"
+        [(ngModel)]="externalGender"
+        (ngModelChange)="onExternalChange()"
+        [name]="'member_gender_' + fieldId"
+        aria-required="true"
+        required
+      >
+        <option value="">Select…</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+  </div>
+</div>

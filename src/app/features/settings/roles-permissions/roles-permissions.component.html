@@ -579,9 +579,9 @@
           </div>
 
           <!-- Roles Grid -->
-          <div class="roles-grid" *ngIf="roles.length > 0">
+          <div class="roles-grid" *ngIf="allRoles.length > 0">
             <div 
-              *ngFor="let role of roles; trackBy: trackByRoleId" 
+              *ngFor="let role of allRoles; trackBy: trackByRoleId" 
               class="role-card"
               (click)="selectRoleForAssignment(role)"
               [class.disabled]="!role.active">
@@ -605,7 +605,7 @@
           </div>
 
           <!-- Empty State -->
-          <div class="empty-state" *ngIf="roles.length === 0 && !loadingRoles">
+          <div class="empty-state" *ngIf="allRoles.length === 0 && !loadingRoles">
             <div class="empty-icon">📋</div>
             <h3>No Roles Available</h3>
             <p>Create roles in the Roles tab to assign permissions.</p>
@@ -820,8 +820,8 @@
             </div>
           </div>
 
-          <div class="roles-grid" *ngIf="roles.length > 0">
-            <label *ngFor="let role of roles; trackBy: trackByRoleId" class="role-card">
+          <div class="roles-grid" *ngIf="assignableRoles.length > 0">
+            <label *ngFor="let role of assignableRoles; trackBy: trackByRoleId" class="role-card">
               <div class="role-card-header">
                 <div class="role-info">
                   <h3 class="role-name">{{ role.name }}</h3>

@@ -2,3 +2,9 @@
   display: grid;
   gap: var(--cf-space-3);
 }
+
+/* Panel container matching list pages `.cf-panel` content block. */
+.audit-log-panel__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}

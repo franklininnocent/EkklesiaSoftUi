@@ -1,22 +1,60 @@
-import { Routes } from '@angular/router';
+import { Routes, Router, ActivatedRouteSnapshot, UrlTree } from '@angular/router';
+import { inject } from '@angular/core';
+
+/**
+ * Legacy /create and /edit/:id redirect to the registry list, which opens
+ * the XL sacrament-form-modal (sole create/edit path for non–Holy Orders).
+ */
+function redirectLegacySacramentForm(route: ActivatedRouteSnapshot): UrlTree {
+  const router = inject(Router);
+  const id = route.paramMap.get('id');
+  if (id) {
+    return router.createUrlTree(['/sacraments'], {
+      queryParams: { edit: id },
+    });
+  }
+  return router.createUrlTree(['/sacraments'], {
+    queryParams: { create: '1' },
+  });
+}
 
 export const SACRAMENTS_ROUTES: Routes = [
   {
     path: '',
-    loadComponent: () => import('./components/sacrament-list/sacrament-list.component').then(m => m.SacramentListComponent)
+    loadComponent: () =>
+      import('./components/sacrament-list/sacrament-list.component').then(
+        (m) => m.SacramentListComponent
+      ),
+  },
+  {
+    path: 'migration',
+    loadComponent: () =>
+      import('./components/migration-queue/sacrament-migration-queue.component').then(
+        (m) => m.SacramentMigrationQueueComponent
+      ),
+  },
+  {
+    path: 'holy-orders/create',
+    loadComponent: () =>
+      import('./components/holy-orders-form/holy-orders-form.component').then(
+        (m) => m.HolyOrdersFormComponent
+      ),
   },
   {
     path: 'create',
-    loadComponent: () => import('./components/sacrament-form/sacrament-form.component').then(m => m.SacramentFormComponent)
+    canActivate: [redirectLegacySacramentForm],
+    children: [],
   },
   {
     path: 'edit/:id',
-    loadComponent: () => import('./components/sacrament-form/sacrament-form.component').then(m => m.SacramentFormComponent)
+    canActivate: [redirectLegacySacramentForm],
+    children: [],
   },
   {
     path: 'view/:id',
-    loadComponent: () => import('./components/sacrament-detail/sacrament-detail.component').then(m => m.SacramentDetailComponent)
-  }
+    loadComponent: () =>
+      import('./components/sacrament-detail/sacrament-detail.component').then(
+        (m) => m.SacramentDetailComponent
+      ),
+  },
 ];
-
-

@@ -1,452 +1,119 @@
-// Modal Shell owns overlay/dialog/header/footer.
-// Only form-specific content styles remain here.
+@import '../../../../donations/styles/stewardship-split-layout.scss';
+@import '../shared/sacrament-control-chrome';
 
-// Form layout
-.sacrament-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 1rem;
-}
-
-.form-section {
-  position: relative;
-  margin-bottom: 0.5rem;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e2e8f0;
-
-  &::after {
-    content: '';
-    position: absolute;
-    bottom: -1px;
-    left: 0;
-    width: 0;
-    height: 2px;
-    background: linear-gradient(90deg, var(--primary-color, #4f46e5) 0%, var(--primary-dark, #4338ca) 100%);
-    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  &:hover::after {
-    width: 100%;
-  }
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  svg {
-    flex-shrink: 0;
-    color: #667eea;
-  }
-  font-size: 1rem;
-  font-weight: 700;
-  color: #0f172a;
-  margin: 0 0 0.85rem;
-  line-height: 1.5;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  position: relative;
-  padding-left: 14px;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 5px;
-    height: 0;
-    border-radius: 3px;
-    background: linear-gradient(135deg, var(--primary-color, #4f46e5) 0%, var(--primary-dark, #4338ca) 100%);
-    transition: height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-}
-
-.form-section:hover .section-title::before,
-.section-title:hover::before {
-  height: 100%;
-}
-
-.form-group {
-  position: relative;
-
-  .form-hint {
-    display: block;
-    margin-top: 0.375rem;
-    font-size: 0.813rem;
-    color: #6b7280;
-    line-height: 1.4;
-  }
-
-  .optional-badge {
-    font-size: 0.75rem;
-    color: #9ca3af;
-    font-weight: normal;
-  }
-
-  .error-message {
-    display: block;
-    margin-top: 0.375rem;
-    font-size: 0.813rem;
-    color: #ef4444;
-    font-weight: 500;
-    animation: slideDown 0.2s ease-out;
-  }
-
-  .form-control.error {
-    border-color: #ef4444;
-    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-  }
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-
-  &.full-width {
-    grid-column: 1 / -1;
-  }
-
-  label {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #1f2937;
-    margin-bottom: 0.45rem;
-
-    &.required::after {
-      content: ' *';
-      color: #ef4444;
-    }
-  }
-
-  .form-control {
-    width: 100%;
-    padding: 0.65rem 0.85rem;
-    border: 2px solid var(--gray-300, #cbd5e1);
-    border-radius: 10px;
-    font-size: 0.95rem;
-    color: #0f172a;
-    background-color: #ffffff;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-
-    &:hover {
-      border-color: var(--gray-400, #94a3b8);
-      background-color: var(--gray-50, #f8fafc);
-      transform: translateY(-1px);
-      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
-    }
-
-    &:focus {
-      outline: none;
-      border-color: var(--primary-color, #4f46e5);
-      background-color: #fff;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15), 0 0 0 3px rgba(79, 70, 229, 0.1);
-      animation: inputFocusPulse 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-  }
-
-  textarea.form-control {
-    resize: vertical;
-    min-height: 90px;
-  }
-}
-
-.section-title-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.radio-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding-top: 0.25rem;
-
-  label {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-weight: 600;
-    color: #0f172a;
-  }
-
-  input[type='radio'] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--primary-color, #4f46e5);
-    cursor: pointer;
-  }
-}
-
-.copy-link {
-  background: none;
-  border: none;
-  color: var(--primary-color, #4f46e5);
-  font-weight: 600;
-  cursor: pointer;
-  padding: 0;
-  text-decoration: underline;
-  transition: color 0.2s ease;
-
-  &:hover {
-    color: var(--primary-dark, #4338ca);
-  }
-}
-
-// Feedback / Loading
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 1rem;
-  color: #475569;
-  gap: 1rem;
-
-  .spinner {
-    width: 48px;
-    height: 48px;
-    border: 4px solid rgba(99, 102, 241, 0.2);
-    border-top-color: #4f46e5;
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-  }
-}
-
-// Buttons
-.btn {
-  padding: 0.625rem 1.15rem;
-  border-radius: 10px;
-  border: 1px solid transparent;
-  font-size: 0.95rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 120px;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-  }
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  &.btn-secondary {
-    background: #ffffff;
-    color: #111827;
-    border: 2px solid #e2e8f0;
-
-    &:hover:not(:disabled) {
-      border-color: #cbd5f5;
-      background-color: #f8fafc;
-    }
-  }
-
-  &.btn-primary {
-    background: linear-gradient(135deg, var(--primary-color, #4f46e5) 0%, var(--primary-dark, #4338ca) 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.35);
-
-    &:hover:not(:disabled) {
-      box-shadow: 0 8px 20px rgba(79, 70, 229, 0.4);
-    }
-  }
-}
-
-// Family selection section
-.family-selection-container {
-  margin-top: 0.75rem;
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 1rem;
-  box-shadow: 0 10px 25px rgba(15, 23, 42, 0.05);
-}
-
-.family-type-selection {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  margin-bottom: 1rem;
-}
-
-.radio-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  cursor: pointer;
+.cf-split-banner {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: var(--cf-radius-sm);
+  border: 1px solid #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
   font-size: 0.9rem;
-  color: #0f172a;
-  font-weight: 600;
+}
 
-  input[type="radio"] {
-    width: 18px;
-    height: 18px;
-    accent-color: var(--primary-color, #4f46e5);
-    cursor: pointer;
+// ---------------------------------------------------------------------------
+// Official §15 data-heavy layout — scoped 3-column grid for this modal only.
+// Shared `.cf-split-grid` default stays 2-col in stewardship-split-layout.scss.
+// See docs/frontend/enterprise-modal-style-guide.md §15.
+// ---------------------------------------------------------------------------
+.sacrament-modal-form .cf-split-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 1100px) {
+  .sacrament-modal-form .cf-split-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
-.family-selection-fields,
-.new-family-form-container,
-.newly-created-family-info {
-  margin-top: 1rem;
-  padding: 1rem;
-  border-radius: 12px;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  animation: slideDown 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+@media (max-width: 768px) {
+  .sacrament-modal-form .cf-split-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
-.new-family-form-container {
-  max-height: 500px;
+// Field-level invalid state for `.cf-split-*` forms — same pattern as
+// family-member-form-modal / bcc-form (not yet in shared stewardship layout).
+.cf-split-field input.cf-split-field__control--invalid,
+.cf-split-field select.cf-split-field__control--invalid {
+  border-color: var(--cf-critical);
+  background: var(--cf-critical-soft);
+}
+
+.cf-split-field input.cf-split-field__control--invalid:focus,
+.cf-split-field select.cf-split-field__control--invalid:focus {
+  border-color: var(--cf-critical);
+  box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.12);
+}
+
+.cf-split-field .cf-split-select.cf-split-field__control--invalid {
+  ::ng-deep .ng-select-container {
+    border-color: var(--cf-critical);
+    background: var(--cf-critical-soft);
+  }
+
+  &.ng-select-focused ::ng-deep .ng-select-container {
+    border-color: var(--cf-critical);
+    box-shadow: 0 0 0 3px rgba(185, 28, 28, 0.12);
+  }
+}
+
+.cf-split-field__error {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--cf-critical);
+  line-height: 1.35;
+}
+
+// Loading state while edit payload is fetched
+.sacrament-modal-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 2.5rem 1.15rem;
+  color: var(--cf-muted);
+  font-size: 0.9rem;
+}
+
+.sacrament-modal-loading__spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--cf-slate-100);
+  border-top-color: var(--cf-primary);
+  border-radius: 50%;
+  animation: sacrament-modal-spin 0.8s linear infinite;
+}
+
+@keyframes sacrament-modal-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// Nested family picker / new-family embed — presentation only
+.sacrament-nested-block {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 0.65rem;
+  padding: 0.75rem;
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-slate-50);
+}
+
+.sacrament-nested-block--scroll {
+  max-height: 28rem;
   overflow-y: auto;
 }
 
-.newly-created-family-info {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-
-  .alert {
-    padding: 0.75rem;
-    border-radius: 8px;
-    background: #d1fae5;
-    color: #065f46;
-    font-size: 0.9rem;
-    margin-bottom: 0.75rem;
-  }
+.sacrament-nested-block--success {
+  background: var(--cf-forest-soft);
+  border-color: var(--cf-forest-soft);
 }
 
-.text-muted {
-  color: #64748b;
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
-  display: block;
+// Footer actions — bottom-right (enterprise modal §9 / §15)
+.cf-split-form-actions {
+  justify-content: flex-end;
 }
-
-.text-warning {
-  color: #d97706;
-  font-size: 0.8rem;
-  margin-top: 0.25rem;
-  display: block;
-}
-
-// Parent selection mode toggle
-.parent-selection-mode-toggle {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem 1.5rem;
-  margin-bottom: 1rem;
-  padding: 0.75rem;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-
-  .toggle-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
-    font-size: 0.875rem;
-    color: #0f172a;
-    font-weight: 600;
-
-    input[type="radio"] {
-      width: 18px;
-      height: 18px;
-      accent-color: var(--primary-color, #4f46e5);
-      cursor: pointer;
-    }
-
-    &:hover {
-      color: var(--primary-color, #4f46e5);
-    }
-  }
-}
-
-.required-indicator {
-  color: #ef4444;
-  font-weight: 600;
-  margin-left: 0.25rem;
-}
-
-.input-error {
-  border-color: #ef4444 !important;
-  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
-}
-
-// Animations
-@keyframes inputFocusPulse {
-  0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.35); }
-  50% { box-shadow: 0 0 0 6px rgba(79, 70, 229, 0); }
-  100% { box-shadow: 0 4px 16px rgba(79, 70, 229, 0.15), 0 0 0 3px rgba(79, 70, 229, 0.1); }
-}
-
-@keyframes slideDown {
-  from { opacity: 0; transform: translateY(-10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-// Responsive Design
-@media (max-width: 575.98px) {
-  .form-grid {
-    grid-template-columns: 1fr;
-    gap: 1rem;
-  }
-
-  .family-type-selection {
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-
-  .section-title {
-    font-size: 0.938rem;
-    flex-wrap: wrap;
-
-    svg {
-      width: 16px;
-      height: 16px;
-    }
-  }
-}
-
-@media (min-width: 576px) and (max-width: 767.98px) {
-  .form-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 768px) and (max-width: 991.98px) {
-  .form-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (min-width: 992px) {
-  .form-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-

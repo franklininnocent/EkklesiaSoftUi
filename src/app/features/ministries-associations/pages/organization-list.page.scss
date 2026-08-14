@@ -6,3 +6,9 @@
   color: var(--cf-primary);
   font-size: var(--cf-text-sm);
 }
+
+/* Panel container matching Add organization / Members / BCC list `.cf-panel` content block. */
+.organization-list__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}

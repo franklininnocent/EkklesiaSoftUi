@@ -271,6 +271,11 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     return true;
   }
 
+  canAccessBcc(user: User | null): boolean {
+    const hasActiveSupportSession = !!this.supportSessions.sessionId;
+    return this.authService.canAccessBcc(user, { hasActiveSupportSession });
+  }
+
   canAccessMinistries(user: User | null): boolean {
     const hasActiveSupportSession = !!this.supportSessions.sessionId;
     if (!this.authService.canAccessMinistries(user, { hasActiveSupportSession })) {

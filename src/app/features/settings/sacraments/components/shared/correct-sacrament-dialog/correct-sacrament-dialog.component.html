@@ -1,0 +1,48 @@
+<app-modal-shell
+  *ngIf="show"
+  title="Correct sacramental record?"
+  size="sm"
+  [nested]="true"
+  headerVariant="compact"
+  closeAriaLabel="Close correct dialog"
+  (closeRequested)="onCancel()"
+>
+  <p class="cf-confirm__message">
+    This is a historical correction for
+    <strong>{{ recipientLabel }}</strong>.
+    Your reason and the field changes are kept in the audit trail. You will edit the record next.
+  </p>
+
+  <div class="cf-form-field">
+    <label class="cf-form-field__label" for="correct-sacrament-reason">
+      Reason for correction <span class="cf-split-req" aria-hidden="true">*</span>
+    </label>
+    <textarea
+      id="correct-sacrament-reason"
+      name="correctReason"
+      class="cf-form-field__control"
+      [(ngModel)]="reason"
+      placeholder="What needs correcting, and why?"
+      maxlength="500"
+      rows="3"
+      required
+      aria-required="true"
+      [attr.aria-invalid]="reasonTrimmed.length > 0 && reasonTrimmed.length < minReasonLength"
+    ></textarea>
+    <div class="cf-form-field__hint">
+      At least {{ minReasonLength }} characters. Required before editing the register fields.
+    </div>
+  </div>
+
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()">Cancel</button>
+    <button
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="onConfirm()"
+      [disabled]="!canConfirm"
+    >
+      Continue to edit
+    </button>
+  </div>
+</app-modal-shell>

@@ -1,25 +1,50 @@
 /**
  * Sacrament Constants
  * Centralized constants and enums for the Sacraments module
+ * Phase 1: business statuses registered | conditional | voided (ADR-07)
  */
 
 /**
  * Sacrament Status Enum
  */
 export enum SacramentStatus {
-  ACTIVE = 'active',
-  CANCELLED = 'cancelled',
-  CONDITIONAL = 'conditional'
+  REGISTERED = 'registered',
+  CONDITIONAL = 'conditional',
+  VOIDED = 'voided',
+  /** @deprecated Use REGISTERED */
+  ACTIVE = 'registered',
+  /** @deprecated Use VOIDED */
+  CANCELLED = 'voided'
 }
 
 /**
  * Sacrament Status Options for UI
  */
 export const SACRAMENT_STATUS_OPTIONS = [
-  { value: SacramentStatus.ACTIVE, label: 'Active' },
-  { value: SacramentStatus.CANCELLED, label: 'Cancelled' },
-  { value: SacramentStatus.CONDITIONAL, label: 'Conditional' }
+  { value: SacramentStatus.REGISTERED, label: 'Registered' },
+  { value: SacramentStatus.CONDITIONAL, label: 'Conditional' },
+  { value: SacramentStatus.VOIDED, label: 'Voided' }
 ] as const;
+
+/**
+ * Normalize legacy API/UI status values to canonical statuses.
+ */
+export function normalizeSacramentStatus(status: string | null | undefined): SacramentStatus | null {
+  if (!status) {
+    return null;
+  }
+  const key = status.toLowerCase().trim();
+  if (key === 'active' || key === 'registered') {
+    return SacramentStatus.REGISTERED;
+  }
+  if (key === 'cancelled' || key === 'voided') {
+    return SacramentStatus.VOIDED;
+  }
+  if (key === 'conditional') {
+    return SacramentStatus.CONDITIONAL;
+  }
+  return null;
+}
 
 /**
  * Gender Options
@@ -72,13 +97,14 @@ export const DEFAULT_SACRAMENT_FORM = {
   recipient_birth_date: '',
   recipient_birth_place: '',
   recipient_gender: undefined,
+  baptism_date: '',
   father_name: '',
   mother_name: '',
   godparent1_name: '',
   godparent2_name: '',
   witnesses: '',
   notes: '',
-  status: SacramentStatus.ACTIVE,
+  status: SacramentStatus.REGISTERED,
   marriage_bride_full_name: '',
   marriage_bride_father_name: '',
   marriage_bride_mother_name: '',
@@ -126,4 +152,3 @@ export const VALIDATION_MESSAGES = {
   BRIDE_NAME_REQUIRED: 'Please enter the bride\'s full name',
   GROOM_NAME_REQUIRED: 'Please enter the groom\'s full name'
 } as const;
-

@@ -1,0 +1,187 @@
+<section class="bcc-detail cf-page">
+  <div class="cf-loading-block cf-panel" *ngIf="loading" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-loading-block__label">Loading BCC…</p>
+    <app-loading-skeleton type="card" [rows]="2" [columns]="4"></app-loading-skeleton>
+    <app-loading-skeleton type="card" [rows]="1" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!loading && loadError" role="alert">
+    <p>{{ loadError }}</p>
+    <a routerLink="/bccs" class="cf-btn">Back to dashboard</a>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="bcc && load(bcc.id)">Try again</button>
+  </div>
+
+  <ng-container *ngIf="!loading && !loadError && bcc">
+    <a routerLink="/bccs/list" class="bcc-detail__back">
+      <span aria-hidden="true">←</span> BCCs
+    </a>
+
+    <header class="bcc-detail__header cf-panel">
+      <div class="bcc-detail__identity">
+        <span class="bcc-detail__monogram" aria-hidden="true">{{ monogram }}</span>
+
+        <div class="bcc-detail__titles">
+          <div class="bcc-detail__title-row">
+            <h1 class="bcc-detail__name">{{ bcc.name }}</h1>
+            <app-status-badge
+              [label]="bcc.status | titlecase"
+              [tone]="statusTone(bcc.status)"
+            ></app-status-badge>
+          </div>
+
+          <div class="bcc-detail__sub-row">
+            <span class="bcc-detail__type">Local Christian community</span>
+            <span class="bcc-detail__dot" aria-hidden="true">·</span>
+            <span class="bcc-detail__code-chip">
+              <span class="bcc-detail__code">{{ bcc.bcc_code }}</span>
+              <button
+                type="button"
+                class="bcc-detail__copy"
+                title="Copy BCC ID"
+                [attr.aria-label]="'Copy BCC ID ' + bcc.bcc_code"
+                (click)="copyBccCode()"
+              >
+                <span aria-hidden="true">{{ copyFeedback ? '✓' : '⧉' }}</span>
+                <span class="bcc-detail__copy-text">{{ copyFeedback ? 'Copied' : 'Copy' }}</span>
+              </button>
+            </span>
+          </div>
+
+          <p class="bcc-detail__description" *ngIf="descriptionText" [title]="descriptionText">
+            {{ descriptionText }}
+          </p>
+        </div>
+      </div>
+
+      <div
+        class="bcc-detail__rail"
+        *ngIf="canEdit || hasMeetingMeta || bcc.created_at || bcc.updated_at"
+      >
+        <div class="bcc-detail__actions" *ngIf="canEdit">
+          <button type="button" class="cf-btn cf-btn-primary" (click)="openEdit()">Edit BCC</button>
+        </div>
+
+        <dl class="bcc-detail__facts" *ngIf="hasMeetingMeta || bcc.created_at || bcc.updated_at">
+          <div class="bcc-detail__fact" *ngIf="meetingSchedule">
+            <svg
+              class="bcc-detail__fact-icon cf-icon-sm"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="9"></circle>
+              <polyline points="12 7 12 12 15.5 14"></polyline>
+            </svg>
+            <div class="bcc-detail__fact-body">
+              <dt>Meets</dt>
+              <dd>{{ meetingSchedule }}</dd>
+            </div>
+          </div>
+
+          <div class="bcc-detail__fact" *ngIf="bcc.meeting_place">
+            <svg
+              class="bcc-detail__fact-icon cf-icon-sm"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 21s7-5.5 7-11a7 7 0 1 0-14 0c0 5.5 7 11 7 11z"></path>
+              <circle cx="12" cy="10" r="2.5"></circle>
+            </svg>
+            <div class="bcc-detail__fact-body">
+              <dt>Location</dt>
+              <dd [title]="bcc.meeting_place">{{ bcc.meeting_place }}</dd>
+            </div>
+          </div>
+
+          <div class="bcc-detail__fact" *ngIf="bcc.created_at">
+            <svg
+              class="bcc-detail__fact-icon cf-icon-sm"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <rect x="3.5" y="5" width="17" height="15" rx="2"></rect>
+              <path d="M3.5 10h17M8.5 3.5v3M15.5 3.5v3"></path>
+            </svg>
+            <div class="bcc-detail__fact-body">
+              <dt>Created</dt>
+              <dd>{{ bcc.created_at | date: 'mediumDate' }}</dd>
+            </div>
+          </div>
+
+          <div class="bcc-detail__fact" *ngIf="bcc.updated_at">
+            <svg
+              class="bcc-detail__fact-icon cf-icon-sm"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.8"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20 12a8 8 0 1 1-2.34-5.66"></path>
+              <polyline points="20 4 20 8.5 15.5 8.5"></polyline>
+            </svg>
+            <div class="bcc-detail__fact-body">
+              <dt>Last updated</dt>
+              <dd>{{ bcc.updated_at | date: 'mediumDate' }}, {{ bcc.updated_at | date: 'shortTime' }}</dd>
+            </div>
+          </div>
+        </dl>
+      </div>
+    </header>
+
+    <app-tab-strip
+      [tabs]="tabItems"
+      [activeId]="activeTab"
+      ariaLabel="BCC detail"
+      (tabChange)="setTab($event)"
+    ></app-tab-strip>
+
+    <app-bcc-overview-tab
+      *ngIf="activeTab === 'overview'"
+      [bccId]="bcc.id"
+      [canManageMembers]="canManageMembers && bcc.status === 'active'"
+      (navigate)="onOverviewNavigate($event)"
+      (overviewLoaded)="onOverviewLoaded($event)"
+    ></app-bcc-overview-tab>
+
+    <app-bcc-members-tab
+      *ngIf="activeTab === 'members'"
+      [bccId]="bcc.id"
+      [bccStatus]="bcc.status"
+      [initialQuery]="peopleQuery"
+      (queryChange)="onMembersQueryChange($event)"
+    ></app-bcc-members-tab>
+
+    <app-bcc-leadership-tab
+      *ngIf="activeTab === 'leadership'"
+      [bccId]="bcc.id"
+      [bccStatus]="bcc.status"
+    ></app-bcc-leadership-tab>
+
+    <app-bcc-history-tab *ngIf="activeTab === 'member-history'" [bccId]="bcc.id"></app-bcc-history-tab>
+    <app-bcc-audit-tab *ngIf="activeTab === 'audit'" [bccId]="bcc.id"></app-bcc-audit-tab>
+  </ng-container>
+
+  <app-bcc-form
+    *ngIf="showForm"
+    [bcc]="bcc"
+    (save)="onFormSave()"
+    (cancel)="onFormCancel()"
+  ></app-bcc-form>
+</section>

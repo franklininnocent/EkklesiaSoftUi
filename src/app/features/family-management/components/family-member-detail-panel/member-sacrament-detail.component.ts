@@ -51,11 +51,18 @@ export class MemberSacramentDetailComponent {
   }
 
   get statusLabel(): string {
-    return this.completed ? 'Active' : 'Pending';
+    // Profile-summary vocabulary (not registry Registered/Conditional/Voided).
+    return this.completed ? 'On profile' : 'Not on profile';
   }
 
   get editable(): boolean {
-    return this.canonical !== null;
+    if (this.canonical === null) {
+      return false;
+    }
+    if (this.completed || this.hasSacramentDetails) {
+      return true;
+    }
+    return this.sacramentType.enabled_for_tenant !== false;
   }
 
   get hasSacramentDetails(): boolean {

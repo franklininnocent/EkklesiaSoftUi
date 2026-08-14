@@ -87,10 +87,33 @@ describe('AuthService RBAC access helpers', () => {
     expect(service.canAccessRbac(user)).toBe(false);
   });
 
-  it('canManageRbac mirrors canAccessRbac', () => {
+  it('canManageRbac requires manage capability, not view-only access', () => {
+    const viewOnly = {
+      role_name: 'Member',
+      tenant_id: 42,
+      permissions: [{ name: 'roles.view' }]
+    } as any;
+    (service as any).currentUserSubject.next(viewOnly);
+    expect(service.canAccessRbac(viewOnly)).toBe(true);
+    expect(service.canManageRbac(viewOnly)).toBe(false);
+  });
+
+  it('canManageRbac allows tenant administrators', () => {
     const user = { role_name: 'Administrator', tenant_id: 42, permissions: [] } as any;
     (service as any).currentUserSubject.next(user);
-    expect(service.canManageRbac(user)).toBe(service.canAccessRbac(user));
+    expect(service.canManageRbac(user)).toBe(true);
+  });
+
+  it('does not treat has_ekklesia_role as SuperAdmin or EkklesiaAdmin', () => {
+    const user = {
+      role_name: 'EkklesiaManager',
+      tenant_id: null,
+      has_ekklesia_role: true,
+      permissions: []
+    } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.isSuperAdmin()).toBe(false);
+    expect(service.isEkklesiaAdmin()).toBe(false);
   });
 
   it('denies Tenant Ministries for EkklesiaAdmin without tenant_id or support session', () => {

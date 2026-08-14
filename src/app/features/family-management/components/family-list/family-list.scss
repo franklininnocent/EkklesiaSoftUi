@@ -36,6 +36,12 @@
   color: var(--cf-primary);
 }
 
+/* Panel container matching Add organization / Members / BCC list `.cf-panel` content block. */
+.family-list__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
 .family-list__head {
   display: flex;
   align-items: center;

@@ -1,0 +1,97 @@
+<div class="migration-queue cf-page">
+  <app-page-header
+    title="Sacrament migration"
+    subtitle="Resolve legacy names into parish members or external people. Exact name + date of birth only for auto-link."
+  >
+    <div class="migration-queue__actions">
+      <a routerLink="/sacraments" class="cf-btn">Back to list</a>
+      <button type="button" class="cf-btn" [disabled]="busy" (click)="runBackfill(true)">Dry-run backfill</button>
+      <button type="button" class="cf-btn cf-btn-primary" [disabled]="busy" (click)="runBackfill(false)">Run backfill</button>
+    </div>
+  </app-page-header>
+
+  <section class="migration-queue__report" *ngIf="report" aria-label="Migration report">
+    <div class="migration-queue__stat"><span>Total</span><strong>{{ report.total_resolutions }}</strong></div>
+    <div class="migration-queue__stat"><span>Linked</span><strong>{{ report.linked }}</strong></div>
+    <div class="migration-queue__stat"><span>Unresolved</span><strong>{{ report.unresolved }}</strong></div>
+    <div class="migration-queue__stat"><span>External</span><strong>{{ report.external }}</strong></div>
+    <div class="migration-queue__stat"><span>Affiliation incomplete</span><strong>{{ report.affiliation_incomplete }}</strong></div>
+    <div class="migration-queue__stat"><span>Participants v1</span><strong>{{ report.participants_v1 ? 'on' : 'off' }}</strong></div>
+  </section>
+
+  <div class="migration-queue__filters">
+    <label>
+      Status
+      <select [(ngModel)]="filterResolution" (ngModelChange)="onFilterChange()">
+        <option value="unresolved">Unresolved</option>
+        <option value="member">Linked (member)</option>
+        <option value="external">External</option>
+        <option value="">All</option>
+      </select>
+    </label>
+    <label>
+      Search
+      <input type="search" [(ngModel)]="search" (keyup.enter)="onFilterChange()" placeholder="Name or migration key" />
+    </label>
+    <button type="button" class="cf-btn" (click)="onFilterChange()">Apply</button>
+  </div>
+
+  <p *ngIf="loading">Loading…</p>
+
+  <table class="migration-queue__table" *ngIf="!loading">
+    <thead>
+      <tr>
+        <th>Role</th>
+        <th>Legacy name</th>
+        <th>DOB</th>
+        <th>Confidence</th>
+        <th>Status</th>
+        <th>Sacrament</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of rows">
+        <td>{{ row.participant_role }}</td>
+        <td>{{ row.legacy_name || '—' }}</td>
+        <td>{{ row.legacy_dob || '—' }}</td>
+        <td>{{ row.confidence }}</td>
+        <td>{{ row.resolution }}</td>
+        <td>
+          <a *ngIf="row.sacrament" [routerLink]="['/sacraments/view', row.sacrament.id]">
+            #{{ row.sacrament.id }} {{ row.sacrament.recipient_name }}
+          </a>
+        </td>
+        <td>
+          <button
+            type="button"
+            class="cf-btn"
+            *ngIf="row.resolution === 'unresolved'"
+            (click)="openResolve(row)"
+          >
+            Resolve
+          </button>
+        </td>
+      </tr>
+      <tr *ngIf="!rows.length">
+        <td colspan="7">No rows in this filter.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <aside class="migration-queue__drawer" *ngIf="selected" aria-label="Resolve participant">
+    <h2>Resolve {{ selected.participant_role }}</h2>
+    <p>Legacy: {{ selected.legacy_name }} <span *ngIf="selected.legacy_dob">({{ selected.legacy_dob }})</span></p>
+    <app-participant-source-control
+      [label]="selected.participant_role"
+      [role]="selected.participant_role"
+      [allowedSources]="['member', 'external']"
+      [value]="resolveDraft"
+      (valueChange)="onResolveDraftChange($event)"
+    ></app-participant-source-control>
+    <div class="migration-queue__drawer-actions">
+      <button type="button" class="cf-btn cf-btn-primary" [disabled]="busy" (click)="confirmResolve()">Save</button>
+      <button type="button" class="cf-btn" [disabled]="busy" (click)="closeResolve()">Cancel</button>
+    </div>
+  </aside>
+</div>

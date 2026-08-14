@@ -1,0 +1,104 @@
+<div class="cf-minister-picker">
+  <p class="cf-minister-picker__label" [id]="'minister_picker_label_' + controlId">{{ label }}</p>
+
+  <div
+    class="sacrament-radio-row"
+    role="radiogroup"
+    [attr.aria-labelledby]="'minister_picker_label_' + controlId"
+  >
+    <label class="sacrament-radio">
+      <input
+        type="radio"
+        [name]="'minister_source_' + controlId"
+        value="internal_leadership"
+        [checked]="source === 'internal_leadership'"
+        (change)="onSourceChange('internal_leadership')"
+      />
+      <span>Parish leadership</span>
+    </label>
+    <label class="sacrament-radio">
+      <input
+        type="radio"
+        [name]="'minister_source_' + controlId"
+        value="external"
+        [checked]="source === 'external'"
+        (change)="onSourceChange('external')"
+      />
+      <span>External minister</span>
+    </label>
+  </div>
+
+  <div class="cf-split-grid" *ngIf="source === 'internal_leadership'">
+    <div class="cf-split-field cf-split-field--full">
+      <label [attr.for]="'minister_leader_id_' + controlId">Select from parish leadership</label>
+      <ng-select
+        [id]="'minister_leader_id_' + controlId"
+        [(ngModel)]="selectedLeaderId"
+        (ngModelChange)="onLeaderChange()"
+        [name]="'minister_leader_id_' + controlId"
+        [items]="leaders"
+        bindLabel="full_name"
+        bindValue="id"
+        [loading]="loadingLeaders"
+        [disabled]="loadingLeaders"
+        [placeholder]="loadingLeaders ? 'Loading…' : 'Select…'"
+        [clearable]="true"
+        [searchable]="true"
+        class="cf-split-select"
+      >
+        <ng-template ng-label-tmp let-item="item">
+          {{ leaderLabel(item) }}
+        </ng-template>
+        <ng-template ng-option-tmp let-item="item">
+          {{ leaderLabel(item) }}
+        </ng-template>
+      </ng-select>
+      <p class="cf-split-field__hint" *ngIf="!loadingLeaders && !leaders.length">
+        No active leadership records found. Choose External minister instead.
+      </p>
+    </div>
+  </div>
+
+  <div class="cf-split-grid" *ngIf="source === 'external'">
+    <div class="cf-split-field cf-split-field--full">
+      <p class="cf-split-field__hint">
+        External minister — recorded on this sacrament only. This does not add them to parish leadership.
+      </p>
+      <label [attr.for]="'minister_ext_name_' + controlId">
+        Full name <span class="cf-split-req" aria-hidden="true">*</span>
+      </label>
+      <input
+        [id]="'minister_ext_name_' + controlId"
+        type="text"
+        [(ngModel)]="externalName"
+        (ngModelChange)="onExternalChange()"
+        [name]="'minister_ext_name_' + controlId"
+        placeholder="Full name"
+        aria-required="true"
+      />
+    </div>
+    <div class="cf-split-field">
+      <label [attr.for]="'minister_ext_title_' + controlId">Title / rank</label>
+      <input
+        [id]="'minister_ext_title_' + controlId"
+        type="text"
+        [(ngModel)]="externalTitle"
+        (ngModelChange)="onExternalChange()"
+        [name]="'minister_ext_title_' + controlId"
+        placeholder="Fr., Msgr., Bishop…"
+      />
+    </div>
+    <div class="cf-split-field">
+      <label [attr.for]="'minister_ext_role_' + controlId">Role</label>
+      <select
+        [id]="'minister_ext_role_' + controlId"
+        [(ngModel)]="externalRole"
+        (ngModelChange)="onExternalChange()"
+        [name]="'minister_ext_role_' + controlId"
+      >
+        <option value="">Select…</option>
+        <option *ngFor="let role of ministerRoles" [value]="role">{{ roleLabel(role) }}</option>
+      </select>
+    </div>
+  </div>
+</div>

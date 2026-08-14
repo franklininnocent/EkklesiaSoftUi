@@ -48,53 +48,55 @@
       </app-list-toolbar>
 
       <ng-container *ngIf="filteredItems.length; else emptyList">
-        <app-data-table>
-          <thead>
-            <tr>
-              <th scope="col">Code</th>
-              <th scope="col">Name</th>
-              <th scope="col">Description</th>
-              <th scope="col">Order</th>
-              <th scope="col" *ngIf="isPositionsKind">Occupancy</th>
-              <th scope="col">Status</th>
-              <th scope="col" *ngIf="canConfigure" class="cf-table__actions-col">
-                <span class="sr-only">Actions</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              *ngFor="let item of filteredItems"
-              [class.taxonomy-crud-panel__row--inactive]="!item.is_active"
-            >
-              <td>{{ item.code }}</td>
-              <td><strong>{{ item.name }}</strong></td>
-              <td>
-                <span
-                  class="taxonomy-crud-panel__desc"
-                  [attr.title]="item.description || null"
-                >
-                  {{ item.description || '—' }}
-                </span>
-              </td>
-              <td>{{ item.display_order }}</td>
-              <td *ngIf="isPositionsKind">{{ occupancyLabel(item) }}</td>
-              <td>
-                <app-status-badge
-                  [label]="statusLabel(item)"
-                  [tone]="statusTone(item)"
-                ></app-status-badge>
-              </td>
-              <td *ngIf="canConfigure" class="cf-table__actions-cell">
-                <app-action-bar
-                  [actions]="rowActions(item)"
-                  size="sm"
-                  (actionClicked)="onRowAction($event, item)"
-                ></app-action-bar>
-              </td>
-            </tr>
-          </tbody>
-        </app-data-table>
+        <div class="cf-panel taxonomy-crud-panel__panel">
+          <app-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Code</th>
+                <th scope="col">Name</th>
+                <th scope="col">Description</th>
+                <th scope="col">Order</th>
+                <th scope="col" *ngIf="isPositionsKind">Occupancy</th>
+                <th scope="col">Status</th>
+                <th scope="col" *ngIf="canConfigure" class="cf-table__actions-col">
+                  <span class="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                *ngFor="let item of filteredItems"
+                [class.taxonomy-crud-panel__row--inactive]="!item.is_active"
+              >
+                <td>{{ item.code }}</td>
+                <td><strong>{{ item.name }}</strong></td>
+                <td>
+                  <span
+                    class="taxonomy-crud-panel__desc"
+                    [attr.title]="item.description || null"
+                  >
+                    {{ item.description || '—' }}
+                  </span>
+                </td>
+                <td>{{ item.display_order }}</td>
+                <td *ngIf="isPositionsKind">{{ occupancyLabel(item) }}</td>
+                <td>
+                  <app-status-badge
+                    [label]="statusLabel(item)"
+                    [tone]="statusTone(item)"
+                  ></app-status-badge>
+                </td>
+                <td *ngIf="canConfigure" class="cf-table__actions-cell">
+                  <app-action-bar
+                    [actions]="rowActions(item)"
+                    size="sm"
+                    (actionClicked)="onRowAction($event, item)"
+                  ></app-action-bar>
+                </td>
+              </tr>
+            </tbody>
+          </app-data-table>
+        </div>
       </ng-container>
 
       <ng-template #emptyList>

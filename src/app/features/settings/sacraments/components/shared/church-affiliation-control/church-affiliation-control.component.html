@@ -1,0 +1,102 @@
+<div class="cf-affiliation">
+  <p class="cf-affiliation__label" [id]="'aff_label_' + controlId">{{ label }}</p>
+  <p class="cf-split-field__hint">
+    Church affiliation is where this person belonged for this sacrament. It is separate from whether they are a member in this parish’s directory.
+  </p>
+
+  <div class="sacrament-radio-row" role="radiogroup" [attr.aria-labelledby]="'aff_label_' + controlId">
+    <label class="sacrament-radio">
+      <input
+        type="radio"
+        [name]="'affiliation_type_' + controlId"
+        value="home_parish"
+        [checked]="affiliationType === 'home_parish'"
+        (change)="onTypeChange('home_parish')"
+      />
+      <span>This parish</span>
+    </label>
+    <label class="sacrament-radio">
+      <input
+        type="radio"
+        [name]="'affiliation_type_' + controlId"
+        value="other"
+        [checked]="affiliationType === 'other'"
+        (change)="onTypeChange('other')"
+      />
+      <span>Other parish / diocese</span>
+    </label>
+  </div>
+
+  <div class="cf-split-grid" *ngIf="showOtherFields">
+    <div class="cf-split-field cf-split-field--full">
+      <label [attr.for]="'aff_parish_name_' + controlId">
+        Parish name
+        <span class="cf-split-req" *ngIf="requireDioceseWhenOther" aria-hidden="true">*</span>
+      </label>
+      <input
+        [id]="'aff_parish_name_' + controlId"
+        type="text"
+        [(ngModel)]="parishName"
+        (ngModelChange)="onFieldChange()"
+        [name]="'aff_parish_name_' + controlId"
+        placeholder="Parish name"
+        [attr.aria-required]="requireDioceseWhenOther"
+      />
+    </div>
+    <div class="cf-split-field cf-split-field--full">
+      <label [attr.for]="'aff_parish_address_' + controlId">
+        Parish address <span class="cf-split-optional">optional</span>
+      </label>
+      <textarea
+        [id]="'aff_parish_address_' + controlId"
+        rows="2"
+        [(ngModel)]="parishAddress"
+        (ngModelChange)="onFieldChange()"
+        [name]="'aff_parish_address_' + controlId"
+      ></textarea>
+    </div>
+    <div class="cf-split-field">
+      <label [attr.for]="'aff_diocese_name_' + controlId">
+        Diocese
+        <span class="cf-split-req" *ngIf="requireDioceseWhenOther" aria-hidden="true">*</span>
+      </label>
+      <input
+        [id]="'aff_diocese_name_' + controlId"
+        type="text"
+        [(ngModel)]="dioceseName"
+        (ngModelChange)="onFieldChange()"
+        [name]="'aff_diocese_name_' + controlId"
+        placeholder="Diocese name"
+        [attr.aria-required]="requireDioceseWhenOther"
+      />
+    </div>
+    <div class="cf-split-field">
+      <label [attr.for]="'aff_diocese_region_' + controlId">
+        Region <span class="cf-split-optional">optional</span>
+      </label>
+      <input
+        [id]="'aff_diocese_region_' + controlId"
+        type="text"
+        [(ngModel)]="dioceseRegion"
+        (ngModelChange)="onFieldChange()"
+        [name]="'aff_diocese_region_' + controlId"
+      />
+    </div>
+    <div class="cf-split-field">
+      <label [attr.for]="'aff_diocese_country_' + controlId">
+        Country <span class="cf-split-optional">optional</span>
+      </label>
+      <input
+        [id]="'aff_diocese_country_' + controlId"
+        type="text"
+        [(ngModel)]="dioceseCountry"
+        (ngModelChange)="onFieldChange()"
+        [name]="'aff_diocese_country_' + controlId"
+      />
+    </div>
+  </div>
+
+  <p class="cf-split-field__hint" *ngIf="affiliationType === 'home_parish' && homeParishName">
+    This parish will be recorded as {{ homeParishName }}.
+  </p>
+</div>

@@ -11,3 +11,9 @@
   gap: var(--cf-space-1);
   align-items: center;
 }
+
+/* Panel container matching list pages `.cf-panel` content block. */
+.users__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}

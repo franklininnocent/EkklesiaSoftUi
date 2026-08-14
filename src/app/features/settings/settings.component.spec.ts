@@ -1,5 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { provideRouter } from '@angular/router';
 import { SettingsComponent } from './settings.component';
 import { Store } from '@ngrx/store';
 import { AuthService } from '@core/services';
@@ -8,12 +9,18 @@ describe('SettingsComponent (role-based visibility)', () => {
   let component: SettingsComponent;
   let authServiceMock: {
     hasAnyPermission: jest.Mock<boolean, [string[]]>;
+    hasPermission: jest.Mock<boolean, [string]>;
+    canViewMySubscription: jest.Mock<boolean, [any?]>;
     canAccessRbac: jest.Mock<boolean, [any]>;
   };
 
   const createComponentWithUser = (user: any | null) => {
     authServiceMock = {
       hasAnyPermission: jest.fn().mockReturnValue(false),
+      hasPermission: jest.fn().mockImplementation((name: string) => {
+        return ['sacraments.settings.view', 'sacraments.settings.manage'].includes(name);
+      }),
+      canViewMySubscription: jest.fn().mockReturnValue(false),
       canAccessRbac: jest.fn().mockImplementation((targetUser: any) => {
         if (!targetUser) return false;
         const roleName = targetUser.role_name || targetUser.role?.name || '';
@@ -26,6 +33,7 @@ describe('SettingsComponent (role-based visibility)', () => {
     TestBed.configureTestingModule({
       imports: [SettingsComponent],
       providers: [
+        provideRouter([]),
         {
           provide: Store,
           useValue: {
@@ -160,10 +168,22 @@ describe('SettingsComponent (role-based visibility)', () => {
     expect(tenantVisible.find(s => s.title === 'Ecclesiastical Data')).toBeUndefined();
     expect(tenantVisible.find(s => s.title === 'Sacrament Types')).toBeUndefined();
 
-    // Ekklesia admin should see ecclesiastical sections but not tenant-only Sacraments
+    // Ekklesia admin should see ecclesiastical sections but not tenant-only Sacrament Settings
     expect(ekklesiaVisible.find(s => s.title === 'Ecclesiastical Data')).toBeDefined();
     expect(ekklesiaVisible.find(s => s.title === 'Sacrament Types')).toBeDefined();
-    expect(ekklesiaVisible.find(s => s.title === 'Sacraments')).toBeUndefined();
+    expect(ekklesiaVisible.find(s => s.title === 'Sacrament Settings')).toBeUndefined();
+
+    const sacramentsCard = tenantVisible.find(s => s.title === 'Sacrament Settings');
+    expect(sacramentsCard).toBeDefined();
+    expect(sacramentsCard?.route).toBe('/settings/sacraments');
+    expect(sacramentsCard?.description).toContain('availability');
+  });
+
+  it('shows Sacrament Settings card to tenant users even without settings permissions', () => {
+    createComponentWithUser(tenantUser);
+    authServiceMock.hasPermission.mockReturnValue(false);
+    const visible = component.getVisibleSections(tenantUser as any);
+    expect(visible.find(s => s.title === 'Sacrament Settings')).toBeDefined();
   });
 
   it('shows Roles & Permissions card for tenant admin with RBAC view permission', () => {

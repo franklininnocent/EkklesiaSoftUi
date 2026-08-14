@@ -3,6 +3,12 @@
   gap: var(--cf-space-3);
 }
 
+/* Panel container matching list pages `.cf-panel` content block. */
+.taxonomy-crud-panel__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
 .taxonomy-crud-panel__desc {
   display: inline-block;
   max-width: 14rem;

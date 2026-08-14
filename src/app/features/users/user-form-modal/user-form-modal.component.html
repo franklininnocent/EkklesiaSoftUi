@@ -1,44 +1,39 @@
 <app-modal-shell
   *ngIf="show"
   [title]="isEditMode ? 'Edit User' : 'Create New User'"
-  [description]="isEditMode ? 'Update user details and role assignments' : 'Add a new user to your organization with multiple role assignments'"
-  size="xl"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  [closeAriaLabel]="isEditMode ? 'Close edit user' : 'Close create user'"
   [isSubmitting]="isSubmitting"
   (closeRequested)="closeModal()"
 >
-  <!-- Self-Edit Restriction Warning -->
-  <div *ngIf="isEditingSelf" class="alert alert-warning">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-    </svg>
-    <div>
-      <strong>Viewing Your Own Account</strong>
-      <p>You cannot edit your own account details. Please contact your administrator if you need to make changes to your name, email, contact number, roles, or account status.</p>
+  <form
+    id="user-form"
+    class="cf-split-form-body user-form-modal"
+    (ngSubmit)="onSubmit()"
+    #userForm="ngForm"
+    novalidate
+  >
+    <p class="cf-meta" *ngIf="isEditMode && user">{{ user.name }} · {{ user.email }}</p>
+
+    <div *ngIf="isEditingSelf" class="cf-split-form-alert user-form-modal__alert--warning" role="status">
+      <strong>Viewing your own account.</strong>
+      You cannot edit your own account details. Contact an administrator if you need changes to name, email, contact number, roles, or account status.
     </div>
-  </div>
 
-  <!-- Error Alert -->
-  <div *ngIf="errorMessage" class="alert alert-error">
-    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-    <span>{{ errorMessage }}</span>
-  </div>
+    <p *ngIf="errorMessage" class="cf-split-form-alert cf-split-form-alert--error" role="alert">
+      {{ errorMessage }}
+    </p>
 
-  <!-- User Information Form -->
-  <form id="user-form" (ngSubmit)="onSubmit()" #userForm="ngForm">
-
-    <!-- Basic Information Section -->
-    <section class="cf-form-section">
-      <h3 class="cf-form-section__title">Basic Information</h3>
-
-      <div class="cf-form-grid cf-form-grid--fields">
-        <app-form-field
-          label="Full Name"
-          fieldId="name"
-          [required]="true"
-          [errorText]="hasError('name') ? getError('name') : null"
-        >
+    <!-- Account information -->
+    <section class="cf-split-section" aria-labelledby="user-section-account">
+      <h3 id="user-section-account" class="cf-split-section__title">Account information</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="name">
+            Full name <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
           <input
             type="text"
             id="name"
@@ -48,16 +43,16 @@
             (input)="validateField('name')"
             [disabled]="isEditingSelf"
             placeholder="Enter full name"
-            required
+            aria-required="true"
+            [class.cf-split-field__control--invalid]="hasError('name')"
           />
-        </app-form-field>
+          <p class="cf-split-field__error" *ngIf="hasError('name')">{{ getError('name') }}</p>
+        </div>
 
-        <app-form-field
-          label="Email Address"
-          fieldId="email"
-          [required]="true"
-          [errorText]="hasError('email') ? getError('email') : null"
-        >
+        <div class="cf-split-field">
+          <label for="email">
+            Email address <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
           <input
             type="email"
             id="email"
@@ -67,71 +62,82 @@
             (input)="validateField('email')"
             [disabled]="isEditingSelf"
             placeholder="user@example.com"
-            required
+            autocomplete="email"
+            aria-required="true"
+            [class.cf-split-field__control--invalid]="hasError('email')"
           />
-        </app-form-field>
+          <p class="cf-split-field__error" *ngIf="hasError('email')">{{ getError('email') }}</p>
+        </div>
 
-        <app-phone-input
-          [label]="'Contact Number'"
-          [id]="'contact_number'"
-          [name]="'contact_number'"
-          [required]="false"
-          [disabled]="isEditingSelf"
-          [maxLength]="15"
-          [minLength]="6"
-          [(ngModel)]="formData.contact_number"
-          ngDefaultControl
-        ></app-phone-input>
+        <div class="cf-split-field">
+          <app-phone-input
+            [label]="'Contact number'"
+            [id]="'contact_number'"
+            [name]="'contact_number'"
+            [required]="false"
+            [disabled]="isEditingSelf"
+            [maxLength]="15"
+            [minLength]="6"
+            [(ngModel)]="formData.contact_number"
+            ngDefaultControl
+          ></app-phone-input>
+        </div>
 
-        <app-form-field label="User Type" fieldId="user_type">
+        <div class="cf-split-field">
+          <label for="user_type">User type</label>
           <select
             id="user_type"
             name="user_type"
             [(ngModel)]="formData.user_type"
             [disabled]="isEditingSelf"
           >
-            <option [value]="1">Primary Contact</option>
-            <option [value]="2">Secondary Contact</option>
+            <option [ngValue]="1">Primary Contact</option>
+            <option [ngValue]="2">Secondary Contact</option>
           </select>
-        </app-form-field>
+        </div>
       </div>
     </section>
 
-    <!-- Password Section -->
-    <section class="cf-form-section">
-      <h3 class="cf-form-section__title">
-        {{ isEditMode ? 'Change Password (Optional)' : 'Password' }}
-      </h3>
-      <p class="cf-form-section__intro" *ngIf="isEditMode">
-        Leave blank to keep the current password
-      </p>
-
-      <div class="cf-form-grid cf-form-grid--fields">
-        <app-form-field
-          label="Password"
-          fieldId="password"
-          [required]="!isEditMode"
-          helpText="Minimum 8 characters, must include uppercase, lowercase, number, and special character"
-          [errorText]="hasError('password') ? getError('password') : null"
-        >
+    <!-- Password -->
+    <section class="cf-split-section" aria-labelledby="user-section-password">
+      <h3 id="user-section-password" class="cf-split-section__title">Password</h3>
+      <p class="cf-meta" *ngIf="isEditMode">Leave blank to keep the current password.</p>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="password">
+            Password
+            <span class="cf-split-req" *ngIf="!isEditMode" aria-hidden="true">*</span>
+          </label>
           <input
             type="password"
             id="password"
             name="password"
             [(ngModel)]="formData.password"
             (blur)="markFieldAsTouched('password')"
-            (input)="validateField('password')"
-            placeholder="Enter password"
-            [required]="!isEditMode"
+            (input)="validateField('password'); validateField('password_confirmation')"
+            [placeholder]="isEditMode ? 'New password' : ''"
+            autocomplete="new-password"
+            [attr.aria-required]="!isEditMode"
+            [class.cf-split-field__control--invalid]="hasError('password')"
           />
-        </app-form-field>
+          <p
+            class="cf-split-field__hint"
+            *ngIf="(!isEditMode || !!formData.password) && !hasError('password')"
+          >
+            At least 8 characters, with uppercase, lowercase, number, and special character.
+          </p>
+          <p class="cf-split-field__error" *ngIf="hasError('password')">{{ getError('password') }}</p>
+        </div>
 
-        <app-form-field
-          label="Confirm Password"
-          fieldId="password_confirmation"
-          [required]="!isEditMode && !!formData.password"
-          [errorText]="hasError('password_confirmation') ? getError('password_confirmation') : null"
-        >
+        <div class="cf-split-field">
+          <label for="password_confirmation">
+            Confirm password
+            <span
+              class="cf-split-req"
+              *ngIf="!isEditMode || !!formData.password"
+              aria-hidden="true"
+            >*</span>
+          </label>
           <input
             type="password"
             id="password_confirmation"
@@ -139,112 +145,125 @@
             [(ngModel)]="formData.password_confirmation"
             (blur)="markFieldAsTouched('password_confirmation')"
             (input)="validateField('password_confirmation')"
-            placeholder="Confirm password"
-            [required]="!isEditMode || (isEditMode && formData.password)"
+            autocomplete="new-password"
+            [class.cf-split-field__control--invalid]="hasError('password_confirmation')"
           />
-        </app-form-field>
+          <p class="cf-split-field__error" *ngIf="hasError('password_confirmation')">
+            {{ getError('password_confirmation') }}
+          </p>
+        </div>
       </div>
     </section>
 
-    <!-- Role Assignment Section (Multi-Select) -->
-    <section class="cf-form-section">
-      <div class="section-header">
-        <div>
-          <h3 class="cf-form-section__title required">Role Assignment</h3>
-          <p class="cf-form-section__intro">Select one or more roles to assign to this user</p>
-        </div>
-        <div class="role-count-badge" *ngIf="getRoleCount() > 0">
-          {{ getRoleCount() }} {{ getRoleCount() === 1 ? 'role' : 'roles' }} selected
-        </div>
-      </div>
+    <!-- Role assignment -->
+    <section class="cf-split-section" aria-labelledby="user-section-roles">
+      <h3 id="user-section-roles" class="cf-split-section__title">
+        Role assignment <span class="cf-split-req" aria-hidden="true">*</span>
+      </h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <div class="user-form-modal__role-intro">
+            <p class="cf-split-field__hint user-form-modal__role-hint">
+              Select one or more roles to assign to this user.
+            </p>
+            <span class="user-form-modal__role-count" *ngIf="getRoleCount() > 0">
+              {{ getRoleCount() }} {{ getRoleCount() === 1 ? 'role' : 'roles' }} selected
+            </span>
+          </div>
 
-      <!-- Loading State -->
-      <div *ngIf="loadingRoles" class="loading-container">
-        <div class="spinner"></div>
-        <span>Loading roles...</span>
-      </div>
+          <div *ngIf="loadingRoles" class="user-form-modal__role-status" role="status">
+            Loading roles…
+          </div>
 
-      <!-- Error State -->
-      <div *ngIf="rolesError" class="alert alert-error">
-        <span>{{ rolesError }}</span>
-      </div>
+          <p *ngIf="rolesError" class="cf-split-form-alert cf-split-form-alert--error" role="alert">
+            {{ rolesError }}
+          </p>
 
-      <!-- Roles Grid -->
-      <div *ngIf="!loadingRoles && !rolesError" class="roles-grid">
-        <label
-          *ngFor="let role of availableRoles"
-          class="role-checkbox-card"
-          [class.selected]="isRoleSelected(role.id)"
-          [class.disabled]="isEditingSelf"
-        >
-          <input
-            type="checkbox"
-            [checked]="isRoleSelected(role.id)"
-            (change)="toggleRole(role.id)"
-            [disabled]="isEditingSelf"
-            class="role-checkbox"
-          />
-          <div class="role-card-content">
-            <div class="role-card-header">
-              <span class="role-name">{{ role.name }}</span>
-              <span class="role-level">Level {{ role.level }}</span>
-            </div>
-            <p class="role-description" *ngIf="role.description">{{ role.description }}</p>
-            <div class="role-permissions-count" *ngIf="role.permissions">
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-              </svg>
-              {{ role.permissions.length }} {{ role.permissions.length === 1 ? 'permission' : 'permissions' }}
+          <div
+            *ngIf="!loadingRoles && !rolesError"
+            class="user-form-modal__role-list"
+            role="group"
+            aria-labelledby="user-section-roles"
+          >
+            <label
+              *ngFor="let role of availableRoles"
+              class="user-form-modal__role-row"
+              [class.user-form-modal__role-row--selected]="isRoleSelected(role.id)"
+              [class.user-form-modal__role-row--disabled]="isEditingSelf"
+            >
+              <input
+                type="checkbox"
+                class="user-form-modal__role-checkbox"
+                [checked]="isRoleSelected(role.id)"
+                (change)="toggleRole(role.id)"
+                [disabled]="isEditingSelf"
+                [attr.aria-label]="role.name"
+              />
+              <span class="user-form-modal__role-check" aria-hidden="true"></span>
+              <span class="user-form-modal__role-body">
+                <span class="user-form-modal__role-name-row">
+                  <span class="user-form-modal__role-name">{{ role.name }}</span>
+                  <span class="user-form-modal__role-level">Level {{ role.level }}</span>
+                </span>
+                <span class="user-form-modal__role-description" *ngIf="role.description">
+                  {{ role.description }}
+                </span>
+              </span>
+            </label>
+
+            <div *ngIf="availableRoles.length === 0" class="user-form-modal__role-empty">
+              <p>No roles available</p>
+              <small>Create roles before adding users.</small>
             </div>
           </div>
-          <div class="role-card-checkmark">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-        </label>
 
-        <!-- Empty State -->
-        <div *ngIf="availableRoles.length === 0" class="empty-state">
-          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
-          </svg>
-          <p>No roles available</p>
-          <small>Please create roles first before adding users</small>
+          <p class="cf-split-field__error" *ngIf="hasError('role_ids')">{{ getError('role_ids') }}</p>
         </div>
       </div>
-
-      <span *ngIf="hasError('role_ids')" class="error-message">{{ getError('role_ids') }}</span>
     </section>
 
-    <!-- Status Section -->
-    <section class="cf-form-section">
-      <h3 class="cf-form-section__title">Status</h3>
-      <label class="toggle-label" [class.disabled]="isEditingSelf">
+    <!-- Account status -->
+    <section class="cf-split-section" aria-labelledby="user-section-status">
+      <h3 id="user-section-status" class="cf-split-section__title">Account status</h3>
+      <label
+        class="cf-split-toggle cf-split-toggle--block"
+        [class.user-form-modal__toggle--disabled]="isEditingSelf"
+      >
         <input
           type="checkbox"
-          class="toggle-input"
-          [(ngModel)]="formData.active"
-          [ngModelOptions]="{standalone: true}"
-          [value]="formData.active === 1"
+          [checked]="formData.active === 1"
           [disabled]="isEditingSelf"
-          (change)="formData.active = formData.active === 1 ? 0 : 1"
+          (change)="onActiveToggle()"
         />
-        <span class="toggle-slider"></span>
-        <span class="toggle-text">
+        <span>
           {{ formData.active === 1 ? 'Active' : 'Inactive' }}
+          <small>
+            {{
+              formData.active === 1
+                ? 'User can log in and access the system.'
+                : 'User cannot log in or access the system.'
+            }}
+          </small>
         </span>
       </label>
-      <p class="cf-form-section__intro">
-        {{ formData.active === 1 ? 'User can log in and access the system' : 'User cannot log in or access the system' }}
-      </p>
     </section>
-  </form>
 
-  <ng-container modalFooter>
-    <button type="button" class="cf-btn" (click)="closeModal()" [disabled]="isSubmitting">Cancel</button>
-    <button type="submit" form="user-form" class="cf-btn cf-btn-primary" [disabled]="isSubmitting">
-      {{ isSubmitting ? 'Saving…' : (isEditMode ? 'Update' : 'Create') }}
-    </button>
-  </ng-container>
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        class="cf-btn cf-btn-primary"
+        [disabled]="isSubmitting"
+      >
+        {{ isSubmitting ? 'Saving…' : (isEditMode ? 'Save changes' : 'Create') }}
+      </button>
+      <button
+        type="button"
+        class="cf-btn"
+        (click)="closeModal()"
+        [disabled]="isSubmitting"
+      >
+        Cancel
+      </button>
+    </div>
+  </form>
 </app-modal-shell>

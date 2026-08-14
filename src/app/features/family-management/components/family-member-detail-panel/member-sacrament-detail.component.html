@@ -3,18 +3,21 @@
     <div class="sacrament-tile__title-wrap">
       <span class="sacrament-tile__dot" aria-hidden="true"></span>
       <h4 class="sacrament-tile__title">{{ sacramentType.name }}</h4>
-      <span class="pill sacrament-tile__status" [class.pill--active]="completed">{{ statusLabel }}</span>
+      <span class="pill sacrament-tile__status" [class.pill--active]="completed" [attr.title]="'Profile summary: ' + statusLabel">{{ statusLabel }}</span>
     </div>
     <app-edit-icon-button
       *ngIf="editable"
       size="sm"
-      [ariaLabel]="'Edit ' + sacramentType.name"
+      [ariaLabel]="'Edit ' + sacramentType.name + ' profile summary'"
       (clicked)="onEdit()"
     />
   </header>
 
   <div class="sacrament-tile__body">
-    <p *ngIf="!hasSacramentDetails" class="sacrament-tile__empty">No sacrament details added</p>
+    <p class="sacrament-tile__hint" style="font-size: 0.75rem; color: var(--cf-muted, #64748b); margin: 0 0 0.5rem;">
+      Profile summary — not the parish register
+    </p>
+    <p *ngIf="!hasSacramentDetails" class="sacrament-tile__empty">No profile summary added yet</p>
     <ng-container *ngIf="hasSacramentDetails">
       <dl class="field-list">
         <div class="field" *ngFor="let row of displayFields">

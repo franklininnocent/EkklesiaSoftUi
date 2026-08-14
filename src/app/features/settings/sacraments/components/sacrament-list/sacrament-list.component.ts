@@ -1,9 +1,9 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewChecked } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewChecked, HostListener } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SacramentService } from '../../services/sacrament.service';
-import { Sacrament, SacramentType, SacramentListParams, SacramentListResponse } from '../../models/sacrament.model';
+import { Sacrament, SacramentType, SacramentListParams, SacramentListResponse, SacramentParticipant } from '../../models/sacrament.model';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { Store } from '@ngrx/store';
@@ -12,27 +12,45 @@ import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { take, firstValueFrom } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
-import { SacramentStatus, SACRAMENT_STATUS_OPTIONS, PAGINATION_DEFAULTS } from '../../constants/sacrament.constants';
+import { PAGINATION_DEFAULTS } from '../../constants/sacrament.constants';
 import { handleApiError } from '../../utils/error-handler.util';
 import { SacramentFormModalComponent } from '../sacrament-form-modal/sacrament-form-modal.component';
+import { SacramentDefinitionService } from '../../services/sacrament-definition.service';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
-import { PaginationComponent, ButtonComponent } from '@shared/components';
+import { PaginationComponent } from '@shared/components';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
+import { VoidSacramentDialogComponent } from '../shared/void-sacrament-dialog/void-sacrament-dialog.component';
+import { CorrectSacramentDialogComponent } from '../shared/correct-sacrament-dialog/correct-sacrament-dialog.component';
+import { HttpErrorResponse } from '@angular/common/http';
 
 @Component({
   selector: 'app-sacrament-list',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
+    CommonModule,
+    FormsModule,
+    RouterLink,
     SacramentFormModalComponent,
     AdvancedSearchPanelComponent,
     PaginationComponent,
-    ButtonComponent,
     PageHeaderComponent,
+    ListToolbarComponent,
+    DataTableComponent,
+    CfEmptyStateComponent,
+    StatusBadgeComponent,
+    LoadingSkeletonComponent,
     ModalShellComponent,
+    ConfirmationModalComponent,
+    VoidSacramentDialogComponent,
+    CorrectSacramentDialogComponent,
   ],
   templateUrl: './sacrament-list.component.html',
   styleUrl: './sacrament-list.component.scss',
@@ -81,9 +99,15 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   sacramentToDelete: Sacrament | null = null;
   showFormModal = false;
   sacramentToEdit: Sacrament | null = null;
+  correctionReason: string | null = null;
   showDetailModal = false;
   detailSacrament: Sacrament | null = null;
   loadingDetail = false;
+  showVoidDialog = false;
+  sacramentToVoid: Sacrament | null = null;
+  voiding = false;
+  showCorrectDialog = false;
+  sacramentToCorrect: Sacrament | null = null;
   
   @ViewChild('detailModal', { static: false }) detailModalRef?: ElementRef<HTMLElement>;
   
@@ -105,29 +129,162 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   selectAll = false;
   showBulkActions = false;
   bulkActionType: 'delete' | 'status' | 'export' | null = null;
-  bulkStatusValue: string = 'active';
+  bulkStatusValue: string = 'registered';
+
+  /** Bulk confirmation / export chooser (replaces native confirm/prompt). */
+  showBulkConfirmModal = false;
+  bulkConfirmTitle = '';
+  bulkConfirmMessage = '';
+  bulkConfirmAction: (() => void) | null = null;
+  showExportFormatModal = false;
+  loadError: string | null = null;
+  loaded = false;
+  showOverflowMenu = false;
 
   constructor(
     private sacramentService: SacramentService,
     private toastService: ToastService,
     private router: Router,
+    private route: ActivatedRoute,
     private store: Store<AppState>,
     private datePipe: DatePipe,
     private cdr: ChangeDetectorRef,
-    private authService: AuthService
+    private authService: AuthService,
+    private definitionService: SacramentDefinitionService
   ) {}
-  
-  /**
-   * Check if current user is Tenant Admin
-   */
+
   get isTenantAdmin(): boolean {
     return this.authService.isTenantAdmin();
+  }
+
+  get canMigrate(): boolean {
+    return this.authService.hasPermission('sacraments.migration.view');
+  }
+
+  get holyOrdersEnabled(): boolean {
+    const holyOrders = this.sacramentTypes.find((type) => {
+      const code = (type.code || '').toUpperCase().replace(/[\s-]/g, '_');
+      return ['HOLY_ORDERS', 'HOLYORDERS', 'ORDINATION'].includes(code);
+    });
+    return !!holyOrders && holyOrders.enabled_for_tenant !== false;
+  }
+
+  get canVoid(): boolean {
+    return this.authService.hasPermission('sacraments.void');
+  }
+
+  get canCorrect(): boolean {
+    return this.authService.hasPermission('sacraments.correct');
+  }
+
+  get hasActiveFilters(): boolean {
+    return this.getActiveFilterCount() > 0 || !!this.searchTerm;
+  }
+
+  get drawerFilterCount(): number {
+    return this.getActiveFilterCount();
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    if (!this.showOverflowMenu) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target && !target.closest('.sacrament-list__overflow')) {
+      this.showOverflowMenu = false;
+      this.cdr.markForCheck();
+    }
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.showOverflowMenu) {
+      this.showOverflowMenu = false;
+      this.cdr.markForCheck();
+    }
   }
 
   ngOnInit(): void {
     this.initializeSearchFields();
     this.loadCurrentUser();
     this.loadSacramentTypes();
+    this.definitionService.load().pipe(take(1)).subscribe({
+      next: () => this.cdr.markForCheck(),
+      error: () => undefined,
+    });
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      const editId = params.get('edit');
+      const create = params.get('create');
+      if (editId) {
+        const id = Number(editId);
+        if (!Number.isNaN(id)) {
+          this.openEditById(id);
+        }
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { edit: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      } else if (create === '1') {
+        this.onCreateSacrament();
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { create: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      }
+    });
+  }
+
+  /** Open edit modal from deep link / certificate page (UX-0). */
+  openEditById(id: number): void {
+    this.sacramentService
+      .getSacrament(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.correctionReason = null;
+            this.sacramentToEdit = response.data;
+            this.showFormModal = true;
+            this.cdr.markForCheck();
+          }
+        },
+        error: () => {
+          this.toastService.error('Could not open sacrament for editing.');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  showParticipantsInDetail(): boolean {
+    return this.definitionService.isParticipantsV1Enabled()
+      && !!this.detailSacrament?.participants?.length;
+  }
+
+  participantDisplayName(p: SacramentParticipant): string {
+    return p.snapshot_json?.full_name || p.external_full_name || '—';
+  }
+
+  participantRoleLabel(role: string): string {
+    const map: Record<string, string> = {
+      recipient: 'Recipient',
+      bride: 'Bride',
+      groom: 'Groom',
+      father: 'Father',
+      mother: 'Mother',
+      godfather: 'Godfather',
+      godmother: 'Godmother',
+      sponsor: 'Sponsor',
+      witness: 'Witness',
+      minister: 'Minister',
+      candidate: 'Candidate',
+      co_consecrator: 'Co-consecrator',
+    };
+    return map[role] || role.replace(/_/g, ' ');
   }
 
   /**
@@ -147,9 +304,9 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
         label: 'Status',
         type: 'select',
         options: [
-          { value: 'active', label: 'Active' },
-          { value: 'cancelled', label: 'Cancelled' },
-          { value: 'conditional', label: 'Conditional' }
+          { value: 'registered', label: 'Registered' },
+          { value: 'conditional', label: 'Conditional' },
+          { value: 'voided', label: 'Voided' },
         ],
         value: this.selectedStatus
       },
@@ -214,7 +371,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Load sacrament types for filter dropdown
    */
   loadSacramentTypes(): void {
-    this.sacramentService.getSacramentTypes()
+    this.sacramentService.getSacramentTypes({ includeInactive: true })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: (response) => {
@@ -245,6 +402,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     }
 
     this.loading = true;
+    this.loadError = null;
 
     const params: SacramentListParams = {
       page: this.currentPage,
@@ -275,12 +433,15 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
           this.totalPages = response.data.last_page || 1;
         }
         this.loading = false;
+        this.loaded = true;
         this.cdr.markForCheck();
       },
       error: (error) => {
         const errorMessage = handleApiError(error, 'Failed to load sacraments');
+        this.loadError = errorMessage;
         this.toastService.error(errorMessage);
         this.loading = false;
+        this.loaded = true;
         this.cdr.markForCheck();
       }
     });
@@ -346,6 +507,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Show create modal
    */
   onCreateSacrament(): void {
+    this.correctionReason = null;
     this.sacramentToEdit = null;
     this.showFormModal = true;
   }
@@ -354,6 +516,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Show edit modal
    */
   onEditSacrament(sacrament: Sacrament): void {
+    this.correctionReason = null;
     this.sacramentToEdit = sacrament;
     this.showFormModal = true;
   }
@@ -364,6 +527,12 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   onFormSave(): void {
     this.showFormModal = false;
     this.sacramentToEdit = null;
+    this.correctionReason = null;
+    this.loadSacraments();
+  }
+
+  /** Save and Add Another — refresh list, keep modal open. */
+  onFormSavedContinue(): void {
     this.loadSacraments();
   }
   
@@ -373,6 +542,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   onFormCancel(): void {
     this.showFormModal = false;
     this.sacramentToEdit = null;
+    this.correctionReason = null;
   }
 
   /**
@@ -440,16 +610,166 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Edit sacrament from detail modal
    */
   editSacrament(sacrament: Sacrament): void {
+    this.correctionReason = null;
     this.sacramentToEdit = sacrament;
     this.showFormModal = true;
     this.cdr.markForCheck();
+  }
+
+  canVoidSacrament(sacrament: Sacrament | null | undefined): boolean {
+    if (!sacrament || !this.canVoid) {
+      return false;
+    }
+    const status = (sacrament.status || '').toLowerCase();
+    return status !== 'voided' && status !== 'cancelled';
+  }
+
+  canCorrectSacrament(sacrament: Sacrament | null | undefined): boolean {
+    if (!sacrament || !this.canCorrect) {
+      return false;
+    }
+    const status = (sacrament.status || '').toLowerCase();
+    return status !== 'voided' && status !== 'cancelled';
+  }
+
+  openVoidDialog(sacrament: Sacrament): void {
+    if (!this.canVoidSacrament(sacrament)) {
+      return;
+    }
+    this.ensureSacramentForLifecycle(sacrament, (full) => {
+      this.sacramentToVoid = full;
+      this.showVoidDialog = true;
+      this.cdr.markForCheck();
+    });
+  }
+
+  cancelVoid(): void {
+    if (this.voiding) {
+      return;
+    }
+    this.showVoidDialog = false;
+    this.sacramentToVoid = null;
+    this.cdr.markForCheck();
+  }
+
+  confirmVoid(event: { reason: string }): void {
+    if (!this.sacramentToVoid || this.voiding) {
+      return;
+    }
+
+    const target = this.sacramentToVoid;
+    this.voiding = true;
+    this.cdr.markForCheck();
+    this.sacramentService
+      .voidSacrament(target.id, {
+        lock_version: target.lock_version ?? 0,
+        reason: event.reason,
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.voiding = false;
+          if (response.success) {
+            this.toastService.success(
+              'Record marked Voided. It remains visible in the register.'
+            );
+            this.showVoidDialog = false;
+            this.sacramentToVoid = null;
+            this.closeDetailModal();
+            this.loadSacraments();
+          } else {
+            this.toastService.error(response.message || 'Failed to void sacrament.');
+          }
+          this.cdr.markForCheck();
+        },
+        error: (error: unknown) => {
+          this.voiding = false;
+          this.handleLifecycleConflict(error, 'Failed to void sacrament.');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  openCorrectDialog(sacrament: Sacrament): void {
+    if (!this.canCorrectSacrament(sacrament)) {
+      return;
+    }
+    this.ensureSacramentForLifecycle(sacrament, (full) => {
+      this.sacramentToCorrect = full;
+      this.showCorrectDialog = true;
+      this.cdr.markForCheck();
+    });
+  }
+
+  cancelCorrect(): void {
+    this.showCorrectDialog = false;
+    this.sacramentToCorrect = null;
+    this.cdr.markForCheck();
+  }
+
+  confirmCorrect(event: { reason: string }): void {
+    if (!this.sacramentToCorrect) {
+      return;
+    }
+    const target = this.sacramentToCorrect;
+    this.correctionReason = event.reason;
+    this.sacramentToEdit = target;
+    this.showCorrectDialog = false;
+    this.sacramentToCorrect = null;
+    this.closeDetailModal();
+    this.showFormModal = true;
+    this.cdr.markForCheck();
+  }
+
+  /**
+   * Lifecycle APIs need lock_version; list rows may omit it.
+   */
+  private ensureSacramentForLifecycle(
+    sacrament: Sacrament,
+    onReady: (full: Sacrament) => void
+  ): void {
+    if (sacrament.lock_version != null) {
+      onReady(sacrament);
+      return;
+    }
+    this.sacramentService
+      .getSacrament(sacrament.id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            onReady(response.data);
+          } else {
+            this.toastService.error('Could not load this record. Try again.');
+          }
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          this.toastService.error(handleApiError(error, 'Could not load this record.'));
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private handleLifecycleConflict(error: unknown, fallback: string): void {
+    const status =
+      error instanceof HttpErrorResponse
+        ? error.status
+        : (error as { status?: number })?.status;
+    if (status === 409) {
+      this.toastService.error(
+        'This record was changed by someone else. Reload and try again.'
+      );
+      return;
+    }
+    this.toastService.error(handleApiError(error, fallback));
   }
 
   /**
    * Navigate to certificate view page
    */
   viewCertificate(sacrament: Sacrament): void {
-    this.router.navigate(['/settings/sacraments/view', sacrament.id]);
+    this.router.navigate(['/sacraments/view', sacrament.id]);
   }
 
   /**
@@ -542,25 +862,35 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   /**
-   * Undo delete action
+   * Undo delete via restore API (ADR-07: restore clears soft-delete only).
    */
   undoDelete(): void {
     if (!this.deletedSacrament) return;
 
-    // Restore the sacrament by creating it again
-    // Note: This assumes the backend supports restoration or we need to implement it
-    // For now, we'll show a message that restoration needs to be done manually
-    this.toastService.info(
-      'To restore this sacrament, please contact your administrator or recreate it manually.',
-      'Restore Required'
-    );
-    
-    // Clear undo state
-    this.deletedSacrament = null;
-    if (this.undoTimeout) {
-      clearTimeout(this.undoTimeout);
-      this.undoTimeout = null;
-    }
+    const id = this.deletedSacrament.id;
+    this.sacramentService
+      .restoreSacrament(id)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.toastService.success('Sacrament restored to the register.');
+            this.loadSacraments();
+          } else {
+            this.toastService.error(response.message || 'Could not restore sacrament.');
+          }
+          this.deletedSacrament = null;
+          if (this.undoTimeout) {
+            clearTimeout(this.undoTimeout);
+            this.undoTimeout = null;
+          }
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          this.toastService.error(handleApiError(error, 'Could not restore sacrament.'));
+          this.cdr.markForCheck();
+        },
+      });
   }
 
   /**
@@ -588,21 +918,59 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     this.loadSacraments();
   }
 
-  /**
-   * Get status badge class
-   */
-  getStatusBadgeClass(status: string): string {
-    const baseClass = 'status-badge';
+  statusLabel(status: string | undefined): string {
     switch (status) {
+      case 'registered':
       case 'active':
-        return `${baseClass} status-active`;
-      case 'cancelled':
-        return `${baseClass} status-cancelled`;
+        return 'Registered';
       case 'conditional':
-        return `${baseClass} status-conditional`;
+        return 'Conditional';
+      case 'voided':
+      case 'cancelled':
+        return 'Voided';
       default:
-        return baseClass;
+        return status ? status.charAt(0).toUpperCase() + status.slice(1) : '—';
     }
+  }
+
+  statusTone(status: string | undefined): 'success' | 'warning' | 'critical' | 'neutral' {
+    switch (status) {
+      case 'registered':
+      case 'active':
+        return 'success';
+      case 'conditional':
+        return 'warning';
+      case 'voided':
+      case 'cancelled':
+        return 'critical';
+      default:
+        return 'neutral';
+    }
+  }
+
+  registrySummary(sacrament: Sacrament): string {
+    const parts: string[] = [];
+    if (sacrament.book_number) {
+      parts.push(`Bk ${sacrament.book_number}`);
+    }
+    if (sacrament.page_number) {
+      parts.push(`p.${sacrament.page_number}`);
+    }
+    return parts.length ? parts.join(' · ') : '—';
+  }
+
+  onSearchChange(value: string): void {
+    this.searchTerm = value;
+    this.onQuickSearch();
+  }
+
+  openFilters(): void {
+    this.showAdvancedSearch = true;
+    this.cdr.markForCheck();
+  }
+
+  retryLoad(): void {
+    this.loadSacraments();
   }
 
   /**
@@ -802,41 +1170,45 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   /**
-   * Bulk export selected sacraments
+   * Bulk export selected sacraments — opens format chooser (no native prompt).
    */
   onBulkExport(): void {
     if (this.selectedSacraments.size === 0) {
       this.toastService.error('Please select at least one sacrament to export.');
       return;
     }
+    this.showExportFormatModal = true;
+    this.cdr.markForCheck();
+  }
 
-    // Get selected sacraments data
-    const selectedData = this.sacraments.filter(s => this.selectedSacraments.has(s.id));
-    this.exportSacraments(selectedData, 'selected');
+  confirmExportFormat(format: 'pdf' | 'csv'): void {
+    this.showExportFormatModal = false;
+    const selectedData = this.sacraments.filter((s) => this.selectedSacraments.has(s.id));
+    this.exportSacraments(selectedData, 'selected', format);
+    this.cdr.markForCheck();
+  }
+
+  cancelExportFormat(): void {
+    this.showExportFormatModal = false;
+    this.cdr.markForCheck();
   }
 
   /**
    * Export sacraments to PDF or Excel
    */
-  exportSacraments(sacraments: Sacrament[], exportType: 'all' | 'selected' | 'filtered' = 'all'): void {
+  exportSacraments(
+    sacraments: Sacrament[],
+    exportType: 'all' | 'selected' | 'filtered' = 'all',
+    format: 'pdf' | 'csv' = 'csv'
+  ): void {
     if (!sacraments || sacraments.length === 0) {
       this.toastService.error('No sacraments to export.');
       return;
     }
-
-    // Show export options dialog
-    const format = prompt('Export format:\n1. PDF\n2. Excel (CSV)\n\nEnter 1 or 2:');
-    
-    if (!format) {
-      return;
-    }
-
-    if (format === '1') {
+    if (format === 'pdf') {
       this.exportToPDF(sacraments, exportType);
-    } else if (format === '2') {
-      this.exportToExcel(sacraments, exportType);
     } else {
-      this.toastService.error('Invalid format selected.');
+      this.exportToExcel(sacraments, exportType);
     }
   }
 
@@ -988,23 +1360,40 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   /**
-   * Bulk status update
+   * Bulk status update — Voided is not offered here (requires per-record void + reason).
    */
   onBulkStatusUpdate(status: string): void {
     if (this.selectedSacraments.size === 0) {
       this.toastService.error('Please select at least one sacrament.');
       return;
     }
+    if (status === 'voided') {
+      this.toastService.info(
+        'To void a record, open it and use Void with a reason. Bulk void is not available.',
+        'Use Void on each record'
+      );
+      return;
+    }
 
     const ids = Array.from(this.selectedSacraments);
-    const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+    const statusLabel = this.statusLabel(status);
+    this.bulkConfirmTitle = `Set status to ${statusLabel}?`;
+    this.bulkConfirmMessage = `Update ${ids.length} selected record(s) to ${statusLabel}?`;
+    this.bulkConfirmAction = () => this.executeBulkStatusUpdate(ids, status, statusLabel);
+    this.showBulkConfirmModal = true;
+    this.cdr.markForCheck();
+  }
 
-    this.sacramentService.bulkUpdateStatus(ids, status)
+  private executeBulkStatusUpdate(ids: number[], status: string, statusLabel: string): void {
+    this.sacramentService
+      .bulkUpdateStatus(ids, status)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.toastService.success(response.message || `Successfully updated ${ids.length} sacrament(s) to ${statusLabel}`);
+            this.toastService.success(
+              response.message || `Successfully updated ${ids.length} sacrament(s) to ${statusLabel}`
+            );
             this.clearSelection();
             this.loadSacraments();
           } else {
@@ -1013,16 +1402,14 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
           this.cdr.markForCheck();
         },
         error: (error) => {
-          console.error('Bulk status update error:', error);
-          const errorMessage = error.message || 'Failed to update sacraments';
-          this.toastService.error(errorMessage);
+          this.toastService.error(error.message || 'Failed to update sacraments');
           this.cdr.markForCheck();
-        }
+        },
       });
   }
 
   /**
-   * Bulk delete
+   * Bulk delete with confirmation modal (no native confirm).
    */
   onBulkDelete(): void {
     if (this.selectedSacraments.size === 0) {
@@ -1032,13 +1419,16 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
 
     const ids = Array.from(this.selectedSacraments);
     const count = ids.length;
+    this.bulkConfirmTitle = 'Remove from register view?';
+    this.bulkConfirmMessage = `Remove ${count} selected sacrament record(s) from the register view? This is a soft delete; administrators can restore records.`;
+    this.bulkConfirmAction = () => this.executeBulkDelete(ids, count);
+    this.showBulkConfirmModal = true;
+    this.cdr.markForCheck();
+  }
 
-    // Show confirmation
-    if (!confirm(`Are you sure you want to delete ${count} sacrament(s)? This action cannot be undone.`)) {
-      return;
-    }
-
-    this.sacramentService.bulkDelete(ids)
+  private executeBulkDelete(ids: number[], count: number): void {
+    this.sacramentService
+      .bulkDelete(ids)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
@@ -1052,12 +1442,26 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
           this.cdr.markForCheck();
         },
         error: (error) => {
-          console.error('Bulk delete error:', error);
-          const errorMessage = error.message || 'Failed to delete sacraments';
-          this.toastService.error(errorMessage);
+          this.toastService.error(error.message || 'Failed to delete sacraments');
           this.cdr.markForCheck();
-        }
+        },
       });
+  }
+
+  confirmBulkAction(): void {
+    const action = this.bulkConfirmAction;
+    this.showBulkConfirmModal = false;
+    this.bulkConfirmAction = null;
+    if (action) {
+      action();
+    }
+    this.cdr.markForCheck();
+  }
+
+  cancelBulkAction(): void {
+    this.showBulkConfirmModal = false;
+    this.bulkConfirmAction = null;
+    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void {

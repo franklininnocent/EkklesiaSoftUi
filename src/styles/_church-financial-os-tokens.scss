@@ -57,6 +57,19 @@
   --cf-modal-anim-duration: 180ms;
   --cf-modal-anim-easing: cubic-bezier(0.4, 0, 0.2, 1);
 
+  /*
+   * Filter drawer — floating, right-anchored contextual filter surface.
+   * Distinct from the centered modal system: content-sized height, inset
+   * from the viewport edges, lighter overlay. See docs/frontend/style-guide.md.
+   */
+  --cf-drawer-width: 24rem;
+  --cf-drawer-width-tablet: 22rem;
+  --cf-drawer-inset: var(--cf-space-4);
+  --cf-drawer-min-height: 18rem;
+  --cf-drawer-max-height: calc(100vh - (2 * var(--cf-drawer-inset)));
+  --cf-drawer-overlay-bg: rgba(15, 23, 42, 0.28);
+  --cf-drawer-sheet-max-height: 85vh;
+
   /* Layering — prefer these over hardcoded 999 / 9999 / 10000 */
   --cf-z-dropdown: 1000;
   --cf-z-drawer: 1100;

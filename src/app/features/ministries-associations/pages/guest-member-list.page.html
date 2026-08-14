@@ -38,7 +38,7 @@
     </div>
 
     <ng-container *ngIf="!loadError">
-      <ng-container *ngIf="guests.length; else emptyGuests">
+      <div class="cf-panel guest-member-list__panel" *ngIf="guests.length; else emptyGuests">
         <app-data-table [ariaBusy]="loading">
           <thead>
             <tr>
@@ -85,7 +85,7 @@
           (pageChange)="onPageChange($event)"
           (pageSizeChange)="onPageSizeChange($event)"
         ></app-pagination>
-      </ng-container>
+      </div>
 
       <ng-template #emptyGuests>
         <app-cf-empty-state

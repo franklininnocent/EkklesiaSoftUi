@@ -63,7 +63,7 @@ export class SacramentFormComponent implements OnInit {
     marriage_groom_church_address: '',
     witnesses: '',
     notes: '',
-    status: SacramentStatus.ACTIVE
+    status: SacramentStatus.REGISTERED
   };
 
   constructor(
@@ -90,7 +90,7 @@ export class SacramentFormComponent implements OnInit {
           this.currentTenantId = user.tenant_id;
         } else {
           this.toastService.error('You must be associated with a church.');
-          this.router.navigate(['/settings/sacraments']);
+          this.router.navigate(['/sacraments']);
         }
       }
     });
@@ -181,7 +181,7 @@ export class SacramentFormComponent implements OnInit {
         console.error('Error loading sacrament:', error);
         this.toastService.error('Failed to load sacrament.');
         this.loading = false;
-        this.router.navigate(['/settings/sacraments']);
+        this.router.navigate(['/sacraments']);
       }
     });
   }
@@ -221,7 +221,7 @@ export class SacramentFormComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.toastService.success('Sacrament record created successfully.');
-          this.router.navigate(['/settings/sacraments']);
+          this.router.navigate(['/sacraments']);
         }
         this.saving = false;
       },
@@ -243,7 +243,7 @@ export class SacramentFormComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.toastService.success('Sacrament record updated successfully.');
-          this.router.navigate(['/settings/sacraments']);
+          this.router.navigate(['/sacraments']);
         }
         this.saving = false;
       },
@@ -293,7 +293,7 @@ export class SacramentFormComponent implements OnInit {
    * Cancel and go back
    */
   onCancel(): void {
-    this.router.navigate(['/settings/sacraments']);
+    this.router.navigate(['/sacraments']);
   }
 
   /**

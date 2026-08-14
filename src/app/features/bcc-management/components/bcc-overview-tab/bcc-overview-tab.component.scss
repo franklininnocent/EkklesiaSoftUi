@@ -1,0 +1,248 @@
+.bcc-overview {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.bcc-overview__kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.bcc-overview__kpi {
+  display: grid;
+  gap: 0.2rem;
+  text-align: left;
+  padding: 0.85rem 0.9rem;
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-panel-bg);
+  cursor: pointer;
+  color: inherit;
+  min-width: 0;
+}
+
+.bcc-overview__kpi:hover,
+.bcc-overview__kpi:focus-visible {
+  border-color: var(--cf-primary);
+  outline: none;
+}
+
+.bcc-overview__kpi--attention {
+  border-color: var(--cf-amber);
+  background: var(--cf-amber-soft);
+}
+
+.bcc-overview__kpi-label {
+  color: var(--cf-muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.bcc-overview__kpi-value {
+  font-size: 1.45rem;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+  color: var(--cf-slate-900);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bcc-overview__kpi-value--status {
+  font-size: 1.05rem;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+.bcc-overview__kpi-hint {
+  color: var(--cf-muted);
+  font-size: 0.78rem;
+}
+
+.bcc-overview__glance {
+  margin: 0;
+}
+
+.bcc-overview__grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.bcc-overview__panel {
+  grid-column: span 6;
+  display: grid;
+  gap: 0.85rem;
+  align-content: start;
+  min-width: 0;
+}
+
+.bcc-overview__panel--full {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.bcc-overview__panel--nested {
+  grid-column: auto;
+  height: 100%;
+}
+
+.bcc-overview__pair {
+  grid-column: span 6;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  min-width: 0;
+  align-items: stretch;
+}
+
+.bcc-overview__section-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+
+  h2 {
+    margin: 0;
+    font-size: 1rem;
+    color: var(--cf-slate-900);
+  }
+}
+
+.bcc-overview__subhead {
+  margin: 0.25rem 0 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--cf-slate-700);
+}
+
+.bcc-overview__stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+
+  > div {
+    display: grid;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+}
+
+.bcc-overview__metric {
+  font-size: 1.35rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--cf-slate-900);
+  line-height: 1.1;
+}
+
+.bcc-overview__metric--muted {
+  color: var(--cf-muted);
+}
+
+.bcc-overview__gender-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.bcc-overview__gender-summary .bcc-overview__metric {
+  font-size: 1.1rem;
+}
+
+.bcc-overview__child-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.bcc-overview__child-card {
+  display: grid;
+  gap: 0.25rem;
+  text-align: left;
+  padding: 0.75rem;
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-slate-50);
+  cursor: pointer;
+  color: inherit;
+
+  strong {
+    font-size: 1.35rem;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.bcc-overview__child-card:hover,
+.bcc-overview__child-card:focus-visible {
+  border-color: var(--cf-primary);
+  outline: none;
+}
+
+.bcc-overview__leader-name {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--cf-slate-900);
+  overflow-wrap: anywhere;
+}
+
+.bcc-overview__leader-warning {
+  margin: 0;
+  font-weight: 600;
+  color: var(--cf-amber);
+}
+
+.bcc-overview__completeness {
+  margin: 0;
+  color: var(--cf-slate-800);
+}
+
+.bcc-overview__trend {
+  display: block;
+}
+
+@media (max-width: 1024px) {
+  .bcc-overview__panel,
+  .bcc-overview__pair {
+    grid-column: span 12;
+  }
+
+  .bcc-overview__kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .bcc-overview__pair {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .bcc-overview__stat-row,
+  .bcc-overview__gender-summary,
+  .bcc-overview__child-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .bcc-overview__kpi-value {
+    font-size: 1.25rem;
+  }
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

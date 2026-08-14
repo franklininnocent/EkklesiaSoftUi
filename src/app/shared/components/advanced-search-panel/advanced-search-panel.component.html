@@ -1,9 +1,9 @@
 <!-- Backdrop Overlay (only for sidepanel mode) -->
 <div 
   *ngIf="mode === 'sidepanel' && isExpanded" 
-  class="panel-backdrop animate-fade-in"
+  class="drawer-backdrop animate-fade-in"
   (click)="onClose()"
-  aria-label="Close search panel">
+  aria-hidden="true">
 </div>
 
 <!-- Advanced Search Toggle Button -->
@@ -148,70 +148,56 @@
   </div>
 </div>
 
-<!-- Advanced Search Side Panel -->
+<!-- Filter Drawer (sidepanel mode) -->
 <div 
+  #drawerRef
   *ngIf="mode === 'sidepanel'" 
-  class="side-panel"
+  class="filter-drawer"
   [class.open]="isExpanded"
-  role="region"
-  aria-label="Advanced search filters">
-  
-  <!-- Panel Header -->
-  <div class="panel-header">
-    <div class="header-content">
-      <h3 class="panel-title">
-        <span class="title-icon">🔍</span>
-        Advanced Search
-      </h3>
-      <p class="panel-subtitle">Refine your results with multiple filters</p>
+  role="dialog"
+  aria-modal="true"
+  [attr.aria-labelledby]="titleId">
+
+  <!-- Header -->
+  <header class="filter-drawer__header">
+    <div class="filter-drawer__heading">
+      <h2 [id]="titleId" class="filter-drawer__title">Filters</h2>
+      <span
+        *ngIf="hasActiveFilters()"
+        class="cf-badge cf-badge--info filter-drawer__count"
+        aria-live="polite">
+        {{ getActiveFilters().length }} active
+      </span>
     </div>
     <button 
       type="button"
-      class="btn-close-panel"
+      class="filter-drawer__close"
       (click)="onClose()"
-      aria-label="Close search panel">
-      ✕
+      aria-label="Close filters">
+      <svg viewBox="0 0 24 24" class="cf-icon-sm" aria-hidden="true" focusable="false">
+        <path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
     </button>
-  </div>
+  </header>
 
-  <!-- Active Filters in Side Panel -->
-  <div *ngIf="hasActiveFilters()" class="active-filters-sidepanel">
-    <div class="filters-header-sidepanel">
-      <span class="filters-label-sidepanel">Active Filters ({{ getActiveFilters().length }})</span>
-      <button 
-        type="button"
-        class="btn-clear-all-sidepanel"
-        (click)="onClear()"
-        aria-label="Clear all filters">
-        Clear All
-      </button>
-    </div>
-    <div class="filters-chips-sidepanel">
-      <div 
-        *ngFor="let filter of getActiveFilters()" 
-        class="filter-chip-sidepanel">
-        <span class="chip-label-sidepanel">{{ filter.label }}:</span>
-        <span class="chip-value-sidepanel">{{ filter.displayValue }}</span>
-        <button 
-          type="button"
-          class="chip-remove-sidepanel"
-          (click)="removeFilter(filter)"
-          [attr.aria-label]="'Remove filter: ' + filter.label">
-          ✕
-        </button>
-      </div>
-    </div>
-  </div>
+  <!-- Scrollable Filter Body (the only scroll region) -->
+  <div class="filter-drawer__body">
+    <div
+      *ngFor="let group of fieldGroups"
+      class="filter-drawer__group">
+      <p *ngIf="group.name" class="filter-drawer__group-caption">{{ group.name }}</p>
 
-  <!-- Panel Body (Scrollable) -->
-  <div class="panel-body">
-    <div class="search-fields-sidepanel">
-      <div 
-        *ngFor="let field of fields" 
-        class="search-field-sidepanel">
-        
-        <label [for]="'search-side-' + field.key" class="field-label-sidepanel">
+      <div
+        *ngFor="let field of group.fields"
+        class="filter-drawer__field"
+        [class.is-active]="isFieldActive(field)">
+
+        <label
+          *ngIf="field.type !== 'boolean'"
+          [for]="'search-side-' + field.key"
+          class="filter-drawer__label">
           {{ field.label }}
+          <span *ngIf="isFieldActive(field)" class="filter-drawer__active-dot" aria-hidden="true"></span>
         </label>
 
         <!-- Text Input -->
@@ -223,7 +209,7 @@
           [placeholder]="field.placeholder || 'Search by ' + field.label.toLowerCase()"
           [(ngModel)]="field.value"
           (ngModelChange)="onFieldChange(field, $event)"
-          class="field-input-sidepanel">
+          class="filter-drawer__input">
 
         <!-- Number Input -->
         <input
@@ -234,7 +220,7 @@
           [placeholder]="field.placeholder || 'Enter ' + field.label.toLowerCase()"
           [(ngModel)]="field.value"
           (ngModelChange)="onFieldChange(field, $event)"
-          class="field-input-sidepanel">
+          class="filter-drawer__input">
 
         <!-- Date Input -->
         <input
@@ -244,7 +230,7 @@
           [name]="field.key"
           [(ngModel)]="field.value"
           (ngModelChange)="onFieldChange(field, $event)"
-          class="field-input-sidepanel">
+          class="filter-drawer__input">
 
         <!-- Select Dropdown (Searchable) -->
         <ng-select
@@ -259,41 +245,65 @@
           [searchable]="true"
           [clearable]="true"
           [placeholder]="'All ' + field.label"
-          class="field-select-searchable-sidepanel">
+          class="filter-drawer__select">
         </ng-select>
 
         <!-- Boolean Checkbox -->
         <label 
           *ngIf="field.type === 'boolean'"
-          class="field-checkbox-wrapper-sidepanel">
+          class="filter-drawer__checkbox">
           <input
             type="checkbox"
             [id]="'search-side-' + field.key"
             [name]="field.key"
             [(ngModel)]="field.value"
-            (ngModelChange)="onFieldChange(field, $event)"
-            class="field-checkbox-sidepanel">
-          <span class="checkbox-label-sidepanel">{{ field.placeholder || 'Yes' }}</span>
+            (ngModelChange)="onFieldChange(field, $event)">
+          <span class="filter-drawer__checkbox-label">{{ field.placeholder || field.label }}</span>
         </label>
       </div>
     </div>
   </div>
 
-  <!-- Panel Footer (Sticky) -->
-  <div class="panel-footer">
-    <button 
-      type="button"
-      class="btn btn-secondary-sidepanel"
-      (click)="onClear()"
-      aria-label="Clear search filters">
-      Clear All
-    </button>
-    <button 
-      type="button"
-      class="btn btn-primary-sidepanel"
-      (click)="onSearch()"
-      aria-label="Apply search filters">
-      🔍 Apply Filters
-    </button>
+  <!-- Applied Filters (non-scrolling utility area, above footer) -->
+  <div *ngIf="hasActiveFilters()" class="filter-drawer__applied">
+    <div class="filter-drawer__applied-head">
+      <span class="filter-drawer__applied-label">Applied filters</span>
+      <button 
+        type="button"
+        class="cf-btn-text filter-drawer__clear"
+        (click)="onClear()">
+        Clear all
+      </button>
+    </div>
+    <div class="filter-drawer__chips">
+      <span
+        *ngFor="let filter of getActiveFilters()"
+        class="cf-badge cf-badge--info filter-drawer__chip">
+        {{ filter.label }}: {{ filter.displayValue }}
+        <button 
+          type="button"
+          class="filter-drawer__chip-remove"
+          (click)="removeFilter(filter)"
+          [attr.aria-label]="'Remove filter: ' + filter.label">
+          ×
+        </button>
+      </span>
+    </div>
   </div>
+
+  <!-- Footer Actions -->
+  <footer class="filter-drawer__footer">
+    <button 
+      type="button"
+      class="cf-btn filter-drawer__reset"
+      (click)="onClear()">
+      Reset
+    </button>
+    <button 
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="onSearch()">
+      Apply Filters
+    </button>
+  </footer>
 </div>

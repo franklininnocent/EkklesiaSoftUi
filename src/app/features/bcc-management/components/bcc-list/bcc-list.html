@@ -1,7 +1,7 @@
 <section class="bcc-list cf-page">
   <app-page-header
-    title="BCC Management"
-    subtitle="Manage Basic Christian Communities"
+    title="BCC list"
+    subtitle="Search and manage Basic Christian Communities"
   >
     <app-list-toolbar
       searchPlaceholder="Search name or code…"
@@ -20,6 +20,8 @@
       </button>
     </app-list-toolbar>
   </app-page-header>
+
+  <app-bcc-sub-nav></app-bcc-sub-nav>
 
   <div
     class="bcc-list__chips"
@@ -63,101 +65,88 @@
   </div>
 
   <ng-container *ngIf="loaded && !error">
-    <app-data-table *ngIf="bccs.length" [clickableRows]="true">
-      <thead>
-        <tr>
-          <th scope="col" class="sortable" (click)="sortBy('bcc_code')">
-            BCC Code {{ getSortIcon('bcc_code') }}
-          </th>
-          <th scope="col" class="sortable" (click)="sortBy('name')">
-            BCC Name {{ getSortIcon('name') }}
-          </th>
-          <th scope="col">Capacity</th>
-          <th scope="col">Families</th>
-          <th scope="col">Leaders</th>
-          <th scope="col">Meeting Day</th>
-          <th scope="col">Contact</th>
-          <th
-            *ngIf="isTenantAdmin"
-            scope="col"
-            class="cf-table__actions-col"
+    <div class="cf-panel bcc-list__panel" *ngIf="bccs.length">
+      <app-data-table [clickableRows]="true">
+        <thead>
+          <tr>
+            <th scope="col" class="sortable" (click)="sortBy('bcc_code')">
+              BCC Code {{ getSortIcon('bcc_code') }}
+            </th>
+            <th scope="col" class="sortable" (click)="sortBy('name')">
+              BCC Name {{ getSortIcon('name') }}
+            </th>
+            <th scope="col">Families</th>
+            <th scope="col">Leaders</th>
+            <th scope="col">Meeting Day</th>
+            <th scope="col">Status</th>
+            <th
+              *ngIf="isTenantAdmin"
+              scope="col"
+              class="cf-table__actions-col"
+            >
+              Actions
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let bcc of bccs"
+            tabindex="0"
+            (click)="viewBCC(bcc)"
+            (keydown.enter)="viewBCC(bcc)"
           >
-            Actions
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr
-          *ngFor="let bcc of bccs"
-          tabindex="0"
-          (click)="viewBCC(bcc)"
-          (keydown.enter)="viewBCC(bcc)"
-        >
-          <td>
-            <div class="bcc-list__code-cell">
-              <strong class="bcc-list__code">{{ bcc.bcc_code }}</strong>
-              <app-status-badge
-                *ngIf="bcc.status === 'inactive'"
-                label="Inactive"
-                tone="neutral"
-              ></app-status-badge>
-            </div>
-          </td>
-          <td><strong>{{ bcc.name }}</strong></td>
-          <td>
-            <div class="bcc-list__capacity">
-              <div class="bcc-list__capacity-bar" aria-hidden="true">
-                <span
-                  class="bcc-list__capacity-fill"
-                  [style.width.%]="getCapacityPercentage(bcc)"
-                  [ngClass]="getCapacityClass(getCapacityPercentage(bcc))"
-                ></span>
+            <td>
+              <div class="bcc-list__code-cell">
+                <strong class="bcc-list__code">{{ bcc.bcc_code }}</strong>
+                <app-status-badge
+                  *ngIf="bcc.status === 'inactive'"
+                  label="Inactive"
+                  tone="neutral"
+                ></app-status-badge>
               </div>
-              <span class="cf-meta">
-                {{ bcc.current_family_count || 0 }}
-                ({{ getCapacityPercentage(bcc) | number:'1.0-0' }}%)
-              </span>
-            </div>
-          </td>
-          <td>{{ bcc.current_family_count || 0 }}</td>
-          <td>{{ bcc.leaders?.length || 0 }}</td>
-          <td>
-            <span *ngIf="bcc.meeting_day">{{ bcc.meeting_day | titlecase }}</span>
-            <span *ngIf="!bcc.meeting_day" class="cf-meta">Not set</span>
-          </td>
-          <td class="cf-meta">—</td>
-          <td
-            *ngIf="isTenantAdmin"
-            class="cf-table__actions-cell"
-            (click)="$event.stopPropagation()"
-            (keydown)="$event.stopPropagation()"
-          >
-            <div class="cf-row-actions">
-              <button
-                type="button"
-                class="cf-btn cf-btn--sm cf-btn-danger"
-                (click)="deleteBCC(bcc)"
-                title="Delete BCC"
-              >
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </app-data-table>
+            </td>
+            <td><strong>{{ bcc.name }}</strong></td>
+            <td>{{ bcc.current_family_count || 0 }}</td>
+            <td>{{ bcc.leaders?.length || 0 }}</td>
+            <td>
+              <span *ngIf="bcc.meeting_day">{{ bcc.meeting_day | titlecase }}</span>
+              <span *ngIf="!bcc.meeting_day" class="cf-meta">Not set</span>
+            </td>
+            <td>
+              <app-status-badge [label]="bcc.status | titlecase" [tone]="statusTone(bcc.status)"></app-status-badge>
+            </td>
+            <td
+              *ngIf="isTenantAdmin"
+              class="cf-table__actions-cell"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            >
+              <div class="cf-row-actions">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn--sm cf-btn-danger"
+                  (click)="deleteBCC(bcc)"
+                  title="Delete BCC"
+                >
+                  Delete
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
 
-    <app-pagination
-      *ngIf="bccs.length"
-      [currentPage]="currentPage"
-      [pageSize]="perPage"
-      [totalItems]="totalRecords"
-      [pageSizeOptions]="perPageOptions"
-      [showPageSizeSelector]="true"
-      [showPageInfo]="true"
-      (pageChange)="onPageChange($event)"
-      (pageSizeChange)="onPageSizeChange($event)"
-    ></app-pagination>
+      <app-pagination
+        [currentPage]="currentPage"
+        [pageSize]="perPage"
+        [totalItems]="totalRecords"
+        [pageSizeOptions]="perPageOptions"
+        [showPageSizeSelector]="true"
+        [showPageInfo]="true"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+    </div>
 
     <app-cf-empty-state
       *ngIf="!loading && !bccs.length"
@@ -166,7 +155,7 @@
       [description]="
         hasActiveFiltersOrSearch
           ? 'Try clearing search or filters.'
-          : 'Add your first Basic Christian Community to get started.'
+          : 'No BCCs found. Create your first BCC to start managing members.'
       "
     >
       <button

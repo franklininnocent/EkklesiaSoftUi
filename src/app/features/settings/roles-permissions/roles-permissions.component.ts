@@ -327,6 +327,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
         'This role has assigned users. Reassign users first before deleting.',
         'Delete Blocked'
       );
+      this.cancelDeleteRole();
       return;
     }
 
@@ -338,11 +339,13 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
         this.toastService.success(`Role "${role.name}" deleted successfully!`, 'Role Deleted');
         this.cancelDeleteRole();
         this.loadRoles();
+        this.authService.refreshUser();
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error deleting role:', err);
         this.toastService.error(this.getFriendlyErrorMessage(err, 'Failed to delete role'), 'Error');
+        this.cancelDeleteRole();
       }
     });
   }
@@ -365,7 +368,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canCreateRole(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.create');
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.create');
   }
@@ -375,7 +378,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canUpdateRole(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.update');
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.update');
   }
@@ -385,7 +388,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canDeleteRole(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.delete');
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.delete');
   }
@@ -395,7 +398,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canAssignPermissions(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return this.authService.isTenantAdmin() || this.authService.hasPermission('permissions.assign');
     }
     return this.canManageRoles() || this.authService.hasPermission('permissions.assign');
   }
@@ -729,6 +732,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   onPermissionsAssigned(): void {
     this.loadRoles(); // Reload roles to reflect changes
+    this.authService.refreshUser();
     this.toastService.success('Permissions assigned successfully', 'Success');
   }
 
@@ -746,6 +750,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   onPermissionsAssignedInTab(): void {
     this.loadRoles(); // Reload roles to reflect changes
     this.selectedRoleForAssignment = null; // Clear selection
+    this.authService.refreshUser();
     this.toastService.success('Permissions assigned successfully', 'Success');
   }
 
@@ -809,6 +814,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
           this.savingUserRoles = false;
           this.toastService.success('User roles updated successfully', 'Success');
           this.loadTenantUsers();
+          this.authService.refreshUser();
         },
         error: (err) => {
           this.savingUserRoles = false;
@@ -856,8 +862,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   }
 
   private getFriendlyErrorMessage(error: any, fallback: string): string {
+    // errorInterceptor flattens HttpErrorResponse to { message, status, errors }.
     const status = error?.status;
-    const apiMessage = error?.error?.message;
+    const apiMessage = error?.message || error?.error?.message;
 
     if (status === 0) {
       return 'Network connection failed. Please check your internet and try again.';
@@ -868,7 +875,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     }
 
     if (status === 422) {
-      const validationErrors = error?.error?.errors;
+      const validationErrors = error?.errors || error?.error?.errors;
       if (validationErrors) {
         const firstKey = Object.keys(validationErrors)[0];
         const firstMessage = firstKey ? validationErrors[firstKey]?.[0] : null;
@@ -884,6 +891,13 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     }
 
     return apiMessage || fallback;
+  }
+
+  /**
+   * Full role catalog for assignment UIs (not the current paginated page).
+   */
+  get assignableRoles(): Role[] {
+    return (this.allRoles || []).filter((role) => role.active === 1);
   }
 
   private syncSelectedRoleForAssignment(): void {

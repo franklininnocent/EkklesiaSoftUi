@@ -401,13 +401,14 @@ export class FamilyDetail implements OnInit, OnDestroy {
   loadFamily(id: string): void {
     this.loading = true;
     this.error = null;
-    const previousSelectedId = this.selectedMemberId;
+    const preferredMemberId =
+      this.route.snapshot.queryParamMap.get('member') || this.selectedMemberId;
     this.cdr.markForCheck();
 
     this.familyService.getFamily(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (res) => this.applyFamilyLoadResponse(res, previousSelectedId, true),
+        next: (res) => this.applyFamilyLoadResponse(res, preferredMemberId, true),
         error: (err) => this.applyFamilyLoadError(err)
       });
   }
@@ -498,7 +499,20 @@ export class FamilyDetail implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((params) => {
         this.applyWorkspaceViewFromQuery(params.get('tab'));
+        this.applyMemberFromQuery(params.get('member'));
       });
+  }
+
+  private applyMemberFromQuery(memberId: string | null): void {
+    if (!memberId || !this.family?.members?.length) {
+      return;
+    }
+    const exists = this.family.members.some((member) => member.id === memberId);
+    if (!exists || this.selectedMemberId === memberId) {
+      return;
+    }
+    this.selectedMemberId = memberId;
+    this.cdr.markForCheck();
   }
 
   private applyWorkspaceViewFromQuery(tab: string | null): void {

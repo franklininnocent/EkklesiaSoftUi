@@ -1,1591 +1,288 @@
-@use '../../../../../shared/styles/status-indicator' as *;
-@use '../../../../../shared/styles/standardized-list' as *;
+/* List chrome: match Ministries organization-list / Family list (thin feature SCSS).
+   Detail modal styles retained — modal markup lives in this template. */
+@import '../../../../donations/styles/stewardship-split-layout.scss';
 
-.sacrament-list-container {
-  @extend %standard-list-container;
-
-  &.cf-page {
-    padding: var(--cf-page-pad);
-    gap: var(--cf-page-gap);
-    font-family: var(--cf-font-sans);
-    min-height: 0;
-  }
-}
-
-/* Toolbar projected into app-page-header actions */
-.sacrament-page-header-actions {
+.sacrament-list__chips {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--cf-space-2, 0.5rem);
-
-  .search-box-header {
-    min-width: 200px;
-  }
+  gap: var(--cf-space-2);
 }
 
-// Filter Chips Container - Compact Inline Design
-.filter-chips-container {
-  @extend %standard-filter-chips-container;
-}
-
-// Quick Search Box in Header
-.search-box-header {
-  @extend %standard-search-box;
-}
-
-// Animations
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes scale-in {
-  from {
-    opacity: 0;
-    transform: scale(0.9);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-.animate-fade-in {
-  animation: fade-in 0.3s ease-out;
-}
-
-.animate-scale-in {
-  animation: scale-in 0.2s ease-out;
-}
-
-// Buttons
-.btn {
-  @extend %standard-btn;
-}
-
-.btn-primary {
-  @extend %standard-btn-primary;
-}
-
-.btn-secondary {
-  background: #e5e7eb;
-  color: #374151;
-
-  &:hover {
-    background: #d1d5db;
-  }
-}
-
-.btn-filters {
-  @extend %standard-btn-filters;
-}
-
-.btn-danger {
-  background: #ef4444;
-  color: white;
-
-  &:hover {
-    background: #dc2626;
-  }
-}
-
-// Loading
-.loading-container {
-  @extend %standard-loading-container;
-}
-
-// Table
-.table-responsive {
-  @extend %standard-table-container;
-  overflow-x: auto;
-  overflow-y: visible;
-  -webkit-overflow-scrolling: touch;
-  
-  // Scrollbar styling for webkit browsers
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-
-  &::-webkit-scrollbar-track {
-    background: #f1f1f1;
-    border-radius: 4px;
-  }
-
-  &::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-
-    &:hover {
-      background: #555;
-    }
-  }
-}
-
-.sacrament-table {
-  @extend %standard-table;
-
-  tbody {
-    tr.data-row {
-      border-bottom: 1px solid #f3f4f6;
-    }
-
-    td {
-      &.name-cell {
-        strong {
-          color: #1f2937;
-          font-weight: 600;
-        }
-      }
-    }
-
-    .actions-cell {
-      .action-buttons {
-        @extend %standard-action-buttons;
-        justify-content: center;
-        
-        .btn-delete {
-          @extend %standard-btn-delete;
-          // Icon-only button styling for sacraments list
-          padding: 0.375rem;
-          min-width: 32px;
-        }
-      }
-    }
-
-    .empty-row {
-      td {
-        padding: 3rem;
-        text-align: center;
-        border-bottom: none;
-      }
-    }
-  }
-}
-
-.action-btn {
-  display: inline-flex;
+.sacrament-list__chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-1);
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid #e5e7eb;
-  background: #ffffff;
-  border-radius: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.sacrament-list__chip-remove {
+  margin-left: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  color: #6b7280;
-  flex-shrink: 0;
-  margin: 0 0.25rem;
-
-  &.action-view-certificate {
-    color: #667eea;
-    border-color: #c7d2fe;
-
-    &:hover {
-      background: linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%);
-      border-color: #667eea;
-      color: #764ba2;
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.25);
-    }
-
-    &:active {
-      transform: translateY(0);
-      box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
-    }
-
-    svg {
-      width: 18px;
-      height: 18px;
-    }
-  }
-
-  svg {
-    width: 16px;
-    height: 16px;
-    stroke-width: 2;
-    transition: all 0.2s;
-  }
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    border-color: transparent;
-  }
-
-  &:active {
-    transform: translateY(0);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-  }
-
-  &.action-view {
-    &:hover {
-      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-      color: #ffffff;
-    }
-  }
-
-  &.action-edit {
-    &:hover {
-      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-      color: #ffffff;
-    }
-  }
-
-  &.action-delete {
-    &:hover {
-      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-      color: #ffffff;
-    }
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
-  }
-}
-
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 0.375rem 0.75rem;
-  border-radius: 12px;
-  font-size: 0.813rem;
-  font-weight: 600;
+  font-size: 1rem;
   line-height: 1;
-  white-space: nowrap;
-  transition: all 0.2s;
-
-  &.status-active {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    color: #065f46;
-    box-shadow: 0 1px 3px rgba(5, 95, 70, 0.2);
-  }
-
-  &.status-cancelled {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    color: #991b1b;
-    box-shadow: 0 1px 3px rgba(153, 27, 27, 0.2);
-  }
-
-  &.status-conditional {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    color: #92400e;
-    box-shadow: 0 1px 3px rgba(146, 64, 14, 0.2);
-  }
+  padding: 0 0.1rem;
 }
 
-// Bulk Actions Bar
-.bulk-actions-bar {
+/* Panel container matching list pages `.cf-panel` content block. */
+.sacrament-list__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.sacrament-list__bulk {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 10px;
-  margin-bottom: 1rem;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  animation: slideDown 0.3s ease-out;
-
-  .bulk-actions-info {
-    .selected-count {
-      color: white;
-      font-weight: 600;
-      font-size: 0.938rem;
-    }
-  }
-
-  .bulk-actions-buttons {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-  }
-
-  .btn {
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    font-weight: 500;
-    border: none;
-    cursor: pointer;
-    transition: all 0.2s;
-    white-space: nowrap;
-
-    &.btn-sm {
-      padding: 0.375rem 0.75rem;
-      font-size: 0.813rem;
-    }
-
-    &.btn-secondary {
-      background: rgba(255, 255, 255, 0.2);
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: translateY(-1px);
-      }
-    }
-
-    &.btn-danger {
-      background: rgba(239, 68, 68, 0.9);
-      color: white;
-
-      &:hover {
-        background: rgba(220, 38, 38, 1);
-        transform: translateY(-1px);
-      }
-    }
-
-    &.btn-outline {
-      background: transparent;
-      color: white;
-      border: 1px solid rgba(255, 255, 255, 0.5);
-
-      &:hover {
-        background: rgba(255, 255, 255, 0.1);
-      }
-    }
-  }
-}
-
-@keyframes slideDown {
-  from {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-// Checkbox column
-.checkbox-col,
-.checkbox-cell {
-  width: 40px;
-  text-align: center;
-  padding: 0.75rem !important;
-
-  input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-    accent-color: #667eea;
-  }
-}
-
-// Selected row styling
-.data-row.row-selected {
-  background: #eff6ff !important;
-  border-left: 3px solid #667eea;
-}
-
-// Empty State - Standardized
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem 2rem;
-  gap: 1rem;
-  text-align: center;
-
-  .empty-icon {
-    width: 64px;
-    height: 64px;
-    color: #9ca3af;
-    opacity: 0.6;
-    margin-bottom: 0.5rem;
-
-    svg {
-      width: 100%;
-      height: 100%;
-    }
-  }
-
-  h3 {
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #1f2937;
-    margin: 0;
-  }
-
-  p {
-    color: #6b7280;
-    font-size: 0.938rem;
-    margin: 0;
-    max-width: 400px;
-  }
-  
-  // Standard button styles for empty state buttons
-  .btn,
-  button.btn {
-    @extend %standard-btn;
-  }
-  
-  .btn-primary,
-  button.btn-primary {
-    @extend %standard-btn-primary;
-  }
-}
-
-// Pagination
-.pagination-container {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1.5rem;
-  padding: 1rem;
-  background: white;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-
-  .pagination-info {
-    font-size: 0.875rem;
-    color: #6b7280;
-  }
-
-  .pagination-controls {
-    display: flex;
-    gap: 0.5rem;
-    align-items: center;
-  }
-
-  .pagination-btn {
-    padding: 0.5rem 0.75rem;
-    border: 2px solid #e5e7eb;
-    background: white;
-    border-radius: 6px;
-    font-size: 0.875rem;
-    cursor: pointer;
-    transition: all 0.2s;
-
-    &:hover:not(:disabled) {
-      border-color: #667eea;
-      background: #f3f4f6;
-    }
-
-    &:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-  }
-
-  .pagination-current {
-    font-size: 0.875rem;
-    font-weight: 600;
-    color: #374151;
-    padding: 0 1rem;
-  }
-}
-
-// Modal
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-content {
-  background: white;
-  border-radius: 12px;
-  max-width: 500px;
-  width: 90%;
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-
-  .modal-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.5rem;
-    border-bottom: 2px solid #f3f4f6;
-
-    h3 {
-      margin: 0;
-      font-size: 1.25rem;
-      color: #1f2937;
-    }
-
-    .modal-close {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: #6b7280;
-      padding: 0;
-      width: 32px;
-      height: 32px;
-      border-radius: 6px;
-      transition: all 0.2s;
-
-      &:hover {
-        background: #f3f4f6;
-        color: #1f2937;
-      }
-    }
-  }
-
-  .modal-body {
-    padding: 1.5rem;
-
-    p {
-      margin: 0 0 1rem 0;
-      color: #374151;
-    }
-
-    .warning-text {
-      color: #dc2626;
-      font-weight: 600;
-    }
-  }
-
-  .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    padding: 1.5rem;
-    border-top: 2px solid #f3f4f6;
-  }
-}
-
-// ============================================
-// RESPONSIVE DESIGN - MOBILE FIRST APPROACH
-// ============================================
-
-// Extra Small Devices (phones, less than 576px)
-@media (max-width: 575.98px) {
-  .sacrament-list-container {
-    padding: 0.75rem;
-  }
-
-  .sacrament-page-header-actions {
-    flex-direction: column;
-    align-items: stretch;
-    width: 100%;
-
-    .search-box-header {
-      width: 100%;
-      min-width: 100%;
-    }
-
-    .btn {
-      width: 100%;
-      justify-content: center;
-    }
-  }
-
-  .filter-chips-container {
-    padding: 0.5rem 0.75rem;
-
-    .chips-inline-wrapper {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.5rem;
-
-      .chips-list {
-        width: 100%;
-      }
-
-      .btn-clear-all-chips {
-        width: 100%;
-        text-align: center;
-      }
-    }
-  }
-
-  // Mobile: Convert table to card layout
-  .table-responsive {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-
-  .sacrament-table {
-    display: block;
-
-    thead {
-      display: none;
-    }
-
-    tbody {
-      display: block;
-
-      tr.data-row {
-        display: block;
-        margin-bottom: 1rem;
-        border: 1px solid #e5e7eb;
-        border-radius: 8px;
-        background: white;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-
-        &:hover {
-          box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-
-        td {
-          display: block;
-          padding: 0.75rem 1rem;
-          border-bottom: 1px solid #f3f4f6;
-          text-align: left !important;
-
-          &:last-child {
-            border-bottom: none;
-          }
-
-          &::before {
-            content: attr(data-label);
-            font-weight: 600;
-            color: #667eea;
-            display: block;
-            margin-bottom: 0.25rem;
-            font-size: 0.75rem;
-            text-transform: uppercase;
-          }
-
-          &.name-cell::before {
-            content: 'Recipient';
-          }
-
-          &:nth-child(2)::before {
-            content: 'Sacrament';
-          }
-
-          &:nth-child(3)::before {
-            content: 'Date';
-          }
-
-          &:nth-child(4)::before {
-            content: 'Place';
-          }
-
-          &:nth-child(5)::before {
-            content: 'Minister';
-          }
-
-          &:nth-child(6)::before {
-            content: 'Certificate #';
-          }
-
-          &:nth-child(7)::before {
-            content: 'Status';
-          }
-
-          &.actions-cell {
-            flex-direction: row;
-            justify-content: center;
-            gap: 0.75rem;
-            padding: 1rem;
-            background: #f9fafb;
-
-            &::before {
-              content: none;
-            }
-          }
-        }
-      }
-
-      .empty-row {
-        td {
-          padding: 2rem 1rem;
-        }
-      }
-    }
-  }
-
-  .action-btn {
-    padding: 0.625rem;
-    font-size: 1.125rem;
-  }
-
-  .empty-state {
-    h3 {
-      font-size: 1.125rem;
-    }
-
-    p {
-      font-size: 0.875rem;
-    }
-  }
-
-  .modal-content {
-    width: 95%;
-    margin: 1rem;
-
-    .modal-header h3 {
-      font-size: 1.125rem;
-    }
-
-    .modal-body {
-      padding: 1rem;
-    }
-
-    .modal-footer {
-      flex-direction: column-reverse;
-      padding: 1rem;
-
-      .btn {
-        width: 100%;
-      }
-    }
-  }
-}
-
-// Small Devices (landscape phones, 576px and up)
-@media (min-width: 576px) and (max-width: 767.98px) {
-  .sacrament-list-container {
-    padding: 1rem;
-  }
-
-  .sacrament-page-header-actions {
-    flex-wrap: wrap;
-    width: 100%;
-
-    .search-box-header {
-      flex: 1;
-      min-width: 200px;
-      max-width: 280px;
-    }
-  }
-
-  .filter-chips-container {
-    .chips-inline-wrapper {
-      flex-wrap: wrap;
-    }
-  }
-
-  // Card layout for tablets in portrait
-  .sacrament-table {
-    thead {
-      th {
-        padding: 0.875rem;
-        font-size: 0.813rem;
-      }
-    }
-
-    tbody td {
-      padding: 0.875rem;
-      font-size: 0.875rem;
-    }
-  }
-}
-
-// Medium Devices (tablets, 768px and up)
-@media (min-width: 768px) and (max-width: 991.98px) {
-  .sacrament-page-header-actions {
-    .search-box-header {
-      min-width: 220px;
-      max-width: 300px;
-    }
-  }
-
-  .sacrament-table {
-    font-size: 0.875rem;
-
-    thead th {
-      padding: 0.875rem;
-      font-size: 0.813rem;
-    }
-
-    tbody td {
-      padding: 0.875rem;
-      font-size: 0.875rem;
-    }
-  }
-
-  .filter-chip {
-    .chip-content .chip-value {
-      max-width: 120px;
-    }
-  }
-}
-
-// Large Devices (desktops, 992px and up)
-@media (min-width: 992px) and (max-width: 1199.98px) {
-  .sacrament-table {
-    thead th {
-      padding: 0.938rem;
-    }
-
-    tbody td {
-      padding: 0.938rem;
-    }
-  }
-}
-
-// Extra Large Devices (large desktops, 1200px and up)
-@media (min-width: 1200px) {
-  .sacrament-page-header-actions {
-    .search-box-header {
-      min-width: 260px;
-      max-width: 360px;
-    }
-  }
-}
-
-// Landscape orientation adjustments
-@media (max-height: 600px) and (orientation: landscape) {
-  .loading-container {
-    padding: 2rem;
-  }
-
-  .empty-state {
-    .empty-icon {
-      font-size: 2.5rem;
-    }
-  }
-
-  .modal-overlay {
-    overflow-y: auto;
-    padding: 1rem 0;
-  }
-}
-
-// High DPI displays
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
-  .sacrament-table {
-    thead th,
-    tbody td {
-      -webkit-font-smoothing: antialiased;
-      -moz-osx-font-smoothing: grayscale;
-    }
-  }
-}
-
-// Print styles
-@media print {
-  .sacrament-page-header-actions,
-  .filter-chips-container .btn-clear-all-chips,
-  .action-btn,
-  app-pagination,
-  app-advanced-search-panel {
-    display: none !important;
-  }
-
-  .sacrament-table {
-    thead {
-      background: #f3f4f6 !important;
-      -webkit-print-color-adjust: exact;
-      print-color-adjust: exact;
-
-      th {
-        color: #1f2937 !important;
-      }
-    }
-  }
-
-  .table-responsive {
-    box-shadow: none;
-    border: 1px solid #e5e7eb;
-  }
-}
-
-// Accessibility: Reduced motion preference
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-
-  .animate-fade-in,
-  .animate-scale-in {
-    animation: none !important;
-  }
-}
-
-// Dark mode support (optional, for future implementation)
-@media (prefers-color-scheme: dark) {
-  // Can be implemented when dark mode is added to the application
-}
-
-// Delete Confirmation Modal Styles
-.delete-confirmation-modal {
-  max-width: 500px;
-}
-
-.delete-header {
-  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-  color: white;
-  padding: 1.5rem;
-
-  .header-icon {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 50%;
-    margin-bottom: 1rem;
-
-    svg {
-      width: 24px;
-      height: 24px;
-      color: white;
-    }
-  }
-
-  h3 {
-    color: white;
-    margin: 0;
-    font-size: 1.25rem;
-  }
-}
-
-.delete-body {
-  padding: 1.5rem;
-
-  .warning-box {
-    display: flex;
-    gap: 1rem;
-    padding: 1rem;
-    background: #fef2f2;
-    border: 1px solid #fecaca;
-    border-left: 4px solid #ef4444;
-    border-radius: 8px;
-
-    svg {
-      flex-shrink: 0;
-      color: #ef4444;
-      margin-top: 0.25rem;
-    }
-
-    .warning-content {
-      flex: 1;
-
-      h4 {
-        margin: 0 0 0.75rem 0;
-        color: #991b1b;
-        font-size: 1rem;
-        font-weight: 600;
-      }
-
-      p {
-        margin: 0.5rem 0;
-        color: #374151;
-        font-size: 0.938rem;
-        line-height: 1.5;
-      }
-
-      .recipient-name {
-        font-size: 1.125rem;
-        color: #1f2937;
-        margin: 0.75rem 0;
-      }
-
-      .consequences-list {
-        margin: 1rem 0;
-        padding-left: 1.5rem;
-
-        p {
-          font-weight: 600;
-          color: #991b1b;
-          margin-bottom: 0.5rem;
-        }
-
-        ul {
-          margin: 0.5rem 0;
-          padding-left: 1.25rem;
-          color: #374151;
-
-          li {
-            margin: 0.375rem 0;
-            line-height: 1.5;
-          }
-        }
-      }
-
-      .final-warning {
-        margin-top: 1rem;
-        font-weight: 600;
-        color: #991b1b;
-      }
-    }
-  }
-}
-
-.delete-footer {
-  padding: 1rem 1.5rem;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
-
-  .btn-danger {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    color: white;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-
-    &:hover {
-      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    }
-
-    svg {
-      width: 16px;
-      height: 16px;
-    }
-  }
-}
-
-// Pagination Wrapper
-.pagination-wrapper {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1.5rem;
-  padding: 1rem 0;
   flex-wrap: wrap;
-  gap: 1rem;
-
-  .pagination-info {
-    .pagination-text {
-      font-size: 0.875rem;
-      color: #6b7280;
-
-      strong {
-        color: #1f2937;
-        font-weight: 600;
-      }
-    }
-  }
-}
-
-// Sort Icon Styles
-.th-content {
-  display: flex;
   align-items: center;
-  gap: 0.5rem;
-
-  .sort-icon {
-    display: inline-flex;
-    align-items: center;
-    color: #9ca3af;
-    transition: color 0.2s;
-
-    &.unsorted {
-      opacity: 0.5;
-    }
-
-    svg {
-      width: 14px;
-      height: 14px;
-    }
-  }
+  justify-content: space-between;
+  gap: var(--cf-space-2);
+  padding: var(--cf-panel-pad);
 }
 
-.sortable:hover .sort-icon {
-  color: #667eea;
-}
-
-.sortable[aria-sort="ascending"] .sort-icon,
-.sortable[aria-sort="descending"] .sort-icon {
-  color: #667eea;
-}
-
-// Filter Chip Keyboard Accessibility
-.filter-chip {
-  &:focus {
-    outline: 2px solid #667eea;
-    outline-offset: 2px;
-  }
-
-  .chip-remove {
-    svg {
-      width: 12px;
-      height: 12px;
-    }
-  }
-}
-
-// Clickable Recipient Name Link
-.recipient-name-link {
-  background: none;
-  border: none;
-  color: #667eea;
+.sacrament-list__bulk-count {
+  font-size: var(--cf-text-sm);
   font-weight: 600;
-  font-size: 0.9375rem;
-  cursor: pointer;
-  padding: 0;
-  text-align: left;
-  transition: all 0.2s ease;
-  text-decoration: none;
-  display: inline-block;
+  color: var(--cf-slate-900);
+}
 
-  &:hover {
-    color: #764ba2;
+.sacrament-list__bulk-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-toolbar-gap);
+}
+
+.sacrament-list__check-col {
+  width: 2.5rem;
+  text-align: center;
+  vertical-align: middle;
+
+  input[type='checkbox'] {
+    width: 1rem;
+    height: 1rem;
+    cursor: pointer;
+    accent-color: var(--cf-primary);
+  }
+}
+
+.sacrament-list__row--selected {
+  background: var(--cf-slate-50);
+}
+
+.sacrament-list__name {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+
+  strong {
+    color: var(--cf-slate-900);
+    font-weight: 600;
+  }
+
+  &:hover strong,
+  &:focus-visible strong {
+    color: var(--cf-primary);
     text-decoration: underline;
   }
 
-  &:focus {
-    outline: 2px solid #667eea;
+  &:focus-visible {
+    outline: 2px solid var(--cf-primary);
     outline-offset: 2px;
     border-radius: 4px;
   }
-
-  &:active {
-    color: #5a67d8;
-  }
 }
 
-// Sacrament Detail Modal
-.sacrament-detail-modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
+.sacrament-list__overflow {
+  position: relative;
+  display: inline-flex;
+}
+
+.sacrament-list__overflow-menu {
+  position: absolute;
   right: 0;
-  bottom: 0;
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 1rem;
-  overflow-y: auto;
-  animation: fadeIn 0.2s ease-out;
+  top: calc(100% + 0.25rem);
+  z-index: 20;
+  min-width: 12rem;
+  padding: 0.35rem;
+  background: var(--cf-panel-bg, #fff);
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  box-shadow: var(--cf-shadow);
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+.sacrament-list__overflow-item {
+  display: block;
+  padding: 0.5rem 0.65rem;
+  border-radius: 6px;
+  color: var(--cf-slate-800, #1e293b);
+  text-decoration: none;
+  font-size: var(--cf-text-sm);
 }
 
-.sacrament-detail-modal {
-  background: #ffffff;
-  border-radius: 20px;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  max-width: 900px;
-  width: 100%;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  animation: slideUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.sacrament-list__overflow-item:hover,
+.sacrament-list__overflow-item:focus {
+  background: var(--cf-slate-50);
+  outline: none;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+th.sortable {
+  cursor: pointer;
+  user-select: none;
 }
 
-.modal-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 2rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  color: white;
-
-  .header-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    flex: 1;
-
-    .header-icon {
-      flex-shrink: 0;
-      width: 48px;
-      height: 48px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-
-      svg {
-        color: white;
-      }
-    }
-
-    .header-text {
-      flex: 1;
-
-      .modal-title {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin: 0 0 0.25rem 0;
-        color: white;
-      }
-
-      .modal-subtitle {
-        font-size: 0.875rem;
-        opacity: 0.9;
-        margin: 0;
-        color: white;
-      }
-    }
+@media (max-width: 768px) {
+  .sacrament-list__bulk {
+    flex-direction: column;
+    align-items: stretch;
   }
 
-  .modal-close-btn {
-    background: rgba(255, 255, 255, 0.2);
-    border: none;
-    border-radius: 8px;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    transition: all 0.2s;
-    flex-shrink: 0;
-    color: white;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.3);
-    }
-
-    &:focus {
-      outline: 2px solid white;
-      outline-offset: 2px;
-    }
-
-    svg {
-      width: 20px;
-      height: 20px;
-    }
+  .sacrament-list__overflow-menu {
+    right: auto;
+    left: 0;
   }
-}
 
-.modal-body {
-  padding: 2rem;
-  overflow-y: auto;
-  flex: 1;
-
-  .status-section {
-    margin-bottom: 2rem;
-    display: flex;
+  .cf-row-actions {
+    flex-wrap: wrap;
     justify-content: flex-start;
-
-    .status-badge {
-      display: inline-block;
-      padding: 0.5rem 1rem;
-      border-radius: 12px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-
-      &.status-active {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-      }
-
-      &.status-inactive,
-      &.status-cancelled {
-        background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
-      }
-
-      &.status-conditional {
-        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
-        color: white;
-        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
-      }
-    }
-  }
-
-  .detail-grid {
-    display: grid;
-    gap: 2rem;
-  }
-
-  .detail-section {
-    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
-    border: 1px solid #e5e7eb;
-    border-left: 4px solid #667eea;
-    border-radius: 12px;
-    padding: 1.75rem;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-
-    &:hover {
-      box-shadow: 0 8px 24px rgba(102, 126, 234, 0.12);
-      border-color: #cbd5e1;
-      transform: translateY(-2px);
-    }
-
-    .section-title {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      margin: 0 0 1.5rem 0;
-      font-size: 1.125rem;
-      font-weight: 700;
-      color: #1f2937;
-      padding-bottom: 1rem;
-      border-bottom: 2px solid #e5e7eb;
-      position: relative;
-
-      &::after {
-        content: '';
-        position: absolute;
-        bottom: -2px;
-        left: 0;
-        width: 60px;
-        height: 2px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-radius: 2px;
-      }
-
-      .section-icon {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #667eea;
-        
-        svg {
-          width: 20px;
-          height: 20px;
-          filter: drop-shadow(0 2px 4px rgba(102, 126, 234, 0.2));
-        }
-      }
-    }
-
-    .detail-items {
-      display: grid;
-      gap: 1.25rem;
-    }
-
-    .detail-item {
-      display: flex;
-      flex-direction: column;
-      gap: 0.375rem;
-
-      .detail-label {
-        font-size: 0.8125rem;
-        font-weight: 600;
-        color: #6b7280;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
-      .detail-value {
-        font-size: 1rem;
-        color: #1f2937;
-        font-weight: 500;
-        line-height: 1.5;
-      }
-
-      &.detail-item-inline {
-        flex-direction: row;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 0.75rem;
-        padding: 1rem;
-        background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-        border: 1px solid #e5e7eb;
-        border-radius: 10px;
-        transition: all 0.2s;
-
-        &:hover {
-          background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
-          border-color: #cbd5e1;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-        }
-
-        .detail-label {
-          font-size: 0.75rem;
-          font-weight: 600;
-          color: #9ca3af;
-          margin-right: 0.25rem;
-        }
-
-        .detail-value {
-          font-size: 0.9375rem;
-          font-weight: 600;
-          color: #1f2937;
-        }
-
-        .detail-separator {
-          color: #cbd5e1;
-          font-weight: 700;
-          font-size: 1rem;
-          margin: 0 0.5rem;
-          opacity: 0.6;
-        }
-      }
-    }
-
-    .notes-content {
-      font-size: 0.9375rem;
-      color: #374151;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      padding: 1rem;
-      background: #f9fafb;
-      border-radius: 8px;
-      border: 1px solid #e5e7eb;
-    }
   }
 }
 
-.modal-loading {
+/* ---------------------------------------------------------------------------
+   Sacrament Details modal (unchanged presentation — co-located with list)
+   --------------------------------------------------------------------------- */
+
+.sacrament-detail-identity {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin: -0.15rem 0 0;
+}
+
+.sacrament-detail-summary {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0 -1.15rem;
+  padding: 0.75rem 1.15rem;
+  background: var(--cf-slate-50);
+  border-top: 1px solid var(--cf-panel-border);
+  border-bottom: 1px solid var(--cf-panel-border);
+}
+
+.sacrament-detail-complete {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.sacrament-detail-complete__title {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--cf-slate-900);
+  letter-spacing: 0.02em;
+}
+
+.sacrament-detail-complete__section + .sacrament-detail-complete__section {
+  padding-top: 0.85rem;
+  border-top: 1px solid var(--cf-slate-100);
+}
+
+.sacrament-detail-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cf-muted);
+}
+
+.sacrament-detail-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--cf-slate-900);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.sacrament-detail-value--notes {
+  font-weight: 500;
+  white-space: pre-wrap;
+}
+
+.sacrament-detail-modal .cf-split-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.sacrament-detail-modal .cf-split-grid.sacrament-detail-grid--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.sacrament-detail-modal .cf-split-field {
+  min-width: 0;
+}
+
+@media (max-width: 1100px) {
+  .sacrament-detail-modal .cf-split-grid,
+  .sacrament-detail-modal .cf-split-grid.sacrament-detail-grid--2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 768px) {
+  .sacrament-detail-modal .cf-split-grid,
+  .sacrament-detail-modal .cf-split-grid.sacrament-detail-grid--2 {
+    grid-template-columns: 1fr;
+  }
+
+  .sacrament-detail-summary {
+    margin: 0 -1.15rem;
+  }
+}
+
+.sacrament-detail-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 3rem;
-  min-height: 200px;
-
-  .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #e5e7eb;
-    border-top-color: #667eea;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
+  gap: 0.75rem;
+  padding: 2.5rem 1.15rem;
+  color: var(--cf-muted);
+  font-size: 0.9rem;
 
   p {
-    margin-top: 1rem;
-    color: #6b7280;
-    font-size: 0.875rem;
+    margin: 0;
   }
 }
 
-@keyframes spin {
+.sacrament-detail-loading__spinner {
+  width: 2rem;
+  height: 2rem;
+  border: 3px solid var(--cf-slate-100);
+  border-top-color: var(--cf-primary);
+  border-radius: 50%;
+  animation: sacrament-detail-spin 0.8s linear infinite;
+}
+
+@keyframes sacrament-detail-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-.modal-footer {
-  padding: 1.5rem 2rem;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
+.sacrament-detail-modal .cf-split-form-actions {
   justify-content: flex-end;
-  gap: 0.75rem;
-  background: #f9fafb;
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 0.625rem 1.25rem;
-    border-radius: 8px;
-    font-weight: 500;
-    font-size: 0.875rem;
-    transition: all 0.2s;
-    border: none;
-    cursor: pointer;
-
-    &.btn-secondary {
-      background: #ffffff;
-      color: #374151;
-      border: 1px solid #d1d5db;
-
-      &:hover {
-        background: #f9fafb;
-        border-color: #9ca3af;
-      }
-    }
-
-    &.btn-outline {
-      background: #ffffff;
-      color: #667eea;
-      border: 2px solid #667eea;
-
-      &:hover {
-        background: #f0f4ff;
-        border-color: #764ba2;
-        color: #764ba2;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
-      }
-    }
-
-    &.btn-primary {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      color: white;
-
-      &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-      }
-    }
-
-    svg {
-      width: 16px;
-      height: 16px;
-    }
-  }
 }
 
-// Responsive Design
-@media (max-width: 768px) {
-  .sacrament-detail-modal-overlay {
-    padding: 0.5rem;
-  }
-
-  .sacrament-detail-modal {
-    max-width: 100%;
-    max-height: 95vh;
-    border-radius: 16px;
-  }
-
-  .modal-header {
-    padding: 1.5rem;
-
-    .header-content {
-      .header-icon {
-        width: 40px;
-        height: 40px;
-      }
-
-      .header-text {
-        .modal-title {
-          font-size: 1.25rem;
-        }
-      }
-    }
-  }
-
-  .modal-body {
-    padding: 1.5rem;
-
-    .detail-section {
-      padding: 1.25rem;
-    }
-  }
-
-  .modal-footer {
-    padding: 1rem 1.5rem;
-    flex-direction: column-reverse;
-
-    .btn {
-      width: 100%;
-    }
+@media (prefers-reduced-motion: reduce) {
+  .sacrament-detail-loading__spinner {
+    animation: none;
+    border-top-color: var(--cf-slate-100);
   }
 }
-
-
