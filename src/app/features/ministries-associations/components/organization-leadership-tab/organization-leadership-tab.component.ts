@@ -76,6 +76,7 @@ export class OrganizationLeadershipTabComponent implements OnInit, OnChanges, On
 
   @Input({ required: true }) organizationId!: string;
   @Input({ required: true }) organizationStatus!: Organization['status'];
+  @Input() isArchived = false;
   @Output() leadershipChanged = new EventEmitter<void>();
 
   currentRows: CurrentLeadershipRow[] = [];
@@ -127,7 +128,7 @@ export class OrganizationLeadershipTabComponent implements OnInit, OnChanges, On
   }
 
   get isInactiveOrganization(): boolean {
-    return this.organizationStatus === 'inactive';
+    return this.organizationStatus === 'inactive' || this.isArchived;
   }
 
   get canAssign(): boolean {

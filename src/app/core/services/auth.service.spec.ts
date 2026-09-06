@@ -140,4 +140,23 @@ describe('AuthService RBAC access helpers', () => {
     (service as any).currentUserSubject.next(user);
     expect(service.canAccessMinistries(user)).toBe(true);
   });
+
+  it('allows pastoral care for Parish Priest', () => {
+    const user = { role_name: 'Parish Priest', tenant_id: 42, permissions: [] } as any;
+    expect(service.canAccessPastoral(user)).toBe(true);
+  });
+
+  it('denies pastoral care for a member without permissions', () => {
+    const user = { role_name: 'Member', tenant_id: 42, permissions: [] } as any;
+    expect(service.canAccessPastoral(user)).toBe(false);
+  });
+
+  it('allows pastoral care when the user has pastoral.care.view', () => {
+    const user = {
+      role_name: 'Secretary',
+      tenant_id: 42,
+      permissions: [{ name: 'pastoral.care.view' }],
+    } as any;
+    expect(service.canAccessPastoral(user)).toBe(true);
+  });
 });

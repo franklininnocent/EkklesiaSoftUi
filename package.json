@@ -14,7 +14,11 @@
     "test:watch": "jest --watch",
     "lint": "ng lint",
     "e2e": "ng e2e",
-    "e2e:rbac": "playwright test e2e/tenant-rbac.spec.ts"
+    "e2e:rbac": "playwright test e2e/tenant-rbac.spec.ts",
+    "e2e:cross-tenant": "playwright test e2e/cross-tenant-isolation.spec.ts",
+    "e2e:sacraments": "playwright test e2e/sacraments",
+    "e2e:church-profile-leadership": "playwright test e2e/church-profile/church-profile.spec.ts -g leadership",
+    "e2e:church-profile": "playwright test e2e/church-profile/church-profile.spec.ts"
   },
   "private": true,
   "overrides": {
@@ -42,6 +46,7 @@
     "@tiptap/pm": "3.29.2",
     "@tiptap/starter-kit": "3.29.2",
     "chart.js": "4.5.1",
+    "chartjs-chart-sankey": "0.15.0",
     "libphonenumber-js": "1.12.25",
     "rxjs": "~7.8.0",
     "tslib": "^2.8.0",

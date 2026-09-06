@@ -157,6 +157,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       marriage_groom_church_address: [''],
       status: ['active']
     });
+    this.applyDateOfBirthValidators();
   }
 
   ngOnInit(): void {
@@ -248,6 +249,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
         // Edit mode - populate form with member data only if it's a different member
         if (isNewMember) {
           this.isEditMode = true;
+          this.applyDateOfBirthValidators();
           this.errorMessage = null;
           this.lastMemberId = currentMemberId;
           this.populateFormWithMember(this.member);
@@ -263,13 +265,19 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
         if (this.lastMemberId !== null || changes['isHeadOnly']) {
           // Only reset if we were previously in edit mode or isHeadOnly changed
           this.isEditMode = false;
+          this.applyDateOfBirthValidators();
           this.errorMessage = null;
           this.lastMemberId = null;
           this.form.reset({ 
             id: null,
+            person_id: null,
             relationship_to_head: this.isHeadOnly ? 'self' : 'other', 
             marital_status: 'single', 
-            status: 'active' 
+            status: 'active',
+            baptism_priest_is_home: true,
+            baptism_location_type: 'home_parish',
+            marriage_bride_church_type: 'home_parish',
+            marriage_groom_church_type: 'home_parish',
           });
           
           // CRITICAL: If isHeadOnly mode, ensure relationship is set to 'self'
@@ -444,6 +452,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
         case 'first_name': return 'First name is required';
         case 'last_name': return 'Last name is required';
         case 'relationship_to_head': return 'Relationship to head is required';
+        case 'date_of_birth': return 'Date of birth is required.';
         default: return `${this.getFieldLabel(controlName)} is required`;
       }
     }
@@ -474,6 +483,19 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
     }
     
     return `${this.getFieldLabel(controlName)} is invalid`;
+  }
+
+  /**
+   * DOB is required when creating a member; legacy members may still lack DOB on edit.
+   */
+  private applyDateOfBirthValidators(): void {
+    const control = this.form.get('date_of_birth');
+    if (!control) {
+      return;
+    }
+
+    control.setValidators(this.isEditMode ? [] : [Validators.required]);
+    control.updateValueAndValidity({ emitEvent: false });
   }
 
   /**
@@ -642,7 +664,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
     }
     
     // Convert empty strings to null for optional fields to allow clearing values
-    const optionalFields = ['middle_name', 'date_of_birth', 'gender', 'marital_status', 'email', 
+    const optionalFields = ['middle_name', 'gender', 'marital_status', 'email', 
                            'occupation', 'education', 'baptism_date', 'baptism_place',
                            'baptism_godparent_primary', 'baptism_godparent_secondary',
                            'baptism_location_type', 'baptism_church_name', 'baptism_church_address',
@@ -652,6 +674,10 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
                            'marriage_bride_church_type', 'marriage_bride_church_name', 'marriage_bride_church_address',
                            'marriage_groom_full_name', 'marriage_groom_address', 'marriage_groom_church_type',
                            'marriage_groom_church_name', 'marriage_groom_church_address'];
+
+    if (this.isEditMode) {
+      optionalFields.unshift('date_of_birth');
+    }
     
     optionalFields.forEach(field => {
       if (formValue[field] === '') {

@@ -1,0 +1,1034 @@
+:host {
+  display: block;
+  min-height: 0;
+}
+
+/* .page-content already provides outer gutter via main-layout */
+.sacraments-dashboard.cf-page {
+  padding: 0;
+}
+
+/* Global .cf-chart-panel sets min-height: 18rem; dashboard charts size themselves. */
+.sacraments-dashboard .cf-chart-panel {
+  min-height: 0;
+}
+
+/* ── Compact header + KPI rail ── */
+
+.sacraments-dashboard--loading {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+/* ── Compact unified header action bar ── */
+
+:host ::ng-deep app-page-header .cf-page-header.cf-hero {
+  align-items: center;
+  gap: 0.35rem 0.75rem;
+  margin-bottom: 0.35rem;
+}
+
+:host ::ng-deep app-page-header .cf-page-header__identity > p {
+  margin-top: 0.15rem;
+}
+
+:host ::ng-deep app-page-header .cf-page-header__actions {
+  flex: 1 1 28rem;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.sacraments-dashboard__action-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.65rem;
+  width: 100%;
+  min-width: 0;
+}
+
+.sacraments-dashboard__action-bar__primary {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.sacraments-dashboard__action-bar__divider {
+  width: 1px;
+  align-self: stretch;
+  min-height: 2rem;
+  margin-inline: 0.1rem;
+  background: var(--cf-slate-200, #e2e8f0);
+  flex-shrink: 0;
+}
+
+.sacraments-dashboard__action-bar__filters {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.35rem 0.5rem;
+  min-width: 0;
+}
+
+.sacraments-dashboard__filter-label {
+  flex-shrink: 0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.68rem;
+}
+
+.sacraments-dashboard__period-pills {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.sacraments-dashboard__community-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+
+  span {
+    flex-shrink: 0;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--cf-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  select {
+    min-width: 8.5rem;
+    max-width: 12rem;
+    height: 2.25rem;
+    padding-inline: 0.55rem;
+  }
+}
+
+.sacraments-dashboard__filter-chip {
+  flex-shrink: 0;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* BCC KPI rail — scoped copy for 5-metric sacraments dashboard */
+.sacraments-dashboard .bcc-kpi-rail {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0;
+  margin-top: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.sacraments-dashboard .bcc-kpi-rail__item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+  padding: 0.75rem 0.85rem;
+  background: transparent;
+  border: 0;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+  cursor: default;
+}
+
+.sacraments-dashboard .bcc-kpi-rail__item + .bcc-kpi-rail__item::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 22%;
+  bottom: 22%;
+  width: 1px;
+  background: var(--cf-slate-200, #e2e8f0);
+}
+
+.sacraments-dashboard .bcc-kpi-rail__item--emphasis {
+  background: linear-gradient(180deg, rgba(22, 163, 74, 0.04), transparent 70%);
+}
+
+.sacraments-dashboard .bcc-kpi-rail__label {
+  color: var(--cf-muted);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.sacraments-dashboard .bcc-kpi-rail__value {
+  color: var(--cf-slate-900);
+  font-size: 1.45rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
+}
+
+.sacraments-dashboard .bcc-kpi-rail__value--sm {
+  font-size: 1.25rem;
+}
+
+.sacraments-dashboard .bcc-kpi-rail__delta--up {
+  color: var(--cf-forest, #15803d);
+}
+
+.sacraments-dashboard .bcc-kpi-rail__delta--down {
+  color: var(--cf-critical, #b91c1c);
+}
+
+.sacraments-dashboard__breakdown {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0.85rem;
+  border-top: 1px solid var(--cf-panel-border, #e2e8f0);
+}
+
+.sacraments-dashboard__breakdown-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.2;
+  color: var(--cf-slate-700, var(--cf-color-text-primary));
+
+  strong {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+.sacraments-dashboard__breakdown-dot {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: #94a3b8;
+}
+
+.sacraments-dashboard__breakdown-item--baptism .sacraments-dashboard__breakdown-dot { background: #0ea5e9; }
+.sacraments-dashboard__breakdown-item--confirmation .sacraments-dashboard__breakdown-dot { background: #8b5cf6; }
+.sacraments-dashboard__breakdown-item--eucharist .sacraments-dashboard__breakdown-dot { background: #f59e0b; }
+.sacraments-dashboard__breakdown-item--reconciliation .sacraments-dashboard__breakdown-dot { background: #6366f1; }
+.sacraments-dashboard__breakdown-item--anointing .sacraments-dashboard__breakdown-dot { background: #64748b; }
+.sacraments-dashboard__breakdown-item--holy-orders .sacraments-dashboard__breakdown-dot { background: #dc2626; }
+.sacraments-dashboard__breakdown-item--matrimony .sacraments-dashboard__breakdown-dot { background: #ec4899; }
+
+@media (max-width: 1100px) {
+  .sacraments-dashboard .bcc-kpi-rail {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(3n + 1)::before {
+    display: none;
+  }
+
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(4),
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(5) {
+    border-top: 1px solid var(--cf-slate-100, #f1f5f9);
+  }
+}
+
+@media (max-width: 767px) {
+  :host ::ng-deep app-page-header .cf-page-header.cf-hero {
+    align-items: stretch;
+  }
+
+  :host ::ng-deep app-page-header .cf-page-header__actions {
+    flex-basis: 100%;
+    justify-content: stretch;
+  }
+
+  .sacraments-dashboard__action-bar {
+    flex-direction: column;
+    align-items: stretch;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sacraments-dashboard__action-bar__primary,
+  .sacraments-dashboard__action-bar__filters {
+    justify-content: flex-start;
+    width: 100%;
+  }
+
+  .sacraments-dashboard__action-bar__divider {
+    width: 100%;
+    height: 1px;
+    min-height: 0;
+    margin-inline: 0;
+  }
+
+  .sacraments-dashboard__community-filter {
+    width: 100%;
+
+    select {
+      flex: 1;
+      max-width: none;
+    }
+  }
+
+  .sacraments-dashboard .bcc-kpi-rail {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(3n + 1)::before {
+    display: block;
+  }
+
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(2n + 1)::before {
+    display: none;
+  }
+
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(3),
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(4),
+  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(5) {
+    border-top: 1px solid var(--cf-slate-100, #f1f5f9);
+  }
+
+  .sacraments-dashboard .bcc-kpi-rail__value {
+    font-size: 1.25rem;
+  }
+}
+
+.sacraments-dashboard__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+  font-size: var(--cf-font-size-body-sm);
+  color: var(--cf-text-muted);
+  cursor: pointer;
+}
+
+.sacraments-dashboard__toggle input {
+  width: 1rem;
+  height: 1rem;
+}
+
+.sacraments-dashboard__panels {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cf-space-3);
+  margin-top: var(--cf-space-3);
+}
+
+.sacraments-dashboard__panel {
+  min-width: 0;
+}
+
+.sacraments-dashboard__panel-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--cf-space-2);
+  margin-bottom: var(--cf-space-3);
+}
+
+.sacraments-dashboard__type-toggle {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-1);
+  justify-content: flex-end;
+}
+
+.sacraments-dashboard__trend {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--cf-space-1);
+  align-items: end;
+  min-height: 12rem;
+}
+
+.sacraments-dashboard__trend-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--cf-space-1);
+  min-height: 100%;
+  justify-content: flex-end;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.sacraments-dashboard__trend-bar:hover .sacraments-dashboard__trend-fill,
+.sacraments-dashboard__trend-bar:focus-visible .sacraments-dashboard__trend-fill {
+  filter: brightness(1.08);
+}
+
+.sacraments-dashboard__panel--wide {
+  grid-column: 1 / -1;
+}
+
+.sacraments-dashboard__panel-actions {
+  display: flex;
+  gap: var(--cf-space-1);
+  flex-wrap: wrap;
+}
+
+.sacraments-dashboard__subheading {
+  margin: 0 0 var(--cf-space-2);
+  font-size: var(--cf-font-size-body);
+}
+
+/* Demographics chart palettes — teal/amber, indigo/violet, amber sequential */
+.sacraments-dashboard__demographics-analytics {
+  --cf-demo-member-parish: #0d9488;
+  --cf-demo-member-visitor: #b45309;
+  --cf-demo-member-unknown: #64748b;
+
+  --cf-demo-gender-male: #16a34a;
+  --cf-demo-gender-female: #ea580c;
+  --cf-demo-gender-other: #d97706;
+  --cf-demo-gender-unknown: #64748b;
+
+  --cf-demo-age-1: #fde68a;
+  --cf-demo-age-2: #fbbf24;
+  --cf-demo-age-3: #f59e0b;
+  --cf-demo-age-4: #d97706;
+  --cf-demo-age-5: #b45309;
+  --cf-demo-age-6: #92400e;
+
+  --cf-demo-series-1: #16a34a;
+  --cf-demo-series-2: #ea580c;
+  --cf-demo-series-3: #dc2626;
+  --cf-demo-series-4: #d97706;
+  --cf-demo-series-5: #0d9488;
+  --cf-demo-series-6: #65a30d;
+  --cf-demo-series-7: #e11d48;
+  --cf-demo-series-8: #f97316;
+  --cf-demo-series-9: #ca8a04;
+  --cf-demo-series-10: #9333ea;
+  --cf-demo-panel-divider: var(--cf-border-subtle, var(--cf-panel-border, #e2e8f0));
+
+  @media (prefers-color-scheme: dark) {
+    --cf-demo-member-parish: #2dd4bf;
+    --cf-demo-member-visitor: #fbbf24;
+    --cf-demo-member-unknown: #94a3b8;
+
+    --cf-demo-gender-male: #4ade80;
+    --cf-demo-gender-female: #fb923c;
+    --cf-demo-gender-other: #fbbf24;
+    --cf-demo-gender-unknown: #94a3b8;
+
+    --cf-demo-age-1: #fef08a;
+    --cf-demo-age-2: #facc15;
+    --cf-demo-age-3: #fbbf24;
+    --cf-demo-age-4: #f59e0b;
+    --cf-demo-age-5: #ea580c;
+    --cf-demo-age-6: #c2410c;
+
+    --cf-demo-series-1: #4ade80;
+    --cf-demo-series-2: #fb923c;
+    --cf-demo-series-3: #f87171;
+    --cf-demo-series-4: #fbbf24;
+    --cf-demo-series-5: #2dd4bf;
+    --cf-demo-series-6: #a3e635;
+    --cf-demo-series-7: #fb7185;
+    --cf-demo-series-8: #fdba74;
+    --cf-demo-series-9: #facc15;
+    --cf-demo-series-10: #c084fc;
+
+    --cf-demo-panel-divider: color-mix(in srgb, var(--cf-slate-300, #cbd5e1) 40%, transparent);
+  }
+}
+
+.sacraments-dashboard__demographics-analytics .sacraments-dashboard__panel-head {
+  margin-bottom: var(--cf-space-2);
+}
+
+.sacraments-dashboard__demographics-row {
+  margin-top: 0;
+}
+
+.sacraments-dashboard__demographics-row--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.sacraments-dashboard__analytics-grid.sacraments-dashboard__demographics-row--solo {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+/* Subtle dividers between demographics analytics panels */
+.sacraments-dashboard__demographics-analytics .sacraments-dashboard__demographics-row:not(.sacraments-dashboard__demographics-row--solo) {
+  gap: 0;
+
+  .sacraments-dashboard__analytical-card {
+    border: none;
+    border-radius: 0;
+    padding-inline: var(--cf-space-3);
+
+    &:first-child {
+      padding-inline-start: 0;
+    }
+
+    &:last-child {
+      padding-inline-end: 0;
+    }
+
+    &:not(:first-child) {
+      border-inline-start: 1px solid var(--cf-demo-panel-divider);
+    }
+  }
+}
+
+@media (max-width: 1279px) {
+  .sacraments-dashboard__demographics-analytics .sacraments-dashboard__demographics-row:not(.sacraments-dashboard__demographics-row--solo) {
+    .sacraments-dashboard__analytical-card:nth-child(3) {
+      border-inline-start: 0;
+      border-block-start: 1px solid var(--cf-demo-panel-divider);
+      padding-inline-start: 0;
+      padding-block-start: var(--cf-space-3);
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .sacraments-dashboard__demographics-analytics .sacraments-dashboard__demographics-row:not(.sacraments-dashboard__demographics-row--solo) {
+    .sacraments-dashboard__analytical-card {
+      padding-inline: 0;
+
+      &:not(:first-child) {
+        border-inline-start: 0;
+        border-block-start: 1px solid var(--cf-demo-panel-divider);
+        padding-block-start: var(--cf-space-3);
+      }
+    }
+  }
+}
+
+@container (max-width: 42rem) {
+  .sacraments-dashboard__demographics-analytics .sacraments-dashboard__demographics-row:not(.sacraments-dashboard__demographics-row--solo) {
+    .sacraments-dashboard__analytical-card {
+      padding-inline: 0;
+
+      &:not(:first-child) {
+        border-inline-start: 0;
+        border-block-start: 1px solid var(--cf-demo-panel-divider);
+        padding-block-start: var(--cf-space-3);
+      }
+    }
+  }
+}
+
+.sacraments-dashboard__age-meta {
+  margin: 0;
+  font-size: var(--cf-font-size-body-sm);
+  white-space: nowrap;
+}
+
+.sacraments-dashboard__analytical-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  margin: 0;
+  min-height: 10.5rem;
+  text-align: center;
+}
+
+.sacraments-dashboard__member-bars--compact {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  flex: 1;
+  gap: var(--cf-space-2);
+  min-height: 10.5rem;
+}
+
+.sacraments-dashboard__member-row--compact {
+  grid-template-columns: minmax(0, 5.5rem) 1fr auto;
+  font-size: var(--cf-font-size-body-sm);
+}
+
+.sacraments-dashboard__member-row--compact strong {
+  font-size: var(--cf-font-size-body-sm);
+  white-space: nowrap;
+}
+
+.sacraments-dashboard__demographics-analytics .sacraments-dashboard__analytical-card {
+  min-height: 14rem;
+}
+
+.sacraments-dashboard__demographics-analytics .cf-chart-panel__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  margin: 0;
+  min-height: 10.5rem;
+  font-size: var(--cf-font-size-body-sm);
+  color: var(--cf-text-muted);
+  text-align: center;
+}
+
+.sacraments-dashboard__bracket-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--cf-space-1);
+}
+
+.sacraments-dashboard__bracket-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cf-space-2);
+  padding: var(--cf-space-2) 0;
+  border-bottom: 1px solid var(--cf-border-subtle);
+}
+
+.sacraments-dashboard__trend-fill {
+  width: 100%;
+  max-width: 2rem;
+  border-radius: var(--cf-radius-sm) var(--cf-radius-sm) 0 0;
+  background: linear-gradient(180deg, var(--cf-primary), color-mix(in srgb, var(--cf-primary) 70%, white));
+}
+
+.sacraments-dashboard__type-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--cf-space-1);
+}
+
+.sacraments-dashboard__type-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--cf-space-2);
+  padding: var(--cf-space-2) var(--cf-space-3);
+  border: 1px solid var(--cf-border);
+  border-radius: var(--cf-radius-md);
+  background: var(--cf-surface);
+  cursor: pointer;
+  text-align: left;
+}
+
+.sacraments-dashboard__type-row:hover {
+  border-color: var(--cf-primary);
+  background: color-mix(in srgb, var(--cf-primary) 6%, var(--cf-surface));
+}
+
+.sacraments-dashboard__member-bars {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.sacraments-dashboard__member-row {
+  display: grid;
+  grid-template-columns: 7rem 1fr auto;
+  gap: var(--cf-space-2);
+  align-items: center;
+}
+
+.sacraments-dashboard__member-track {
+  height: 0.65rem;
+  border-radius: var(--cf-radius-pill);
+  background: var(--cf-border-subtle);
+  overflow: hidden;
+}
+
+.sacraments-dashboard__member-track span {
+  display: block;
+  height: 100%;
+  background: var(--cf-primary);
+}
+
+.sacraments-dashboard__member-track--alt span {
+  background: var(--cf-indigo);
+}
+
+.sacraments-dashboard__participation-analytics {
+  --cf-participation-panel-divider: var(--cf-border-subtle, var(--cf-panel-border, #e2e8f0));
+  margin-top: var(--cf-space-2);
+
+  @media (prefers-color-scheme: dark) {
+    --cf-participation-panel-divider: color-mix(in srgb, var(--cf-slate-300, #cbd5e1) 40%, transparent);
+  }
+}
+
+.sacraments-dashboard__participation-analytics .sacraments-dashboard__panel-head {
+  margin-bottom: var(--cf-space-2);
+}
+
+.sacraments-dashboard__participation-grid {
+  margin-top: 0;
+}
+
+.sacraments-dashboard__participation-grid--insights {
+  padding-top: var(--cf-space-3);
+  border-top: 1px solid var(--cf-participation-panel-divider);
+
+  .sacraments-dashboard__analytical-card,
+  .sacraments-dashboard__analytical-card__body {
+    overflow: visible;
+  }
+}
+
+.sacraments-dashboard__participation-analytics .sacraments-dashboard__analytical-card {
+  min-height: 16rem;
+}
+
+.sacraments-dashboard__participation-analytics .cf-chart-panel__empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  margin: 0;
+  min-height: 10.5rem;
+  font-size: var(--cf-font-size-body-sm);
+  color: var(--cf-text-muted);
+  text-align: center;
+}
+
+.sacraments-dashboard__analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--cf-space-3);
+  margin-top: var(--cf-space-3);
+  container-type: inline-size;
+}
+
+.sacraments-dashboard__analytics-grid.sacraments-dashboard__participation-grid,
+.sacraments-dashboard__analytics-grid.sacraments-dashboard__demographics-row {
+  margin-top: 0;
+}
+
+.sacraments-dashboard__analytical-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid var(--cf-border-subtle);
+  border-radius: var(--cf-radius-md);
+  background: var(--cf-surface);
+  padding: var(--cf-space-2);
+  overflow: hidden;
+}
+
+/* Subtle vertical dividers between participation analytics — same pattern as Demographics */
+.sacraments-dashboard__participation-analytics .sacraments-dashboard__participation-grid {
+  gap: 0;
+
+  .sacraments-dashboard__analytical-card {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    padding-inline: var(--cf-space-3);
+
+    &:first-child {
+      padding-inline-start: 0;
+    }
+
+    &:last-child {
+      padding-inline-end: 0;
+    }
+
+    &:not(:first-child) {
+      border-inline-start: 1px solid var(--cf-participation-panel-divider);
+    }
+  }
+}
+
+@media (max-width: 1279px) {
+  .sacraments-dashboard__participation-analytics .sacraments-dashboard__participation-grid {
+    .sacraments-dashboard__analytical-card:nth-child(3) {
+      border-inline-start: 0;
+      border-block-start: 1px solid var(--cf-participation-panel-divider);
+      padding-inline-start: 0;
+      padding-block-start: var(--cf-space-3);
+    }
+  }
+}
+
+@media (max-width: 767px) {
+  .sacraments-dashboard__participation-analytics .sacraments-dashboard__participation-grid {
+    .sacraments-dashboard__analytical-card {
+      padding-inline: 0;
+
+      &:not(:first-child) {
+        border-inline-start: 0;
+        border-block-start: 1px solid var(--cf-participation-panel-divider);
+        padding-block-start: var(--cf-space-3);
+      }
+    }
+  }
+}
+
+@container (max-width: 42rem) {
+  .sacraments-dashboard__participation-analytics .sacraments-dashboard__participation-grid {
+    .sacraments-dashboard__analytical-card {
+      padding-inline: 0;
+
+      &:not(:first-child) {
+        border-inline-start: 0;
+        border-block-start: 1px solid var(--cf-participation-panel-divider);
+        padding-block-start: var(--cf-space-3);
+      }
+    }
+  }
+}
+
+.sacraments-dashboard__analytical-card__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--cf-space-2);
+  margin-bottom: var(--cf-space-2);
+  flex-shrink: 0;
+}
+
+.sacraments-dashboard__analytical-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--cf-space-1);
+  min-width: 0;
+}
+
+.sacraments-dashboard__analytical-card__title-row--with-toggle {
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--cf-space-2);
+}
+
+.sacraments-dashboard__type-toggle--card {
+  flex: 1 1 auto;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.sacraments-dashboard__type-toggle--card .cf-btn {
+  white-space: nowrap;
+}
+
+.sacraments-dashboard__analytical-card__title {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cf-text);
+}
+
+.sacraments-dashboard__analytical-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.sacraments-dashboard__info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: var(--cf-radius-pill);
+  background: transparent;
+  color: var(--cf-text-muted);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: help;
+}
+
+.sacraments-dashboard__info-btn:hover,
+.sacraments-dashboard__info-btn:focus-visible {
+  color: var(--cf-primary);
+  outline: 2px solid var(--cf-primary);
+  outline-offset: 1px;
+}
+
+.sacraments-dashboard__type-toggle--compact {
+  flex-shrink: 0;
+  max-width: 100%;
+}
+
+.sacraments-dashboard__participation-list {
+  display: grid;
+  gap: var(--cf-space-3);
+  margin-bottom: var(--cf-space-3);
+}
+
+.sacraments-dashboard__participation-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-2);
+  width: 100%;
+  border: 1px solid var(--cf-border-subtle);
+  border-radius: var(--cf-radius-md);
+  background: var(--cf-surface);
+  padding: var(--cf-space-2) var(--cf-space-3);
+  text-align: left;
+}
+
+.sacraments-dashboard__participation-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 8rem auto;
+  gap: var(--cf-space-2);
+  align-items: center;
+  width: 100%;
+}
+
+.sacraments-dashboard__participation-row--actionable:not(:disabled) {
+  cursor: pointer;
+}
+
+.sacraments-dashboard__participation-row--actionable:not(:disabled):hover {
+  border-color: var(--cf-primary);
+  background: color-mix(in srgb, var(--cf-primary) 6%, var(--cf-surface));
+}
+
+.sacraments-dashboard__participation-row:disabled {
+  opacity: 0.85;
+  cursor: default;
+}
+
+.sacraments-dashboard__participation-copy {
+  display: grid;
+  gap: var(--cf-space-1);
+}
+
+.sacraments-dashboard__participation-track {
+  height: 0.65rem;
+  border-radius: var(--cf-radius-pill);
+  background: var(--cf-border-subtle);
+  overflow: hidden;
+}
+
+.sacraments-dashboard__participation-track span {
+  display: block;
+  height: 100%;
+  background: var(--cf-forest);
+}
+
+.sacraments-dashboard__participation-pct {
+  min-width: 3rem;
+  text-align: right;
+}
+
+.sacraments-dashboard__missing-ages {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.sacraments-dashboard__missing-ages li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-1);
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--cf-radius-pill);
+  background: color-mix(in srgb, var(--cf-critical) 8%, var(--cf-surface));
+  font-size: var(--cf-text-xs);
+}
+
+.sacraments-dashboard__progression-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--cf-space-2);
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.sacraments-dashboard__progression-row:not(:disabled) {
+  cursor: pointer;
+}
+
+.sacraments-dashboard__progression-row:not(:disabled):hover {
+  color: var(--cf-primary);
+}
+
+.sacraments-dashboard__progression-row:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.sacraments-dashboard__progression {
+  border-top: 1px solid var(--cf-border-subtle);
+  padding-top: var(--cf-space-3);
+}
+
+.sacraments-dashboard__yoy--up {
+  color: var(--cf-forest);
+}
+
+.sacraments-dashboard__yoy--down {
+  color: var(--cf-critical);
+}
+
+.sacraments-dashboard__yoy--flat {
+  color: var(--cf-text-muted);
+}
+
+@media (max-width: 1279px) {
+  .sacraments-dashboard__analytics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 767px) {
+  .sacraments-dashboard__analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@container (max-width: 42rem) {
+  .sacraments-dashboard__analytics-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 960px) {
+  .sacraments-dashboard__panels {
+    grid-template-columns: 1fr;
+  }
+
+  .sacraments-dashboard__member-row,
+  .sacraments-dashboard__member-row--compact {
+    grid-template-columns: 1fr;
+  }
+
+  .sacraments-dashboard__age-meta {
+    white-space: normal;
+  }
+
+  .sacraments-dashboard__participation-row {
+    grid-template-columns: 1fr;
+  }
+
+  .sacraments-dashboard__participation-main {
+    grid-template-columns: 1fr;
+  }
+}

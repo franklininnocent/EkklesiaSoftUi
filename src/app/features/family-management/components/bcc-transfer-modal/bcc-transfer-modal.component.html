@@ -1,0 +1,116 @@
+<app-modal-shell
+  [title]="'Move family to another BCC'"
+  [description]="stepTitle"
+  size="md"
+  [isSubmitting]="saving || previewLoading"
+  (closeRequested)="onCancel()"
+>
+  <div class="bcc-transfer-modal__steps" aria-hidden="true">
+    <span
+      *ngFor="let n of [1, 2, 3]"
+      class="bcc-transfer-modal__step"
+      [class.is-active]="step === n"
+      [class.is-complete]="step > n"
+    >
+      Step {{ n }}
+    </span>
+  </div>
+
+  <form class="bcc-transfer-modal__body" [formGroup]="form" (ngSubmit)="goNext()">
+    <ng-container *ngIf="step === 1">
+      <p class="bcc-transfer-modal__lead">
+        Move <strong>{{ family.family_name }}</strong> to a different Basic Christian Community.
+      </p>
+
+      <label class="bcc-transfer-modal__block">
+        <span>Destination BCC <abbr title="required">*</abbr></span>
+        <select formControlName="target_bcc_id">
+          <option value="">Select a BCC…</option>
+          <option *ngFor="let bcc of bccs" [value]="bcc.id">{{ bcc.name }}</option>
+        </select>
+        <small *ngIf="form.controls.target_bcc_id.touched && form.controls.target_bcc_id.invalid">
+          Please choose a destination BCC.
+        </small>
+      </label>
+
+      <p class="bcc-transfer-modal__muted" *ngIf="bccsLoading">Loading BCCs…</p>
+      <p class="bcc-transfer-modal__muted" *ngIf="!bccsLoading && !bccs.length">
+        No other active BCCs are available.
+      </p>
+    </ng-container>
+
+    <ng-container *ngIf="step === 2 && preview">
+      <dl class="bcc-transfer-modal__preview">
+        <div>
+          <dt>Current BCC</dt>
+          <dd>{{ preview.current_bcc_name || 'Not assigned' }}</dd>
+        </div>
+        <div>
+          <dt>Moving to</dt>
+          <dd>{{ preview.target_bcc_name }}</dd>
+        </div>
+        <div>
+          <dt>Active members</dt>
+          <dd>{{ preview.member_count }}</dd>
+        </div>
+        <div>
+          <dt>Move type</dt>
+          <dd>{{ preview.transfer_mode === 'ASSIGN' ? 'First assignment' : 'Relocation' }}</dd>
+        </div>
+      </dl>
+
+      <ul class="bcc-transfer-modal__warnings" *ngIf="preview.warnings?.length">
+        <li *ngFor="let warning of preview.warnings">{{ warning }}</li>
+      </ul>
+
+      <ul class="bcc-transfer-modal__warnings" *ngIf="preview.leadership_impacts?.length">
+        <li *ngFor="let impact of preview.leadership_impacts">
+          {{ impact.member_name }} will leave the {{ impact.role_label }} role.
+        </li>
+      </ul>
+    </ng-container>
+
+    <ng-container *ngIf="step === 3">
+      <label class="bcc-transfer-modal__block">
+        <span>Effective date <abbr title="required">*</abbr></span>
+        <input type="date" formControlName="effective_date" [max]="todayIsoDate" />
+      </label>
+
+      <label class="bcc-transfer-modal__block">
+        <span>Note for history (optional)</span>
+        <textarea formControlName="historical_note" rows="3" placeholder="Why is this family moving?"></textarea>
+      </label>
+    </ng-container>
+
+    <p class="bcc-transfer-modal__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving || previewLoading">Cancel</button>
+    <button
+      type="button"
+      class="cf-btn"
+      *ngIf="step > 1"
+      (click)="goBack()"
+      [disabled]="saving || previewLoading"
+    >
+      Back
+    </button>
+    <button
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="goNext()"
+      [disabled]="saving || previewLoading || bccsLoading"
+    >
+      {{
+        previewLoading
+          ? 'Loading preview…'
+          : saving
+            ? 'Saving…'
+            : step === 3
+              ? 'Confirm move'
+              : 'Continue'
+      }}
+    </button>
+  </ng-container>
+</app-modal-shell>

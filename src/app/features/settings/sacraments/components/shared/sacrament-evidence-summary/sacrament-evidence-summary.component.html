@@ -1,0 +1,27 @@
+<div class="sacrament-evidence-summary" *ngIf="evidence" [class.sacrament-evidence-summary--compact]="compact">
+  <h4 class="sacrament-evidence-summary__title">{{ title }}</h4>
+  <ng-container *ngIf="isFound; else notFound">
+    <p class="sacrament-evidence-summary__status">✓ {{ statusMessage }}</p>
+    <p class="sacrament-evidence-summary__advisory" *ngIf="showRegisterAdvisory">
+      {{ advisoryMessage }}
+    </p>
+    <dl>
+      <div *ngIf="derivedStatus">
+        <dt>Status</dt>
+        <dd>{{ derivedStatus === 'baptized_catholic' ? 'Baptized Catholic' : derivedStatus }}</dd>
+      </div>
+      <div *ngIf="baptismDate">
+        <dt>Date</dt>
+        <dd>{{ baptismDate }}</dd>
+      </div>
+      <div *ngIf="baptismPlace">
+        <dt>Parish / Place</dt>
+        <dd>{{ baptismPlace }}</dd>
+      </div>
+    </dl>
+    <a *ngIf="sacramentId" class="sacrament-evidence-summary__link" [routerLink]="['/sacraments/view', sacramentId]">View record</a>
+  </ng-container>
+  <ng-template #notFound>
+    <p class="sacrament-evidence-summary__status sacrament-evidence-summary__status--missing">{{ statusMessage }}</p>
+  </ng-template>
+</div>

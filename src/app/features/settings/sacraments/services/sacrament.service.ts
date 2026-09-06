@@ -14,8 +14,13 @@ import {
   SacramentTypeResponse,
   SacramentCertificateResponse,
   SacramentCertificateListResponse,
+  SacramentCertificateViewDetailsResponse,
 } from '../models/sacrament.model';
 import { handleApiError } from '../utils/error-handler.util';
+import {
+  SacramentDashboardParams,
+  SacramentDashboardResponse,
+} from '../models/sacrament-dashboard.model';
 
 export interface SacramentCreateOptions {
   idempotencyKey?: string;
@@ -271,13 +276,37 @@ export class SacramentService {
 
   // ==================== Certificates (Phase 8) ====================
 
-  listCertificates(sacramentId: number): Observable<SacramentCertificateListResponse> {
-    return this.http.get<SacramentCertificateListResponse>(`${this.baseUrl}/${sacramentId}/certificates`)
+  listCertificates(
+    sacramentId: number,
+    options?: { includeProjection?: boolean }
+  ): Observable<SacramentCertificateListResponse> {
+    const params = options?.includeProjection ? { include_projection: '1' } : undefined;
+    return this.http.get<SacramentCertificateListResponse>(`${this.baseUrl}/${sacramentId}/certificates`, { params })
       .pipe(
         catchError((error: HttpErrorResponse) => {
           return throwError(() => new Error(handleApiError(error, 'Failed to load certificates')));
         })
       );
+  }
+
+  getCertificateViewDetails(sacramentId: number): Observable<SacramentCertificateViewDetailsResponse> {
+    return this.http.get<SacramentCertificateViewDetailsResponse>(
+      `${this.baseUrl}/${sacramentId}/certificate-view`
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to load certificate details')));
+      })
+    );
+  }
+
+  downloadLatestCertificate(sacramentId: number): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/${sacramentId}/certificates/latest/download`, {
+      responseType: 'blob',
+    }).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to download certificate')));
+      })
+    );
   }
 
   previewCertificate(sacramentId: number): Observable<SacramentCertificateResponse> {
@@ -319,6 +348,66 @@ export class SacramentService {
     }).pipe(
       catchError((error: HttpErrorResponse) => {
         return throwError(() => new Error(handleApiError(error, 'Failed to download certificate')));
+      })
+    );
+  }
+
+  printCertificate(certificateId: number): Observable<string> {
+    return this.http.get(`${this.baseUrl}/certificates/${certificateId}/print`, {
+      responseType: 'text',
+    }).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to open certificate for print')));
+      })
+    );
+  }
+
+  verifyCertificate(token: string): Observable<{ success: boolean; data: Record<string, unknown> }> {
+    return this.http.get<{ success: boolean; data: Record<string, unknown> }>(
+      `${environment.apiUrl}/public/sacrament-certificates/verify/${encodeURIComponent(token)}`
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'This certificate could not be verified')));
+      })
+    );
+  }
+
+  listCanonicalAnnotations(sacramentId: number): Observable<{ success: boolean; data: Sacrament['canonical_annotations'] }> {
+    return this.http.get<{ success: boolean; data: Sacrament['canonical_annotations'] }>(
+      `${this.baseUrl}/${sacramentId}/canonical-annotations`
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to load register notes')));
+      })
+    );
+  }
+
+  createCanonicalAnnotation(
+    sacramentId: number,
+    payload: {
+      annotation_type: string;
+      effective_date?: string | null;
+      granting_authority?: string | null;
+      protocol_number?: string | null;
+      notes?: string | null;
+    }
+  ): Observable<{ success: boolean; data: NonNullable<Sacrament['canonical_annotations']>[number] }> {
+    return this.http.post<{ success: boolean; data: NonNullable<Sacrament['canonical_annotations']>[number] }>(
+      `${this.baseUrl}/${sacramentId}/canonical-annotations`,
+      payload
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to record register note')));
+      })
+    );
+  }
+
+  deleteCanonicalAnnotation(sacramentId: number, annotationId: number): Observable<{ success: boolean; message?: string }> {
+    return this.http.delete<{ success: boolean; message?: string }>(
+      `${this.baseUrl}/${sacramentId}/canonical-annotations/${annotationId}`
+    ).pipe(
+      catchError((error: HttpErrorResponse) => {
+        return throwError(() => new Error(handleApiError(error, 'Failed to remove register note')));
       })
     );
   }
@@ -388,6 +477,30 @@ export class SacramentService {
       .pipe(
         catchError((error: HttpErrorResponse) => {
           const errorMessage = handleApiError(error, 'Failed to delete sacraments');
+          return throwError(() => new Error(errorMessage));
+        })
+      );
+  }
+
+  getDashboardSummary(params?: SacramentDashboardParams): Observable<SacramentDashboardResponse> {
+    let httpParams = new HttpParams();
+
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value === undefined || value === null || value === '') {
+          return;
+        }
+
+        const serialized = typeof value === 'boolean' ? (value ? '1' : '0') : String(value);
+        httpParams = httpParams.set(key, serialized);
+      });
+    }
+
+    return this.http
+      .get<SacramentDashboardResponse>(`${this.baseUrl}/dashboard/summary`, { params: httpParams })
+      .pipe(
+        catchError((error: HttpErrorResponse) => {
+          const errorMessage = handleApiError(error, 'Failed to load sacrament dashboard');
           return throwError(() => new Error(errorMessage));
         })
       );

@@ -172,6 +172,37 @@
   }
 }
 
+.family-360-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.family-care-strip {
+  list-style: none;
+  margin: 0 0 0.85rem;
+  padding: 0;
+  display: grid;
+  gap: 0.4rem;
+}
+
+.family-care-strip li {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.35rem 1rem;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--cf-panel-border, #e2e8f0);
+  border-radius: 8px;
+  background: #fff;
+  font-size: 0.875rem;
+}
+
+.family-care-strip span {
+  color: var(--cf-slate-500, #64748b);
+}
+
 .family-360-workspace {
   display: flex;
   flex-wrap: wrap;

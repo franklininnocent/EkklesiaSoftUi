@@ -9,11 +9,11 @@ function redirectLegacySacramentForm(route: ActivatedRouteSnapshot): UrlTree {
   const router = inject(Router);
   const id = route.paramMap.get('id');
   if (id) {
-    return router.createUrlTree(['/sacraments'], {
+    return router.createUrlTree(['/sacraments/register'], {
       queryParams: { edit: id },
     });
   }
-  return router.createUrlTree(['/sacraments'], {
+  return router.createUrlTree(['/sacraments/register'], {
     queryParams: { create: '1' },
   });
 }
@@ -21,6 +21,13 @@ function redirectLegacySacramentForm(route: ActivatedRouteSnapshot): UrlTree {
 export const SACRAMENTS_ROUTES: Routes = [
   {
     path: '',
+    loadComponent: () =>
+      import('./components/sacraments-dashboard/sacraments-dashboard.component').then(
+        (m) => m.SacramentsDashboardComponent
+      ),
+  },
+  {
+    path: 'register',
     loadComponent: () =>
       import('./components/sacrament-list/sacrament-list.component').then(
         (m) => m.SacramentListComponent

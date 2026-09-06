@@ -66,6 +66,7 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
       { path: '/donations/plans', label: 'Contribution Plans', description: 'Mandatory and voluntary plans' },
       { path: '/donations/categories', label: 'Categories', description: 'Contribution categories' },
       { path: '/donations/recurring', label: 'Recurring', description: 'Recurring schedules' },
+      { path: '/donations/approvals', label: 'Approvals', description: 'Refund and correction approvals' },
       { path: '/donations/history', label: 'History', description: 'Historical transactions' },
       { path: '/donations/settings', label: 'Settings', description: 'Stewardship configuration' }
     ]
@@ -86,6 +87,7 @@ export function resolveStewardshipWorkspace(path: string): StewardshipWorkspaceI
     '/donations/plans',
     '/donations/categories',
     '/donations/recurring',
+    '/donations/approvals',
     '/donations/history',
     '/donations/settings'
   ])) {

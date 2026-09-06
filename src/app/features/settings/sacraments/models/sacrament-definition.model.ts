@@ -61,6 +61,7 @@ export interface SacramentParticipantDraft {
   sort_order?: number;
   family_member_id?: string | null;
   church_leadership_id?: number | null;
+  leadership_assignment_id?: string | null;
   display_name?: string;
   external_full_name?: string;
   external_date_of_birth?: string;
@@ -75,6 +76,12 @@ export interface SacramentParticipantDraft {
   affiliation_diocese_name?: string;
   affiliation_diocese_region?: string;
   affiliation_diocese_country?: string;
+  father_name?: string;
+  mother_name?: string;
+  baptismal_status?: string;
+  ecclesial_affiliation_code?: string;
+  ecclesial_affiliation_label?: string;
+  canonical_delegation_status?: string;
 }
 
 export type SacramentWorkflowSectionKey =

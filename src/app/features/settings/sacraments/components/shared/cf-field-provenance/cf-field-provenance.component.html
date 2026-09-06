@@ -1,0 +1,5 @@
+<div class="cf-field-provenance" *ngIf="field && field.value != null && field.value !== ''">
+  <span class="cf-field-provenance__label">{{ label }}</span>
+  <span class="cf-field-provenance__value">{{ field?.value }}</span>
+  <span class="cf-field-provenance__source" *ngIf="sourceLabel">✓ {{ sourceLabel }}</span>
+</div>

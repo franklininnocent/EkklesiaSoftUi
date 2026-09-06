@@ -1,26 +1,46 @@
 <section class="bcc-dashboard cf-page">
   <app-page-header title="BCCs" subtitle="Community intelligence & pastoral overview">
-    <span class="bcc-dashboard__freshness cf-meta" *ngIf="freshnessLabel && !loading">{{ freshnessLabel }}</span>
-    <button type="button" class="cf-btn" (click)="refresh()" [disabled]="loading">Refresh</button>
-    <button *ngIf="canCreate" type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">
-      + Add BCC
-    </button>
+    <app-list-toolbar
+      searchPlaceholder="Search BCCs…"
+      [searchValue]="search"
+      [filterCount]="getActiveFilterCount()"
+      (searchChange)="onSearchChange($event)"
+      (filtersOpened)="openAdvancedSearch()"
+    >
+      <span class="bcc-dashboard__freshness cf-meta" *ngIf="freshnessLabel && !loading">{{ freshnessLabel }}</span>
+      <button type="button" class="cf-btn" (click)="refresh()" [disabled]="loading">Refresh</button>
+      <button *ngIf="canCreate" type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">
+        + Add BCC
+      </button>
+    </app-list-toolbar>
   </app-page-header>
 
   <app-bcc-sub-nav></app-bcc-sub-nav>
 
-  <app-bcc-dashboard-filters
-    [search]="search"
-    [status]="status"
-    [period]="period"
-    [coordinator]="coordinator"
-    [coordinators]="summary?.coordinators || []"
-    [chips]="chips"
-    (filtersChange)="onFiltersChange($event)"
-    (searchChange)="onSearchChange($event)"
-    (reset)="resetFilters()"
-    (clearChip)="clearChip($event)"
-  ></app-bcc-dashboard-filters>
+  <div
+    class="bcc-dashboard__chips"
+    *ngIf="getActiveFilters().length > 0"
+    role="region"
+    aria-label="Active filters"
+  >
+    <span class="cf-meta">Active filters</span>
+    <div class="bcc-dashboard__chip-list">
+      <span class="cf-badge cf-badge--info" *ngFor="let filter of getActiveFilters()">
+        {{ filter.label }}: {{ filter.displayValue }}
+        <button
+          type="button"
+          class="bcc-dashboard__chip-remove"
+          (click)="removeFilter(filter)"
+          [attr.aria-label]="'Remove filter: ' + filter.label"
+        >
+          ×
+        </button>
+      </span>
+    </div>
+    <button type="button" class="cf-btn cf-btn--sm" (click)="resetFilters()">
+      Clear all
+    </button>
+  </div>
 
   <div class="cf-loading-block cf-panel" *ngIf="loading" role="status">
     <p class="cf-loading-block__label">Loading BCC intelligence…</p>
@@ -319,4 +339,13 @@
       </section>
     </ng-template>
   </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false"
+  ></app-advanced-search-panel>
 </section>

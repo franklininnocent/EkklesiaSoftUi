@@ -19,6 +19,12 @@ import { FamilyRelationshipNavigatorComponent } from '../family-relationship-nav
 import { FamilyMemberDetailPanelComponent } from '../family-member-detail-panel/family-member-detail-panel.component';
 import { DonationsService } from '@features/donations/services/donations.service';
 import { FamilyFinancialDashboardComponent } from '../family-financial-dashboard/family-financial-dashboard.component';
+import { BccTransferModalComponent } from '../bcc-transfer-modal/bcc-transfer-modal.component';
+import { MarriageHouseholdModalComponent } from '../marriage-household-modal/marriage-household-modal.component';
+import { FamilyTransitionHistoryPanelComponent } from '../family-transition-history-panel/family-transition-history-panel.component';
+import { RequestVisitModalComponent } from '@features/pastoral-care/components/request-visit-modal/request-visit-modal.component';
+import { PastoralCareService } from '@features/pastoral-care/services/pastoral-care.service';
+import { PastoralCareRequest } from '@features/pastoral-care/models/pastoral-care.model';
 import { DonationFamilyFinancialProfile } from '@features/donations/models/donation.model';
 import { NavigatorFilterKey } from '../../models/family-navigator.model';
 import {
@@ -33,10 +39,13 @@ import {
   prepareFamilyMemberPayload
 } from '../../utils/prepare-family-member-payload.util';
 import { PhoneCodeService } from '@core/services/phone-code.service';
+import { AuthService } from '@core/services/auth.service';
+import { SacramentService } from '@features/settings/sacraments/services/sacrament.service';
+import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 
-type FamilyWorkspaceView = 'members' | 'financial';
+type FamilyWorkspaceView = 'members' | 'financial' | 'history';
 
-const WORKSPACE_TABS: FamilyWorkspaceView[] = ['members', 'financial'];
+const WORKSPACE_TABS: FamilyWorkspaceView[] = ['members', 'financial', 'history'];
 
 const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
   { id: -1, name: 'Baptism', code: 'baptism', display_order: 1, active: true },
@@ -55,7 +64,11 @@ const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
     SacramentEditModalComponent,
     FamilyRelationshipNavigatorComponent,
     FamilyMemberDetailPanelComponent,
-    FamilyFinancialDashboardComponent
+    FamilyFinancialDashboardComponent,
+    BccTransferModalComponent,
+    MarriageHouseholdModalComponent,
+    FamilyTransitionHistoryPanelComponent,
+    RequestVisitModalComponent
   ],
   templateUrl: './family-detail.html',
   styleUrls: ['./family-detail.scss'],
@@ -87,12 +100,28 @@ export class FamilyDetail implements OnInit, OnDestroy {
   homeParishAddress: string | null = null;
   homeParishPriest: string | null = null;
   familyFinancialProfile: DonationFamilyFinancialProfile | null = null;
+  memberRegisterSacraments: Sacrament[] = [];
+  canViewRegisterSacraments = false;
+  canRelocateBcc = false;
+  canMarriageTransition = false;
+  canViewTransitionHistory = false;
+  canCreatePastoralVisit = false;
+  canViewPastoralCare = false;
+  showBccTransferModal = false;
+  showMarriageHouseholdModal = false;
+  showRequestVisitModal = false;
+  pastoralVisits: PastoralCareRequest[] = [];
   workspaceView: FamilyWorkspaceView = 'members';
   readonly workspaceTabs = WORKSPACE_TABS;
   readonly workspaceTabLabels: Record<FamilyWorkspaceView, string> = {
     members: 'Members',
-    financial: 'Financial 360°'
+    financial: 'Financial 360°',
+    history: 'History'
   };
+
+  get visibleWorkspaceTabs(): FamilyWorkspaceView[] {
+    return this.workspaceTabs.filter((tab) => tab !== 'history' || this.canViewTransitionHistory);
+  }
 
   private currentTenant: Tenant | null = null;
   private readonly destroy$ = new Subject<void>();
@@ -111,10 +140,19 @@ export class FamilyDetail implements OnInit, OnDestroy {
     private churchProfileService: ChurchProfileService,
     private sacramentTypeLookup: SacramentTypeLookupService,
     private donationsService: DonationsService,
+    private authService: AuthService,
+    private sacramentService: SacramentService,
+    private pastoralCareService: PastoralCareService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.canViewRegisterSacraments = this.authService.hasPermission('sacraments.view');
+    this.canRelocateBcc = this.authService.hasPermission('families.bcc.relocate');
+    this.canMarriageTransition = this.authService.hasPermission('families.marriage.transition');
+    this.canViewTransitionHistory = this.authService.hasPermission('families.history.view');
+    this.canCreatePastoralVisit = this.authService.hasPermission('pastoral.care.create');
+    this.canViewPastoralCare = this.authService.canAccessPastoral();
     this.initializeHomeParishContext();
     this.loadSacramentTypes();
     this.initializeWorkspaceView();
@@ -127,6 +165,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
     }
     this.loadFamily(id);
     this.loadFamilyFinancialSummary(id);
+    this.donationsService.ledgerMutated$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.reloadFamilyFinancialSummary());
   }
 
   ngOnDestroy(): void {
@@ -516,12 +557,97 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   private applyWorkspaceViewFromQuery(tab: string | null): void {
-    const view: FamilyWorkspaceView = tab === 'financial' ? 'financial' : 'members';
+    const view: FamilyWorkspaceView =
+      tab === 'financial' ? 'financial' : tab === 'history' ? 'history' : 'members';
     if (this.workspaceView === view) {
       return;
     }
 
     this.workspaceView = view;
+    this.cdr.markForCheck();
+  }
+
+  openBccTransferModal(): void {
+    if (!this.family || !this.canRelocateBcc) {
+      return;
+    }
+    this.showBccTransferModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeBccTransferModal(): void {
+    this.showBccTransferModal = false;
+    this.cdr.markForCheck();
+  }
+
+  onBccTransferCompleted(): void {
+    this.showBccTransferModal = false;
+    this.toastService.success('Family BCC updated successfully.', 'Success', 4000);
+    if (this.family?.id) {
+      this.loadFamily(this.family.id);
+    }
+    this.cdr.markForCheck();
+  }
+
+  openRequestVisitModal(): void {
+    if (!this.family || !this.canCreatePastoralVisit) {
+      return;
+    }
+    this.showRequestVisitModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeRequestVisitModal(): void {
+    this.showRequestVisitModal = false;
+    this.cdr.markForCheck();
+  }
+
+  onRequestVisitCompleted(): void {
+    this.showRequestVisitModal = false;
+    this.toastService.success('Visit requested.', 'Success', 4000);
+    this.loadPastoralVisits();
+    this.cdr.markForCheck();
+  }
+
+  private loadPastoralVisits(): void {
+    if (!this.family?.id || !this.canViewPastoralCare) {
+      this.pastoralVisits = [];
+      return;
+    }
+    this.pastoralCareService
+      .list({ family_id: this.family.id })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (rows) => {
+          this.pastoralVisits = (rows || []).filter((row) => row.status === 'open' || row.status === 'assigned');
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.pastoralVisits = [];
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  openMarriageHouseholdModal(): void {
+    if (!this.family || !this.canMarriageTransition) {
+      return;
+    }
+    this.showMarriageHouseholdModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeMarriageHouseholdModal(): void {
+    this.showMarriageHouseholdModal = false;
+    this.cdr.markForCheck();
+  }
+
+  onMarriageHouseholdCompleted(): void {
+    this.showMarriageHouseholdModal = false;
+    this.toastService.success('Marriage household change recorded.', 'Success', 4000);
+    if (this.family?.id) {
+      this.loadFamily(this.family.id);
+    }
     this.cdr.markForCheck();
   }
 
@@ -577,6 +703,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
       if (!this.homeParishPriest) {
         this.homeParishPriest = this.currentTenant?.pastor_name || this.homeParishPriest;
       }
+
+      this.loadMemberRegisterSacraments();
+      this.loadPastoralVisits();
     } else if (fromFullPageLoad) {
       this.family = null;
       this.error = (res.message && res.message.trim().length > 0) ? res.message : 'Failed to load family';
@@ -1053,8 +1182,50 @@ export class FamilyDetail implements OnInit, OnDestroy {
     const member = this.family?.members?.[index];
     if (member?.id) {
       this.selectedMemberId = member.id;
+      this.loadMemberRegisterSacraments();
       this.cdr.markForCheck();
     }
+  }
+
+  private loadMemberRegisterSacraments(): void {
+    if (!this.canViewRegisterSacraments) {
+      this.memberRegisterSacraments = [];
+      return;
+    }
+
+    const member = this.getSelectedMember();
+    if (!member?.id) {
+      this.memberRegisterSacraments = [];
+      return;
+    }
+
+    this.sacramentService
+      .getSacraments({
+        family_member_id: member.id,
+        per_page: 50,
+        sort_by: 'date_administered',
+        sort_dir: 'desc'
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const paginated = response?.data;
+          this.memberRegisterSacraments = Array.isArray(paginated?.data) ? paginated.data : [];
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.memberRegisterSacraments = [];
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  private getSelectedMember(): FamilyMember | null {
+    const index = this.getSelectedMemberIndex();
+    if (index === null || !this.family?.members?.[index]) {
+      return null;
+    }
+    return this.family.members[index];
   }
 
   onNavigatorSearchChange(query: string): void {

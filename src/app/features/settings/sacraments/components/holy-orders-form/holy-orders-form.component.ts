@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { Router } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { ToastService } from '../../../../../core/services/toast.service';
@@ -24,7 +24,6 @@ import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/
   imports: [
     CommonModule,
     FormsModule,
-    RouterLink,
     PageHeaderComponent,
     ButtonComponent,
     ParticipantSourceControlComponent,

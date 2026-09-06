@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
@@ -72,6 +72,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     private bccService: BCCService,
     private fb: FormBuilder,
     private router: Router,
+    private route: ActivatedRoute,
     private toastService: ToastService,
     private authService: AuthService
   ) {
@@ -79,6 +80,8 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       search: [''],
       status: [''],
       bcc_id: [''],
+      missing_sacrament: [''],
+      progression: [''],
       city: [''],
       sort_by: ['created_at'],
       sort_order: ['desc']
@@ -133,8 +136,51 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.initializeSearchFields();
     this.loadReferenceData();
     this.loadStatistics();
-    this.loadFamilies();
+    this.applyQueryParams(this.route.snapshot.queryParamMap);
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((params) => this.applyQueryParams(params));
     this.setupSearchDebounce();
+  }
+
+  private applyQueryParams(params: import('@angular/router').ParamMap): void {
+    const missingSacrament = params.get('missing_sacrament') ?? '';
+    const progression = params.get('progression') ?? '';
+    const bccId = params.get('bcc_id') ?? '';
+    let changed = false;
+
+    if (this.filterForm.get('missing_sacrament')?.value !== missingSacrament) {
+      this.filterForm.patchValue({
+        missing_sacrament: missingSacrament,
+        ...(missingSacrament ? { progression: '' } : {}),
+      });
+      changed = true;
+    }
+
+    if (this.filterForm.get('progression')?.value !== progression) {
+      this.filterForm.patchValue({
+        progression,
+        ...(progression ? { missing_sacrament: '' } : {}),
+      });
+      changed = true;
+    }
+
+    if (bccId && this.filterForm.get('bcc_id')?.value !== bccId) {
+      this.filterForm.patchValue({ bcc_id: bccId });
+      changed = true;
+    }
+
+    const field = this.searchFields.find((row) => row.key === 'bcc_id');
+    if (field && bccId) {
+      field.value = bccId;
+    }
+
+    if (changed) {
+      this.currentPage = 1;
+      this.loadFamilies();
+    } else if (!this.loaded) {
+      this.loadFamilies();
+    }
   }
 
   initializeSearchFields(): void {
@@ -239,6 +285,16 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     if (formValue.search) filters.search = Array.isArray(formValue.search) ? formValue.search[0] : formValue.search;
     if (formValue.status) filters.status = Array.isArray(formValue.status) ? formValue.status[0] : formValue.status;
     if (formValue.bcc_id) filters.bcc_id = Array.isArray(formValue.bcc_id) ? formValue.bcc_id[0] : formValue.bcc_id;
+    if (formValue.missing_sacrament) {
+      filters.missing_sacrament = Array.isArray(formValue.missing_sacrament)
+        ? formValue.missing_sacrament[0]
+        : formValue.missing_sacrament;
+    }
+    if (formValue.progression) {
+      filters.progression = Array.isArray(formValue.progression)
+        ? formValue.progression[0]
+        : formValue.progression;
+    }
     if (formValue.city) filters.city = Array.isArray(formValue.city) ? formValue.city[0] : formValue.city;
     if (formValue.sort_by) filters.sort_by = Array.isArray(formValue.sort_by) ? formValue.sort_by[0] : formValue.sort_by;
     if (formValue.sort_order) filters.sort_order = Array.isArray(formValue.sort_order) ? formValue.sort_order[0] : formValue.sort_order;
@@ -328,6 +384,24 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       });
     }
 
+    if (values.missing_sacrament) {
+      filters.push({
+        key: 'missing_sacrament',
+        label: 'Missing sacrament',
+        value: values.missing_sacrament,
+        displayValue: this.missingSacramentLabel(String(values.missing_sacrament)),
+      });
+    }
+
+    if (values.progression) {
+      filters.push({
+        key: 'progression',
+        label: 'Progression',
+        value: values.progression,
+        displayValue: this.progressionLabel(String(values.progression)),
+      });
+    }
+
     if (values.city) {
       filters.push({
         key: 'city',
@@ -363,6 +437,8 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       search: '',
       status: '',
       bcc_id: '',
+      missing_sacrament: '',
+      progression: '',
       city: '',
       sort_by: 'created_at',
       sort_order: 'desc'
@@ -548,5 +624,27 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     }
 
     return null;
+  }
+
+  private missingSacramentLabel(code: string): string {
+    const labels: Record<string, string> = {
+      BAPTISM: 'Baptism',
+      EUCHARIST: 'First Communion',
+      CONFIRMATION: 'Confirmation',
+      MATRIMONY: 'Marriage',
+    };
+
+    return labels[code.toUpperCase()] ?? code;
+  }
+
+  private progressionLabel(key: string): string {
+    const labels: Record<string, string> = {
+      baptized_without_communion: 'Baptized, no First Communion (age 10+)',
+      baptized_without_confirmation: 'Baptized, no Confirmation (age 10+)',
+      female_unmarried_over_18: 'Female (>18) - Not Married',
+      male_unmarried_over_23: 'Male (>23) - Not Married',
+    };
+
+    return labels[key] ?? key;
   }
 }

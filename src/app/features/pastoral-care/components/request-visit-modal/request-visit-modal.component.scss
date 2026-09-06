@@ -1,0 +1,31 @@
+.request-visit {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.request-visit__lead {
+  margin: 0;
+  color: var(--cf-slate-700, #334155);
+}
+
+.request-visit__block {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  color: var(--cf-slate-700, #334155);
+}
+
+.request-visit__block input,
+.request-visit__block select,
+.request-visit__block textarea {
+  min-height: 2.5rem;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid var(--cf-panel-border, #e2e8f0);
+  border-radius: 8px;
+  font: inherit;
+}
+
+.request-visit__error {
+  margin: 0;
+  color: var(--cf-critical, #b91c1c);
+}

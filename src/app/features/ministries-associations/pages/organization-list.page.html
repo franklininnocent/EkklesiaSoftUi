@@ -7,7 +7,7 @@
       (searchChange)="onSearchChange($event)"
       (filtersOpened)="showFilters = true"
     >
-      <a *ngIf="canCreate" routerLink="/ministries/new" class="cf-btn cf-btn-primary organization-list__add">
+      <a *ngIf="canCreate" [routerLink]="newOrganizationLink" class="cf-btn cf-btn-primary organization-list__add">
         Add organization
       </a>
     </app-list-toolbar>
@@ -33,7 +33,7 @@
         <span>Organizations need a category and type before you can add them.</span>
       </div>
       <div class="cf-decision-strip__actions">
-        <a routerLink="/ministries/settings" class="cf-btn cf-btn-primary">Go to Settings</a>
+        <a [routerLink]="settingsLink" class="cf-btn cf-btn-primary">Go to Settings</a>
       </div>
     </div>
 
@@ -101,12 +101,12 @@
     >
       <a
         *ngIf="canCreate && hasTaxonomies && !hasActiveFilters"
-        routerLink="/ministries/new"
+        [routerLink]="newOrganizationLink"
         class="cf-btn cf-btn-primary"
       >
         Add organization
       </a>
-      <a *ngIf="!hasTaxonomies" routerLink="/ministries/settings" class="cf-btn cf-btn-primary">
+      <a *ngIf="!hasTaxonomies" [routerLink]="settingsLink" class="cf-btn cf-btn-primary">
         Go to Settings
       </a>
     </app-cf-empty-state>

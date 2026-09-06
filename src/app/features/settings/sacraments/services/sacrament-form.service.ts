@@ -168,6 +168,7 @@ export class SacramentFormService {
         display_name: name || undefined,
         external_date_of_birth: this.snapshotString(row, 'date_of_birth') || row.external_date_of_birth || undefined,
         external_gender: this.asGender(row.external_gender || row.snapshot_json?.gender),
+        ...this.canonicalDraftFromRow(row),
       };
     }
 
@@ -183,6 +184,22 @@ export class SacramentFormService {
       display_name: name,
       external_date_of_birth: this.snapshotString(row, 'date_of_birth') || row?.external_date_of_birth || undefined,
       external_gender: this.asGender(row?.external_gender || row?.snapshot_json?.gender),
+      ...this.canonicalDraftFromRow(row),
+    };
+  }
+
+  private canonicalDraftFromRow(row: SacramentParticipant | null): Partial<SacramentParticipantDraft> {
+    if (!row) {
+      return {};
+    }
+    const snap = row.snapshot_json || {};
+    return {
+      father_name: snap.father_name || undefined,
+      mother_name: snap.mother_name || undefined,
+      baptismal_status: row.baptismal_status || snap.baptismal_status || undefined,
+      ecclesial_affiliation_code: row.ecclesial_affiliation_code || snap.ecclesial_affiliation_code || undefined,
+      ecclesial_affiliation_label: row.ecclesial_affiliation_label || snap.ecclesial_affiliation_label || undefined,
+      canonical_delegation_status: row.canonical_delegation_status || snap.canonical_delegation_status || undefined,
     };
   }
 
@@ -209,12 +226,14 @@ export class SacramentFormService {
     row: SacramentParticipant | null,
     formData: SacramentFormData
   ): SacramentParticipantDraft | null {
-    if (row?.source === 'internal_leadership' && row.church_leadership_id) {
+    if (row?.source === 'internal_leadership' && (row.leadership_assignment_id || row.church_leadership_id)) {
       return {
         role: 'minister',
         source: 'internal_leadership',
-        church_leadership_id: row.church_leadership_id,
+        leadership_assignment_id: row.leadership_assignment_id ?? null,
+        church_leadership_id: row.church_leadership_id ?? null,
         display_name: row.snapshot_json?.full_name || String(formData['minister_name'] || ''),
+        ...this.canonicalDraftFromRow(row),
       };
     }
 
@@ -231,6 +250,7 @@ export class SacramentFormService {
       external_full_name: name,
       display_name: name,
       external_title: String(formData['minister_title'] || '') || undefined,
+      ...this.canonicalDraftFromRow(row),
     };
   }
 
@@ -627,12 +647,13 @@ export class SacramentFormService {
     if (!draft) {
       return null;
     }
-    if (draft.source === 'internal_leadership' && draft.church_leadership_id) {
+    if (draft.source === 'internal_leadership' && (draft.leadership_assignment_id || draft.church_leadership_id)) {
       return {
         role,
         source: 'internal_leadership',
         sort_order: sortOrder,
-        church_leadership_id: draft.church_leadership_id,
+        leadership_assignment_id: draft.leadership_assignment_id ?? null,
+        church_leadership_id: draft.church_leadership_id ?? null,
       };
     }
     const name = (draft.external_full_name || draft.display_name || '').toString().trim();
@@ -698,6 +719,7 @@ export class SacramentFormService {
         sort_order: sortOrder,
         family_member_id: draft.family_member_id,
         ...(affiliation || {}),
+        ...this.canonicalPayload(draft, role),
       };
     }
 
@@ -716,6 +738,20 @@ export class SacramentFormService {
       external_address: draft.external_address || undefined,
       external_contact_number: draft.external_contact_number || undefined,
       ...(affiliation || {}),
+      ...this.canonicalPayload(draft, role),
+    };
+  }
+
+  private canonicalPayload(draft: SacramentParticipantDraft, role: string): Partial<SacramentParticipantPayload> {
+    if (role !== 'bride' && role !== 'groom' && role !== 'minister') {
+      return {};
+    }
+    return {
+      father_name: draft.father_name || undefined,
+      mother_name: draft.mother_name || undefined,
+      baptismal_status: draft.baptismal_status || undefined,
+      ecclesial_affiliation_code: draft.ecclesial_affiliation_code || undefined,
+      ecclesial_affiliation_label: draft.ecclesial_affiliation_label || undefined,
     };
   }
 
@@ -785,12 +821,13 @@ export class SacramentFormService {
     draft: SacramentParticipantDraft | null,
     formData: SacramentFormData
   ): SacramentParticipantPayload | null {
-    if (draft?.source === 'internal_leadership' && draft.church_leadership_id) {
+    if (draft?.source === 'internal_leadership' && (draft.leadership_assignment_id || draft.church_leadership_id)) {
       return {
         role: 'minister',
         source: 'internal_leadership',
         sort_order: 0,
-        church_leadership_id: draft.church_leadership_id,
+        leadership_assignment_id: draft.leadership_assignment_id ?? null,
+        church_leadership_id: draft.church_leadership_id ?? null,
       };
     }
 

@@ -1,10 +1,11 @@
 <div class="cf-participant-source">
-  <p class="cf-participant-source__label" [id]="'label_' + fieldId">{{ label }}</p>
+  <p class="cf-participant-source__label" [id]="'label_' + fieldId" *ngIf="!hideLabel">{{ label }}</p>
 
   <div
     class="sacrament-radio-row"
     role="radiogroup"
-    [attr.aria-labelledby]="'label_' + fieldId"
+    [attr.aria-labelledby]="hideLabel ? null : 'label_' + fieldId"
+    [attr.aria-label]="hideLabel ? label : null"
     *ngIf="showSourceToggle"
   >
     <label class="sacrament-radio" *ngIf="canUseMember">
@@ -37,14 +38,15 @@
         class="cf-participant-source__selected"
         *ngIf="selectedMember; else searchBox"
         role="status"
+        data-testid="selected-member"
       >
         <div>
           <strong>{{ memberDisplayName(selectedMember) }}</strong>
-          <p class="cf-split-field__hint">
+          <p class="cf-split-field__hint" *ngIf="!hideMemberIdentitySummary">
             Linked parish member. The register stores a historical snapshot at save time.
           </p>
         </div>
-        <button type="button" class="cf-btn" (click)="clearMember()">Change</button>
+        <button type="button" class="cf-btn" (click)="clearMember()" data-testid="change-member">Change</button>
       </div>
 
       <ng-template #searchBox>
@@ -57,6 +59,7 @@
             (keydown)="onSearchKeydown($event)"
             (blur)="onSearchBlur()"
             [name]="'member_search_' + fieldId"
+            [attr.data-testid]="'member-search-' + fieldId"
             placeholder="Type at least 2 letters…"
             autocomplete="off"
             role="combobox"
@@ -181,38 +184,30 @@
     </div>
   </div>
 
-  <div class="cf-split-grid" *ngIf="requireIdentityFields && source === 'member' && selectedMember">
-    <div class="cf-split-field">
-      <label [attr.for]="'member_dob_' + fieldId">
-        Date of birth <span class="cf-split-req" aria-hidden="true">*</span>
-      </label>
-      <input
-        type="date"
-        [id]="'member_dob_' + fieldId"
-        [(ngModel)]="externalDob"
-        (ngModelChange)="onExternalChange()"
-        [name]="'member_dob_' + fieldId"
-        aria-required="true"
-        required
-      />
-    </div>
-    <div class="cf-split-field">
-      <label [attr.for]="'member_gender_' + fieldId">
-        Gender <span class="cf-split-req" aria-hidden="true">*</span>
-      </label>
-      <select
-        [id]="'member_gender_' + fieldId"
-        [(ngModel)]="externalGender"
-        (ngModelChange)="onExternalChange()"
-        [name]="'member_gender_' + fieldId"
-        aria-required="true"
-        required
-      >
-        <option value="">Select…</option>
-        <option value="male">Male</option>
-        <option value="female">Female</option>
-        <option value="other">Other</option>
-      </select>
+  <div class="cf-split-grid" *ngIf="requireIdentityFields && source === 'member' && selectedMember && !hideMemberIdentitySummary">
+    <div class="cf-split-field cf-split-field--full">
+      <p class="cf-participant-source__member-identity" data-testid="member-dob">
+        <span class="cf-participant-source__member-identity-label">Date of birth</span>
+        <strong>{{ formatMemberDob(memberDateOfBirth(selectedMember)) }}</strong>
+      </p>
+      <p class="cf-split-field__error" *ngIf="!memberHasDateOfBirth(selectedMember)" role="alert">
+        This member has no date of birth on file. Add it in Family before recording this sacrament.
+      </p>
+      <p class="cf-participant-source__member-identity" *ngIf="memberGender(selectedMember)" data-testid="member-gender">
+        <span class="cf-participant-source__member-identity-label">Gender</span>
+        <strong>{{ formatMemberGender(memberGender(selectedMember)) }}</strong>
+      </p>
+      <p class="cf-participant-source__member-identity" data-testid="member-father-name">
+        <span class="cf-participant-source__member-identity-label">Father's name</span>
+        <strong>{{ formatProfileValue(memberFatherName(selectedMember)) }}</strong>
+      </p>
+      <p class="cf-participant-source__member-identity" data-testid="member-mother-name">
+        <span class="cf-participant-source__member-identity-label">Mother's name</span>
+        <strong>{{ formatProfileValue(memberMotherName(selectedMember)) }}</strong>
+      </p>
+      <p class="cf-split-field__hint">
+        Taken from the parish member record. Sacrament registration does not change member profile data.
+      </p>
     </div>
   </div>
 </div>

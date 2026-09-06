@@ -20,6 +20,13 @@ export const routes: Routes = [
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES)
   },
+  {
+    path: 'verify/certificate/:token',
+    loadComponent: () =>
+      import('./features/settings/sacraments/certificates/verify/certificate-verify-page.component').then(
+        (m) => m.CertificateVerifyPageComponent
+      ),
+  },
   // Direct dashboard access (simplified)
   {
     path: '',

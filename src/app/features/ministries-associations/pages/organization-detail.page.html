@@ -13,7 +13,7 @@
   <div class="cf-inline-alert cf-panel" *ngIf="!loading && loadError" role="alert">
     <p>{{ loadError }}</p>
     <div class="organization-detail__error-actions">
-      <a routerLink="/ministries" class="cf-btn">Back to list</a>
+      <a [routerLink]="ministriesListLink" class="cf-btn">Back to list</a>
       <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
     </div>
   </div>
@@ -23,7 +23,7 @@
       <div class="organization-detail__identity">
         <app-page-header
           [title]="organization.name"
-          backLink="/ministries"
+          [backLink]="ministriesListLink"
           backLabel="Ministries &amp; Associations"
           [statusLabel]="headerStatusLabel"
           [statusTone]="headerStatusTone"
@@ -363,6 +363,7 @@
         *ngIf="activeTab === 'members'"
         [organizationId]="organization.id"
         [organizationStatus]="organization.status"
+        [isArchived]="isArchived"
       ></app-organization-members-tab>
     </div>
 
@@ -377,6 +378,7 @@
         *ngIf="activeTab === 'leadership'"
         [organizationId]="organization.id"
         [organizationStatus]="organization.status"
+        [isArchived]="isArchived"
         (leadershipChanged)="onLeadershipChanged()"
       ></app-organization-leadership-tab>
     </div>

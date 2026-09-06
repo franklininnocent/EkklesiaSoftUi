@@ -33,6 +33,8 @@ export class ChurchAffiliationControlComponent implements OnChanges {
   @Input() controlId = 'default';
   @Input() homeParishName = '';
   @Input() requireDioceseWhenOther = true;
+  /** When false, the long explanatory hint is omitted (e.g. shown once at section level). */
+  @Input() showHint = true;
   @Input() value: ChurchAffiliationValue | null = null;
   @Output() valueChange = new EventEmitter<ChurchAffiliationValue>();
 

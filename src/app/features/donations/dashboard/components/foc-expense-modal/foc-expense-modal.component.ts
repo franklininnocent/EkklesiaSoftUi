@@ -13,6 +13,7 @@ import { RouterModule } from '@angular/router';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ParishExpenseRecord } from '../../../models/donation.model';
 import { formatFocCurrency } from '../../utils/foc-format.util';
+import { localDateOnly } from '../../../utils/local-date-only';
 
 export interface FocExpenseFormValue {
   category: string;
@@ -111,7 +112,7 @@ export class FocExpenseModalComponent {
   }
 
   get todayExpenses(): number {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateOnly();
     if (this.form.expense_date === today) {
       return this.previewAmount;
     }

@@ -16,18 +16,21 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
+import {
+  ActiveFilter,
+  AdvancedSearchPanelComponent,
+  SearchField,
+} from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { BccSubNavComponent } from '../components/bcc-sub-nav/bcc-sub-nav.component';
 import {
   BccAttentionType,
-  BccDashboardFilters,
   BccDashboardPeriod,
   BccParishDashboard,
   BccStatus,
   BccTrendFilter,
 } from '../models/bcc.model';
 import {
-  BccDashboardFiltersComponent,
-  BccFilterChip,
   attentionLabel,
   periodLabel,
   trendLabel,
@@ -56,7 +59,8 @@ import {
     CfEmptyStateComponent,
     StatusBadgeComponent,
     BccSubNavComponent,
-    BccDashboardFiltersComponent,
+    ListToolbarComponent,
+    AdvancedSearchPanelComponent,
     BccGrowthPanelComponent,
     BccLifeStageChartComponent,
     BccLeadershipChartComponent,
@@ -91,10 +95,13 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
   coordinator: string | null = null;
   attention: BccAttentionType | null = null;
   trend: BccTrendFilter | null = null;
+  showAdvancedSearch = false;
+  searchFields: SearchField[] = [];
   private pendingScrollTo: string | null = null;
 
   ngOnInit(): void {
     this.canCreate = this.auth.hasPermission('bcc.create');
+    this.initializeSearchFields();
 
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
       this.status = (params.get('status') as BccStatus | 'all') || 'all';
@@ -103,6 +110,7 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
       this.coordinator = params.get('coordinator');
       this.attention = (params.get('attention') as BccAttentionType | null) || null;
       this.trend = (params.get('trend') as BccTrendFilter | null) || null;
+      this.syncSearchFieldValues();
       this.load();
     });
 
@@ -118,28 +126,203 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  get chips(): BccFilterChip[] {
-    const chips: BccFilterChip[] = [];
+  getActiveFilters(): ActiveFilter[] {
+    const filters: ActiveFilter[] = [];
     if (this.status !== 'all') {
-      chips.push({ key: 'status', label: this.status.charAt(0).toUpperCase() + this.status.slice(1) });
+      filters.push({
+        key: 'status',
+        label: 'Status',
+        value: this.status,
+        displayValue: this.status.charAt(0).toUpperCase() + this.status.slice(1),
+      });
     }
     if (this.period !== '1y') {
-      chips.push({ key: 'period', label: periodLabel(this.period) });
+      filters.push({
+        key: 'period',
+        label: 'Period',
+        value: this.period,
+        displayValue: periodLabel(this.period),
+      });
     }
     if (this.search.trim()) {
-      chips.push({ key: 'search', label: `Search: ${this.search.trim()}` });
+      filters.push({
+        key: 'search',
+        label: 'Search',
+        value: this.search,
+        displayValue: this.search.trim(),
+      });
     }
     if (this.coordinator) {
-      const name = this.summary?.coordinators?.find((c) => c.id === this.coordinator)?.name || 'Coordinator';
-      chips.push({ key: 'coordinator', label: `Coordinator: ${name}` });
+      const name =
+        this.summary?.coordinators?.find((c) => c.id === this.coordinator)?.name || 'Coordinator';
+      filters.push({
+        key: 'coordinator',
+        label: 'Leader',
+        value: this.coordinator,
+        displayValue: name,
+      });
     }
     if (this.attention) {
-      chips.push({ key: 'attention', label: attentionLabel(this.attention) });
+      filters.push({
+        key: 'attention',
+        label: 'Leadership status',
+        value: this.attention,
+        displayValue: attentionLabel(this.attention),
+      });
     }
     if (this.trend) {
-      chips.push({ key: 'trend', label: trendLabel(this.trend) });
+      filters.push({
+        key: 'trend',
+        label: 'Growth trend',
+        value: this.trend,
+        displayValue: trendLabel(this.trend),
+      });
     }
-    return chips;
+    return filters;
+  }
+
+  getActiveFilterCount(): number {
+    let count = 0;
+    if (this.status !== 'all') {
+      count++;
+    }
+    if (this.period !== '1y') {
+      count++;
+    }
+    if (this.coordinator) {
+      count++;
+    }
+    if (this.attention) {
+      count++;
+    }
+    if (this.trend) {
+      count++;
+    }
+    return count;
+  }
+
+  openAdvancedSearch(): void {
+    this.updateCoordinatorFieldOptions();
+    this.syncSearchFieldValues();
+    this.showAdvancedSearch = true;
+    this.cdr.markForCheck();
+  }
+
+  onAdvancedSearch(searchValues: { [key: string]: unknown }): void {
+    const status = (searchValues['status'] as string) || '';
+    const period = (searchValues['period'] as string) || '';
+    void this.patchQuery({
+      status: status && status !== 'all' ? status : null,
+      period: period && period !== '1y' ? period : null,
+      coordinator: (searchValues['coordinator'] as string) || null,
+      attention: (searchValues['attention'] as string) || null,
+      trend: (searchValues['trend'] as string) || null,
+    });
+    this.showAdvancedSearch = false;
+  }
+
+  onClearAdvancedSearch(): void {
+    this.searchFields.forEach((field) => {
+      field.value = undefined;
+    });
+    void this.patchQuery({
+      status: null,
+      period: null,
+      coordinator: null,
+      attention: null,
+      trend: null,
+    });
+  }
+
+  removeFilter(filter: ActiveFilter): void {
+    this.clearChip(filter.key);
+  }
+
+  private initializeSearchFields(): void {
+    this.searchFields = [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: 'all', label: 'All' },
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' },
+          { value: 'suspended', label: 'Suspended' },
+        ],
+      },
+      {
+        key: 'period',
+        label: 'Time period',
+        type: 'select',
+        options: [
+          { value: '3m', label: 'Last 3 months' },
+          { value: '6m', label: 'Last 6 months' },
+          { value: '1y', label: 'Last 12 months' },
+          { value: '3y', label: 'Last 3 years' },
+        ],
+      },
+      {
+        key: 'attention',
+        label: 'Leadership status',
+        type: 'select',
+        options: [
+          { value: 'no_primary', label: 'Needs primary leader' },
+          { value: 'empty', label: 'Empty BCC' },
+        ],
+      },
+      {
+        key: 'trend',
+        label: 'Growth trend',
+        type: 'select',
+        options: [
+          { value: 'growing', label: 'Growing' },
+          { value: 'declining', label: 'Declining' },
+        ],
+      },
+    ];
+    this.updateCoordinatorFieldOptions();
+    this.syncSearchFieldValues();
+  }
+
+  private updateCoordinatorFieldOptions(): void {
+    const coordinators = this.summary?.coordinators ?? [];
+    const existing = this.searchFields.find((field) => field.key === 'coordinator');
+    const coordinatorField: SearchField = {
+      key: 'coordinator',
+      label: 'Leader',
+      type: 'select',
+      options: coordinators.map((c) => ({ value: c.id, label: c.name })),
+      value: existing?.value,
+    };
+
+    const withoutCoordinator = this.searchFields.filter((field) => field.key !== 'coordinator');
+    if (coordinators.length === 0) {
+      this.searchFields = withoutCoordinator;
+      return;
+    }
+
+    const periodIndex = withoutCoordinator.findIndex((field) => field.key === 'period');
+    const insertAt = periodIndex >= 0 ? periodIndex + 1 : withoutCoordinator.length;
+    this.searchFields = [
+      ...withoutCoordinator.slice(0, insertAt),
+      coordinatorField,
+      ...withoutCoordinator.slice(insertAt),
+    ];
+  }
+
+  private syncSearchFieldValues(): void {
+    const values: Record<string, string | undefined> = {
+      status: this.status === 'all' ? undefined : this.status,
+      period: this.period === '1y' ? undefined : this.period,
+      coordinator: this.coordinator || undefined,
+      attention: this.attention || undefined,
+      trend: this.trend || undefined,
+    };
+
+    this.searchFields.forEach((field) => {
+      field.value = values[field.key];
+    });
   }
 
   get freshnessLabel(): string {
@@ -203,6 +386,8 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
         next: (res: ApiResponse<unknown>) => {
           this.summary = (res.data as BccParishDashboard) ?? null;
           this.refreshDerivedViews();
+          this.updateCoordinatorFieldOptions();
+          this.syncSearchFieldValues();
           this.loading = false;
           this.cdr.markForCheck();
           if (this.pendingScrollTo) {
@@ -271,14 +456,6 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
       activeLeaders: this.summary.leadership.active_leaders ?? 0,
       coveragePercent: this.summary.leadership.coverage_percent ?? null,
     };
-  }
-
-  onFiltersChange(partial: Partial<BccDashboardFilters>): void {
-    void this.patchQuery({
-      status: (partial.status as string | null | undefined) ?? undefined,
-      period: (partial.period as string | null | undefined) ?? undefined,
-      coordinator: partial.coordinator === undefined ? undefined : partial.coordinator,
-    });
   }
 
   onSearchChange(value: string): void {

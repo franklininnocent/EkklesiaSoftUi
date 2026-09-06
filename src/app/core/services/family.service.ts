@@ -8,7 +8,11 @@ import {
   FamilyFilters,
   FamilyStatistics,
   PaginatedResponse,
-  ApiResponse
+  ApiResponse,
+  BccRelocationPreview,
+  RelocateBccPayload,
+  MarriageTransitionPayload,
+  FamilyTransitionHistoryRecord
 } from '../models/family.model';
 
 @Injectable({
@@ -39,6 +43,8 @@ export class FamilyService {
     if (filters.search) params = params.set('search', filters.search);
     if (filters.status) params = params.set('status', filters.status);
     if (filters.bcc_id) params = params.set('bcc_id', filters.bcc_id);
+    if (filters.missing_sacrament) params = params.set('missing_sacrament', filters.missing_sacrament);
+    if (filters.progression) params = params.set('progression', filters.progression);
     if (filters.city) params = params.set('city', filters.city);
     if (filters.sort_by) params = params.set('sort_by', filters.sort_by);
     if (filters.sort_order) params = params.set('sort_order', filters.sort_order);
@@ -66,6 +72,10 @@ export class FamilyService {
    * Update a family
    */
   updateFamily(id: string, family: Partial<Family>): Observable<ApiResponse<Family>> {
+    // #region agent log
+    const members = (family as { members?: Array<Record<string, unknown>> }).members;
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'aab4ab'},body:JSON.stringify({sessionId:'aab4ab',runId:'pre-fix',hypothesisId:'E',location:'family.service.ts:updateFamily',message:'PUT family members summary',data:{memberCount:Array.isArray(members)?members.length:0,summaries:Array.isArray(members)?members.map((m)=>({keys:Object.keys(m||{}),hasId:!!m?.['id'],hasPersonId:!!m?.['person_id']})):[]},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     return this.http.put<ApiResponse<Family>>(`${this.apiUrl}/${id}`, family, this.buildTenantCountryHeaders());
   }
 
@@ -164,6 +174,38 @@ export class FamilyService {
   deleteHeadProfileImage(familyId: string): Observable<ApiResponse<void>> {
     return this.http.delete<ApiResponse<void>>(`${this.apiUrl}/${familyId}/head-profile-image`);
   }
-}
 
+  // ==================== HOUSEHOLD TRANSITIONS ====================
+
+  previewBccRelocation(familyId: string, targetBccId: string): Observable<ApiResponse<BccRelocationPreview>> {
+    const params = new HttpParams().set('target_bcc_id', targetBccId);
+    return this.http.get<ApiResponse<BccRelocationPreview>>(
+      `${this.apiUrl}/${familyId}/relocate-bcc/preview`,
+      { params, ...this.buildTenantCountryHeaders() }
+    );
+  }
+
+  relocateBcc(familyId: string, payload: RelocateBccPayload): Observable<ApiResponse<Record<string, unknown>>> {
+    return this.http.post<ApiResponse<Record<string, unknown>>>(
+      `${this.apiUrl}/${familyId}/relocate-bcc`,
+      payload,
+      this.buildTenantCountryHeaders()
+    );
+  }
+
+  marriageTransition(payload: MarriageTransitionPayload): Observable<ApiResponse<Record<string, unknown>>> {
+    return this.http.post<ApiResponse<Record<string, unknown>>>(
+      `${this.apiUrl}/marriage-transition`,
+      payload,
+      this.buildTenantCountryHeaders()
+    );
+  }
+
+  getTransitionHistory(familyId: string): Observable<ApiResponse<FamilyTransitionHistoryRecord[]>> {
+    return this.http.get<ApiResponse<FamilyTransitionHistoryRecord[]>>(
+      `${this.apiUrl}/${familyId}/transition-history`,
+      this.buildTenantCountryHeaders()
+    );
+  }
+}
 

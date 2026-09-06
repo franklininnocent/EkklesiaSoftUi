@@ -19,7 +19,6 @@ import { FamilyService } from '@core/services/family.service';
 import { BCCService } from '@core/services/bcc.service';
 import { MemberService } from '@features/members/services/member.service';
 import { SacramentService } from '@features/settings/sacraments/services/sacrament.service';
-import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 import { AuthService } from '@core/services/auth.service';
 import { DonationsService } from '@features/donations/services/donations.service';
 import { OperationsDashboardSummary } from '@features/donations/models/donation.model';
@@ -29,6 +28,12 @@ import {
   MinistriesDashboardSummary,
 } from '@features/ministries-associations/models/ministries.model';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { PastoralCareService } from '@features/pastoral-care/services/pastoral-care.service';
+import {
+  PastoralCareAlert,
+  PastoralCareRequest,
+  PastoralCareStaff,
+} from '@features/pastoral-care/models/pastoral-care.model';
 
 export type DashboardTab = 'overview' | 'operations';
 
@@ -56,22 +61,6 @@ interface VolunteerShift {
   filled: number;
   required: number;
   status: 'healthy' | 'watch' | 'critical';
-}
-
-interface CareAlert {
-  id: string;
-  title: string;
-  count: number;
-  priority: 'urgent' | 'normal';
-  action: string;
-}
-
-interface PastoralTask {
-  id: string;
-  title: string;
-  assignee: string;
-  due: string;
-  status: 'open' | 'assigned';
 }
 
 interface LifeGroupMetric {
@@ -148,6 +137,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private supportSessions = inject(SupportSessionService);
   private donationsService = inject(DonationsService);
+  private pastoralCare = inject(PastoralCareService);
   private ministriesApi = inject(MinistriesApiService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
@@ -258,19 +248,16 @@ export class DashboardComponent implements OnInit, OnDestroy {
     { team: 'Parking & Security', filled: 6, required: 8, status: 'watch' }
   ];
 
-  careAlerts: CareAlert[] = [
-    { id: '1', title: 'Hospital visit requests', count: 3, priority: 'urgent', action: 'Assign pastoral team' },
-    { id: '2', title: 'Member follow-ups pending', count: 2, priority: 'urgent', action: 'Review care queue' },
-    { id: '3', title: 'Prayer chain responses due', count: 5, priority: 'normal', action: 'Send updates' },
-    { id: '4', title: 'New believer discipleship', count: 4, priority: 'normal', action: 'Match mentors' }
-  ];
-
-  pastoralTasks: PastoralTask[] = [
-    { id: 't1', title: 'Call Maria Santos — surgery recovery', assignee: 'Pastor James', due: 'Today', status: 'assigned' },
-    { id: 't2', title: 'Home visit — Wilson family (new baby)', assignee: 'Unassigned', due: 'Tomorrow', status: 'open' },
-    { id: 't3', title: 'Bereavement follow-up — Thompson family', assignee: 'Care Team Lead', due: 'Jun 7', status: 'assigned' },
-    { id: 't4', title: 'Membership class check-in — April cohort', assignee: 'Executive Pastor', due: 'Jun 8', status: 'open' }
-  ];
+  careAlerts: PastoralCareAlert[] = [];
+  pastoralTasks: PastoralCareRequest[] = [];
+  pastoralStaff: PastoralCareStaff[] = [];
+  assigningTaskId: string | null = null;
+  selectedAssigneeId: number | null = null;
+  assigningBusy = false;
+  canViewPastoral = false;
+  canAssignPastoral = false;
+  pastoralLoaded = false;
+  loadingPastoral = false;
 
   givingSummary: GivingSummary = {
     weekly: '$42,850',
@@ -380,6 +367,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
       if (this.canViewFinancial) {
         this.loadOperationsDashboard();
       }
+      this.canViewPastoral = this.authService.canAccessPastoral(user);
+      this.canAssignPastoral = this.authService.hasPermission('pastoral.care.assign');
       this.resolveMinistriesAccess(user);
       if (this.operationsVisited) {
         this.loadOperationsScopedData();
@@ -457,6 +446,10 @@ export class DashboardComponent implements OnInit, OnDestroy {
       !this.loadingMinistriesActivity
     ) {
       this.loadMinistriesActivity();
+    }
+
+    if (this.canViewPastoral && !this.pastoralLoaded && !this.loadingPastoral) {
+      this.loadPastoralWorkflow();
     }
   }
 
@@ -786,22 +779,30 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
     const dateFrom = monthStart.toISOString().slice(0, 10);
+    const dateTo = now.toISOString().slice(0, 10);
 
-    this.sacramentService.getSacraments({
-      tenant_id: this.tenantId,
-      per_page: 100,
-      page: 1,
+    this.sacramentService.getDashboardSummary({
       date_from: dateFrom,
-      sort_by: 'date_administered',
-      sort_dir: 'desc',
-      status: 'active'
+      date_to: dateTo,
+      include_gaps: false,
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          const records = response.data.data || [];
-          this.sacramentsThisMonth = response.data.total || records.length;
-          this.sacramentHighlights = records.slice(0, 5).map(s => this.mapSacramentHighlight(s));
-          this.sacramentTypeCounts = this.buildSacramentTypeCounts(records);
+          const summary = response.data;
+          this.sacramentsThisMonth = summary.kpis.total_period;
+          this.sacramentHighlights = summary.recent.map((record) => ({
+            id: record.id,
+            typeName: record.type?.name || 'Sacrament',
+            recipientName: record.recipient_name,
+            dateAdministered: record.date_administered,
+            place: record.place_administered,
+          }));
+          this.sacramentTypeCounts = summary.breakdowns.by_type_totals
+            .filter((row) => row.count > 0)
+            .map((row) => ({
+              label: row.label,
+              count: row.count,
+            }));
           this.sacramentsLoaded = true;
           this.sacramentsError = false;
         } else if (response.success) {
@@ -871,28 +872,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       meetingLabel,
       status: bcc.status
     };
-  }
-
-  private mapSacramentHighlight(sacrament: Sacrament): SacramentHighlight {
-    return {
-      id: sacrament.id,
-      typeName: sacrament.sacrament_type?.name || 'Sacrament',
-      recipientName: sacrament.recipient_name,
-      dateAdministered: sacrament.date_administered,
-      place: sacrament.place_administered
-    };
-  }
-
-  private buildSacramentTypeCounts(records: Sacrament[]): SacramentTypeCount[] {
-    const counts = new Map<string, number>();
-    for (const record of records) {
-      const label = record.sacrament_type?.name || 'Other';
-      counts.set(label, (counts.get(label) || 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
   }
 
   private extractWeekBirthdays(members: FamilyMember[], weekStart: Date, weekEnd: Date): CelebrationItem[] {
@@ -1071,10 +1050,103 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
   }
 
-  assignTask(task: PastoralTask): void {
-    task.assignee = 'Pastoral Staff';
-    task.status = 'assigned';
+  private loadPastoralWorkflow(): void {
+    this.loadingPastoral = true;
+    this.pastoralCare
+      .dashboard()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          this.careAlerts = data?.alerts ?? [];
+          this.pastoralTasks = data?.tasks ?? [];
+          this.pastoralLoaded = true;
+          this.loadingPastoral = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.careAlerts = [];
+          this.pastoralTasks = [];
+          this.loadingPastoral = false;
+          this.cdr.markForCheck();
+        },
+      });
+
+    if (this.canAssignPastoral && this.pastoralStaff.length === 0) {
+      this.pastoralCare
+        .staff()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (staff) => {
+            this.pastoralStaff = staff ?? [];
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.pastoralStaff = [];
+            this.cdr.markForCheck();
+          },
+        });
+    }
+  }
+
+  beginAssign(task: PastoralCareRequest): void {
+    if (!this.canAssignPastoral || task.status !== 'open') {
+      return;
+    }
+    this.assigningTaskId = task.id;
+    this.selectedAssigneeId = this.pastoralStaff[0]?.id ?? null;
     this.cdr.markForCheck();
+  }
+
+  cancelAssign(): void {
+    this.assigningTaskId = null;
+    this.selectedAssigneeId = null;
+    this.cdr.markForCheck();
+  }
+
+  confirmAssign(task: PastoralCareRequest): void {
+    if (!this.selectedAssigneeId || this.assigningBusy) {
+      return;
+    }
+    this.assigningBusy = true;
+    this.pastoralCare.assign(task.id, this.selectedAssigneeId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (updated) => {
+        this.pastoralTasks = this.pastoralTasks.map((row) => (row.id === updated.id ? updated : row));
+        this.assigningTaskId = null;
+        this.selectedAssigneeId = null;
+        this.assigningBusy = false;
+        this.pastoralLoaded = false;
+        this.loadPastoralWorkflow();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.assigningBusy = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  completeTask(task: PastoralCareRequest): void {
+    if (!this.canCompleteTask(task)) {
+      return;
+    }
+    this.pastoralCare.complete(task.id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.pastoralLoaded = false;
+        this.loadPastoralWorkflow();
+      },
+      error: () => this.cdr.markForCheck(),
+    });
+  }
+
+  canCompleteTask(task: PastoralCareRequest): boolean {
+    if (task.status !== 'assigned') {
+      return false;
+    }
+    if (this.canAssignPastoral) {
+      return true;
+    }
+    const userId = this.authService.currentUserValue?.id;
+    return userId != null && Number(userId) === Number(task.assigned_to_user_id);
   }
 
   getUserFirstName(name?: string | null): string {

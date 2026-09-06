@@ -12,11 +12,16 @@ import { QuickCollectService } from '../services/quick-collect.service';
 import { ReceiptPrintService } from '../services/receipt-print.service';
 import { DonationPayment } from '../models/donation.model';
 import { FinancialActivityTimelineComponent } from '../components/financial-activity-timeline/financial-activity-timeline.component';
+import {
+  StewardshipConfirmDialogComponent,
+  StewardshipConfirmResult
+} from '../components/stewardship-confirm-dialog/stewardship-confirm-dialog.component';
+import { localDateOnly, requiresGatewayReference } from '../utils/local-date-only';
 
 @Component({
   selector: 'app-donations-payments',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, FinancialActivityTimelineComponent, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, FinancialActivityTimelineComponent, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent],
   template: `
     <section class="payments cf-page">
       <header class="cf-hero">
@@ -57,6 +62,7 @@ import { FinancialActivityTimelineComponent } from '../components/financial-acti
             <option value="cheque">Cheque</option>
             <option value="online_placeholder">Online</option>
           </select>
+          <input formControlName="gateway_reference" placeholder="Cheque / transfer reference" *ngIf="needsReference" />
           <input formControlName="payment_date" type="date" />
           <button type="button" class="cf-btn" (click)="addAllocation()">+ Allocation</button>
           <button type="submit" class="cf-btn cf-btn-primary" [disabled]="paymentForm.invalid || saving">{{ saving ? 'Saving...' : 'Add Payment' }}</button>
@@ -110,13 +116,28 @@ import { FinancialActivityTimelineComponent } from '../components/financial-acti
             <td>{{ payment.status }}</td>
             <td>{{ payment.amount | number:'1.2-2' }}</td>
             <td class="cf-table__actions-cell">
-              <app-cf-icon-action-button
-                action="view"
-                size="sm"
-                [ariaLabel]="'View receipt for ' + payment.payment_number"
-                [title]="'View receipt for ' + payment.payment_number"
-                (clicked)="viewReceipt(payment.id)"
-              ></app-cf-icon-action-button>
+              <div class="cf-row-actions">
+                <app-cf-icon-action-button
+                  action="view"
+                  size="sm"
+                  [ariaLabel]="'View receipt for ' + payment.payment_number"
+                  [title]="'View receipt for ' + payment.payment_number"
+                  (clicked)="viewReceipt(payment.id)"
+                ></app-cf-icon-action-button>
+                <button
+                  type="button"
+                  class="cf-btn"
+                  *ngIf="canReverse && payment.status === 'succeeded'"
+                  (click)="openReverse(payment)"
+                >Reverse</button>
+                <button
+                  type="button"
+                  class="cf-btn"
+                  *ngIf="canRefund && (payment.status === 'succeeded' || payment.status === 'partially_refunded')"
+                  [disabled]="(payment.refundable_remaining ?? payment.amount) <= 0"
+                  (click)="openRefund(payment)"
+                >Refund</button>
+              </div>
             </td>
           </tr>
         </tbody>
@@ -139,6 +160,21 @@ import { FinancialActivityTimelineComponent } from '../components/financial-acti
         <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
       </div>
       </ng-container>
+
+      <app-stewardship-confirm-dialog
+        *ngIf="pendingAction"
+        [title]="pendingAction.type === 'reverse' ? 'Reverse this payment?' : 'Request a refund?'"
+        [message]="pendingAction.type === 'reverse'
+          ? 'This undoes the payment and voids the current receipt. The family will owe this amount again. This cannot be undone.'
+          : 'A treasurer must approve the refund before family balances change. Partial refunds keep the original payment on the books.'"
+        [confirmLabel]="pendingAction.type === 'reverse' ? 'Reverse payment' : 'Request refund'"
+        [showAmount]="pendingAction.type === 'refund'"
+        [amount]="pendingAction.payment.refundable_remaining ?? pendingAction.payment.amount"
+        [saving]="actionSaving"
+        [error]="actionError"
+        (cancelled)="closeAction()"
+        (confirmed)="confirmAction($event)"
+      ></app-stewardship-confirm-dialog>
     </section>
   `,
   styles: [`
@@ -155,6 +191,7 @@ import { FinancialActivityTimelineComponent } from '../components/financial-acti
     .payment-form { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 0; }
     .allocations { display: grid; gap: 0.45rem; margin-top: 0.65rem; }
     .allocation-row { grid-template-columns: 150px 1fr 140px 100px; }
+    .cf-row-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
   `]
 })
 export class DonationsPaymentsComponent implements OnInit, OnDestroy {
@@ -170,12 +207,18 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
   saving = false;
   message = '';
   canCollectPayments = false;
+  canReverse = false;
+  canRefund = false;
+  pendingAction: { type: 'reverse' | 'refund'; payment: DonationPayment } | null = null;
+  actionSaving = false;
+  actionError: string | null = null;
 
   paymentForm = this.fb.group({
     payer_name: ['', Validators.required],
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
     method: ['cash', Validators.required],
-    payment_date: [new Date().toISOString().slice(0, 10), Validators.required],
+    gateway_reference: [''],
+    payment_date: [localDateOnly(), Validators.required],
     allocations: this.fb.array([])
   });
 
@@ -191,6 +234,8 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.canCollectPayments = this.authService.hasPermission('donations.collect');
+    this.canReverse = this.authService.hasPermission('donations.reverse');
+    this.canRefund = this.authService.hasPermission('donations.refund');
     this.load();
     this.routerSub = this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe((e) => {
       if (!e.urlAfterRedirects.includes('/donations/payments')) {
@@ -228,8 +273,12 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     this.quickCollectService.open();
   }
 
+  get needsReference(): boolean {
+    return requiresGatewayReference(this.paymentForm.get('method')?.value || '');
+  }
+
   get todayIso(): string {
-    return new Date().toISOString().slice(0, 10);
+    return localDateOnly();
   }
 
   get todayPayments(): DonationPayment[] {
@@ -308,28 +357,92 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     this.receiptPrintService.viewPaymentReceipt(paymentId);
   }
 
+  openReverse(payment: DonationPayment): void {
+    this.actionError = null;
+    this.pendingAction = { type: 'reverse', payment };
+  }
+
+  openRefund(payment: DonationPayment): void {
+    this.actionError = null;
+    this.pendingAction = { type: 'refund', payment };
+  }
+
+  closeAction(): void {
+    if (!this.actionSaving) {
+      this.pendingAction = null;
+      this.actionError = null;
+    }
+  }
+
+  confirmAction(result: StewardshipConfirmResult): void {
+    if (!this.pendingAction) {
+      return;
+    }
+    this.actionSaving = true;
+    this.actionError = null;
+    const payment = this.pendingAction.payment;
+
+    if (this.pendingAction.type === 'reverse') {
+      this.donationsService.reversePayment(payment.id, result.reason).subscribe({
+        next: () => this.afterLedgerAction('Payment reversed. The receipt is void and the family owes this amount again.'),
+        error: (err: { error?: { message?: string } }) => this.afterLedgerError(err)
+      });
+      return;
+    }
+
+    this.donationsService.requestRefund(payment.id, {
+      amount: Number(result.amount),
+      refund_date: localDateOnly(),
+      reason: result.reason
+    }).subscribe({
+      next: () => this.afterLedgerAction('Refund requested. A treasurer must approve it before family balances change.'),
+      error: (err: { error?: { message?: string } }) => this.afterLedgerError(err)
+    });
+  }
+
+  private afterLedgerAction(message: string): void {
+    this.actionSaving = false;
+    this.pendingAction = null;
+    this.message = message;
+    this.load();
+    this.cdr.markForCheck();
+  }
+
+  private afterLedgerError(err: { error?: { message?: string } }): void {
+    this.actionSaving = false;
+    this.actionError = err?.error?.message || 'Unable to complete this action.';
+    this.cdr.markForCheck();
+  }
+
   submit(): void {
     if (this.paymentForm.invalid) {
+      return;
+    }
+    const raw = this.paymentForm.getRawValue();
+    if (requiresGatewayReference(raw.method || '') && !String(raw.gateway_reference || '').trim()) {
+      this.message = 'Cheque and bank transfer payments need a reference number.';
       return;
     }
 
     this.saving = true;
     this.message = '';
-    const raw = this.paymentForm.getRawValue();
     const allocations = (raw.allocations ?? []).filter((a: any) => Number(a.amount) > 0);
-    const payload = {
+    const payload: Record<string, unknown> = {
       payer_name: raw.payer_name,
       amount: raw.amount,
       method: raw.method,
       payment_date: raw.payment_date,
       allocations
     };
+    if (requiresGatewayReference(raw.method || '')) {
+      payload['gateway_reference'] = String(raw.gateway_reference).trim();
+    }
 
     this.donationsService.createPayment(payload).subscribe({
       next: () => {
         this.saving = false;
         this.message = 'Payment saved successfully.';
-        this.paymentForm.patchValue({ payer_name: '', amount: null });
+        this.paymentForm.patchValue({ payer_name: '', amount: null, gateway_reference: '' });
         this.allocations.clear();
         this.load();
         this.cdr.markForCheck();

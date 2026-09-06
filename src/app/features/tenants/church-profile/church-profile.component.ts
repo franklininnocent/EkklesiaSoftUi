@@ -30,7 +30,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ChurchLeaderWorkspaceComponent } from './components/church-leader-workspace/church-leader-workspace.component';
 import { ChurchLeaderDetailComponent } from './components/church-leader-detail/church-leader-detail.component';
-import { ChurchLeadershipTableComponent } from './components/church-leadership-table/church-leadership-table.component';
+import { ChurchLeadershipGovernanceComponent } from './components/church-leadership-governance/church-leadership-governance.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
@@ -43,6 +43,7 @@ import {
   ArchdioceseService,
   ChurchProfileService,
   ChurchLeadershipService,
+  ChurchLeadershipGovernanceService,
   ChurchStatisticsService,
   ChurchSocialMediaService,
   PopeDetailsService
@@ -56,7 +57,8 @@ import {
   ChurchLeadership,
   ChurchStatistic,
   ChurchSocialMedia,
-  PopeDetails
+  PopeDetails,
+  CurrentLeadershipResponse,
 } from '@core/models/church';
 
 @Component({
@@ -71,7 +73,7 @@ import {
     ModalShellComponent,
     ChurchLeaderWorkspaceComponent,
     ChurchLeaderDetailComponent,
-    ChurchLeadershipTableComponent,
+    ChurchLeadershipGovernanceComponent,
     PageHeaderComponent,
   ],
   templateUrl: './church-profile.component.html',
@@ -102,6 +104,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   
   // Leadership Data
   leaders: ChurchLeadership[] = [];
+  governanceCurrent: CurrentLeadershipResponse | null = null;
   selectedLeader: ChurchLeadership | null = null;
   loadingLeaders = false;
   
@@ -167,6 +170,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private archdioceseService = inject(ArchdioceseService);
   private churchProfileService = inject(ChurchProfileService);
   private leadershipService = inject(ChurchLeadershipService);
+  private leadershipGovernanceService = inject(ChurchLeadershipGovernanceService);
   private statisticsService = inject(ChurchStatisticsService);
   private socialMediaService = inject(ChurchSocialMediaService);
   private popeDetailsService = inject(PopeDetailsService);
@@ -786,6 +790,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       case 'profile':
         this.loadExtendedProfile();
         this.loadLeaders();
+        this.loadGovernanceCurrent();
         this.loadStatistics();
         this.loadOverviewMetrics();
         break;
@@ -1417,6 +1422,22 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
 
   private loadLeaders(): void {
     this.leadersLoadTrigger$.next();
+  }
+
+  private loadGovernanceCurrent(): void {
+    this.leadershipGovernanceService.getCurrent().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          this.governanceCurrent = response.data;
+          this.overviewMinistries = response.data.active_count;
+          this.refreshOperationalMetrics();
+          this.cdr.markForCheck();
+        }
+      },
+      error: () => {
+        // Profile tab can still fall back to legacy leaders.
+      },
+    });
   }
 
   private mergeLeaderIntoList(leader: ChurchLeadership): void {
@@ -2438,7 +2459,23 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       || null;
   }
 
-  getParishPriest(): ChurchLeadership | null {
+  getParishPriest(): ChurchLeadership | { full_name: string; role: string; title?: string; id?: number } | null {
+    const pastorAssignment = this.governanceCurrent?.assignments.find(
+      (assignment) =>
+        assignment.status === 'active' &&
+        assignment.role?.category === 'PARISH_CLERGY' &&
+        this.isPrimaryPastorRoleTitle(assignment.role?.title || ''),
+    );
+
+    if (pastorAssignment?.person) {
+      return {
+        id: 0,
+        full_name: pastorAssignment.person.full_name,
+        role: pastorAssignment.role?.title || 'Pastor',
+        title: pastorAssignment.role?.title || undefined,
+      };
+    }
+
     const activeLeaders = this.leaders.filter(l => l.active === 1);
     const primary = activeLeaders.find(l => l.is_primary === 1)
       || activeLeaders.find(l => (l.role || '').toLowerCase().includes('pastor') && !(l.role || '').toLowerCase().includes('associate'));
@@ -2458,12 +2495,84 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     return null;
   }
 
-  getAssistantPriests(): ChurchLeadership[] {
+  getAssistantPriests(): Array<{ full_name: string; role: string; title?: string }> {
     const priest = this.getParishPriest();
+    const primaryPastorPersonId = this.governanceCurrent?.assignments.find(
+      (assignment) =>
+        assignment.status === 'active' &&
+        assignment.role?.category === 'PARISH_CLERGY' &&
+        this.isPrimaryPastorRoleTitle(assignment.role?.title || ''),
+    )?.person?.id;
+
+    const fromGovernance =
+      this.governanceCurrent?.assignments
+        .filter(
+          (assignment) =>
+            assignment.status === 'active' &&
+            assignment.role?.category === 'PARISH_CLERGY' &&
+            assignment.person?.id !== primaryPastorPersonId &&
+            this.isAssistantClergyRoleTitle(assignment.role?.title || ''),
+        )
+        .map((assignment) => ({
+          full_name: assignment.person?.full_name || '',
+          role: assignment.role?.title || 'Clergy',
+          title: assignment.role?.title,
+        })) || [];
+
+    if (fromGovernance.length) {
+      return fromGovernance.slice(0, 3);
+    }
+
     return this.leaders
       .filter(l => l.active === 1 && (l.role || '').toLowerCase().includes('associate'))
       .filter(l => !priest || l.id !== priest.id)
       .slice(0, 3);
+  }
+
+  get leadershipTabBadgeCount(): number {
+    return this.governanceCurrent?.active_count ?? this.leaders.length;
+  }
+
+  private isPrimaryPastorRoleTitle(title: string): boolean {
+    const normalized = title.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+
+    if (normalized === 'pastor' || normalized === 'parochial administrator') {
+      return true;
+    }
+
+    if (normalized.includes('associate') || normalized.includes('assistant') || normalized.includes('vicar')) {
+      return false;
+    }
+
+    return normalized.includes('pastor') || normalized.includes('priest');
+  }
+
+  private isAssistantClergyRoleTitle(title: string): boolean {
+    const normalized = title.trim().toLowerCase();
+    if (!normalized) {
+      return false;
+    }
+
+    if (normalized === 'parochial vicar' || normalized === 'deacon') {
+      return true;
+    }
+
+    return (
+      normalized.includes('vicar') ||
+      normalized.includes('deacon') ||
+      normalized.includes('associate') ||
+      normalized.includes('assistant')
+    );
+  }
+
+  onGovernanceCurrentChanged(current: CurrentLeadershipResponse | null): void {
+    this.governanceCurrent = current;
+    if (current) {
+      this.overviewMinistries = current.active_count;
+    }
   }
 
   getAboutText(): string {

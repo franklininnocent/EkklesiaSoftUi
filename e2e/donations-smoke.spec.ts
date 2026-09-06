@@ -31,6 +31,30 @@ test.describe('Donations smoke', () => {
     await context.close();
   });
 
+  test('tenant admin can open receipts hub', async ({ browser }) => {
+    test.skip(!tenantAdminState, 'Tenant admin storage state not provided');
+    const context = await browser.newContext({ storageState: tenantAdminState });
+    const page = await context.newPage();
+
+    await page.goto('/donations/receipts');
+    await expect(page).toHaveURL(/\/donations\/receipts/);
+    await expect(page.getByRole('heading', { name: 'Receipts' })).toBeVisible();
+
+    await context.close();
+  });
+
+  test('tenant admin can open approvals workspace', async ({ browser }) => {
+    test.skip(!tenantAdminState, 'Tenant admin storage state not provided');
+    const context = await browser.newContext({ storageState: tenantAdminState });
+    const page = await context.newPage();
+
+    await page.goto('/donations/approvals');
+    await expect(page).toHaveURL(/\/donations\/approvals/);
+    await expect(page.getByRole('heading', { name: 'Approvals' })).toBeVisible();
+
+    await context.close();
+  });
+
   test('tenant admin can open today offerings register', async ({ browser }) => {
     test.skip(!tenantAdminState, 'Tenant admin storage state not provided');
     const context = await browser.newContext({ storageState: tenantAdminState });

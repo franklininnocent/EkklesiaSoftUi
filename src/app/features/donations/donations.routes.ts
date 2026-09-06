@@ -19,6 +19,7 @@ import { DonationsNotificationsComponent } from './pages/donations-notifications
 import { DonationsExpensesComponent } from './pages/donations-expenses.component';
 import { CollectionHealthCenterPageComponent } from './pages/collection-health-center.page';
 import { CollectionDayComponent } from './pages/collection-day.component';
+import { DonationsApprovalsComponent } from './pages/donations-approvals.component';
 
 export const DONATIONS_ROUTES: Routes = [
   {
@@ -39,6 +40,7 @@ export const DONATIONS_ROUTES: Routes = [
       { path: 'donors', component: DonationsDonorsComponent },
       { path: 'categories', component: DonationsCategoriesComponent },
       { path: 'recurring', component: DonationsRecurringComponent },
+      { path: 'approvals', component: DonationsApprovalsComponent },
       { path: 'history', component: DonationsHistoryComponent },
       { path: 'reports', component: DonationsReportsComponent },
       { path: 'expenses', component: DonationsExpensesComponent },

@@ -66,8 +66,19 @@
           <p class="cf-split-field__error" *ngIf="isFieldInvalid('last_name')">{{ getErrorMessage('last_name') }}</p>
         </div>
         <div class="cf-split-field">
-          <label for="member_dob">Date of birth <span class="cf-split-optional">optional</span></label>
-          <input type="date" id="member_dob" formControlName="date_of_birth" />
+          <label for="member_dob">
+            Date of birth
+            <span class="cf-split-req" *ngIf="!isEditMode" aria-hidden="true">*</span>
+            <span class="cf-split-optional" *ngIf="isEditMode">optional</span>
+          </label>
+          <input
+            type="date"
+            id="member_dob"
+            formControlName="date_of_birth"
+            [attr.aria-required]="!isEditMode ? true : null"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('date_of_birth')"
+          />
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('date_of_birth')">{{ getErrorMessage('date_of_birth') }}</p>
         </div>
         <div class="cf-split-field">
           <label for="member_gender">Gender <span class="cf-split-optional">optional</span></label>
@@ -88,7 +99,7 @@
             [title]="isHeadOnly ? 'Relationship is locked to Family Head' : ''"
             [class.cf-split-field__control--invalid]="isFieldInvalid('relationship_to_head')"
           >
-            <option value="self" *ngIf="isHeadOnly">Family Head</option>
+            <option value="self">Family Head</option>
             <option value="spouse" *ngIf="!isHeadOnly">Spouse</option>
             <option value="son" *ngIf="!isHeadOnly">Son</option>
             <option value="daughter" *ngIf="!isHeadOnly">Daughter</option>

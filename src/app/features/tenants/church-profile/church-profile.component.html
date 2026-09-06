@@ -23,7 +23,7 @@
         (click)="setActiveTab('leadership')">
         <span class="tab-icon">👥</span>
         <span class="tab-label">Leadership</span>
-        <span class="tab-badge" *ngIf="leaders.length > 0">{{ leaders.length }}</span>
+        <span class="tab-badge" *ngIf="leadershipTabBadgeCount > 0">{{ leadershipTabBadgeCount }}</span>
       </button>
       <button 
         class="tab-btn" 
@@ -269,14 +269,10 @@
       <!-- LEADERSHIP TAB -->
       <!-- ====================================================================== -->
       <div *ngIf="activeTab === 'leadership'" class="tab-pane leadership-pane">
-        <app-church-leadership-table
-          [leaders]="leaders"
-          [loading]="loadingLeaders"
+        <app-church-leadership-governance
           [canEdit]="canEdit"
-          (viewLeader)="openLeaderDetail($event)"
-          (editLeader)="openEditLeaderModal($event)"
-          (addLeader)="openNewLeaderModal()"
-        ></app-church-leadership-table>
+          (currentChanged)="onGovernanceCurrentChanged($event)"
+        ></app-church-leadership-governance>
       </div>
 
       <!-- ====================================================================== -->

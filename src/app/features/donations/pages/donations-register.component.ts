@@ -10,6 +10,7 @@ import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationCategory, DonationEntry, DonationReceiptPreview, Donor } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
+import { localDateOnly } from '../utils/local-date-only';
 
 @Component({
   selector: 'app-donations-register',
@@ -171,7 +172,7 @@ export class DonationsRegisterComponent implements OnInit {
     title: [''],
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
     method: ['cash', Validators.required],
-    payment_date: [new Date().toISOString().slice(0, 10), Validators.required],
+    payment_date: [localDateOnly(), Validators.required],
     donor_id: [''],
     donor_name: [''],
     donor_email: [''],

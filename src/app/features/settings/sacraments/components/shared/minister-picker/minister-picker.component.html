@@ -33,11 +33,11 @@
       <label [attr.for]="'minister_leader_id_' + controlId">Select from parish leadership</label>
       <ng-select
         [id]="'minister_leader_id_' + controlId"
-        [(ngModel)]="selectedLeaderId"
+        [(ngModel)]="selectedLeaderKey"
         (ngModelChange)="onLeaderChange()"
         [name]="'minister_leader_id_' + controlId"
-        [items]="leaders"
-        bindLabel="full_name"
+        [items]="leaderOptions"
+        bindLabel="label"
         bindValue="id"
         [loading]="loadingLeaders"
         [disabled]="loadingLeaders"
@@ -45,15 +45,8 @@
         [clearable]="true"
         [searchable]="true"
         class="cf-split-select"
-      >
-        <ng-template ng-label-tmp let-item="item">
-          {{ leaderLabel(item) }}
-        </ng-template>
-        <ng-template ng-option-tmp let-item="item">
-          {{ leaderLabel(item) }}
-        </ng-template>
-      </ng-select>
-      <p class="cf-split-field__hint" *ngIf="!loadingLeaders && !leaders.length">
+      ></ng-select>
+      <p class="cf-split-field__hint" *ngIf="!loadingLeaders && !leaderOptions.length">
         No active leadership records found. Choose External minister instead.
       </p>
     </div>

@@ -1,0 +1,140 @@
+<div class="cf-split-grid marriage-party-panel">
+  <div class="cf-split-field cf-split-field--full">
+    <h4 class="cf-split-section__title" [id]="'party-' + role + '-heading'">{{ partyLabel }}</h4>
+  </div>
+
+  <div class="cf-split-field cf-split-field--full">
+    <app-participant-source-control
+      [label]="partyLabel"
+      [hideLabel]="true"
+      [role]="role"
+      [allowedSources]="allowedSources"
+      [requireIdentityFields]="true"
+      [hideMemberIdentitySummary]="showMemberContext"
+      [value]="draft"
+      (valueChange)="draftChange.emit($event)"
+    ></app-participant-source-control>
+  </div>
+
+  <div class="cf-split-field cf-split-field--full" *ngIf="showMemberContext">
+    <div class="sacrament-nested-block marriage-party-panel__records">
+      <h4 class="cf-split-section__title" [id]="'party-' + role + '-records'">Parish records on file</h4>
+
+      <app-person-context-summary
+        [context]="context"
+        [loading]="contextLoading"
+        [error]="contextError"
+        [marriageMode]="true"
+      ></app-person-context-summary>
+
+      <div class="marriage-party-panel__evidence" *ngIf="context && !contextLoading && !contextError">
+        <div [id]="baptismEvidenceAnchorId" class="party-evidence-anchor">
+          <app-sacrament-evidence-summary
+            title="Baptism"
+            [compact]="true"
+            [evidence]="context.sacraments.baptism"
+            [derivedStatus]="context.derived.baptismal_status?.value ?? null"
+            [showCertificateAdvisory]="true"
+          ></app-sacrament-evidence-summary>
+        </div>
+
+        <p class="marriage-party-panel__confirmation" *ngIf="confirmationSummary">
+          <span class="marriage-party-panel__confirmation-label">Confirmation</span>
+          {{ confirmationSummary }}
+        </p>
+      </div>
+
+      <app-sacrament-conflict-panel
+        *ngIf="context?.conflicts?.length"
+        [conflicts]="context!.conflicts"
+        (correctMember)="conflictCorrect.emit($event)"
+      ></app-sacrament-conflict-panel>
+
+      <app-missing-fields-summary
+        *ngIf="actionableMissing.length"
+        [items]="actionableMissing"
+        (focusField)="missingFieldFocus.emit($event)"
+      ></app-missing-fields-summary>
+    </div>
+  </div>
+
+  <div class="cf-split-field cf-split-field--full">
+    <app-church-affiliation-control
+      label="Church affiliation"
+      [controlId]="role"
+      [homeParishName]="homeParishName"
+      [requireDioceseWhenOther]="true"
+      [showHint]="false"
+      [value]="affiliationDraft"
+      (valueChange)="affiliationChange.emit($event)"
+    ></app-church-affiliation-control>
+    <p class="cf-split-field__error" *ngIf="fieldErrors.churchName">{{ fieldErrors.churchName }}</p>
+  </div>
+
+  <ng-container *ngIf="draft">
+    <div class="cf-split-field cf-split-field--full" [id]="baptismalStatusAnchorId" *ngIf="!hideBaptismalStatus">
+      <span class="cf-split-field__label">Baptismal status</span>
+      <div class="sacrament-radio-row" role="radiogroup" [attr.aria-label]="partyLabel + ' baptismal status'">
+        <label class="sacrament-radio" *ngFor="let option of baptismalStatusOptions">
+          <input
+            type="radio"
+            [name]="role + '_baptismal_status'"
+            [value]="option.value"
+            [(ngModel)]="draft.baptismal_status"
+            (ngModelChange)="draftChange.emit(draft)"
+          />
+          <span>{{ option.label }}</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="cf-split-field" *ngIf="!hideEcclesialInput">
+      <label [for]="role + '_ecclesial'">Religious affiliation</label>
+      <select
+        [id]="role + '_ecclesial'"
+        [name]="role + '_ecclesial'"
+        [(ngModel)]="draft.ecclesial_affiliation_code"
+        (ngModelChange)="draftChange.emit(draft)"
+      >
+        <option [ngValue]="undefined">Select…</option>
+        <option *ngFor="let option of ecclesialAffiliationOptions" [ngValue]="option.value">{{ option.label }}</option>
+      </select>
+    </div>
+
+    <div class="cf-split-field" *ngIf="draft.ecclesial_affiliation_code === 'other'">
+      <label [for]="role + '_ecclesial_other'">Affiliation as recorded</label>
+      <input
+        [id]="role + '_ecclesial_other'"
+        [name]="role + '_ecclesial_other'"
+        [(ngModel)]="draft.ecclesial_affiliation_label"
+        (ngModelChange)="draftChange.emit(draft)"
+      />
+    </div>
+
+    <div class="cf-split-field" *ngIf="draft.source !== 'member'">
+      <label [for]="role + '_father_name'">Father’s name</label>
+      <input
+        [id]="role + '_father_name'"
+        [name]="role + '_father_name'"
+        [(ngModel)]="draft.father_name"
+        (ngModelChange)="draftChange.emit(draft)"
+      />
+    </div>
+
+    <div class="cf-split-field" *ngIf="draft.source !== 'member'">
+      <label [for]="role + '_mother_name'">Mother’s name</label>
+      <input
+        [id]="role + '_mother_name'"
+        [name]="role + '_mother_name'"
+        [(ngModel)]="draft.mother_name"
+        (ngModelChange)="draftChange.emit(draft)"
+      />
+    </div>
+  </ng-container>
+
+  <div class="cf-split-field cf-split-field--full" *ngIf="fieldErrors.fullName || fieldErrors.dateOfBirth || fieldErrors.gender">
+    <p class="cf-split-field__error" *ngIf="fieldErrors.fullName">{{ fieldErrors.fullName }}</p>
+    <p class="cf-split-field__error" *ngIf="fieldErrors.dateOfBirth">{{ fieldErrors.dateOfBirth }}</p>
+    <p class="cf-split-field__error" *ngIf="fieldErrors.gender">{{ fieldErrors.gender }}</p>
+  </div>
+</div>

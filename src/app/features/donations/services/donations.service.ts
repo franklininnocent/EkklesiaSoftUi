@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable, Subject, map, tap } from 'rxjs';
+import { newIdempotencyKey } from '../utils/local-date-only';
 import { environment } from '@environments/environment';
 import {
   ContributionDue,
@@ -36,6 +37,7 @@ import {
   DonationSettings,
   Donor,
   DonationAuditLog,
+  DonationApproval,
   DonationReceiptListItem,
   DonationReceiptPreview,
   PaginatedResponse,
@@ -49,8 +51,18 @@ import {
 @Injectable({ providedIn: 'root' })
 export class DonationsService {
   private baseUrl = `${environment.apiUrl}/tenant/donations`;
+  private readonly ledgerMutatedSubject = new Subject<void>();
+  readonly ledgerMutated$ = this.ledgerMutatedSubject.asObservable();
 
   constructor(private http: HttpClient) {}
+
+  notifyLedgerMutated(): void {
+    this.ledgerMutatedSubject.next();
+  }
+
+  private financialPostOptions(): { headers: HttpHeaders } {
+    return { headers: new HttpHeaders({ 'Idempotency-Key': newIdempotencyKey() }) };
+  }
 
   getDashboardSummary(): Observable<{ success: boolean; data: DonationDashboardSummary }> {
     return this.http.get<{ success: boolean; data: DonationDashboardSummary }>(`${this.baseUrl}/dashboard/summary`);
@@ -355,7 +367,67 @@ export class DonationsService {
   }
 
   createPayment(payload: Record<string, unknown>): Observable<{ success: boolean; message: string; data?: DonationPayment }> {
-    return this.http.post<{ success: boolean; message: string; data?: DonationPayment }>(`${this.baseUrl}/payments`, payload);
+    return this.http.post<{ success: boolean; message: string; data?: DonationPayment }>(
+      `${this.baseUrl}/payments`,
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  reversePayment(paymentId: string, reason: string): Observable<{ success: boolean; message: string; data?: DonationPayment }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationPayment }>(
+      `${this.baseUrl}/payments/${paymentId}/reverse`,
+      { reason },
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  requestRefund(
+    paymentId: string,
+    payload: { amount: number; refund_date: string; reason: string }
+  ): Observable<{ success: boolean; message: string; data?: unknown }> {
+    return this.http.post<{ success: boolean; message: string; data?: unknown }>(
+      `${this.baseUrl}/payments/${paymentId}/refunds`,
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  listApprovals(filters: Record<string, string> = {}): Observable<{ success: boolean; data: PaginatedResponse<DonationApproval> }> {
+    let params = new HttpParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        params = params.set(key, value);
+      }
+    });
+    return this.http.get<{ success: boolean; data: PaginatedResponse<DonationApproval> }>(`${this.baseUrl}/approvals`, { params });
+  }
+
+  decideApproval(
+    approvalId: string,
+    payload: { decision: 'approved' | 'rejected'; note?: string }
+  ): Observable<{ success: boolean; message: string; data?: DonationApproval }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationApproval }>(
+      `${this.baseUrl}/approvals/${approvalId}/decision`,
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  voidReceipt(receiptId: string, reason: string): Observable<{ success: boolean; message: string; data?: DonationReceiptListItem }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationReceiptListItem }>(
+      `${this.baseUrl}/receipts/${receiptId}/void`,
+      { reason },
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  reissueReceipt(receiptId: string, reason: string): Observable<{ success: boolean; message: string; data?: DonationReceiptListItem }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationReceiptListItem }>(
+      `${this.baseUrl}/receipts/${receiptId}/reissue`,
+      { reason },
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
   }
 
   exportReport(payload: Record<string, unknown>): Observable<{ success: boolean; data: DonationReportExport }> {
@@ -449,8 +521,9 @@ export class DonationsService {
   collectVoluntaryDonation(payload: Record<string, unknown>): Observable<{ success: boolean; message: string; data: { donation: DonationEntry; payment: DonationPayment } }> {
     return this.http.post<{ success: boolean; message: string; data: { donation: DonationEntry; payment: DonationPayment } }>(
       `${this.baseUrl}/entries/collect`,
-      payload
-    );
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
   }
 
   updateDonationEntry(entryId: string, payload: Record<string, unknown>): Observable<{ success: boolean; message: string; data: DonationEntry }> {

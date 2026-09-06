@@ -9,6 +9,11 @@ export interface MemberFilters {
   status?: string;
   bcc_id?: string;
   is_head?: boolean | string;
+  progression?:
+    | 'baptized_without_communion'
+    | 'baptized_without_confirmation'
+    | 'female_unmarried_over_18'
+    | 'male_unmarried_over_23';
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
   per_page?: number;
@@ -50,6 +55,7 @@ export class MemberService {
         : filters.is_head.toString();
       params = params.set('is_head', isHeadValue);
     }
+    if (filters.progression) params = params.set('progression', filters.progression);
     if (filters.sort_by) params = params.set('sort_by', filters.sort_by);
     if (filters.sort_order) params = params.set('sort_order', filters.sort_order);
     // Always set per_page and page to ensure pagination works

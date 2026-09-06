@@ -101,18 +101,41 @@ describe('DonationsService', () => {
     });
   });
 
-  it('runs due recurring schedules', () => {
-    service.runDueRecurringSchedules().subscribe((response) => {
-      expect(response.success).toBe(true);
-      expect(response.data.processed).toBe(2);
+    it('runs due recurring schedules', () => {
+      service.runDueRecurringSchedules().subscribe((response) => {
+        expect(response.success).toBe(true);
+        expect(response.data.processed).toBe(2);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/recurring-schedules/run-due`);
+      expect(req.request.method).toBe('POST');
+      req.flush({
+        success: true,
+        message: 'ok',
+        data: { processed: 2, succeeded: 2, failed: 0 }
+      });
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/recurring-schedules/run-due`);
-    expect(req.request.method).toBe('POST');
-    req.flush({
-      success: true,
-      message: 'ok',
-      data: { processed: 2, succeeded: 2, failed: 0 }
+    it('sends Idempotency-Key when recording a payment', () => {
+      service.createPayment({ amount: 10, method: 'cash' }).subscribe((response) => {
+        expect(response.success).toBe(true);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/payments`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.headers.get('Idempotency-Key')).toBeTruthy();
+      req.flush({ success: true, message: 'ok', data: { id: 'pay-1' } });
+    });
+
+    it('reverses a payment with an idempotency key', () => {
+      service.reversePayment('pay-1', 'Entered twice').subscribe((response) => {
+        expect(response.success).toBe(true);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/payments/pay-1/reverse`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ reason: 'Entered twice' });
+      expect(req.request.headers.get('Idempotency-Key')).toBeTruthy();
+      req.flush({ success: true, message: 'reversed' });
     });
   });
-});

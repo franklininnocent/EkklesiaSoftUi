@@ -88,7 +88,7 @@ export function prepareFamilyMemberPayload(
     baptism_priest_name: sanitize(value.baptism_priest_name),
     baptism_priest_is_home:
       value.baptism_priest_is_home === null || value.baptism_priest_is_home === undefined
-        ? null
+        ? false
         : !!value.baptism_priest_is_home,
     first_communion_date: sanitize(value.first_communion_date),
     first_communion_place: sanitize(value.first_communion_place),

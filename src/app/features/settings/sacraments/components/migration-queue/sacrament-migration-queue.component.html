@@ -4,7 +4,7 @@
     subtitle="Resolve legacy names into parish members or external people. Exact name + date of birth only for auto-link."
   >
     <div class="migration-queue__actions">
-      <a routerLink="/sacraments" class="cf-btn">Back to list</a>
+      <a routerLink="/sacraments/register" class="cf-btn">Back to register</a>
       <button type="button" class="cf-btn" [disabled]="busy" (click)="runBackfill(true)">Dry-run backfill</button>
       <button type="button" class="cf-btn cf-btn-primary" [disabled]="busy" (click)="runBackfill(false)">Run backfill</button>
     </div>

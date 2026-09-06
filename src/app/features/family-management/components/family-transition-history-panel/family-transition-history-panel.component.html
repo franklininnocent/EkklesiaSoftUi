@@ -1,0 +1,35 @@
+<section class="family-transition-history-panel" aria-label="Household history">
+  <div class="family-transition-history-panel__header">
+    <div>
+      <h2>Household history</h2>
+      <p>BCC moves, marriage changes, and head-of-family updates for this family.</p>
+    </div>
+    <button type="button" class="cf-btn" (click)="reload()" [disabled]="loading">Refresh</button>
+  </div>
+
+  <p class="family-transition-history-panel__status" *ngIf="loading" role="status">Loading history…</p>
+  <p class="family-transition-history-panel__error" *ngIf="!loading && error" role="alert">{{ error }}</p>
+
+  <p class="family-transition-history-panel__empty" *ngIf="!loading && !error && !records.length">
+    No household changes recorded yet.
+  </p>
+
+  <ul class="family-transition-history-panel__list" *ngIf="!loading && records.length">
+    <li *ngFor="let record of records" class="family-transition-history-panel__item">
+      <div class="family-transition-history-panel__item-head">
+        <strong>{{ transitionLabel(record.transition_type) }}</strong>
+        <span>{{ formatDate(record.effective_date) }}</span>
+      </div>
+      <p class="family-transition-history-panel__member">{{ memberName(record) }}</p>
+      <p class="family-transition-history-panel__meta" *ngIf="record.previous_family_role || record.new_family_role">
+        Role:
+        {{ record.previous_family_role || '—' }}
+        →
+        {{ record.new_family_role || '—' }}
+      </p>
+      <p class="family-transition-history-panel__meta" *ngIf="record.performer?.name">
+        Recorded by {{ record.performer?.name }}
+      </p>
+    </li>
+  </ul>
+</section>

@@ -1270,6 +1270,32 @@
   &:hover { background: #c7d2fe; }
 }
 
+.cd-task-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+.cd-task-item__picker select {
+  max-width: 10rem;
+  min-height: 1.75rem;
+  font-size: 0.75rem;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 .cd-task-item__assigned {
   flex-shrink: 0;
   font-size: 0.6875rem;

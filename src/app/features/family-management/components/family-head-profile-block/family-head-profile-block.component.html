@@ -168,6 +168,8 @@
           *ngFor="let sacramentType of sacramentTypesDisplay; trackBy: trackSacramentType"
           [member]="member"
           [sacramentType]="sacramentType"
+          [registerRecord]="registerRecordForType(sacramentType)"
+          [canViewRegister]="canViewRegisterSacraments"
           (editSacrament)="onSacramentEdit($event)"
         />
       </div>

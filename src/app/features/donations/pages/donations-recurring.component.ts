@@ -9,6 +9,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 import { DonationsService } from '../services/donations.service';
 import { DonationCategory, Donor, RecurringDonationSchedule } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
+import { localDateOnly } from '../utils/local-date-only';
 
 @Component({
   selector: 'app-donations-recurring',
@@ -33,7 +34,7 @@ export class DonationsRecurringComponent implements OnInit {
     donation_category_id: [''],
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
     frequency: ['monthly', Validators.required],
-    next_run_on: [new Date().toISOString().slice(0, 10), Validators.required],
+    next_run_on: [localDateOnly(), Validators.required],
     status: ['active']
   });
 
@@ -112,7 +113,7 @@ export class DonationsRecurringComponent implements OnInit {
     this.form.patchValue({
       amount: null,
       frequency: 'monthly',
-      next_run_on: new Date().toISOString().slice(0, 10),
+      next_run_on: localDateOnly(),
       status: 'active'
     });
     refreshStewardshipView(this.cdr);

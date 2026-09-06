@@ -10,11 +10,16 @@ import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { ReceiptPrintService } from '../services/receipt-print.service';
 import { DonationReceiptListItem } from '../models/donation.model';
+import { AuthService } from '@core/services/auth.service';
+import {
+  StewardshipConfirmDialogComponent,
+  StewardshipConfirmResult
+} from '../components/stewardship-confirm-dialog/stewardship-confirm-dialog.component';
 
 @Component({
   selector: 'app-donations-receipts',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent],
   template: `
     <section class="receipts-hub cf-page">
       <header class="cf-hero">
@@ -95,6 +100,18 @@ import { DonationReceiptListItem } from '../models/donation.model';
                       [disabled]="!receipt.payment_id"
                       (clicked)="printReceipt(receipt)"
                     ></app-cf-icon-action-button>
+                    <button
+                      type="button"
+                      class="cf-btn"
+                      *ngIf="canManageReceipts && !receipt.is_void"
+                      (click)="openVoid(receipt)"
+                    >Void</button>
+                    <button
+                      type="button"
+                      class="cf-btn"
+                      *ngIf="canManageReceipts && !receipt.is_void"
+                      (click)="openReissue(receipt)"
+                    >Reissue</button>
                   </div>
                 </td>
               </tr>
@@ -119,6 +136,20 @@ import { DonationReceiptListItem } from '../models/donation.model';
         </ng-container>
       </div>
 
+      <p *ngIf="actionMessage" class="cf-state cf-state--success">{{ actionMessage }}</p>
+
+      <app-stewardship-confirm-dialog
+        *ngIf="pendingAction"
+        [title]="pendingAction.type === 'void' ? 'Void this receipt?' : 'Reissue this receipt?'"
+        [message]="pendingAction.type === 'void'
+          ? 'The original receipt stays on file as void. The payment itself is not reversed.'
+          : 'The original receipt is voided and a new receipt number is issued. The payment amount does not change.'"
+        [confirmLabel]="pendingAction.type === 'void' ? 'Void receipt' : 'Reissue receipt'"
+        [saving]="actionSaving"
+        [error]="actionError"
+        (cancelled)="closeAction()"
+        (confirmed)="confirmAction($event)"
+      ></app-stewardship-confirm-dialog>
     </section>
   `,
   styles: [`
@@ -126,6 +157,7 @@ import { DonationReceiptListItem } from '../models/donation.model';
     .receipts-loading__label { margin: 0; font-size: 0.88rem; color: var(--cf-muted); }
     .receipts-data--refreshing { opacity: 0.72; pointer-events: none; }
     .table small { display: block; color: var(--cf-critical); }
+    .cf-row-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
   `]
 })
 export class DonationsReceiptsComponent implements OnInit, OnDestroy {
@@ -138,6 +170,11 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
   receiptsLoaded = false;
   refreshing = false;
   loadError: string | null = null;
+  canManageReceipts = false;
+  pendingAction: { type: 'void' | 'reissue'; receipt: DonationReceiptListItem } | null = null;
+  actionSaving = false;
+  actionError: string | null = null;
+  actionMessage = '';
   private loadReceiptsSeq = 0;
   private searchChanges$ = new Subject<string>();
   private searchSub?: Subscription;
@@ -146,10 +183,12 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
     private donationsService: DonationsService,
     private receiptPrintService: ReceiptPrintService,
     private quickCollectService: QuickCollectService,
+    private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.canManageReceipts = this.authService.hasPermission('donations.manage');
     this.searchSub = this.searchChanges$.pipe(
       debounceTime(300),
       distinctUntilChanged()
@@ -269,5 +308,51 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
       return;
     }
     this.receiptPrintService.printPaymentReceipt(receipt.payment_id);
+  }
+
+  openVoid(receipt: DonationReceiptListItem): void {
+    this.actionError = null;
+    this.pendingAction = { type: 'void', receipt };
+  }
+
+  openReissue(receipt: DonationReceiptListItem): void {
+    this.actionError = null;
+    this.pendingAction = { type: 'reissue', receipt };
+  }
+
+  closeAction(): void {
+    if (!this.actionSaving) {
+      this.pendingAction = null;
+      this.actionError = null;
+    }
+  }
+
+  confirmAction(result: StewardshipConfirmResult): void {
+    if (!this.pendingAction) {
+      return;
+    }
+    this.actionSaving = true;
+    this.actionError = null;
+    const receiptId = this.pendingAction.receipt.id;
+    const request$ = this.pendingAction.type === 'void'
+      ? this.donationsService.voidReceipt(receiptId, result.reason)
+      : this.donationsService.reissueReceipt(receiptId, result.reason);
+
+    request$.subscribe({
+      next: () => {
+        this.actionSaving = false;
+        this.actionMessage = this.pendingAction?.type === 'void'
+          ? 'Receipt marked void. The original copy is kept for history.'
+          : 'A new receipt was issued with a new number.';
+        this.pendingAction = null;
+        this.loadReceipts();
+        this.cdr.detectChanges();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.actionSaving = false;
+        this.actionError = err?.error?.message || 'Unable to update this receipt.';
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

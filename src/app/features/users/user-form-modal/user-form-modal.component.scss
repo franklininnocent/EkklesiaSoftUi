@@ -43,6 +43,25 @@
   cursor: not-allowed;
 }
 
+.user-form-modal__leader-hint {
+  margin: 0 0 0.75rem;
+}
+
+.user-form-modal__leader-selected {
+  margin-top: 0.25rem;
+}
+
+.user-form-modal__leader-results li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.user-form-modal__leader-role {
+  font-size: 0.75rem;
+  color: var(--cf-muted);
+}
+
 // Role assignment — enterprise selectable list (multi-select, not cards)
 .user-form-modal__role-intro {
   display: flex;

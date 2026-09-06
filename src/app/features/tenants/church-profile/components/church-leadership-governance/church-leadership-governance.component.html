@@ -1,0 +1,619 @@
+<div class="clg">
+  <div class="clg__header">
+    <div>
+      <h2 class="clg__title">Current Governance</h2>
+      <p class="clg__subtitle">Active leadership grouped by parish governance category.</p>
+    </div>
+    <button *ngIf="canEdit" type="button" class="cf-btn cf-btn-primary" (click)="openAssignModal()">
+      Add Leader
+    </button>
+  </div>
+
+  <app-loading-skeleton *ngIf="loadingCurrent" [rows]="4"></app-loading-skeleton>
+
+  <app-cf-empty-state
+    *ngIf="!loadingCurrent && currentError"
+    title="Could not load governance"
+    description="Could not load governance"
+  >
+    <button type="button" class="cf-btn cf-btn-primary" (click)="loadCurrent()">Retry</button>
+  </app-cf-empty-state>
+
+  <ng-container *ngIf="!loadingCurrent && !currentError && current as governance">
+    <app-cf-empty-state
+      *ngIf="governance.active_count === 0"
+      title="No active leaders"
+      description="Add parish leaders to begin tracking governance."
+      [hasActions]="canEdit"
+    >
+      <button *ngIf="canEdit" type="button" class="cf-btn cf-btn-primary" (click)="openAssignModal()">Add Leader</button>
+    </app-cf-empty-state>
+
+    <div *ngFor="let group of governance.groups" class="clg__group">
+      <h3 class="clg__group-title">{{ group.category_label }}</h3>
+      <div class="clg__cards">
+        <article *ngFor="let assignment of group.assignments" class="clg__card">
+          <div
+            *ngIf="canEdit && assignment.status === 'active'"
+            class="clg__card-edit"
+          >
+            <app-edit-icon-button
+              size="sm"
+              [ariaLabel]="'Edit ' + (assignment.person?.full_name || assignment.role?.title || 'leader')"
+              [title]="'Edit ' + (assignment.person?.full_name || assignment.role?.title || 'leader')"
+              (clicked)="openEditModal(assignment)"
+            />
+          </div>
+
+          <div class="clg__card-main">
+            <div
+              class="clg__avatar"
+              [class.clg__avatar--filled]="leaderPhotoUrl(assignment)"
+            >
+              <img
+                *ngIf="leaderPhotoUrl(assignment) as photoUrl"
+                [src]="photoUrl"
+                [alt]="assignment.person?.full_name || assignment.role?.title || 'Leader photo'"
+              />
+              <span *ngIf="!leaderPhotoUrl(assignment)" aria-hidden="true">{{ leaderInitials(assignment) }}</span>
+            </div>
+
+            <div class="clg__card-body">
+              <p class="clg__person">{{ assignment.person?.full_name }}</p>
+              <div class="clg__role-row">
+                <span class="clg__role">{{ assignment.role?.title }}</span>
+                <app-status-badge
+                  class="clg__role-status"
+                  [label]="statusLabel(assignment.status)"
+                  [tone]="statusTone(assignment.status)"
+                ></app-status-badge>
+              </div>
+            </div>
+          </div>
+
+          <div class="clg__card-footer">
+            <span class="clg__meta">Since {{ formatDate(assignment.start_date) }}</span>
+            <a
+              *ngIf="canEdit && assignment.status === 'active'"
+              href="#"
+              class="cf-btn-link clg__end-term-link"
+              (click)="openTerminateModal(assignment); $event.preventDefault()"
+            >
+              End Term
+            </a>
+          </div>
+        </article>
+      </div>
+    </div>
+  </ng-container>
+
+  <app-section-card class="clg__history" title="Leadership History" [collapsible]="true" [expanded]="true">
+    <div sectionActions class="clg__history-actions">
+      <app-list-toolbar
+        [showSearch]="false"
+        [filterCount]="drawerFilterCount"
+        (filtersOpened)="openFilters()"
+      >
+        <div class="clg__view-toggle" role="group" aria-label="History view">
+          <button type="button" class="cf-btn" [class.is-active]="historyView === 'table'" (click)="setHistoryView('table')">Table</button>
+          <button type="button" class="cf-btn" [class.is-active]="historyView === 'timeline'" (click)="setHistoryView('timeline')">Timeline</button>
+        </div>
+      </app-list-toolbar>
+    </div>
+
+    <div
+      class="clg__chips"
+      *ngIf="getActiveFilters().length > 0"
+      role="region"
+      aria-label="Active filters"
+    >
+      <span class="cf-meta">Active filters</span>
+      <div class="clg__chip-list">
+        <span
+          class="cf-badge cf-badge--info"
+          *ngFor="let filter of getActiveFilters()"
+          [attr.aria-label]="filter.label + ': ' + filter.displayValue"
+        >
+          {{ filter.label }}: {{ filter.displayValue }}
+          <button
+            type="button"
+            class="clg__chip-remove"
+            (click)="removeFilter(filter)"
+            [attr.aria-label]="'Remove filter: ' + filter.label"
+          >
+            ×
+          </button>
+        </span>
+      </div>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllFilters()" aria-label="Clear all filters">
+        Clear all
+      </button>
+    </div>
+
+    <app-loading-skeleton *ngIf="historyLoading" [rows]="5"></app-loading-skeleton>
+
+    <app-cf-empty-state
+      *ngIf="!historyLoading && historyError"
+      title="Could not load history"
+      [description]="historyError"
+    >
+      <button type="button" class="cf-btn cf-btn-primary" (click)="loadHistory()">Retry</button>
+    </app-cf-empty-state>
+
+    <div *ngIf="!historyLoading && !historyError && historyView === 'table'" class="clg__table-wrap">
+      <table class="cf-table clg__history-table">
+        <thead>
+          <tr>
+            <th>Person</th>
+            <th>Role</th>
+            <th>Category</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Status</th>
+            <th>Exit</th>
+            <th class="clg__history-ref-col">Reference</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of history">
+            <td>{{ row.person?.full_name }}</td>
+            <td>{{ row.role?.title }}</td>
+            <td>{{ row.role?.category_label }}</td>
+            <td>{{ row.start_date }}</td>
+            <td>{{ formatDate(row.end_date) }}</td>
+            <td><app-status-badge [label]="row.status" [tone]="statusTone(row.status)"></app-status-badge></td>
+            <td>{{ row.exit_reason_code || '—' }}</td>
+            <td class="clg__history-ref-col">
+              <span
+                class="clg__history-ref"
+                [attr.title]="row.appointment_letter_ref || null"
+              >{{ row.appointment_letter_ref || '—' }}</span>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div *ngIf="!historyLoading && !historyError && historyView === 'timeline'" class="clg__timeline">
+      <article *ngFor="let row of history" class="clg__timeline-item">
+        <div class="clg__timeline-dot"></div>
+        <div class="clg__timeline-body">
+          <div class="clg__timeline-title">{{ row.person?.full_name }} · {{ row.role?.title }}</div>
+          <div class="clg__timeline-meta">
+            {{ row.start_date }} → {{ formatDate(row.end_date) }} · {{ row.status }}
+            <span *ngIf="row.exit_reason_code"> · {{ row.exit_reason_code }}</span>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <app-pagination
+      *ngIf="!historyLoading && !historyError && historyPagination.total > historyPagination.per_page"
+      [currentPage]="historyPagination.current_page"
+      [totalItems]="historyPagination.total"
+      [pageSize]="historyPagination.per_page"
+      (pageChange)="onHistoryPageChange($event)"
+    ></app-pagination>
+  </app-section-card>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false"
+  ></app-advanced-search-panel>
+</div>
+
+<app-modal-shell
+  *ngIf="showAssignModal"
+  title="Add Leader"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close add leader"
+  [isSubmitting]="saving"
+  (closeRequested)="closeAssignModal()"
+>
+  <form
+    class="cf-split-form-body clg-assign-modal"
+    [formGroup]="assignForm"
+    (ngSubmit)="submitAssign()"
+    novalidate
+  >
+    <p class="cf-meta">Add a parish leader — link a parish person and record their role and appointment dates.</p>
+
+    <section class="cf-split-section" aria-labelledby="assign-section-person">
+      <h3 id="assign-section-person" class="cf-split-section__title">Leader</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="assign_person_search">
+            Parish person <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+
+          <div
+            class="cf-participant-source__selected"
+            *ngIf="selectedPerson; else assignPersonSearch"
+            role="status"
+          >
+            <div>
+              <strong>{{ personDisplayName(selectedPerson) }}</strong>
+              <p class="cf-split-field__hint">Linked parish person.</p>
+            </div>
+            <button type="button" class="cf-btn" (click)="clearSelectedPerson()">Change</button>
+          </div>
+
+          <ng-template #assignPersonSearch>
+            <input
+              type="text"
+              id="assign_person_search"
+              [(ngModel)]="personQuery"
+              [ngModelOptions]="{ standalone: true }"
+              (input)="onPersonQueryInput()"
+              (keydown.enter)="onPersonSearchEnter($event)"
+              autocomplete="off"
+              aria-required="true"
+            />
+            <p class="cf-split-field__hint" *ngIf="personSearching">Searching…</p>
+            <ul class="cf-participant-source__results" *ngIf="showPersonResults && personResults.length">
+              <li *ngFor="let person of personResults" (mousedown)="selectPerson(person, $event)">
+                <strong>{{ person.full_name_display || (person.first_name + ' ' + person.last_name) }}</strong>
+              </li>
+            </ul>
+          </ng-template>
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="assign_leader_photo_input">
+            Profile photo <span class="cf-split-optional">optional</span>
+          </label>
+          <div class="cf-split-image-upload">
+            <div class="cf-split-image-upload__preview" *ngIf="assignPhotoPreview">
+              <img
+                [src]="assignPhotoPreview"
+                [alt]="assignPhotoAltText"
+              />
+              <button
+                type="button"
+                class="cf-split-image-upload__remove"
+                (click)="removeAssignPhoto()"
+                aria-label="Remove profile photo"
+              >
+                Remove
+              </button>
+            </div>
+            <label class="cf-btn" for="assign_leader_photo_input">
+              {{ assignPhotoPreview ? 'Change photo' : 'Upload photo' }}
+            </label>
+            <input
+              type="file"
+              id="assign_leader_photo_input"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              (change)="onAssignPhotoSelected($event)"
+              hidden
+            />
+          </div>
+          <p class="cf-split-field__hint">JPG, PNG, or WEBP. Max 3MB.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="assign-section-role">
+      <h3 id="assign-section-role" class="cf-split-section__title">Role &amp; dates</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="assign_role_id">
+            Role <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select id="assign_role_id" formControlName="role_id" aria-required="true">
+            <option value="">Select role (Pastor, Assistant Priest, …)</option>
+            <option *ngFor="let role of roles" [value]="role.id">{{ role.title }}</option>
+          </select>
+          <p class="cf-split-field__hint">Choose the leadership role for this parish.</p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="assign_appointment_date">
+            Appointment date <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="date" id="assign_appointment_date" formControlName="appointment_date" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="assign_start_date">
+            Start date <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input type="date" id="assign_start_date" formControlName="start_date" aria-required="true" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="assign_jurisdiction_name">
+            Jurisdiction <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="text" id="assign_jurisdiction_name" formControlName="jurisdiction_name" />
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="assign_appointment_letter_ref">
+            Appointment / decree reference <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="text" id="assign_appointment_letter_ref" formControlName="appointment_letter_ref" />
+        </div>
+      </div>
+    </section>
+
+    <div class="cf-split-form-alert" *ngIf="incumbent" role="status">
+      <p>
+        <strong>Current incumbent:</strong>
+        {{ incumbent.person?.full_name }} · {{ incumbent.role?.title }} · Since {{ incumbent.start_date }}
+      </p>
+      <button type="button" class="cf-btn cf-btn-primary clg-incumbent-action" (click)="openHandoverFromIncumbent()">
+        Start Handover
+      </button>
+    </div>
+
+    <p *ngIf="modalError" class="cf-split-form-alert cf-split-form-alert--error" role="alert">{{ modalError }}</p>
+
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        class="cf-btn cf-btn-primary"
+        [disabled]="saving"
+      >
+        {{ saving ? 'Saving…' : 'Add Leader' }}
+      </button>
+      <button type="button" class="cf-btn" (click)="closeAssignModal()" [disabled]="saving">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>
+
+<app-modal-shell
+  *ngIf="showHandoverModal"
+  title="Leadership Handover"
+  size="sm"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close leadership handover"
+  [isSubmitting]="saving"
+  (closeRequested)="closeHandoverModal()"
+>
+  <form
+    class="cf-split-form-body clg-handover-modal"
+    [formGroup]="handoverForm"
+    (ngSubmit)="submitHandover()"
+    novalidate
+  >
+    <p *ngIf="incumbent" class="cf-meta">
+      Replacing {{ incumbent.person?.full_name }} as {{ incumbent.role?.title }}
+      with {{ selectedPerson?.full_name_display || selectedPerson?.first_name }}.
+    </p>
+
+    <section class="cf-split-section" aria-labelledby="handover-section-dates">
+      <h3 id="handover-section-dates" class="cf-split-section__title">Handover details</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="handover_outgoing_end_date">
+            Outgoing end date <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input type="date" id="handover_outgoing_end_date" formControlName="outgoing_end_date" aria-required="true" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="handover_outgoing_exit_reason_code">
+            Outgoing reason <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select id="handover_outgoing_exit_reason_code" formControlName="outgoing_exit_reason_code" aria-required="true">
+            <option *ngFor="let reason of exitReasons" [value]="reason">{{ reason }}</option>
+          </select>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="handover_start_date">
+            Incoming start date <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input type="date" id="handover_start_date" formControlName="start_date" aria-required="true" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="handover_appointment_date">
+            Appointment date <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="date" id="handover_appointment_date" formControlName="appointment_date" />
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="handover_appointment_letter_ref">
+            Decree reference <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="text" id="handover_appointment_letter_ref" formControlName="appointment_letter_ref" />
+        </div>
+      </div>
+    </section>
+
+    <p *ngIf="modalError" class="cf-split-form-alert cf-split-form-alert--error" role="alert">{{ modalError }}</p>
+
+    <div class="cf-split-form-actions">
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="!canSubmitHandover">
+        {{ saving ? 'Saving…' : 'Complete Handover' }}
+      </button>
+      <button type="button" class="cf-btn" (click)="closeHandoverModal()" [disabled]="saving">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>
+
+<app-modal-shell
+  *ngIf="showTerminateModal"
+  title="End Leadership Assignment"
+  size="sm"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close end assignment"
+  [isSubmitting]="saving"
+  (closeRequested)="closeTerminateModal()"
+>
+  <form
+    class="cf-split-form-body clg-terminate-modal"
+    [formGroup]="terminateForm"
+    (ngSubmit)="submitTerminate()"
+    novalidate
+  >
+    <section class="cf-split-section" aria-labelledby="terminate-section-details">
+      <h3 id="terminate-section-details" class="cf-split-section__title">End assignment</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="terminate_end_date">
+            End date <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input type="date" id="terminate_end_date" formControlName="end_date" aria-required="true" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="terminate_exit_reason_code">
+            Exit reason <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select id="terminate_exit_reason_code" formControlName="exit_reason_code" aria-required="true">
+            <option *ngFor="let reason of exitReasons" [value]="reason">{{ reason }}</option>
+          </select>
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="terminate_exit_reason_note">
+            Notes <span class="cf-split-optional">optional</span>
+          </label>
+          <textarea id="terminate_exit_reason_note" rows="3" formControlName="exit_reason_note"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <p *ngIf="modalError" class="cf-split-form-alert cf-split-form-alert--error" role="alert">{{ modalError }}</p>
+
+    <div class="cf-split-form-actions">
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="!canSubmitTerminate">
+        {{ saving ? 'Saving…' : 'End Assignment' }}
+      </button>
+      <button type="button" class="cf-btn" (click)="closeTerminateModal()" [disabled]="saving">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>
+
+<app-modal-shell
+  *ngIf="showEditModal"
+  title="Edit Leader"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close edit leader"
+  [isSubmitting]="saving"
+  (closeRequested)="closeEditModal()"
+>
+  <form
+    class="cf-split-form-body clg-edit-modal"
+    [formGroup]="editForm"
+    (ngSubmit)="submitEdit()"
+    novalidate
+  >
+    <p class="cf-meta">Update this leader’s name, role, and appointment details.</p>
+
+    <section class="cf-split-section" aria-labelledby="edit-section-person">
+      <h3 id="edit-section-person" class="cf-split-section__title">Leader</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="edit_first_name">
+            First name <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input type="text" id="edit_first_name" formControlName="first_name" aria-required="true" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="edit_last_name">
+            Last name <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input type="text" id="edit_last_name" formControlName="last_name" aria-required="true" />
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="edit_leader_photo_input">
+            Profile photo <span class="cf-split-optional">optional</span>
+          </label>
+          <div class="cf-split-image-upload">
+            <div class="cf-split-image-upload__preview" *ngIf="editPhotoPreview">
+              <img [src]="editPhotoPreview" [alt]="editPhotoAltText" />
+              <button
+                type="button"
+                class="cf-split-image-upload__remove"
+                (click)="removeEditPhoto()"
+                aria-label="Remove profile photo"
+              >
+                Remove
+              </button>
+            </div>
+            <label class="cf-btn" for="edit_leader_photo_input">
+              {{ editPhotoPreview ? 'Change photo' : 'Upload photo' }}
+            </label>
+            <input
+              type="file"
+              id="edit_leader_photo_input"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              (change)="onEditPhotoSelected($event)"
+              hidden
+            />
+          </div>
+          <p class="cf-split-field__hint">JPG, PNG, or WEBP. Max 3MB.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="edit-section-role">
+      <h3 id="edit-section-role" class="cf-split-section__title">Role &amp; dates</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="edit_role_id">
+            Role <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select id="edit_role_id" formControlName="role_id" aria-required="true">
+            <option value="">Select role (Pastor, Assistant Priest, …)</option>
+            <option *ngFor="let role of roles" [value]="role.id">{{ role.title }}</option>
+          </select>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="edit_appointment_date">
+            Appointment date <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="date" id="edit_appointment_date" formControlName="appointment_date" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="edit_start_date">
+            Start date <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input type="date" id="edit_start_date" formControlName="start_date" aria-required="true" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="edit_jurisdiction_name">
+            Jurisdiction <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="text" id="edit_jurisdiction_name" formControlName="jurisdiction_name" />
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="edit_appointment_letter_ref">
+            Appointment / decree reference <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="text" id="edit_appointment_letter_ref" formControlName="appointment_letter_ref" />
+        </div>
+      </div>
+    </section>
+
+    <p *ngIf="modalError" class="cf-split-form-alert cf-split-form-alert--error" role="alert">{{ modalError }}</p>
+
+    <div class="cf-split-form-actions">
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="!canSubmitEdit">
+        {{ saving ? 'Saving…' : 'Save Changes' }}
+      </button>
+      <button type="button" class="cf-btn" (click)="closeEditModal()" [disabled]="saving">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>

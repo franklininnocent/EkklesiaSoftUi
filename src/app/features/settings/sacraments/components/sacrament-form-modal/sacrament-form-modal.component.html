@@ -45,6 +45,7 @@
           </label>
           <ng-select
             id="sacrament_type_id"
+            data-testid="sacrament-type"
             [(ngModel)]="formData['sacrament_type_id']"
             (ngModelChange)="onSacramentTypeChange()"
             name="sacrament_type_id"
@@ -182,6 +183,24 @@
         {{ recipientSectionTitle() }}
       </h3>
       <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full" *ngIf="isConfirmation() && useSharedPeopleControls && !isEditMode">
+          <app-participant-source-control
+            label="Confirmand"
+            role="candidate"
+            [allowedSources]="['member', 'external']"
+            [value]="confirmandDraft"
+            (valueChange)="onConfirmandDraftChange($event)"
+          ></app-participant-source-control>
+          <app-person-context-summary
+            [context]="recipientContext"
+            [loading]="recipientContextLoading"
+          ></app-person-context-summary>
+          <app-sacrament-evidence-summary
+            *ngIf="recipientContext"
+            title="Baptism"
+            [evidence]="recipientContext.sacraments.baptism"
+          ></app-sacrament-evidence-summary>
+        </div>
         <div class="cf-split-field cf-split-field--full">
           <label for="recipient_name">
             Full Name <span class="cf-split-req" aria-hidden="true">*</span>
@@ -210,11 +229,16 @@
           <input
             type="date"
             id="recipient_birth_date"
+            data-testid="recipient-dob"
             [(ngModel)]="formData['recipient_birth_date']"
             name="recipient_birth_date"
             [attr.aria-required]="requiresRecipientIdentityFields() ? true : null"
             [required]="requiresRecipientIdentityFields()"
+            [readonly]="personLocked"
           />
+          <p class="cf-split-field__hint" *ngIf="personLocked">
+            Taken from the selected parish member. Sacrament registration does not change member profile data.
+          </p>
           <p class="cf-split-field__error" *ngIf="hasFieldError('recipient_birth_date')">
             {{ fieldErrors['recipient_birth_date'] }}
           </p>
@@ -248,6 +272,7 @@
           </label>
           <select
             id="recipient_gender"
+            data-testid="recipient-gender"
             [(ngModel)]="formData['recipient_gender']"
             name="recipient_gender"
             [attr.aria-required]="requiresRecipientIdentityFields() ? true : null"
@@ -367,6 +392,7 @@
                 </label>
                 <ng-select
                   id="family_id"
+                  data-testid="family-select"
                   [(ngModel)]="selectedFamilyId"
                   (ngModelChange)="onFamilyChange()"
                   name="family_id"
@@ -396,6 +422,7 @@
                 </label>
                 <ng-select
                   id="recipient_member_id"
+                  data-testid="recipient-member-select"
                   [(ngModel)]="selectedRecipientMemberId"
                   (ngModelChange)="onRecipientMemberChange()"
                   name="recipient_member_id"
@@ -414,6 +441,14 @@
                     {{ memberOptionLabel(item) }}
                   </ng-template>
                 </ng-select>
+                <app-person-context-summary
+                  *ngIf="usesPersonRecipientWorkflow()"
+                  [context]="recipientContext"
+                  [loading]="recipientContextLoading"
+                ></app-person-context-summary>
+                <p class="cf-split-field__hint cf-split-field__hint--warn" *ngIf="baptismDuplicateWarning">
+                  {{ baptismDuplicateWarning }}
+                </p>
                 <p class="cf-split-field__hint">
                   Selecting a member prefills their person record. It does not change their saved profile.
                 </p>
@@ -560,97 +595,69 @@
       </div>
     </section>
 
-    <!-- Bride (Marriage) -->
+    <!-- Bride & Groom (Marriage) -->
     <section
       class="cf-split-section"
-      *ngIf="useSharedPeopleControls && hasWorkflowSection('bride')"
-      aria-labelledby="sacrament-section-bride"
+      *ngIf="useSharedPeopleControls && (hasWorkflowSection('bride') || hasWorkflowSection('groom'))"
+      aria-labelledby="sacrament-section-couple"
     >
-      <h3 id="sacrament-section-bride" class="cf-split-section__title">
-        Bride <span class="cf-split-req" aria-hidden="true">*</span>
+      <h3 id="sacrament-section-couple" class="cf-split-section__title">
+        The couple <span class="cf-split-req" aria-hidden="true">*</span>
       </h3>
       <p class="cf-split-field__hint">
-        Choose an existing member or an external person, then set whether their church affiliation is this parish or another parish/diocese.
+        Search a parish member or enter an external person for each party. Baptism details load automatically for members.
+      </p>
+      <p class="cf-split-field__hint">
+        Church affiliation is where each person belonged for this sacrament — separate from the parish member directory.
       </p>
       <div class="cf-split-grid">
-        <div class="cf-split-field cf-split-field--full">
-          <app-participant-source-control
-            label="Bride"
-            role="bride"
-            [allowedSources]="partyAllowedSources('bride')"
-            [requireIdentityFields]="true"
-            [value]="brideDraft"
-            (valueChange)="onBrideDraftChange($event)"
-          ></app-participant-source-control>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_bride_full_name')">
-            {{ getFieldError('marriage_bride_full_name') }}
-          </p>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('bride_date_of_birth')">
-            {{ getFieldError('bride_date_of_birth') }}
-          </p>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('bride_gender')">
-            {{ getFieldError('bride_gender') }}
-          </p>
-        </div>
-        <div class="cf-split-field cf-split-field--full">
-          <app-church-affiliation-control
-            label="Bride church affiliation"
-            controlId="bride"
-            [homeParishName]="homeParishDisplayName"
-            [requireDioceseWhenOther]="true"
-            [value]="brideAffiliationDraft"
-            (valueChange)="onBrideAffiliationChange($event)"
-          ></app-church-affiliation-control>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_bride_church_name')">
-            {{ getFieldError('marriage_bride_church_name') }}
-          </p>
-        </div>
-      </div>
-    </section>
+        <app-marriage-party-panel
+          *ngIf="hasWorkflowSection('bride')"
+          role="bride"
+          partyLabel="Bride"
+          [draft]="brideDraft"
+          [context]="partyContext('bride')"
+          [contextLoading]="partyContextLoading('bride')"
+          [contextError]="partyContextError('bride')"
+          [affiliationDraft]="brideAffiliationDraft"
+          [homeParishName]="homeParishDisplayName"
+          [allowedSources]="partyAllowedSources('bride')"
+          [baptismalStatusOptions]="baptismalStatusOptions"
+          [ecclesialAffiliationOptions]="ecclesialAffiliationOptions"
+          [hideBaptismalStatus]="shouldHideBaptismalStatusInput('bride')"
+          [hideEcclesialInput]="shouldHideEcclesialInput('bride')"
+          [fieldErrors]="partyFieldErrors('bride')"
+          (draftChange)="onBrideDraftChange($event)"
+          (affiliationChange)="onBrideAffiliationChange($event)"
+          (missingFieldFocus)="onPartyMissingFieldFocus('bride', $event)"
+          (conflictCorrect)="onPartyConflictCorrect('bride', $event)"
+        ></app-marriage-party-panel>
 
-    <!-- Groom (Marriage) -->
-    <section
-      class="cf-split-section"
-      *ngIf="useSharedPeopleControls && hasWorkflowSection('groom')"
-      aria-labelledby="sacrament-section-groom"
-    >
-      <h3 id="sacrament-section-groom" class="cf-split-section__title">
-        Groom <span class="cf-split-req" aria-hidden="true">*</span>
-      </h3>
-      <div class="cf-split-grid">
-        <div class="cf-split-field cf-split-field--full">
-          <app-participant-source-control
-            label="Groom"
-            role="groom"
-            [allowedSources]="partyAllowedSources('groom')"
-            [requireIdentityFields]="true"
-            [value]="groomDraft"
-            (valueChange)="onGroomDraftChange($event)"
-          ></app-participant-source-control>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_groom_full_name')">
-            {{ getFieldError('marriage_groom_full_name') }}
-          </p>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('groom_date_of_birth')">
-            {{ getFieldError('groom_date_of_birth') }}
-          </p>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('groom_gender')">
-            {{ getFieldError('groom_gender') }}
-          </p>
-        </div>
-        <div class="cf-split-field cf-split-field--full">
-          <app-church-affiliation-control
-            label="Groom church affiliation"
-            controlId="groom"
-            [homeParishName]="homeParishDisplayName"
-            [requireDioceseWhenOther]="true"
-            [value]="groomAffiliationDraft"
-            (valueChange)="onGroomAffiliationChange($event)"
-          ></app-church-affiliation-control>
-          <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_groom_church_name')">
-            {{ getFieldError('marriage_groom_church_name') }}
-          </p>
-        </div>
+        <app-marriage-party-panel
+          *ngIf="hasWorkflowSection('groom')"
+          role="groom"
+          partyLabel="Groom"
+          [draft]="groomDraft"
+          [context]="partyContext('groom')"
+          [contextLoading]="partyContextLoading('groom')"
+          [contextError]="partyContextError('groom')"
+          [affiliationDraft]="groomAffiliationDraft"
+          [homeParishName]="homeParishDisplayName"
+          [allowedSources]="partyAllowedSources('groom')"
+          [baptismalStatusOptions]="baptismalStatusOptions"
+          [ecclesialAffiliationOptions]="ecclesialAffiliationOptions"
+          [hideBaptismalStatus]="shouldHideBaptismalStatusInput('groom')"
+          [hideEcclesialInput]="shouldHideEcclesialInput('groom')"
+          [fieldErrors]="partyFieldErrors('groom')"
+          (draftChange)="onGroomDraftChange($event)"
+          (affiliationChange)="onGroomAffiliationChange($event)"
+          (missingFieldFocus)="onPartyMissingFieldFocus('groom', $event)"
+          (conflictCorrect)="onPartyConflictCorrect('groom', $event)"
+        ></app-marriage-party-panel>
       </div>
+      <p class="cf-split-field__error" *ngIf="hasFieldError('marriage_conflicts')">
+        {{ getFieldError('marriage_conflicts') }}
+      </p>
     </section>
 
     <!-- Minister Information -->
@@ -831,6 +838,7 @@
             <input
               type="text"
               id="father_name"
+              data-testid="father-name"
               [(ngModel)]="formData['father_name']"
               name="father_name"
               [class.cf-split-field__control--invalid]="hasFieldError('father_name')"
@@ -851,6 +859,7 @@
             <input
               type="text"
               id="mother_name"
+              data-testid="mother-name"
               [(ngModel)]="formData['mother_name']"
               name="mother_name"
               [class.cf-split-field__control--invalid]="hasFieldError('mother_name')"
@@ -909,6 +918,45 @@
             name="godparent2_name"
             [placeholder]="isConfirmation() ? 'Enter second sponsor’s name' : 'Enter second godparent’s name'"
           />
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" *ngIf="isMarriage()" aria-labelledby="sacrament-section-canonical">
+      <h3 id="sacrament-section-canonical" class="cf-split-section__title">Marriage classification</h3>
+      <p class="cf-split-field__hint">
+        This is recorded in the parish register. It is not printed on the public certificate.
+      </p>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <span class="cf-split-field__label">Classification</span>
+          <p>{{ marriageClassificationLabel }}</p>
+        </div>
+      </div>
+      <div class="cf-split-grid" *ngIf="marriageRequiresDispensation">
+        <div class="cf-split-field">
+          <label for="dispensation_type">Permission or dispensation <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <select id="dispensation_type" name="dispensation_type" [(ngModel)]="dispensationDraft.dispensation_type">
+            <option value="">Select…</option>
+            <option value="mixed_marriage_permission">Permission for mixed marriage</option>
+            <option value="disparity_of_cult">Dispensation from disparity of cult</option>
+            <option value="other">Other</option>
+          </select>
+          <p class="cf-split-field__error" *ngIf="fieldErrors['dispensation_type']">
+            {{ fieldErrors['dispensation_type'] }}
+          </p>
+        </div>
+        <div class="cf-split-field">
+          <label for="dispensation_authority">Granted by</label>
+          <input id="dispensation_authority" name="dispensation_authority" [(ngModel)]="dispensationDraft.granting_authority" />
+        </div>
+        <div class="cf-split-field">
+          <label for="dispensation_protocol">Protocol number</label>
+          <input id="dispensation_protocol" name="dispensation_protocol" [(ngModel)]="dispensationDraft.protocol_number" />
+        </div>
+        <div class="cf-split-field">
+          <label for="dispensation_date">Date granted</label>
+          <input id="dispensation_date" name="dispensation_date" type="date" [(ngModel)]="dispensationDraft.date_granted" />
         </div>
       </div>
     </section>
@@ -1112,6 +1160,7 @@
       <button
         type="submit"
         class="cf-btn cf-btn-primary"
+        data-testid="save-sacrament"
         [disabled]="!canSubmitSacrament"
       >
         {{ primarySaveLabel }}

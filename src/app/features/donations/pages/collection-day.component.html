@@ -254,6 +254,11 @@
               </select>
             </label>
 
+            <label class="coc-field" *ngIf="needsReference">
+              <span>{{ method === 'cheque' ? 'Cheque number' : 'Transfer reference' }}</span>
+              <input type="text" [(ngModel)]="gatewayReference" placeholder="Required for this method" />
+            </label>
+
             <label class="coc-field coc-field--wide">
               <span>Notes</span>
               <textarea rows="2" [(ngModel)]="notes" placeholder="Optional collection notes"></textarea>
@@ -268,6 +273,9 @@
                 <strong>{{ formatCurrency(row.amount) }}</strong>
               </li>
             </ul>
+            <p class="coc-advance-note">
+              Amount not applied to a due, project, or pledge is stored as family credit and can be used on the next collection.
+            </p>
           </div>
 
           <div class="coc-validation" [class.coc-validation--ready]="canSubmit" [class.coc-validation--error]="!!error">

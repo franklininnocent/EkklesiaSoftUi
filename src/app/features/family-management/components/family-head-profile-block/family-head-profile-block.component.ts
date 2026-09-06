@@ -10,10 +10,11 @@ import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edi
 import { SectionCollapseToggleComponent } from '@shared/components/section-collapse-toggle/section-collapse-toggle.component';
 import { FamilyMember } from '@core/models/family.model';
 import { SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
+import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 import {
-  countCompletedSacraments,
-  isSacramentCompleted
-} from '../../utils/sacrament-completion.util';
+  countSacramentsOnRecord,
+  pickRegisterRecordForType
+} from '../../utils/register-sacrament.util';
 import { formatCompletedAge } from '../../utils/age-from-birth.util';
 import { getMemberDisplayName } from '../../utils/profile-completion.util';
 import {
@@ -43,6 +44,8 @@ export class FamilyHeadProfileBlockComponent {
   @Input() sacramentTypesDisplay: SacramentTypeDto[] = [];
   @Input() sacramentsExpanded = true;
   @Input() editingHeadImage = false;
+  @Input() memberRegisterSacraments: Sacrament[] = [];
+  @Input() canViewRegisterSacraments = false;
 
   @Output() editProfile = new EventEmitter<void>();
   @Output() toggleSacraments = new EventEmitter<void>();
@@ -56,6 +59,10 @@ export class FamilyHeadProfileBlockComponent {
       return true;
     }
     return this.countCompletedSacraments(this.member) > 0;
+  }
+
+  registerRecordForType(type: SacramentTypeDto): Sacrament | null {
+    return pickRegisterRecordForType(this.memberRegisterSacraments, type);
   }
 
   getDisplayName(member: FamilyMember): string {
@@ -104,7 +111,7 @@ export class FamilyHeadProfileBlockComponent {
   }
 
   countCompletedSacraments(member: FamilyMember): number {
-    return countCompletedSacraments(member, this.sacramentTypesDisplay);
+    return countSacramentsOnRecord(member, this.sacramentTypesDisplay, this.memberRegisterSacraments);
   }
 
   trackSacramentType(index: number, type: SacramentTypeDto): number | string {

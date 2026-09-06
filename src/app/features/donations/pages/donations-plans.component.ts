@@ -12,6 +12,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { ContributionPlan, ContributionPlanAssignment } from '../models/donation.model';
+import { localDateOnly } from '../utils/local-date-only';
 
 type ApiErrorBody = {
   message?: string;
@@ -42,7 +43,7 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
   draftAssignments: ContributionPlanAssignment[] = [];
   selectedFamilyId = '';
   assignmentAmount = 0;
-  assignmentEffectiveFrom = new Date().toISOString().slice(0, 10);
+  assignmentEffectiveFrom = localDateOnly();
   showForm = false;
   editingPlanId: string | null = null;
   saving = false;
@@ -538,7 +539,7 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
       default_amount: null,
       auto_generate: true,
       status: 'active',
-      start_date: new Date().toISOString().slice(0, 10),
+      start_date: localDateOnly(),
       end_date: '',
       fund_id: this.funds[0]?.id || '',
       code: '',

@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
 import { MemberService, MemberFilters } from '../../services/member.service';
@@ -62,6 +62,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
   searchTerm = '';
   selectedStatus = '';
   selectedBccId = '';
+  selectedProgression: MemberFilters['progression'] | '' = '';
   showHeadOnly = false;
   
   // Sorting state
@@ -105,13 +106,57 @@ export class MemberListComponent implements OnInit, OnDestroy {
     private memberService: MemberService,
     private bccService: BCCService,
     private router: Router,
+    private route: ActivatedRoute,
     private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
     this.initializeSearchFields();
     this.loadBCCs();
-    this.loadMembers();
+    this.applyQueryParams(this.route.snapshot.queryParamMap);
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((params) => this.applyQueryParams(params));
+  }
+
+  private applyQueryParams(params: import('@angular/router').ParamMap): void {
+    const progression = this.parseProgressionFilter(params.get('progression'));
+    const bccId = params.get('bcc_id') ?? '';
+    let changed = false;
+
+    if (this.selectedProgression !== progression) {
+      this.selectedProgression = progression;
+      changed = true;
+    }
+
+    if (bccId && this.selectedBccId !== bccId) {
+      this.selectedBccId = bccId;
+      changed = true;
+    }
+
+    const bccField = this.searchFields.find((field) => field.key === 'bcc_id');
+    if (bccField && bccId) {
+      bccField.value = bccId;
+    }
+
+    if (changed) {
+      this.currentPage = 1;
+      this.loadMembers();
+    } else if (!this.loaded) {
+      this.loadMembers();
+    }
+  }
+
+  private parseProgressionFilter(value: string | null): MemberFilters['progression'] | '' {
+    switch (value) {
+      case 'baptized_without_communion':
+      case 'baptized_without_confirmation':
+      case 'female_unmarried_over_18':
+      case 'male_unmarried_over_23':
+        return value;
+      default:
+        return '';
+    }
   }
 
   /**
@@ -193,6 +238,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
       search: this.searchTerm || undefined,
       status: this.selectedStatus || undefined,
       bcc_id: this.selectedBccId || undefined,
+      progression: this.selectedProgression || undefined,
       is_head: this.showHeadOnly ? 'true' : undefined,
       sort_by: this.sortColumn || undefined,
       sort_order: this.sortDirection || undefined,
@@ -362,7 +408,27 @@ export class MemberListComponent implements OnInit, OnDestroy {
       });
     }
 
+    if (this.selectedProgression) {
+      filters.push({
+        key: 'progression',
+        label: 'Progression',
+        value: this.selectedProgression,
+        displayValue: this.progressionLabel(this.selectedProgression),
+      });
+    }
+
     return filters;
+  }
+
+  private progressionLabel(key: NonNullable<MemberFilters['progression']>): string {
+    const labels: Record<NonNullable<MemberFilters['progression']>, string> = {
+      baptized_without_communion: 'Baptized, no First Communion (age 10+)',
+      baptized_without_confirmation: 'Baptized, no Confirmation (age 10+)',
+      female_unmarried_over_18: 'Female (>18) - Not Married',
+      male_unmarried_over_23: 'Male (>23) - Not Married',
+    };
+
+    return labels[key];
   }
 
   /**
@@ -382,6 +448,8 @@ export class MemberListComponent implements OnInit, OnDestroy {
       this.selectedBccId = '';
     } else if (filter.key === 'is_head') {
       this.showHeadOnly = false;
+    } else if (filter.key === 'progression') {
+      this.selectedProgression = '';
     }
 
     // Update search field value
@@ -403,6 +471,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
   clearAllFilters(): void {
     this.selectedStatus = '';
     this.selectedBccId = '';
+    this.selectedProgression = '';
     this.showHeadOnly = false;
     this.searchTerm = '';
     this.searchFields.forEach(field => {

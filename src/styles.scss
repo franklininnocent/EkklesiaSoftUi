@@ -7,6 +7,7 @@
 /* Global 3D Button System - Icon-Only with Tooltips */
 @use "./styles/button-system";
 @use "./styles/church-financial-os-tokens";
+@use "./styles/certificate-tokens";
 
 /* Global Animation System - Enterprise-Level Transitions & Animations */
 @use "./styles/animations";
@@ -120,6 +121,11 @@
   }
 }
 
+html {
+  height: 100%;
+  transition: font-size 0.3s ease;
+}
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   font-size: 16px;
@@ -129,8 +135,14 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   overflow-x: hidden;
-  min-height: 100vh;
+  min-height: 100%;
   width: 100%;
+}
+
+/* Authenticated shell pages scroll inside main.page-content — never on the document. */
+body:has(.layout) {
+  height: 100%;
+  overflow: hidden;
 }
 
 /* Responsive body adjustments */
@@ -854,10 +866,7 @@ html.font-large {
   }
 }
 
-/* Smooth transitions for font size changes */
-html {
-  transition: font-size 0.3s ease;
-}
+/* Smooth transitions for font size changes — height/transition on html near body rules */
 
 body, h1, h2, h3, h4, h5, h6, p, span, div, button, input, select, textarea {
   transition: font-size 0.3s ease;
@@ -1440,11 +1449,12 @@ html.font-small {
    ANGULAR COMPONENT HEIGHT OPTIMIZATIONS
    ======================================================================== */
 
-/* Reduce height of Angular-generated wrapper elements */
+/* Reduce height of Angular-generated wrapper elements.
+   Do not reset min-height on .page-content — it must stay min-height: 0 so
+   the flex shell scrolls inside main.page-content instead of growing the page. */
 [class*="ng-tns-"] {
   &.layout,
-  &.main-content,
-  &.page-content {
+  &.main-content {
     min-height: auto !important;
   }
 }

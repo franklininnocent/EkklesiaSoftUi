@@ -7,6 +7,7 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
 import { CommandCenterDataService } from '../dashboard/services/command-center-data.service';
 import { ParishExpenseRecord } from '../models/donation.model';
 import { refreshStewardshipView } from '../utils/stewardship-view.util';
+import { localDateOnly } from '../utils/local-date-only';
 
 @Component({
   selector: 'app-donations-expenses',
@@ -28,7 +29,7 @@ export class DonationsExpensesComponent implements OnInit {
   form = {
     category: '',
     amount: null as number | null,
-    expense_date: new Date().toISOString().slice(0, 10),
+    expense_date: localDateOnly(),
     payee: '',
     method: 'cash',
     notes: ''
@@ -76,7 +77,7 @@ export class DonationsExpensesComponent implements OnInit {
         this.form = {
           category: '',
           amount: null,
-          expense_date: new Date().toISOString().slice(0, 10),
+          expense_date: localDateOnly(),
           payee: '',
           method: 'cash',
           notes: ''

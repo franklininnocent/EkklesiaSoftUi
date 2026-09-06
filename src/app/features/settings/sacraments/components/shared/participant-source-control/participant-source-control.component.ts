@@ -48,6 +48,10 @@ export class ParticipantSourceControlComponent implements OnChanges, OnDestroy {
   @Input() requireGender = false;
   @Input() requireAddress = false;
   @Input() requireContactNumber = false;
+  /** When true, member DOB/gender/parents are shown elsewhere (e.g. marriage context block). */
+  @Input() hideMemberIdentitySummary = false;
+  /** Hide the top field label when a parent section already provides the heading. */
+  @Input() hideLabel = false;
   @Output() valueChange = new EventEmitter<SacramentParticipantDraft>();
 
   source: ParticipantSourceKind = 'external';
@@ -123,6 +127,11 @@ export class ParticipantSourceControlComponent implements OnChanges, OnDestroy {
           first_name: this.value.display_name,
           last_name: '',
           full_name: this.value.display_name,
+          date_of_birth: this.value.external_date_of_birth || this.resolveMemberDateOfBirth(this.selectedMember),
+          gender: (this.value.external_gender as FamilyMember['gender'])
+            || this.resolveMemberGender(this.selectedMember),
+          father_name: this.value.father_name || this.resolveMemberFatherName(this.selectedMember),
+          mother_name: this.value.mother_name || this.resolveMemberMotherName(this.selectedMember),
         } as FamilyMember;
       }
     }
@@ -209,8 +218,8 @@ export class ParticipantSourceControlComponent implements OnChanges, OnDestroy {
 
   selectMember(member: FamilyMember): void {
     this.selectedMember = member;
-    this.externalDob = member.date_of_birth || '';
-    this.externalGender = (member.gender as typeof this.externalGender) || '';
+    this.externalDob = '';
+    this.externalGender = '';
     this.query = '';
     this.results = [];
     this.showResults = false;
@@ -232,6 +241,86 @@ export class ParticipantSourceControlComponent implements OnChanges, OnDestroy {
       || [member.first_name, member.middle_name, member.last_name].filter(Boolean).join(' ');
   }
 
+  memberDateOfBirth(member: FamilyMember | null): string | undefined {
+    return this.resolveMemberDateOfBirth(member);
+  }
+
+  memberHasDateOfBirth(member: FamilyMember | null): boolean {
+    return !!this.resolveMemberDateOfBirth(member);
+  }
+
+  memberGender(member: FamilyMember | null): string | undefined {
+    return this.resolveMemberGender(member);
+  }
+
+  memberFatherName(member: FamilyMember | null): string | undefined {
+    return this.resolveMemberFatherName(member);
+  }
+
+  memberMotherName(member: FamilyMember | null): string | undefined {
+    return this.resolveMemberMotherName(member);
+  }
+
+  formatProfileValue(value?: string | null): string {
+    return value?.trim() ? value.trim() : '—';
+  }
+
+  private resolveMemberFatherName(member: FamilyMember | null | undefined): string | undefined {
+    const value = member?.father_name || member?.person?.father_name;
+    return value ? String(value).trim() : undefined;
+  }
+
+  private resolveMemberMotherName(member: FamilyMember | null | undefined): string | undefined {
+    const value = member?.mother_name || member?.person?.mother_name;
+    return value ? String(value).trim() : undefined;
+  }
+
+  private resolveMemberDateOfBirth(
+    member: (FamilyMember & { person?: { date_of_birth?: string | null } }) | null | undefined
+  ): string | undefined {
+    const value = member?.date_of_birth || member?.person?.date_of_birth;
+    return value ? String(value).trim() : undefined;
+  }
+
+  private resolveMemberGender(
+    member: (FamilyMember & { person?: { gender?: string | null } }) | null | undefined
+  ): string | undefined {
+    const value = member?.gender || member?.person?.gender;
+    return value ? String(value).trim() : undefined;
+  }
+
+  formatMemberDob(value?: string | null): string {
+    if (!value) {
+      return '—';
+    }
+
+    const trimmed = String(value).trim();
+    const dateOnly = trimmed.includes('T') ? trimmed.slice(0, 10) : trimmed;
+    const parsed = new Date(`${dateOnly}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) {
+      return trimmed;
+    }
+
+    return parsed.toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    });
+  }
+
+  formatMemberGender(value?: string | null): string {
+    switch ((value || '').toLowerCase()) {
+      case 'male':
+        return 'Male';
+      case 'female':
+        return 'Female';
+      case 'other':
+        return 'Other';
+      default:
+        return value || '—';
+    }
+  }
+
   private emit(): void {
     const draft: SacramentParticipantDraft = {
       role: this.role,
@@ -243,11 +332,11 @@ export class ParticipantSourceControlComponent implements OnChanges, OnDestroy {
       draft.family_member_id = this.selectedMember.id;
       draft.display_name = this.memberDisplayName(this.selectedMember);
       if (this.showDateOfBirth) {
-        draft.external_date_of_birth = this.externalDob || this.selectedMember.date_of_birth || undefined;
+        draft.external_date_of_birth = this.resolveMemberDateOfBirth(this.selectedMember);
       }
-      draft.external_gender = (this.externalGender
-        || this.selectedMember.gender
-        || undefined) as SacramentParticipantDraft['external_gender'];
+      draft.external_gender = (this.resolveMemberGender(this.selectedMember) || undefined) as SacramentParticipantDraft['external_gender'];
+      draft.father_name = this.resolveMemberFatherName(this.selectedMember);
+      draft.mother_name = this.resolveMemberMotherName(this.selectedMember);
     } else {
       draft.external_full_name = this.externalName.trim();
       draft.display_name = draft.external_full_name;

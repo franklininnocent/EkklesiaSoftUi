@@ -1,522 +1,199 @@
 <section class="sacrament-detail-container cf-page">
   <app-page-header
     class="no-print"
-    [title]="detailTitle()"
+    [title]="certificateTypeBadge()"
     [subtitle]="detailSubtitle()"
     [backLink]="['/sacraments']"
     backLabel="Back to list"
   >
-    <button type="button" class="cf-btn" (click)="onPrint()">Print</button>
-    <button type="button" class="cf-btn" (click)="onExportPDF()">Export PDF</button>
+    <ng-container *ngIf="supportsOfficialCertificate()">
+      <button
+        type="button"
+        class="cf-btn cf-btn-primary"
+        [disabled]="certificateBusy"
+        (click)="onPreviewCertificate()"
+      >
+        Preview
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-primary"
+        [disabled]="certificateBusy"
+        (click)="onDownloadCertificate()"
+      >
+        Download
+      </button>
+    </ng-container>
   </app-page-header>
 
-  <!-- Loading -->
   <div *ngIf="loading" class="loading-container">
     <div class="spinner"></div>
     <p>Loading sacrament details…</p>
   </div>
 
-  <!-- Content -->
   <div *ngIf="!loading && sacrament" class="detail-content">
-    <!-- Official certificate issuance (Phase 8) -->
-    <section
-      class="official-certificate-panel no-print"
-      *ngIf="supportsOfficialCertificate()"
-      aria-labelledby="official-cert-title"
+    <div
+      *ngIf="certificateDataIncomplete() as incompleteMessage"
+      class="certificate-warning no-print"
+      role="status"
     >
-      <h2 id="official-cert-title" class="official-certificate-panel__title">Official certificate</h2>
-      <p class="official-certificate-panel__hint">
-        Preview shows what will go on the certificate. Generate creates a locked PDF that stays the same
-        even if a member’s name changes later.
-      </p>
-      <div class="official-certificate-panel__actions">
-        <button
-          type="button"
-          class="cf-btn"
-          [disabled]="certificateBusy"
-          (click)="onPreviewCertificate()"
-        >
-          Preview
-        </button>
-        <button
-          type="button"
-          class="cf-btn cf-btn-primary"
-          [disabled]="certificateBusy"
-          (click)="onGenerateCertificate()"
-        >
-          Generate
-        </button>
-        <button
-          type="button"
-          class="cf-btn"
-          *ngIf="latestIssued() as issued"
-          [disabled]="certificateBusy"
-          (click)="onDownloadCertificate(issued)"
-        >
-          Download
-        </button>
-        <button
-          type="button"
-          class="cf-btn"
-          *ngIf="latestIssued() as issued"
-          [disabled]="certificateBusy"
-          (click)="onReissueCertificate(issued)"
-        >
-          Reissue
-        </button>
-      </div>
+      {{ incompleteMessage }}
+    </div>
 
-      <ul class="official-certificate-panel__list" *ngIf="certificates.length">
-        <li *ngFor="let cert of certificates" class="official-certificate-panel__list-item">
-          <span class="official-certificate-panel__version">Version {{ cert.version }}</span>
-          <app-status-badge
-            [label]="certificateStatusLabel(cert.status)"
-            [tone]="certificateStatusTone(cert.status)"
-          ></app-status-badge>
-          <button
-            type="button"
-            class="cf-btn cf-btn-ghost"
-            *ngIf="cert.status !== 'draft_preview' && cert.has_file"
-            [disabled]="certificateBusy"
-            (click)="onDownloadCertificate(cert)"
-          >
-            Download
-          </button>
-        </li>
-      </ul>
+    <div
+      id="certificate-preview"
+      class="certificate-engine"
+      *ngIf="certView as cert"
+      [class.cert-paper-letter]="paper === 'LETTER'"
+    >
+      <p class="certificate-engine__version no-print" *ngIf="previewVersionLabel">{{ previewVersionLabel }}</p>
+      <app-sacramental-certificate [data]="cert" [paper]="paper" />
+    </div>
 
-      <div class="official-certificate-panel__preview" *ngIf="previewProjection as preview">
-        <h3 class="official-certificate-panel__preview-title">Certificate preview</h3>
-        <dl class="official-certificate-panel__preview-fields">
-          <div>
-            <dt>Recipient</dt>
-            <dd>{{ previewField(preview, 'recipient') }}</dd>
-          </div>
-          <div>
-            <dt>Type</dt>
-            <dd>{{ previewField(preview, 'type') }}</dd>
-          </div>
-          <div>
-            <dt>Date</dt>
-            <dd>{{ previewField(preview, 'date') }}</dd>
-          </div>
-          <div>
-            <dt>Certificate number</dt>
-            <dd>{{ previewField(preview, 'certificate_number') }}</dd>
-          </div>
-          <div>
-            <dt>Status</dt>
-            <dd>
-              <app-status-badge
-                [label]="previewField(preview, 'status_label')"
-                [tone]="certificateStatusTone(previewField(preview, 'status_raw'))"
-              ></app-status-badge>
-            </dd>
-          </div>
-        </dl>
-      </div>
-    </section>
+    <div class="certificate-bottom-grid no-print" *ngIf="supportsOfficialCertificate()">
+      <section class="detail-section register-notes" aria-labelledby="register-notes-title">
+        <h3 id="register-notes-title" class="section-title">Parish Register Notes &amp; Sacramental Remarks</h3>
+        <p class="register-notes__hint">
+          Register metadata stays in the parish register. It is not printed on the public certificate.
+        </p>
 
-    <!-- Marriage Certificate Design -->
-    <ng-container *ngIf="isMarriage(); else defaultCertificate">
-      <!-- Marriage Certificate -->
-      <div class="marriage-certificate">
-        <div class="marriage-frame">
-          <!-- Certificate Header -->
-          <div class="marriage-header">
-            <div class="marriage-crest">✠</div>
-            <div class="header-text">
-              <h1 class="certificate-main-title">Certificate of Marriage</h1>
-              <p class="certificate-subtitle">Sacramental Register</p>
-              <p class="certificate-parish">
-                {{ getChurchName() }}
-              </p>
-              <p class="certificate-address" *ngIf="getChurchAddress() as address">
-                {{ address }}
-              </p>
+        <div class="register-metadata-card">
+          <dl class="register-metadata-grid">
+            <div>
+              <dt>Book No.</dt>
+              <dd>{{ displayValue(sacrament.book_number) }}</dd>
             </div>
-          </div>
-
-          <div class="marriage-body">
-            <!-- Marriage Date and Place -->
-            <div class="certificate-grid">
-              <div class="certificate-field">
-                <span class="field-label">Date of Marriage</span>
-                <span class="field-value">{{ formatDate(sacrament.date_administered) || '—' }}</span>
-              </div>
-              <div class="certificate-field">
-                <span class="field-label">Place of Marriage</span>
-                <span class="field-value">{{ getChurchName() || '—' }}</span>
-              </div>
+            <div>
+              <dt>Page No.</dt>
+              <dd>{{ displayValue(sacrament.page_number) }}</dd>
             </div>
-
-            <!-- Groom Section -->
-            <div class="certificate-field">
-              <span class="field-label">Groom's Full Name</span>
-              <span class="field-value">{{ sacrament.marriage_groom_full_name || '—' }}</span>
+            <div>
+              <dt>Entry No.</dt>
+              <dd>{{ displayValue(sacrament.registry_entry) }}</dd>
             </div>
-
-            <div class="certificate-grid" *ngIf="sacrament.marriage_groom_father_name || sacrament.marriage_groom_mother_name">
-              <div class="certificate-field" *ngIf="sacrament.marriage_groom_father_name">
-                <span class="field-label">Groom's Father</span>
-                <span class="field-value">{{ sacrament.marriage_groom_father_name }}</span>
-              </div>
-              <div class="certificate-field" *ngIf="sacrament.marriage_groom_mother_name">
-                <span class="field-label">Groom's Mother</span>
-                <span class="field-value">{{ sacrament.marriage_groom_mother_name }}</span>
-              </div>
+            <div>
+              <dt>Date administered</dt>
+              <dd>{{ formatDate(sacrament.date_administered) || '—' }}</dd>
             </div>
-
-            <div class="certificate-field" *ngIf="sacrament.marriage_groom_address">
-              <span class="field-label">Groom's Address</span>
-              <span class="field-value">{{ sacrament.marriage_groom_address }}</span>
+            <div>
+              <dt>Officiant</dt>
+              <dd>{{ displayValue(sacrament.minister_name) }}</dd>
             </div>
-
-            <!-- Bride Section -->
-            <div class="certificate-field">
-              <span class="field-label">Bride's Full Name</span>
-              <span class="field-value">{{ sacrament.marriage_bride_full_name || '—' }}</span>
-            </div>
-
-            <div class="certificate-grid" *ngIf="sacrament.marriage_bride_father_name || sacrament.marriage_bride_mother_name">
-              <div class="certificate-field" *ngIf="sacrament.marriage_bride_father_name">
-                <span class="field-label">Bride's Father</span>
-                <span class="field-value">{{ sacrament.marriage_bride_father_name }}</span>
-              </div>
-              <div class="certificate-field" *ngIf="sacrament.marriage_bride_mother_name">
-                <span class="field-label">Bride's Mother</span>
-                <span class="field-value">{{ sacrament.marriage_bride_mother_name }}</span>
-              </div>
-            </div>
-
-            <div class="certificate-field" *ngIf="sacrament.marriage_bride_address">
-              <span class="field-label">Bride's Address</span>
-              <span class="field-value">{{ sacrament.marriage_bride_address }}</span>
-            </div>
-
-            <!-- Minister Section -->
-            <div class="certificate-field minister-field" *ngIf="sacrament.minister_name">
-              <span class="field-label">Celebrant / Priest</span>
-              <span class="field-value">
-                <span class="minister-name">{{ sacrament.minister_name }}</span>
-                <span class="minister-title" *ngIf="sacrament.minister_title">{{ sacrament.minister_title }}</span>
-              </span>
-            </div>
-
-            <!-- Witnesses Section -->
-            <div class="certificate-field" *ngIf="sacrament.witnesses">
-              <span class="field-label">Witnesses</span>
-              <span class="field-value">{{ sacrament.witnesses }}</span>
-            </div>
-
-            <!-- Registry Information -->
-            <div class="registry-panel" *ngIf="sacrament.certificate_number || sacrament.book_number || sacrament.page_number">
-              <div class="registry-field" *ngIf="sacrament.book_number">
-                <span class="registry-label">Book No.</span>
-                <span class="registry-value">{{ sacrament.book_number }}</span>
-              </div>
-              <div class="registry-field" *ngIf="sacrament.page_number">
-                <span class="registry-label">Page No.</span>
-                <span class="registry-value">{{ sacrament.page_number }}</span>
-              </div>
-              <div class="registry-field" *ngIf="sacrament.certificate_number">
-                <span class="registry-label">Entry / Certificate No.</span>
-                <span class="registry-value">{{ sacrament.certificate_number }}</span>
-              </div>
-            </div>
-
-            <!-- Notes Section -->
-            <div class="remarks-panel" *ngIf="sacrament.notes">
-              <span class="field-label">Notations / Remarks</span>
-              <p class="remarks-text">{{ sacrament.notes }}</p>
-            </div>
-
-            <!-- Signature Section -->
-            <div class="signature-section">
-              <div class="signature-block">
-                <div class="signature-line">
-                  <span class="signature-name">
-                    {{ sacrament.minister_name || '________________________' }}
-                  </span>
-                </div>
-                <span class="signature-label">Celebrant / Parish Priest</span>
-              </div>
-              <div class="signature-block">
-                <div class="signature-line">
-                  <span class="signature-name">________________________</span>
-                </div>
-                <span class="signature-label">Parish Registrar</span>
-              </div>
-              <div class="parish-seal">
-                <span>Parish Seal</span>
-              </div>
-            </div>
-          </div>
+          </dl>
         </div>
-      </div>
-    </ng-container>
 
-    <!-- Default Certificate (for non-Marriage sacraments) -->
-    <ng-template #defaultCertificate>
-      <ng-container *ngIf="isBaptism(); else generalCertificate">
-        <div class="baptism-certificate">
-          <div class="baptism-frame">
-            <div class="baptism-header">
-              <div class="baptism-crest">✠</div>
-              <div class="header-text">
-                <h1 class="certificate-main-title">Baptismal Certificate</h1>
-                <p class="certificate-subtitle">Sacramental Register</p>
-                <p class="certificate-parish">
-                  {{ getChurchName() }}
-                </p>
-                <p class="certificate-address" *ngIf="getChurchAddress() as address">
-                  {{ address }}
-                </p>
-              </div>
-            </div>
-
-            <div class="baptism-body">
-              <div class="certificate-field">
-                <span class="field-label">Child's Full Name</span>
-                <span class="field-value">{{ sacrament.recipient_name || '—' }}</span>
-              </div>
-
-              <div class="certificate-grid">
-                <div class="certificate-field">
-                  <span class="field-label">Date of Baptism</span>
-                  <span class="field-value">{{ formatDate(sacrament.date_administered) || '—' }}</span>
-                </div>
-                <div class="certificate-field">
-                  <span class="field-label">Place of Baptism</span>
-                  <span class="field-value">{{ sacrament.place_administered || '—' }}</span>
-                </div>
-              </div>
-
-              <div class="certificate-grid">
-                <div class="certificate-field">
-                  <span class="field-label">Date of Birth</span>
-                  <span class="field-value">{{ formatDate(sacrament.recipient_birth_date) || '—' }}</span>
-                </div>
-                <div class="certificate-field">
-                  <span class="field-label">Place of Birth</span>
-                  <span class="field-value">{{ sacrament.recipient_birth_place || '—' }}</span>
-                </div>
-              </div>
-
-              <div class="certificate-grid parents-section" *ngIf="sacrament.father_name || sacrament.mother_name">
-                <div class="certificate-field">
-                  <span class="field-label">Father</span>
-                  <span class="field-value">{{ sacrament.father_name || '—' }}</span>
-                </div>
-                <div class="certificate-field">
-                  <span class="field-label">Mother</span>
-                  <span class="field-value">{{ sacrament.mother_name || '—' }}</span>
-                </div>
-              </div>
-
-              <div class="certificate-grid" *ngIf="sacrament.godparent1_name || sacrament.godparent2_name">
-                <div class="certificate-field">
-                  <span class="field-label">Godparent / Sponsor</span>
-                  <span class="field-value">{{ sacrament.godparent1_name || '—' }}</span>
-                </div>
-                <div class="certificate-field">
-                  <span class="field-label">Additional Godparent</span>
-                  <span class="field-value">{{ sacrament.godparent2_name || '—' }}</span>
-                </div>
-              </div>
-
-              <div class="certificate-field minister-field" *ngIf="sacrament.minister_name">
-                <span class="field-label">Celebrant / Priest</span>
-                <span class="field-value">
-                  <span class="minister-name">{{ sacrament.minister_name }}</span>
-                  <span class="minister-title" *ngIf="sacrament.minister_title">{{ sacrament.minister_title }}</span>
-                </span>
-              </div>
-
-              <div class="registry-panel" *ngIf="sacrament.certificate_number || sacrament.book_number || sacrament.page_number">
-                <div class="registry-field" *ngIf="sacrament.book_number">
-                  <span class="registry-label">Book No.</span>
-                  <span class="registry-value">{{ sacrament.book_number }}</span>
-                </div>
-                <div class="registry-field" *ngIf="sacrament.page_number">
-                  <span class="registry-label">Page No.</span>
-                  <span class="registry-value">{{ sacrament.page_number }}</span>
-                </div>
-                <div class="registry-field" *ngIf="sacrament.certificate_number">
-                  <span class="registry-label">Entry / Certificate No.</span>
-                  <span class="registry-value">{{ sacrament.certificate_number }}</span>
-                </div>
-              </div>
-
-              <div class="remarks-panel" *ngIf="sacrament.notes">
-                <span class="field-label">Notations / Remarks</span>
-                <p class="remarks-text">{{ sacrament.notes }}</p>
-              </div>
-
-              <div class="signature-section">
-                <div class="signature-block">
-                  <div class="signature-line">
-                    <span class="signature-name">
-                      {{ sacrament.minister_name || '________________________' }}
-                    </span>
-                  </div>
-                  <span class="signature-label">Celebrant / Parish Priest</span>
-                </div>
-                <div class="signature-block">
-                  <div class="signature-line">
-                    <span class="signature-name">________________________</span>
-                  </div>
-                  <span class="signature-label">Parish Registrar</span>
-                </div>
-                <div class="parish-seal">
-                  <span>Parish Seal</span>
-                </div>
-              </div>
-            </div>
-          </div>
+        <div class="register-notes-card">
+          <h4 class="register-notes-card__title">Authorized parish notes</h4>
+          <p class="register-notes-card__body" *ngIf="sacrament.notes; else noParishNotes">{{ sacrament.notes }}</p>
+          <ng-template #noParishNotes>
+            <p class="register-notes__empty">No parish notes recorded.</p>
+          </ng-template>
         </div>
-      </ng-container>
-      <ng-template #generalCertificate>
-        <!-- Certificate Header -->
-        <div class="certificate-header">
-          <h1 class="certificate-title">Sacramental Record Certificate</h1>
-          <div class="certificate-type">
-            <span class="sacrament-icon">✝️</span>
-            <span class="sacrament-name">{{ sacrament.sacrament_type?.name }}</span>
-          </div>
-          <p class="certificate-address" *ngIf="getChurchAddress() as address">
-            {{ address }}
+
+        <div class="register-notes__type-specific" *ngIf="isMarriage()">
+          <p class="register-notes__classification" *ngIf="marriageClassificationLabel()">
+            Classification: {{ marriageClassificationLabel() }}
           </p>
+          <ul class="register-notes__list" *ngIf="registerNotes().length; else noRegisterNotes">
+            <li *ngFor="let note of registerNotes()">
+              <div class="register-notes__item">
+                <strong>{{ note.annotation_type_label || note.annotation_type }}</strong>
+                <span *ngIf="note.effective_date"> · {{ formatDate(note.effective_date) }}</span>
+                <span *ngIf="note.granting_authority"> · {{ note.granting_authority }}</span>
+                <span *ngIf="note.protocol_number"> · {{ note.protocol_number }}</span>
+                <p *ngIf="note.notes">{{ note.notes }}</p>
+              </div>
+              <button
+                type="button"
+                class="cf-btn"
+                [disabled]="annotationBusy"
+                (click)="removeRegisterNote(note.id)"
+              >
+                Remove
+              </button>
+            </li>
+          </ul>
+          <ng-template #noRegisterNotes>
+            <p class="register-notes__empty">No later notes on this marriage yet.</p>
+          </ng-template>
+          <form class="register-notes__form" (ngSubmit)="addRegisterNote()">
+            <label>
+              Note type
+              <select name="annotation_type" [(ngModel)]="annotationDraft.annotation_type" required>
+                <option value="">Select…</option>
+                <option *ngFor="let option of annotationTypeOptions" [value]="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </label>
+            <label>
+              Date
+              <input type="date" name="annotation_effective_date" [(ngModel)]="annotationDraft.effective_date" />
+            </label>
+            <label>
+              Authority
+              <input type="text" name="annotation_authority" [(ngModel)]="annotationDraft.granting_authority" />
+            </label>
+            <label>
+              Protocol number
+              <input type="text" name="annotation_protocol" [(ngModel)]="annotationDraft.protocol_number" />
+            </label>
+            <label class="register-notes__notes">
+              Details
+              <textarea name="annotation_notes" rows="2" [(ngModel)]="annotationDraft.notes"></textarea>
+            </label>
+            <button
+              type="submit"
+              class="cf-btn cf-btn-primary"
+              [disabled]="annotationBusy || !annotationDraft.annotation_type"
+            >
+              Add note
+            </button>
+          </form>
         </div>
+      </section>
 
-        <!-- Recipient Information -->
-        <div class="detail-section">
-          <h3 class="section-title">Recipient</h3>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <label>Full Name</label>
-              <p>{{ sacrament.recipient_name }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.recipient_birth_date">
-              <label>Date of Birth</label>
-              <p>{{ formatDate(sacrament.recipient_birth_date) }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.recipient_birth_place">
-              <label>Place of Birth</label>
-              <p>{{ sacrament.recipient_birth_place }}</p>
-            </div>
-          </div>
+      <section class="detail-section download-history" aria-labelledby="download-history-title">
+        <h3 id="download-history-title" class="section-title">Download History Audit Log</h3>
+        <div class="download-history__table-wrap" *ngIf="downloadHistory.length; else noDownloadHistory">
+          <table class="download-history__table">
+            <thead>
+              <tr>
+                <th scope="col">Date &amp; time</th>
+                <th scope="col">Downloaded by</th>
+                <th scope="col">Version</th>
+                <th scope="col">Device</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of downloadHistory">
+                <td class="download-history__time">{{ formatDateTime(item.downloaded_at) }}</td>
+                <td>
+                  <span class="download-history__user">{{ item.user_name || '—' }}</span>
+                  <span class="download-history__role" *ngIf="item.role">{{ item.role }}</span>
+                </td>
+                <td>
+                  <span class="download-history__version">{{ formatHistoryVersion(item) }}</span>
+                </td>
+                <td>
+                  <span class="download-history__badge" *ngIf="item.ip_address">{{ item.ip_address }}</span>
+                  <span class="download-history__badge download-history__badge--muted" *ngIf="item.device_snapshot">
+                    {{ item.device_snapshot }}
+                  </span>
+                  <span *ngIf="!item.ip_address && !item.device_snapshot">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-
-        <!-- Sacrament Details -->
-        <div class="detail-section">
-          <h3 class="section-title">Sacrament details</h3>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <label>Date</label>
-              <p>{{ formatDate(sacrament.date_administered) }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.place_administered">
-              <label>Place</label>
-              <p>{{ sacrament.place_administered }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Minister Information -->
-        <div class="detail-section" *ngIf="sacrament.minister_name">
-          <h3 class="section-title">Minister</h3>
-          <div class="detail-grid">
-            <div class="detail-item">
-              <label>Minister</label>
-              <p>
-                <span *ngIf="sacrament.minister_title">{{ sacrament.minister_title }} </span>
-                {{ sacrament.minister_name }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Parents (for Baptism) -->
-        <div class="detail-section" *ngIf="sacrament.father_name || sacrament.mother_name">
-          <h3 class="section-title">Parents</h3>
-          <div class="detail-grid">
-            <div class="detail-item" *ngIf="sacrament.father_name">
-              <label>Father</label>
-              <p>{{ sacrament.father_name }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.mother_name">
-              <label>Mother</label>
-              <p>{{ sacrament.mother_name }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Godparents/Sponsors -->
-        <div class="detail-section" *ngIf="sacrament.godparent1_name || sacrament.godparent2_name">
-          <h3 class="section-title">Godparents / Sponsors</h3>
-          <div class="detail-grid">
-            <div class="detail-item" *ngIf="sacrament.godparent1_name">
-              <label>First Godparent</label>
-              <p>{{ sacrament.godparent1_name }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.godparent2_name">
-              <label>Second Godparent</label>
-              <p>{{ sacrament.godparent2_name }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Registry Information -->
-        <div class="detail-section">
-          <h3 class="section-title">Registry</h3>
-          <div class="detail-grid">
-            <div class="detail-item" *ngIf="sacrament.certificate_number">
-              <label>Certificate number</label>
-              <p>{{ sacrament.certificate_number }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.book_number">
-              <label>Book</label>
-              <p>{{ sacrament.book_number }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.page_number">
-              <label>Page</label>
-              <p>{{ sacrament.page_number }}</p>
-            </div>
-            <div class="detail-item" *ngIf="sacrament.registry_entry">
-              <label>Entry</label>
-              <p>{{ sacrament.registry_entry }}</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Witnesses -->
-        <div class="detail-section" *ngIf="sacrament.witnesses">
-          <h3 class="section-title">Witnesses</h3>
-          <p class="witnesses-text">{{ sacrament.witnesses }}</p>
-        </div>
-
-        <!-- Notes -->
-        <div class="detail-section" *ngIf="sacrament.notes">
-          <h3 class="section-title">Notes</h3>
-          <p class="notes-text">{{ sacrament.notes }}</p>
-        </div>
-
-        <!-- Record history (no technical user IDs) -->
-        <div class="detail-section audit-trail no-print">
-          <h3 class="section-title">Record history</h3>
-          <div class="audit-grid">
-            <div class="audit-item" *ngIf="sacrament.created_at">
-              <span class="audit-label">Recorded</span>
-              <span class="audit-value">{{ formatDate(sacrament.created_at) }}</span>
-            </div>
-            <div class="audit-item" *ngIf="sacrament.updated_at">
-              <span class="audit-label">Last updated</span>
-              <span class="audit-value">{{ formatDate(sacrament.updated_at) }}</span>
-            </div>
-          </div>
-        </div>
-      </ng-template>
-    </ng-template>
+        <ng-template #noDownloadHistory>
+          <app-cf-empty-state
+            title="No download history recorded"
+            description="Downloads of this certificate will appear here."
+            [hasActions]="false"
+          />
+        </ng-template>
+      </section>
+    </div>
   </div>
 </section>

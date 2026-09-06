@@ -39,6 +39,7 @@ import {
   mapOrganizationFieldMessage,
   todayIsoDate,
 } from '../utils/organization-form.util';
+import { ministriesLink } from '../utils/ministries-links';
 
 type SocialLinkKey = keyof OrganizationSocialLinks;
 
@@ -158,6 +159,10 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
 
   get isArchived(): boolean {
     return !!this.organization?.deleted_at;
+  }
+
+  get ministriesListLink(): string {
+    return ministriesLink(this.router.url);
   }
 
   get headerStatusLabel(): string {

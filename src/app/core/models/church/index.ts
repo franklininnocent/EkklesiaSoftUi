@@ -266,3 +266,5 @@ export interface UpdatePopeDetailsRequest {
   pope_effective_from?: string;
 }
 
+export * from './leadership-governance.model';
+

@@ -26,6 +26,71 @@
       {{ errorMessage }}
     </p>
 
+    <!-- Parish leader link (optional) -->
+    <section class="cf-split-section" aria-labelledby="user-section-leader" *ngIf="!isEditingSelf">
+      <h3 id="user-section-leader" class="cf-split-section__title">
+        Parish leader <span class="cf-split-optional">optional</span>
+      </h3>
+      <p class="cf-meta user-form-modal__leader-hint">
+        Link this login to an active parish clergy leader from Church Profile. Name, email, and phone can be prefilled.
+      </p>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="clergy_search">Search parish leaders</label>
+
+          <div
+            class="cf-participant-source__selected user-form-modal__leader-selected"
+            *ngIf="selectedClergy; else clergySearchField"
+            role="status"
+          >
+            <div>
+              <strong>{{ selectedClergy.person_name }}</strong>
+              <p class="cf-split-field__hint" *ngIf="selectedClergy.role_title">
+                {{ selectedClergy.role_title }}
+              </p>
+              <p class="cf-split-field__hint">Linked parish leader.</p>
+            </div>
+            <button type="button" class="cf-btn" (click)="clearSelectedClergy()">Change</button>
+          </div>
+
+          <ng-template #clergySearchField>
+            <input
+              type="text"
+              id="clergy_search"
+              name="clergy_search"
+              [(ngModel)]="clergyQuery"
+              [ngModelOptions]="{ standalone: true }"
+              (input)="onClergyQueryInput()"
+              (keydown.enter)="onClergySearchEnter($event)"
+              autocomplete="off"
+              placeholder="Search by name or email"
+            />
+            <p class="cf-split-field__hint" *ngIf="clergySearching">Searching…</p>
+            <ul
+              class="cf-participant-source__results user-form-modal__leader-results"
+              *ngIf="showClergyResults && clergyResults.length"
+            >
+              <li
+                *ngFor="let clergy of clergyResults"
+                (mousedown)="selectClergy(clergy, $event)"
+              >
+                <strong>{{ clergy.person_name }}</strong>
+                <span class="user-form-modal__leader-role" *ngIf="clergy.role_title">
+                  {{ clergy.role_title }}
+                </span>
+              </li>
+            </ul>
+            <p
+              class="cf-split-field__hint"
+              *ngIf="showClergyResults && !clergySearching && clergyResults.length === 0"
+            >
+              No available parish leaders match your search.
+            </p>
+          </ng-template>
+        </div>
+      </div>
+    </section>
+
     <!-- Account information -->
     <section class="cf-split-section" aria-labelledby="user-section-account">
       <h3 id="user-section-account" class="cf-split-section__title">Account information</h3>

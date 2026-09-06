@@ -1,0 +1,132 @@
+<div
+  class="cert-preview-frame"
+  #frame
+  [class.cert-preview-frame--letter]="paper === 'LETTER'"
+>
+  <div
+    class="cert-stage cert-preview-stage"
+    [class.cert-stage--letter]="paper === 'LETTER'"
+    [style.transform]="'scale(' + scale + ')'"
+  >
+    <article
+      class="cert-page"
+      [class.cert-page--letter]="paper === 'LETTER'"
+      [ngClass]="themeClass"
+    >
+      <div class="cert-ornament cert-ornament--outer" aria-hidden="true"></div>
+      <div class="cert-ornament cert-ornament--inner" aria-hidden="true"></div>
+      <div class="cert-micro" [attr.data-text]="microprint" aria-hidden="true"></div>
+      <span class="cert-corner cert-corner--tl" aria-hidden="true"></span>
+      <span class="cert-corner cert-corner--tr" aria-hidden="true"></span>
+      <span class="cert-corner cert-corner--bl" aria-hidden="true"></span>
+      <span class="cert-corner cert-corner--br" aria-hidden="true"></span>
+
+      <div class="cert-safe">
+        <header class="cert-header">
+          <div class="cert-emblem" aria-hidden="true">
+            <svg viewBox="0 0 64 64" aria-hidden="true">
+              <circle cx="32" cy="32" r="30" fill="none" stroke="currentColor" stroke-width="1.5"/>
+              <path d="M32 10v44M18 22h28" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M22 14c8 6 8 30 0 36M42 14c-8 6-8 30 0 36" fill="none" stroke="currentColor" stroke-width="2"/>
+            </svg>
+          </div>
+
+          <div class="cert-header__identity">
+            <p class="cert-kicker">{{ terms.subtitle }}</p>
+            <h1 class="cert-title">{{ terms.sacramentTitle }}</h1>
+            <p class="cert-header__church">{{ data.church.name }}</p>
+            <p class="cert-header__jurisdiction" *ngIf="data.church.diocese">{{ data.church.diocese }}</p>
+            <p class="cert-header__meta" *ngIf="data.church.address">{{ data.church.address }}</p>
+          </div>
+
+          <div class="cert-header__logo" aria-hidden="true"></div>
+        </header>
+
+        <div class="cert-recipient" [class.cert-recipient--matrimony]="isMatrimony">
+          <ng-container *ngIf="isMatrimony; else singleRecipient">
+            <div class="cert-spouse-card">
+              <span class="cert-spouse-card__heading">{{ terms.brideLabel }}</span>
+              <p #nameEl class="cert-spouse-card__name">{{ brideName }}</p>
+              <p class="cert-spouse-card__status" *ngIf="brideSpouse?.baptismalStatusLabel">{{ brideSpouse?.baptismalStatusLabel }}</p>
+              <div class="cert-spouse-field" *ngIf="brideSpouse?.fatherName">
+                <span class="cert-spouse-field__label">{{ terms.fatherLabel }}</span>
+                <span class="cert-spouse-field__value">{{ brideSpouse?.fatherName }}</span>
+              </div>
+              <div class="cert-spouse-field" *ngIf="brideSpouse?.motherName">
+                <span class="cert-spouse-field__label">{{ terms.motherLabel }}</span>
+                <span class="cert-spouse-field__value">{{ brideSpouse?.motherName }}</span>
+              </div>
+              <div class="cert-spouse-field" *ngIf="brideSpouse?.parishResidence">
+                <span class="cert-spouse-field__label">{{ terms.parishResidenceLabel }}</span>
+                <span class="cert-spouse-field__value">{{ brideSpouse?.parishResidence }}</span>
+              </div>
+            </div>
+            <div class="cert-spouse-card">
+              <span class="cert-spouse-card__heading">{{ terms.groomLabel }}</span>
+              <p #nameEl class="cert-spouse-card__name">{{ groomName }}</p>
+              <p class="cert-spouse-card__status" *ngIf="groomSpouse?.baptismalStatusLabel">{{ groomSpouse?.baptismalStatusLabel }}</p>
+              <div class="cert-spouse-field" *ngIf="groomSpouse?.fatherName">
+                <span class="cert-spouse-field__label">{{ terms.fatherLabel }}</span>
+                <span class="cert-spouse-field__value">{{ groomSpouse?.fatherName }}</span>
+              </div>
+              <div class="cert-spouse-field" *ngIf="groomSpouse?.motherName">
+                <span class="cert-spouse-field__label">{{ terms.motherLabel }}</span>
+                <span class="cert-spouse-field__value">{{ groomSpouse?.motherName }}</span>
+              </div>
+              <div class="cert-spouse-field" *ngIf="groomSpouse?.parishResidence">
+                <span class="cert-spouse-field__label">{{ terms.parishResidenceLabel }}</span>
+                <span class="cert-spouse-field__value">{{ groomSpouse?.parishResidence }}</span>
+              </div>
+            </div>
+          </ng-container>
+          <ng-template #singleRecipient>
+            <span class="cert-recipient__label">{{ recipientLabel }}</span>
+            <p #nameEl class="cert-recipient__name">{{ recipientName }}</p>
+          </ng-template>
+        </div>
+
+        <dl class="cert-details" *ngIf="detailRows.length">
+          <div class="cert-details__row" *ngFor="let row of detailRows">
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.value }}</dd>
+          </div>
+        </dl>
+
+        <div class="cert-lower" [class.cert-lower--compact]="compactLower">
+          <div class="cert-lower__spacer" aria-hidden="true"></div>
+
+          <div class="cert-signs">
+            <div class="cert-signs__slot" *ngFor="let slot of signatureSlots">
+              <div class="cert-signs__line">{{ slot.name || '' }}</div>
+              <span>{{ slot.label }}</span>
+            </div>
+            <div class="cert-signs__seal">
+              <img *ngIf="data.church.sealUrl" [src]="data.church.sealUrl" alt="" />
+              <span *ngIf="!data.church.sealUrl">{{ terms.sealLabel }}</span>
+            </div>
+          </div>
+
+          <div class="cert-registry cert-registry--footer" *ngIf="hasRegistry">
+            <div class="cert-registry__line">
+              <span *ngIf="data.registry.bookNumber">{{ terms.registryBookLabel }} {{ data.registry.bookNumber }}</span>
+              <span *ngIf="data.registry.pageNumber">{{ terms.registryPageLabel }} {{ data.registry.pageNumber }}</span>
+              <span *ngIf="data.registry.registryEntry">{{ terms.registryEntryLabel }} {{ data.registry.registryEntry }}</span>
+              <span *ngIf="data.registry.certificateNumber">{{ terms.certificateNumberLabel }} {{ data.registry.certificateNumber }}</span>
+            </div>
+            <div class="cert-registry__issued" *ngIf="issuedAtDisplay">
+              {{ terms.issuedAtLabel }}: {{ issuedAtDisplay }}
+            </div>
+          </div>
+
+          <footer class="cert-verify">
+            <p class="cert-verify__notice">{{ terms.issuedNotice }}</p>
+            <div class="cert-verify__qr" *ngIf="data.verificationQrDataUri">
+              <img [src]="data.verificationQrDataUri" alt="" />
+              <span>{{ terms.verifyHint }}</span>
+            </div>
+          </footer>
+        </div>
+      </div>
+    </article>
+  </div>
+</div>

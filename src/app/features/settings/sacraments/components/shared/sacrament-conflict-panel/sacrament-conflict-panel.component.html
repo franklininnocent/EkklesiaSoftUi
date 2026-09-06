@@ -1,0 +1,20 @@
+<div class="sacrament-conflict-panel" *ngIf="conflicts.length">
+  <h4 class="sacrament-conflict-panel__title">Information requires review</h4>
+  <div class="sacrament-conflict-panel__item" *ngFor="let conflict of conflicts">
+    <div class="sacrament-conflict-panel__field">{{ conflict.label }}</div>
+    <div class="sacrament-conflict-panel__candidates">
+      <div *ngFor="let candidate of conflict.candidates" class="sacrament-conflict-panel__candidate">
+        <span class="sacrament-conflict-panel__source">{{ candidate.source_label }}</span>
+        <span class="sacrament-conflict-panel__value">{{ candidate.value }}</span>
+      </div>
+    </div>
+    <button
+      type="button"
+      class="sacrament-conflict-panel__action"
+      *ngIf="conflict.blocks_save"
+      (click)="correctMember.emit(conflict)"
+    >
+      Correct member information
+    </button>
+  </div>
+</div>

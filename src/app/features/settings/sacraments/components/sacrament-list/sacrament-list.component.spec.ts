@@ -152,6 +152,90 @@ describe('SacramentListComponent', () => {
     expect(component.getActiveFilterCount()).toBe(2);
     expect(component.getActiveFilters().length).toBeGreaterThan(0);
   });
+
+  describe('row action menu', () => {
+    const sacrament = {
+      id: 42,
+      recipient_name: 'John Doe',
+      status: 'registered',
+    } as any;
+
+    const voidedSacrament = {
+      id: 43,
+      recipient_name: 'Jane Doe',
+      status: 'voided',
+    } as any;
+
+    it('toggleRowMenu opens and closes the menu for a row', () => {
+      const event = { stopPropagation: jasmine.createSpy('stopPropagation') } as unknown as MouseEvent;
+
+      component.toggleRowMenu(42, event);
+      expect(component.openRowMenuId).toBe(42);
+      expect(event.stopPropagation).toHaveBeenCalled();
+
+      component.toggleRowMenu(42, event);
+      expect(component.openRowMenuId).toBeNull();
+    });
+
+    it('closeRowMenu resets openRowMenuId', () => {
+      component.openRowMenuId = 42;
+      component.closeRowMenu();
+      expect(component.openRowMenuId).toBeNull();
+    });
+
+    it('onEscape closes the row menu', () => {
+      component.openRowMenuId = 42;
+      component.onEscape();
+      expect(component.openRowMenuId).toBeNull();
+    });
+
+    it('hides Correct and Void for voided records', () => {
+      expect(component.canCorrectSacrament(voidedSacrament)).toBe(false);
+      expect(component.canVoidSacrament(voidedSacrament)).toBe(false);
+      expect(component.canCorrectSacrament(sacrament)).toBe(true);
+      expect(component.canVoidSacrament(sacrament)).toBe(true);
+    });
+
+    it('hasDestructiveRowActions reflects void/remove availability', () => {
+      expect(component.hasDestructiveRowActions(sacrament)).toBe(true);
+      expect(component.hasDestructiveRowActions(voidedSacrament)).toBe(true);
+    });
+
+    it('onRowMenuAction invokes existing handlers and closes the menu', () => {
+      spyOn(component, 'viewCertificate');
+      spyOn(component, 'onEditSacrament');
+      spyOn(component, 'openCorrectDialog');
+      spyOn(component, 'openVoidDialog');
+      spyOn(component, 'onDeleteSacrament');
+
+      component.openRowMenuId = 42;
+
+      component.onRowMenuAction('certificate', sacrament);
+      expect(component.viewCertificate).toHaveBeenCalledWith(sacrament);
+      expect(component.openRowMenuId).toBeNull();
+
+      component.onRowMenuAction('edit', sacrament);
+      expect(component.onEditSacrament).toHaveBeenCalledWith(sacrament);
+
+      component.onRowMenuAction('correct', sacrament);
+      expect(component.openCorrectDialog).toHaveBeenCalledWith(sacrament);
+
+      component.onRowMenuAction('void', sacrament);
+      expect(component.openVoidDialog).toHaveBeenCalledWith(sacrament);
+
+      component.onRowMenuAction('remove', sacrament);
+      expect(component.onDeleteSacrament).toHaveBeenCalledWith(sacrament);
+    });
+
+    it('renders a single actions trigger per row instead of inline action buttons', () => {
+      fixture.detectChanges();
+      const triggers = fixture.nativeElement.querySelectorAll('.sacrament-list__row-actions-trigger');
+      const legacyButtons = fixture.nativeElement.querySelectorAll('.cf-row-actions .cf-btn');
+
+      expect(triggers.length).toBe(component.sacraments.length);
+      expect(legacyButtons.length).toBe(0);
+    });
+  });
 });
 
 

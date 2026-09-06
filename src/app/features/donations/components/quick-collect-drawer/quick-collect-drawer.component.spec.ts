@@ -102,4 +102,16 @@ describe('QuickCollectDrawerComponent', () => {
     expect(component.error).toContain('Unable to save payment');
     expect(component.submitLabel).toBe('Error — try again');
   });
+
+  it('requires a cheque reference before submit', () => {
+    component.selectedFamily = { id: 'f1', family_name: 'Smith Family', family_code: 'FAM001' } as any;
+    component.payerName = 'John Smith';
+    component.amount = 500;
+    component.fundId = 'fund-1';
+    component.method = 'cheque';
+
+    expect(component.canSubmit).toBe(false);
+    component.gatewayReference = 'CHQ-1001';
+    expect(component.canSubmit).toBe(true);
+  });
 });

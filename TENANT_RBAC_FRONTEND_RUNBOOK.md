@@ -125,8 +125,10 @@ If Jest reports missing `jest-environment-jsdom`, install/restore frontend test 
 Install Playwright dependencies (once):
 
 ```bash
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium webkit
 ```
+
+Tablet and mobile sacrament smoke tests use WebKit (iPad / iPhone device profiles). Core marriage and baptism tests run on Chromium only.
 
 Run RBAC smoke suite (requires authenticated storage state files):
 
@@ -138,7 +140,62 @@ RBAC_TENANT_MEMBER_STORAGE_STATE=.auth/tenant-member.json \
 npm run e2e:rbac
 ```
 
-## 12) Release sign-off checklist
+## 12) Sacrament E2E suite
+
+Prerequisites:
+
+1. Laravel API running and reachable from the Angular dev server proxy.
+2. Angular app running (`npm start`).
+3. Authenticated tenant-admin Playwright storage state for the target parish tenant.
+
+### Create tenant-admin auth file (one-time)
+
+From `EkklesiaSoftUi`, with Angular running:
+
+```bash
+mkdir -p .auth
+npx playwright codegen http://localhost:4200 --save-storage=.auth/tenant-admin.json
+```
+
+Log in as a **tenant admin** for the parish you will seed (`SACRAMENT_E2E_TENANT_ID`). Close the codegen browser when done — the file is saved automatically.
+
+### Linux browser dependencies (tablet/mobile WebKit)
+
+If Playwright reports missing host dependencies:
+
+```bash
+sudo npx playwright install-deps
+```
+
+Environment:
+
+```bash
+export RBAC_E2E_BASE_URL=http://localhost:4200
+export RBAC_TENANT_ADMIN_STORAGE_STATE=.auth/tenant-admin.json
+export SACRAMENT_E2E_TENANT_ID=2
+```
+
+Use the numeric tenant id (or uuid) that matches the parish in `RBAC_TENANT_ADMIN_STORAGE_STATE`. Example above uses tenant `2` from local dev.
+
+Seed deterministic sacrament E2E members (idempotent; safe to re-run):
+
+```bash
+cd ../EkklesiaSoftApi
+SACRAMENT_E2E_TENANT_ID=2 php artisan db:seed --class=Modules\\Family\\Database\\Seeders\\SacramentE2eSeeder
+```
+
+Replace `2` with your parish tenant id (must match the tenant in `RBAC_TENANT_ADMIN_STORAGE_STATE`). Do **not** type angle brackets — those are documentation placeholders only.
+
+Run sacrament Playwright suite:
+
+```bash
+cd EkklesiaSoftUi
+npx playwright test e2e/sacraments
+```
+
+Core marriage/baptism tests run on Chromium only. Responsive smoke runs on desktop, tablet, and mobile projects.
+
+## 13) Release sign-off checklist
 
 - [ ] Guard and route access validated for all user contexts
 - [ ] Roles/Permissions/Assign/User tabs validated in tenant mode

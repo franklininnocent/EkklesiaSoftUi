@@ -72,6 +72,7 @@ export class OrganizationMembersTabComponent implements OnInit, OnChanges, OnDes
 
   @Input({ required: true }) organizationId!: string;
   @Input({ required: true }) organizationStatus!: Organization['status'];
+  @Input() isArchived = false;
 
   members: OrganizationMembership[] = [];
 
@@ -115,7 +116,7 @@ export class OrganizationMembersTabComponent implements OnInit, OnChanges, OnDes
   }
 
   get isInactiveOrganization(): boolean {
-    return this.organizationStatus === 'inactive';
+    return this.organizationStatus === 'inactive' || this.isArchived;
   }
 
   get canEnroll(): boolean {

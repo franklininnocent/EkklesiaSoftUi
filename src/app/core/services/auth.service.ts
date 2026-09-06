@@ -7,6 +7,7 @@ import { AuthResponse, LoginRequest, RegisterRequest, User } from '@core/models'
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 import { canViewMySubscription as canViewMySubscriptionAccess } from '@shared/utils/subscription-access.util';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 @Injectable({
   providedIn: 'root'
@@ -15,6 +16,7 @@ export class AuthService {
   private http = inject(HttpClient);
   private router = inject(Router);
   private phoneCodeService = inject(PhoneCodeService);
+  private supportSessions = inject(SupportSessionService);
   private readonly authEndpointPrefix = '/auth';
   
   private currentUserSubject = new BehaviorSubject<User | null>(this.getUserFromStorage());
@@ -41,8 +43,13 @@ export class AuthService {
       .pipe(
         timeout(5000),
         catchError(() => of(null)),
-        finalize(() => this.handleLogout())
+        finalize(() => this.clearAuthState())
       );
+  }
+
+  /** Clear tokens, tenant context, and support session without calling the API. */
+  clearAuthState(): void {
+    this.handleLogout();
   }
 
   getCurrentUser(): Observable<User> {
@@ -223,6 +230,7 @@ export class AuthService {
   }
 
   private handleLogout(): void {
+    this.supportSessions.clearSession();
     localStorage.removeItem(environment.tokenKey);
     localStorage.removeItem(environment.refreshTokenKey);
     localStorage.removeItem(environment.expiryTimeKey);
@@ -559,6 +567,41 @@ export class AuthService {
       'bcc.manage_members',
       'bcc.manage_leadership',
     ].some((permissionName) =>
+      (user.permissions || []).some((permission) => permission?.name === permissionName)
+    );
+  }
+
+  canAccessPastoral(
+    user: User | null = this.currentUserValue,
+    options: { hasActiveSupportSession?: boolean } = {}
+  ): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return !!user.tenant_id || !!options.hasActiveSupportSession;
+    }
+
+    if (!user.tenant_id) {
+      return false;
+    }
+
+    const tenantRoleNames = ['Administrator', 'Parish Priest', 'Church Pastor'];
+    const hasPastoralRole = tenantRoleNames.some(
+      (roleName) =>
+        (user.roles || []).some((role) => role?.name === roleName) ||
+        user.role_name === roleName ||
+        user.role?.name === roleName
+    );
+
+    const primaryAdminRaw = (user as any).is_primary_admin;
+    const isPrimaryAdmin = primaryAdminRaw === true || primaryAdminRaw === 1 || primaryAdminRaw === '1';
+    if (isPrimaryAdmin || hasPastoralRole) {
+      return true;
+    }
+
+    return ['pastoral.care.view', 'pastoral.care.create', 'pastoral.care.assign'].some((permissionName) =>
       (user.permissions || []).some((permission) => permission?.name === permissionName)
     );
   }

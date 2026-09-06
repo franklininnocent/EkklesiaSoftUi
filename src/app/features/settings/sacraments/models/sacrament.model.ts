@@ -13,6 +13,7 @@ export interface SacramentParticipantPayload {
   family_member_id?: string | null;
   person_id?: string | null;
   church_leadership_id?: number | null;
+  leadership_assignment_id?: string | null;
   external_full_name?: string;
   external_date_of_birth?: string;
   external_gender?: 'male' | 'female' | 'other';
@@ -26,6 +27,12 @@ export interface SacramentParticipantPayload {
   affiliation_diocese_name?: string;
   affiliation_diocese_region?: string;
   affiliation_diocese_country?: string;
+  father_name?: string;
+  mother_name?: string;
+  baptismal_status?: string;
+  ecclesial_affiliation_code?: string;
+  ecclesial_affiliation_label?: string;
+  canonical_delegation_status?: string;
 }
 
 /** Participant row returned when participants_v1 is enabled. */
@@ -36,6 +43,7 @@ export interface SacramentParticipant {
   family_member_id?: string | null;
   person_id?: string | null;
   church_leadership_id?: number | null;
+  leadership_assignment_id?: string | null;
   sort_order?: number;
   external_full_name?: string | null;
   external_date_of_birth?: string | null;
@@ -50,8 +58,19 @@ export interface SacramentParticipant {
     gender?: string;
     address?: string;
     contact_number?: string;
+    father_name?: string;
+    mother_name?: string;
+    baptismal_status?: string;
+    baptismal_status_label?: string;
+    ecclesial_affiliation_code?: string;
+    ecclesial_affiliation_label?: string;
+    canonical_delegation_status?: string;
     [key: string]: unknown;
   } | null;
+  baptismal_status?: string | null;
+  ecclesial_affiliation_code?: string | null;
+  ecclesial_affiliation_label?: string | null;
+  canonical_delegation_status?: string | null;
 }
 
 export interface SacramentType {
@@ -107,6 +126,7 @@ export interface Sacrament {
   marriage_bride_church_type?: 'home_parish' | 'other';
   marriage_bride_church_name?: string;
   marriage_bride_church_address?: string;
+  marriage_bride_diocese_name?: string;
   marriage_groom_full_name?: string;
   marriage_groom_father_name?: string;
   marriage_groom_mother_name?: string;
@@ -114,6 +134,24 @@ export interface Sacrament {
   marriage_groom_church_type?: 'home_parish' | 'other';
   marriage_groom_church_name?: string;
   marriage_groom_church_address?: string;
+  marriage_groom_diocese_name?: string;
+  marriage_canonical_classification?: string;
+  dispensations?: Array<{
+    id?: number;
+    dispensation_type: string;
+    granting_authority?: string | null;
+    protocol_number?: string | null;
+    date_granted?: string | null;
+  }>;
+  canonical_annotations?: Array<{
+    id?: number;
+    annotation_type: string;
+    annotation_type_label?: string;
+    effective_date?: string | null;
+    granting_authority?: string | null;
+    protocol_number?: string | null;
+    notes?: string | null;
+  }>;
   witnesses?: string;
   notes?: string;
   document_path?: string;
@@ -198,6 +236,7 @@ export interface SacramentCreateRequest {
   marriage_bride_church_type?: 'home_parish' | 'other';
   marriage_bride_church_name?: string;
   marriage_bride_church_address?: string;
+  marriage_bride_diocese_name?: string;
   marriage_groom_full_name?: string;
   marriage_groom_father_name?: string;
   marriage_groom_mother_name?: string;
@@ -205,6 +244,14 @@ export interface SacramentCreateRequest {
   marriage_groom_church_type?: 'home_parish' | 'other';
   marriage_groom_church_name?: string;
   marriage_groom_church_address?: string;
+  marriage_groom_diocese_name?: string;
+  marriage_canonical_classification?: string;
+  dispensations?: Array<{
+    dispensation_type: string;
+    granting_authority?: string | null;
+    protocol_number?: string | null;
+    date_granted?: string | null;
+  }>;
   witnesses?: string;
   notes?: string;
   status?: SacramentStatus;
@@ -215,6 +262,14 @@ export interface SacramentCreateRequest {
 export interface SacramentUpdateRequest extends Partial<SacramentCreateRequest> {
   id: number;
 }
+
+export type MarriageRegisterFilterKey =
+  | 'catholic_both'
+  | 'mixed_disparity'
+  | 'convalidations'
+  | 'profile_linked'
+  | 'same_parish'
+  | 'inter_parish';
 
 export interface SacramentListParams {
   page?: number;
@@ -229,7 +284,9 @@ export interface SacramentListParams {
   certificate_number?: string;
   book_number?: string;
   family_id?: string;
+  family_member_id?: string;
   bcc_id?: string;
+  marriage_register_filter?: MarriageRegisterFilterKey;
   sort_by?: string;
   sort_dir?: 'asc' | 'desc';
 }
@@ -258,6 +315,8 @@ export interface SacramentCertificate {
   mime_type?: string | null;
   size_bytes?: number | null;
   has_file?: boolean;
+  has_html?: boolean;
+  pdf_engine?: string | null;
   projection?: Record<string, unknown> | null;
   supersedes_certificate_id?: number | null;
   created_at?: string;
@@ -273,6 +332,28 @@ export interface SacramentCertificateResponse {
 export interface SacramentCertificateListResponse {
   success: boolean;
   data: SacramentCertificate[];
+  message?: string;
+}
+
+export interface SacramentCertificateDownloadHistoryItem {
+  downloaded_at: string;
+  user_name: string | null;
+  role: string | null;
+  version: number;
+  template_version?: string | null;
+  ip_address: string | null;
+  device_snapshot: string | null;
+}
+
+export interface SacramentCertificateViewDetails {
+  latest_certificate: SacramentCertificate | null;
+  live_projection?: Record<string, unknown> | null;
+  download_history: SacramentCertificateDownloadHistoryItem[];
+}
+
+export interface SacramentCertificateViewDetailsResponse {
+  success: boolean;
+  data: SacramentCertificateViewDetails;
   message?: string;
 }
 

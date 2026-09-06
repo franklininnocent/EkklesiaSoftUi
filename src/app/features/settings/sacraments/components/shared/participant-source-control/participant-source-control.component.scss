@@ -50,3 +50,18 @@
 .cf-participant-source__combobox {
   position: relative;
 }
+
+.cf-participant-source__member-identity {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.35rem 0.5rem;
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--cf-text, var(--cf-slate-700));
+}
+
+.cf-participant-source__member-identity-label {
+  color: var(--cf-text-muted, var(--cf-slate-500));
+  font-size: 0.78rem;
+}

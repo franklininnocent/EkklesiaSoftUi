@@ -831,7 +831,11 @@ export interface DonationPayment {
   is_anonymous?: boolean;
   source_type?: string;
   created_at?: string;
+  family_id?: string;
   family?: { id: string; family_name: string; family_code?: string };
+  refunded_amount?: number;
+  refundable_remaining?: number;
+  gateway_reference?: string;
 }
 
 export interface DonationReportExport {
@@ -973,6 +977,7 @@ export interface DonationReceiptListItem {
   receipt_number: string;
   issued_on?: string;
   is_void?: boolean;
+  void_reason?: string;
   payment_id?: string;
   payment_number?: string;
   payer_name?: string;
@@ -983,6 +988,19 @@ export interface DonationReceiptListItem {
   family_id?: string;
   family_name?: string;
   family_code?: string;
+}
+
+export interface DonationApproval {
+  id: string;
+  target_type: string;
+  target_id: string;
+  action: string;
+  status: string;
+  reason?: string;
+  requested_by?: number;
+  decided_by?: number | null;
+  decided_at?: string | null;
+  created_at?: string;
 }
 
 export interface DonationReceiptPreview {

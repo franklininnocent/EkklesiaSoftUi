@@ -10,6 +10,7 @@ import { ToastService } from '@core/services/toast.service';
 import { DonationsService } from '../../services/donations.service';
 import { QuickCollectRecentFamily, QuickCollectService } from '../../services/quick-collect.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
+import { localDateOnly, requiresGatewayReference } from '../../utils/local-date-only';
 import {
   DonationFamilyFinancialProfile,
   DonationPayment,
@@ -214,6 +215,11 @@ interface ActivityRow {
                     </select>
                   </label>
 
+                  <label class="qc-field" *ngIf="needsReference">
+                    <span>{{ method === 'cheque' ? 'Cheque number' : 'Transfer reference' }} <span class="req" aria-hidden="true">*</span></span>
+                    <input type="text" [(ngModel)]="gatewayReference" placeholder="Required for this method" />
+                  </label>
+
                   <label class="qc-field">
                     <span>Collection date</span>
                     <input type="date" [(ngModel)]="paymentDate" />
@@ -244,10 +250,10 @@ interface ActivityRow {
 
               <section class="qc-section qc-section--compact" *ngIf="selectedFamily" aria-labelledby="qc-receipt-heading">
                 <h3 id="qc-receipt-heading" class="qc-section__title">Receipt</h3>
-                <label class="qc-check">
-                  <input type="checkbox" [(ngModel)]="generateReceipt" />
-                  <span>Generate receipt automatically</span>
-                </label>
+                <p class="qc-meta">A receipt is issued automatically when the payment is recorded.</p>
+                <p class="qc-meta" *ngIf="familyCreditAmount > 0">
+                  ₹{{ familyCreditAmount | number:'1.2-2' }} beyond the selected due or project will be stored as family credit for the next collection.
+                </p>
               </section>
             </ng-container>
 
@@ -393,6 +399,7 @@ interface ActivityRow {
       border-color: var(--cf-primary); background: var(--cf-indigo-soft);
     }
     .qc-check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; color: var(--cf-slate-700); cursor: pointer; }
+    .qc-meta { margin: 0; font-size: 0.85rem; color: var(--cf-muted, #64748b); line-height: 1.4; }
     .qc-check input { width: auto; }
     .qc-check--footer { margin-right: auto; }
     .qc-upi {
@@ -465,9 +472,9 @@ export class QuickCollectDrawerComponent implements OnInit {
   payerName = '';
   amount: number | null = null;
   method = 'cash';
-  paymentDate = new Date().toISOString().slice(0, 10);
+  paymentDate = localDateOnly();
   notes = '';
-  generateReceipt = true;
+  gatewayReference = '';
   keepQuickCollectOpen = true;
   saving = false;
   submitAttempted = false;
@@ -492,7 +499,19 @@ export class QuickCollectDrawerComponent implements OnInit {
       && !!this.payerName.trim()
       && !!this.amount
       && this.amount > 0
-      && !!this.fundId;
+      && !!this.fundId
+      && (!this.needsReference || !!this.gatewayReference.trim());
+  }
+
+  get needsReference(): boolean {
+    return requiresGatewayReference(this.mapMethodForApi(this.method));
+  }
+
+  get familyCreditAmount(): number {
+    if (!this.amount || !this.selectedAllocation || this.selectedAllocation.allocatable_type === 'fund') {
+      return 0;
+    }
+    return Math.max(0, Number(this.amount) - Number(this.selectedAllocation.amount || 0));
   }
 
   get submitLabel(): string {
@@ -717,6 +736,10 @@ export class QuickCollectDrawerComponent implements OnInit {
       notes: this.notes.trim() || null
     };
 
+    if (this.needsReference) {
+      payload['gateway_reference'] = this.gatewayReference.trim();
+    }
+
     const allocations = this.buildAllocations();
     if (allocations?.length) {
       payload['allocations'] = allocations;
@@ -731,7 +754,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           familyName: this.selectedFamily!.family_name,
           amount: this.amount!,
           categoryLabel,
-          receiptGenerated: this.generateReceipt,
+          receiptGenerated: true,
           receiptNumber: null
         };
 
@@ -895,7 +918,7 @@ export class QuickCollectDrawerComponent implements OnInit {
   }
 
   private loadRecentActivity(): void {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateOnly();
     this.donationsService.getPayments({ payment_date_from: today, payment_date_to: today, per_page: '8' }).subscribe({
       next: (res) => {
         const rows = res.data?.data ?? [];
@@ -948,6 +971,7 @@ export class QuickCollectDrawerComponent implements OnInit {
     this.collectType = 'general';
     this.allocationOptions = [];
     this.selectedAllocation = null;
+    this.gatewayReference = '';
     this.upiIntent = null;
     this.searchResults = [];
     this.highlightedIndex = -1;

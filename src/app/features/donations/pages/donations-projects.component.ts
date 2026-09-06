@@ -20,6 +20,7 @@ import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationProject, ProjectDashboard, ProjectFamilyAssignment } from '../models/donation.model';
 import { FinancialActivityTimelineComponent } from '../components/financial-activity-timeline/financial-activity-timeline.component';
+import { localDateOnly } from '../utils/local-date-only';
 
 function projectDateRangeValidator(control: AbstractControl): ValidationErrors | null {
   const start = control.get('start_date')?.value;
@@ -57,7 +58,7 @@ export class DonationsProjectsComponent implements OnInit {
   selectedFamilyId = '';
   assignmentAmount = 0;
   assignmentExempt = false;
-  assignmentEffectiveFrom = new Date().toISOString().slice(0, 10);
+  assignmentEffectiveFrom = localDateOnly();
   showForm = false;
   editingProjectId: string | null = null;
   submitAttempted = false;

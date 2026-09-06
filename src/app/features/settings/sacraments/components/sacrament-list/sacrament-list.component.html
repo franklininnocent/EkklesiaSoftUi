@@ -3,6 +3,7 @@
     title="Parish Sacrament Register"
     subtitle="Baptisms, marriages, confirmations, and other sacramental records for this parish."
   >
+    <a routerLink="/sacraments" class="cf-btn">Dashboard</a>
     <app-list-toolbar
       searchPlaceholder="Search by recipient, type, minister, or certificate…"
       [searchValue]="searchTerm"
@@ -94,48 +95,11 @@
       <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
     </div>
 
-    <div
-      *ngIf="!loadError && selectedSacraments.size > 0"
-      class="sacrament-list__bulk cf-panel"
-      role="region"
-      aria-label="Bulk actions"
-    >
-      <span class="sacrament-list__bulk-count">{{ selectedSacraments.size }} selected</span>
-      <div class="sacrament-list__bulk-actions">
-        <button type="button" class="cf-btn cf-btn--sm" (click)="onBulkStatusUpdate('registered')">
-          Set Registered
-        </button>
-        <button type="button" class="cf-btn cf-btn--sm" (click)="onBulkStatusUpdate('conditional')">
-          Set Conditional
-        </button>
-        <button type="button" class="cf-btn cf-btn--sm" (click)="onBulkExport()">Export</button>
-        <button
-          *ngIf="isTenantAdmin"
-          type="button"
-          class="cf-btn cf-btn--sm cf-btn-danger"
-          (click)="onBulkDelete()"
-        >
-          Remove selected
-        </button>
-        <button type="button" class="cf-btn cf-btn--sm cf-btn-ghost" (click)="clearSelection()">
-          Clear selection
-        </button>
-      </div>
-    </div>
-
     <ng-container *ngIf="!loadError">
       <div class="cf-panel sacrament-list__panel" *ngIf="sacraments.length">
         <app-data-table [clickableRows]="false">
           <thead>
             <tr>
-              <th scope="col" class="sacrament-list__check-col">
-                <input
-                  type="checkbox"
-                  [checked]="selectAll"
-                  (change)="toggleSelectAll($event)"
-                  aria-label="Select all sacraments on this page"
-                />
-              </th>
               <th
                 scope="col"
                 class="sortable"
@@ -164,23 +128,14 @@
               <th scope="col">Status</th>
               <th scope="col">Certificate</th>
               <th scope="col">Registry</th>
-              <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+              <th scope="col" class="cf-table__actions-col">Actions</th>
             </tr>
           </thead>
           <tbody>
             <tr
               *ngFor="let sacrament of sacraments; trackBy: trackBySacramentId"
-              [class.sacrament-list__row--selected]="selectedSacraments.has(sacrament.id)"
             >
-              <td class="sacrament-list__check-col">
-                <input
-                  type="checkbox"
-                  [checked]="selectedSacraments.has(sacrament.id)"
-                  (change)="toggleSacramentSelection(sacrament.id, $event)"
-                  [attr.aria-label]="'Select ' + (sacrament.recipient_name || 'sacrament')"
-                />
-              </td>
-              <td>
+              <td class="sacrament-list__cell--primary">
                 <button
                   type="button"
                   class="sacrament-list__name"
@@ -192,7 +147,7 @@
               </td>
               <td>{{ sacrament.sacrament_type?.name || getSacramentTypeName(sacrament.sacrament_type_id) }}</td>
               <td>{{ sacrament.date_administered | date: 'MMM d, y' }}</td>
-              <td>
+              <td class="sacrament-list__cell--primary">
                 <span *ngIf="sacrament.minister_title">{{ sacrament.minister_title }} </span>
                 {{ sacrament.minister_name || '—' }}
               </td>
@@ -204,51 +159,83 @@
               </td>
               <td>{{ sacrament.certificate_number || 'None' }}</td>
               <td>{{ registrySummary(sacrament) }}</td>
-              <td class="cf-table__actions-cell">
-                <div class="cf-row-actions">
+              <td class="cf-table__actions-cell" (click)="$event.stopPropagation()">
+                <div class="sacrament-list__row-overflow">
                   <button
                     type="button"
-                    class="cf-btn cf-btn--sm"
-                    (click)="viewCertificate(sacrament)"
-                    [attr.aria-label]="'Certificate for ' + (sacrament.recipient_name || 'sacrament')"
+                    class="sacrament-list__row-actions-trigger"
+                    [attr.aria-expanded]="openRowMenuId === sacrament.id"
+                    aria-haspopup="menu"
+                    [attr.aria-label]="'Actions for ' + (sacrament.recipient_name || 'sacrament')"
+                    (click)="toggleRowMenu(sacrament.id, $event)"
                   >
-                    Certificate
+                    <span aria-hidden="true">...</span>
+                    <span class="sr-only">Actions</span>
                   </button>
-                  <button
-                    type="button"
-                    class="cf-btn cf-btn--sm"
-                    (click)="onEditSacrament(sacrament)"
-                    [attr.aria-label]="'Edit ' + (sacrament.recipient_name || 'sacrament')"
+                  <div
+                    *ngIf="openRowMenuId === sacrament.id"
+                    class="sacrament-list__overflow-menu sacrament-list__row-overflow-menu"
+                    role="menu"
+                    [attr.aria-label]="'Actions for ' + (sacrament.recipient_name || 'sacrament')"
                   >
-                    Edit
-                  </button>
-                  <button
-                    *ngIf="canCorrectSacrament(sacrament)"
-                    type="button"
-                    class="cf-btn cf-btn--sm"
-                    (click)="openCorrectDialog(sacrament)"
-                    [attr.aria-label]="'Correct ' + (sacrament.recipient_name || 'sacrament')"
-                  >
-                    Correct
-                  </button>
-                  <button
-                    *ngIf="canVoidSacrament(sacrament)"
-                    type="button"
-                    class="cf-btn cf-btn--sm"
-                    (click)="openVoidDialog(sacrament)"
-                    [attr.aria-label]="'Void ' + (sacrament.recipient_name || 'sacrament')"
-                  >
-                    Void
-                  </button>
-                  <button
-                    *ngIf="isTenantAdmin"
-                    type="button"
-                    class="cf-btn cf-btn--sm cf-btn-danger"
-                    (click)="onDeleteSacrament(sacrament)"
-                    [attr.aria-label]="'Remove ' + (sacrament.recipient_name || 'sacrament')"
-                  >
-                    Remove
-                  </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="sacrament-list__overflow-item"
+                      (click)="onRowMenuAction('details', sacrament)"
+                    >
+                      View details
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="sacrament-list__overflow-item"
+                      (click)="onRowMenuAction('certificate', sacrament)"
+                    >
+                      View Certificate
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      class="sacrament-list__overflow-item"
+                      (click)="onRowMenuAction('edit', sacrament)"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      *ngIf="canCorrectSacrament(sacrament)"
+                      type="button"
+                      role="menuitem"
+                      class="sacrament-list__overflow-item"
+                      (click)="onRowMenuAction('correct', sacrament)"
+                    >
+                      Correct
+                    </button>
+                    <div
+                      *ngIf="hasDestructiveRowActions(sacrament)"
+                      class="sacrament-list__overflow-divider"
+                      role="separator"
+                      aria-hidden="true"
+                    ></div>
+                    <button
+                      *ngIf="canVoidSacrament(sacrament)"
+                      type="button"
+                      role="menuitem"
+                      class="sacrament-list__overflow-item sacrament-list__overflow-item--danger"
+                      (click)="onRowMenuAction('void', sacrament)"
+                    >
+                      Void
+                    </button>
+                    <button
+                      *ngIf="isTenantAdmin"
+                      type="button"
+                      role="menuitem"
+                      class="sacrament-list__overflow-item sacrament-list__overflow-item--danger"
+                      (click)="onRowMenuAction('remove', sacrament)"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               </td>
             </tr>
@@ -312,37 +299,6 @@
     (confirmed)="confirmDelete()"
     (cancelled)="cancelDelete()"
   ></app-confirmation-modal>
-
-  <app-confirmation-modal
-    *ngIf="showBulkConfirmModal"
-    [show]="showBulkConfirmModal"
-    [title]="bulkConfirmTitle"
-    [message]="bulkConfirmMessage"
-    confirmText="Confirm"
-    cancelText="Cancel"
-    confirmButtonClass="btn-danger"
-    (confirmed)="confirmBulkAction()"
-    (cancelled)="cancelBulkAction()"
-  ></app-confirmation-modal>
-
-  <app-modal-shell
-    *ngIf="showExportFormatModal"
-    title="Export format"
-    size="xs"
-    headerVariant="compact"
-    bodyPadding="none"
-    closeAriaLabel="Close export format"
-    (closeRequested)="cancelExportFormat()"
-  >
-    <div class="cf-split-form-body">
-      <p class="cf-split-field__hint">Choose how to export the selected records.</p>
-      <div class="cf-split-form-actions">
-        <button type="button" class="cf-btn cf-btn-primary" (click)="confirmExportFormat('pdf')">PDF</button>
-        <button type="button" class="cf-btn" (click)="confirmExportFormat('csv')">Excel (CSV)</button>
-        <button type="button" class="cf-btn" (click)="cancelExportFormat()">Cancel</button>
-      </div>
-    </div>
-  </app-modal-shell>
 
   <app-sacrament-form-modal
     *ngIf="showFormModal"
@@ -459,11 +415,11 @@
             </div>
             <div class="cf-split-field" *ngIf="detailSacrament.recipient_birth_date">
               <span class="sacrament-detail-label">Birth date</span>
-              <span class="sacrament-detail-value">{{ detailSacrament.recipient_birth_date | date: 'mediumDate' }}</span>
+              <span class="sacrament-detail-value" data-testid="sacrament-detail-dob">{{ detailSacrament.recipient_birth_date | date: 'mediumDate' }}</span>
             </div>
             <div class="cf-split-field" *ngIf="detailSacrament.recipient_gender">
               <span class="sacrament-detail-label">Gender</span>
-              <span class="sacrament-detail-value">{{ detailSacrament.recipient_gender | titlecase }}</span>
+              <span class="sacrament-detail-value" data-testid="sacrament-detail-gender">{{ detailSacrament.recipient_gender | titlecase }}</span>
             </div>
           </div>
         </section>
@@ -472,6 +428,7 @@
           class="cf-split-section sacrament-detail-complete__section"
           *ngIf="showParticipantsInDetail()"
           aria-labelledby="sacrament-detail-participants"
+          data-testid="sacrament-detail-participants"
         >
           <h4 id="sacrament-detail-participants" class="cf-split-section__title">People on this record</h4>
           <p class="cf-split-field__hint">
@@ -512,11 +469,11 @@
           <div class="cf-split-grid sacrament-detail-grid--2">
             <div class="cf-split-field" *ngIf="detailSacrament.father_name">
               <span class="sacrament-detail-label">Father</span>
-              <span class="sacrament-detail-value">{{ detailSacrament.father_name }}</span>
+              <span class="sacrament-detail-value" data-testid="sacrament-detail-father">{{ detailSacrament.father_name }}</span>
             </div>
             <div class="cf-split-field" *ngIf="detailSacrament.mother_name">
               <span class="sacrament-detail-label">Mother</span>
-              <span class="sacrament-detail-value">{{ detailSacrament.mother_name }}</span>
+              <span class="sacrament-detail-value" data-testid="sacrament-detail-mother">{{ detailSacrament.mother_name }}</span>
             </div>
           </div>
         </section>

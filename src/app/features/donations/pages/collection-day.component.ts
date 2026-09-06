@@ -17,6 +17,7 @@ import {
   PaginatedResponse
 } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
+import { localDateOnly, requiresGatewayReference } from '../utils/local-date-only';
 
 type CollectType = 'general' | 'mandatory' | 'project' | 'offering';
 type SearchMode = 'name' | 'id' | 'mobile' | 'qr';
@@ -72,6 +73,7 @@ export class CollectionDayComponent implements OnInit {
   payerName = '';
   amount: number | null = null;
   method = 'cash';
+  gatewayReference = '';
   notes = '';
   saving = false;
   error: string | null = null;
@@ -123,7 +125,15 @@ export class CollectionDayComponent implements OnInit {
   };
 
   get canSubmit(): boolean {
-    return !!this.selectedFamily && !!this.payerName.trim() && !!this.amount && this.amount > 0;
+    return !!this.selectedFamily
+      && !!this.payerName.trim()
+      && !!this.amount
+      && this.amount > 0
+      && (!this.needsReference || !!this.gatewayReference.trim());
+  }
+
+  get needsReference(): boolean {
+    return requiresGatewayReference(this.method === 'upi' ? 'online_placeholder' : this.method);
   }
 
   get operatorName(): string {
@@ -246,7 +256,9 @@ export class CollectionDayComponent implements OnInit {
       return rows;
     }
     rows.push({
-      label: this.collectTypes.find((type) => type.id === this.collectType)?.label || 'Contribution',
+      label: this.collectType === 'general' || this.collectType === 'offering'
+        ? 'Family credit (unallocated)'
+        : (this.collectTypes.find((type) => type.id === this.collectType)?.label || 'Contribution'),
       amount: this.amount
     });
     return rows;
@@ -499,7 +511,7 @@ export class CollectionDayComponent implements OnInit {
 
   refreshSession(): void {
     this.sessionLoading = true;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateOnly();
 
     forkJoin({
       payments: this.donationsService.getPayments({ payment_date_from: today, payment_date_to: today, per_page: '200' }),
@@ -609,11 +621,12 @@ export class CollectionDayComponent implements OnInit {
     this.donationsService.createPayment({
       family_id: this.selectedFamily.id,
       payer_name: this.payerName.trim(),
-      payment_date: new Date().toISOString().slice(0, 10),
+      payment_date: localDateOnly(),
       amount: this.amount,
       method: this.method === 'upi' ? 'online_placeholder' : this.method,
       source_type: sourceType,
-      notes: this.notes.trim() || undefined
+      notes: this.notes.trim() || undefined,
+      ...(this.needsReference ? { gateway_reference: this.gatewayReference.trim() } : {})
     }).subscribe({
       next: (res) => {
         this.saving = false;
@@ -658,6 +671,7 @@ export class CollectionDayComponent implements OnInit {
     this.error = null;
     this.collectType = 'general';
     this.method = 'cash';
+    this.gatewayReference = '';
     setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
     refreshStewardshipView(this.cdr);
   }
@@ -680,7 +694,7 @@ export class CollectionDayComponent implements OnInit {
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
-    anchor.download = `collection-day-${new Date().toISOString().slice(0, 10)}.csv`;
+    anchor.download = `collection-day-${localDateOnly()}.csv`;
     anchor.click();
     URL.revokeObjectURL(url);
   }

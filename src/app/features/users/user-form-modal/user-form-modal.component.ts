@@ -1,14 +1,15 @@
 import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, inject, ViewChild, ElementRef, AfterViewChecked, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { User, Role, UserRequest } from '@core/models';
+import { User, Role, UserRequest, LinkableClergy } from '@core/models';
 import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { PhoneInputComponent, ModalShellComponent } from '@shared/components';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { debounceTime, distinctUntilChanged, switchMap, takeUntil, tap, catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { trapFocus, restoreActiveElement } from '@shared/utils/focus-trap.util';
 
 /**
@@ -63,8 +64,17 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     contact_number: '',
     user_type: 1,
     role_ids: [] as number[],
-    active: 1
+    active: 1,
+    person_id: null as string | null
   };
+
+  // Parish leader linking (optional)
+  clergyQuery = '';
+  clergyResults: LinkableClergy[] = [];
+  clergySearching = false;
+  showClergyResults = false;
+  selectedClergy: LinkableClergy | null = null;
+  private clergySearch$ = new Subject<string>();
 
   // Validation state
   validationErrors: { [key: string]: string } = {};
@@ -82,6 +92,38 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
 
   ngOnInit(): void {
     this.loadRoles();
+    this.setupClergySearch();
+  }
+
+  private setupClergySearch(): void {
+    this.clergySearch$.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      tap(() => {
+        this.clergySearching = true;
+        this.cdr.markForCheck();
+      }),
+      switchMap((query) => {
+        const trimmed = query.trim();
+        if (trimmed.length < 2) {
+          this.clergyResults = [];
+          this.clergySearching = false;
+          this.showClergyResults = false;
+          this.cdr.markForCheck();
+          return of({ success: true, data: [] as LinkableClergy[] });
+        }
+
+        return this.usersService.getLinkableClergy(trimmed).pipe(
+          catchError(() => of({ success: false, data: [] as LinkableClergy[] }))
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe((response) => {
+      this.clergyResults = Array.isArray(response.data) ? response.data : [];
+      this.clergySearching = false;
+      this.showClergyResults = this.clergyQuery.trim().length >= 2;
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -136,8 +178,11 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         contact_number: this.user.contact_number || '',
         user_type: this.user.user_type || 1,
         role_ids: this.user.roles?.map(r => r.id) || [],
-        active: this.user.active
+        active: this.user.active,
+        person_id: this.user.person_id ?? null
       };
+
+      this.setSelectedClergyFromUser();
       
       // Initialize selected roles
       this.selectedRoleIds.clear();
@@ -160,8 +205,11 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       contact_number: this.user.contact_number || '',
       user_type: this.user.user_type || 1,
       role_ids: this.user.roles?.map(r => r.id) || [],
-      active: this.user.active
+      active: this.user.active,
+      person_id: this.user.person_id ?? null
     };
+
+    this.setSelectedClergyFromUser();
     
     // Populate selected roles
     this.selectedRoleIds.clear();
@@ -193,6 +241,84 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         this.cdr.markForCheck();
       }
     });
+  }
+
+  onClergyQueryInput(): void {
+    if (this.isEditingSelf) {
+      return;
+    }
+    this.clergySearch$.next(this.clergyQuery);
+  }
+
+  onClergySearchEnter(event: Event): void {
+    event.preventDefault();
+    this.onClergyQueryInput();
+  }
+
+  selectClergy(clergy: LinkableClergy, event?: Event): void {
+    event?.preventDefault();
+    this.selectedClergy = clergy;
+    this.formData.person_id = clergy.person_id;
+    this.clergyQuery = clergy.person_name;
+    this.showClergyResults = false;
+    this.clergyResults = [];
+
+    if (clergy.person_name) {
+      this.formData.name = clergy.person_name;
+    }
+    if (clergy.email) {
+      this.formData.email = clergy.email;
+    }
+    if (clergy.phone) {
+      this.formData.contact_number = clergy.phone;
+    }
+
+    this.suggestParishPriestRole();
+    this.validateField('name');
+    this.validateField('email');
+    this.cdr.markForCheck();
+  }
+
+  clearSelectedClergy(): void {
+    this.selectedClergy = null;
+    this.formData.person_id = null;
+    this.clergyQuery = '';
+    this.clergyResults = [];
+    this.showClergyResults = false;
+    this.cdr.markForCheck();
+  }
+
+  private setSelectedClergyFromUser(): void {
+    if (!this.user?.person_id) {
+      this.selectedClergy = null;
+      this.clergyQuery = '';
+      return;
+    }
+
+    const person = this.user.person;
+    this.selectedClergy = {
+      assignment_id: '',
+      person_id: this.user.person_id,
+      person_name: person?.full_name_display
+        || [person?.first_name, person?.last_name].filter(Boolean).join(' ')
+        || this.user.name,
+      first_name: person?.first_name,
+      last_name: person?.last_name,
+      email: person?.email ?? this.user.email,
+      phone: person?.phone ?? this.user.contact_number ?? null,
+      role_id: '',
+      role_title: undefined
+    };
+    this.clergyQuery = this.selectedClergy.person_name;
+  }
+
+  private suggestParishPriestRole(): void {
+    const parishPriest = this.availableRoles.find((role) => role.name === 'Parish Priest');
+    if (parishPriest && !this.selectedRoleIds.has(parishPriest.id)) {
+      this.selectedRoleIds.add(parishPriest.id);
+      this.formData.role_ids = Array.from(this.selectedRoleIds);
+      this.validateField('role_ids');
+    }
   }
 
   // Role selection handlers
@@ -349,7 +475,8 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       contact_number: this.formData.contact_number || undefined,
       user_type: this.formData.user_type as 1 | 2,
       role_ids: Array.from(this.selectedRoleIds),
-      active: this.formData.active as 0 | 1
+      active: this.formData.active as 0 | 1,
+      person_id: this.formData.person_id
     };
     
     // Only include password if it's provided
@@ -476,8 +603,13 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       contact_number: '',
       user_type: 1,
       role_ids: [],
-      active: 1
+      active: 1,
+      person_id: null
     };
+    this.selectedClergy = null;
+    this.clergyQuery = '';
+    this.clergyResults = [];
+    this.showClergyResults = false;
     this.selectedRoleIds.clear();
     this.validationErrors = {};
     this.touchedFields.clear();

@@ -1,13 +1,19 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { RouterLink } from '@angular/router';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { FamilyMember } from '@core/models/family.model';
 import { SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
+import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 import {
   isSacramentCompleted,
   resolveCanonicalSacrament,
   SacramentFormType
 } from '../../utils/sacrament-completion.util';
+import {
+  buildRegisterDisplayFields,
+  registerStatusLabel
+} from '../../utils/register-sacrament.util';
 
 export interface SacramentDisplayField {
   label: string;
@@ -17,7 +23,7 @@ export interface SacramentDisplayField {
 @Component({
   selector: 'app-member-sacrament-detail',
   standalone: true,
-  imports: [CommonModule, EditIconButtonComponent],
+  imports: [CommonModule, RouterLink, EditIconButtonComponent],
   templateUrl: './member-sacrament-detail.component.html',
   styleUrls: ['./member-sacrament-detail.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -25,6 +31,8 @@ export interface SacramentDisplayField {
 export class MemberSacramentDetailComponent {
   @Input({ required: true }) member!: FamilyMember;
   @Input({ required: true }) sacramentType!: SacramentTypeDto;
+  @Input() registerRecord: Sacrament | null = null;
+  @Input() canViewRegister = false;
 
   @Output() editSacrament = new EventEmitter<string>();
 
@@ -46,20 +54,30 @@ export class MemberSacramentDetailComponent {
     return resolveCanonicalSacrament(this.sacramentType.code);
   }
 
-  get completed(): boolean {
+  get profileCompleted(): boolean {
     return isSacramentCompleted(this.member, this.sacramentType.code);
   }
 
+  get hasRegisterRecord(): boolean {
+    return this.canViewRegister && this.registerRecord != null;
+  }
+
   get statusLabel(): string {
-    // Profile-summary vocabulary (not registry Registered/Conditional/Voided).
-    return this.completed ? 'On profile' : 'Not on profile';
+    if (this.hasRegisterRecord) {
+      return registerStatusLabel(this.registerRecord?.status);
+    }
+    return this.profileCompleted ? 'On profile' : 'Not on profile';
+  }
+
+  get tileComplete(): boolean {
+    return this.hasRegisterRecord || this.profileCompleted;
   }
 
   get editable(): boolean {
     if (this.canonical === null) {
       return false;
     }
-    if (this.completed || this.hasSacramentDetails) {
+    if (this.profileCompleted || this.hasSacramentDetails) {
       return true;
     }
     return this.sacramentType.enabled_for_tenant !== false;
@@ -102,6 +120,25 @@ export class MemberSacramentDetailComponent {
       default:
         return false;
     }
+  }
+
+  get showProfileSummarySection(): boolean {
+    return this.hasSacramentDetails || (!this.hasRegisterRecord && this.profileCompleted);
+  }
+
+  get showNoProfileSummary(): boolean {
+    return !this.hasSacramentDetails && !this.profileCompleted;
+  }
+
+  get registerViewPath(): string | null {
+    return this.registerRecord ? `/sacraments/view/${this.registerRecord.id}` : null;
+  }
+
+  get registerDisplayFields(): SacramentDisplayField[] {
+    if (!this.registerRecord) {
+      return [];
+    }
+    return buildRegisterDisplayFields(this.registerRecord);
   }
 
   get displayFields(): SacramentDisplayField[] {

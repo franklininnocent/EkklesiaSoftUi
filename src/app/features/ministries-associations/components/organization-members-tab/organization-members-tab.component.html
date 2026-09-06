@@ -1,6 +1,7 @@
 <div class="organization-members">
   <div class="cf-attention-callout" *ngIf="isInactiveOrganization" role="status">
-    <p>This organization is inactive. Activate it to enroll new members.</p>
+    <p *ngIf="isArchived">This organization is archived. Restore it before changing membership.</p>
+    <p *ngIf="!isArchived">This organization is inactive. Activate it to enroll new members.</p>
   </div>
 
   <app-list-toolbar

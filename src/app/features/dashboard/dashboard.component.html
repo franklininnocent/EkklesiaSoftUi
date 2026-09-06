@@ -448,46 +448,65 @@
       <h2 class="cd-ops__label">Care &amp; stewardship actions</h2>
     </header>
     <section class="cd-ops__care" aria-label="Pastoral care and stewardship follow-ups">
-      <article class="cd-panel">
+      <article class="cd-panel" *ngIf="canViewPastoral">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
             <h2>Pastoral Care Alerts</h2>
-            <p class="cd-panel__desc">Urgent community needs requiring attention</p>
+            <p class="cd-panel__desc">Open visit requests by type</p>
           </div>
         </header>
-        <ul class="cd-care-list">
+        <p class="cd-panel__desc" *ngIf="loadingPastoral">Loading visits…</p>
+        <p class="cd-panel__desc" *ngIf="!loadingPastoral && !careAlerts.length">No open visit requests.</p>
+        <ul class="cd-care-list" *ngIf="careAlerts.length">
           <li *ngFor="let alert of careAlerts" class="cd-care-item" [class.is-urgent]="alert.priority === 'urgent'">
             <div class="cd-care-item__count">{{ alert.count }}</div>
             <div class="cd-care-item__content">
               <span class="cd-care-item__title">{{ alert.title }}</span>
-              <button type="button" class="cd-link-btn">{{ alert.action }}</button>
             </div>
           </li>
         </ul>
       </article>
 
-      <article class="cd-panel">
+      <article class="cd-panel" *ngIf="canViewPastoral">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
             <h2>Pastoral Workflow</h2>
             <p class="cd-panel__desc">Assign follow-ups to pastoral staff</p>
           </div>
         </header>
-        <ul class="cd-task-list">
+        <p class="cd-panel__desc" *ngIf="!loadingPastoral && !pastoralTasks.length">No open or assigned visits.</p>
+        <ul class="cd-task-list" *ngIf="pastoralTasks.length">
           <li *ngFor="let task of pastoralTasks" class="cd-task-item" [class.is-open]="task.status === 'open'">
             <div class="cd-task-item__main">
               <span class="cd-task-item__title">{{ task.title }}</span>
-              <span class="cd-task-item__meta">{{ task.assignee }} · Due {{ task.due }}</span>
+              <span class="cd-task-item__meta">{{ task.family_name }} · {{ task.assignee }} · Due {{ task.due }}</span>
+            </div>
+            <div class="cd-task-item__actions" *ngIf="task.status === 'open' && canAssignPastoral">
+              <ng-container *ngIf="assigningTaskId !== task.id">
+                <button type="button" class="cd-task-item__assign" (click)="beginAssign(task)">Assign</button>
+              </ng-container>
+              <ng-container *ngIf="assigningTaskId === task.id">
+                <label class="cd-task-item__picker">
+                  <span class="visually-hidden">Choose staff</span>
+                  <select [(ngModel)]="selectedAssigneeId">
+                    <option [ngValue]="null" disabled>Choose staff</option>
+                    <option *ngFor="let person of pastoralStaff" [ngValue]="person.id">{{ person.name }}</option>
+                  </select>
+                </label>
+                <button type="button" class="cd-task-item__assign" (click)="confirmAssign(task)" [disabled]="!selectedAssigneeId || assigningBusy">
+                  Save
+                </button>
+                <button type="button" class="cd-link-btn" (click)="cancelAssign()">Cancel</button>
+              </ng-container>
             </div>
             <button
-              *ngIf="task.status === 'open'"
+              *ngIf="canCompleteTask(task)"
               type="button"
               class="cd-task-item__assign"
-              (click)="assignTask(task)"
+              (click)="completeTask(task)"
             >
-              Assign
+              Mark done
             </button>
-            <span *ngIf="task.status === 'assigned'" class="cd-task-item__assigned">Assigned</span>
           </li>
         </ul>
       </article>
@@ -632,7 +651,7 @@
             <h2>Sacramental Records</h2>
             <p class="cd-panel__desc">{{ sacramentsThisMonth }} sacraments recorded this month</p>
           </div>
-          <button type="button" class="cd-link-btn" (click)="navigateTo('/sacraments')">Open sacraments</button>
+          <button type="button" class="cd-link-btn" (click)="navigateTo('/sacraments')">View analytics</button>
         </header>
 
         <div class="cd-sacrament-counts" *ngIf="!sacramentsError && sacramentTypeCounts.length > 0">

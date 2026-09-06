@@ -139,6 +139,8 @@ describe('BccDashboardPageComponent', () => {
   let router: Router;
 
   beforeEach(async () => {
+    jest.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({} as CanvasRenderingContext2D);
+
     await TestBed.configureTestingModule({
       imports: [BccDashboardPageComponent],
       providers: [
@@ -156,6 +158,10 @@ describe('BccDashboardPageComponent', () => {
     fixture.detectChanges();
   });
 
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
   it('loads parish dashboard summary', () => {
     expect(api.getDashboard).toHaveBeenCalled();
     expect(component.summary?.bccs.total).toBe(2);
@@ -166,5 +172,66 @@ describe('BccDashboardPageComponent', () => {
   it('opens the BCC list from the dashboard', () => {
     component.openList();
     expect(router.navigate).toHaveBeenCalledWith(['/bccs/list']);
+  });
+
+  it('counts active drawer filters for the toolbar badge', () => {
+    component.status = 'active';
+    component.period = '3m';
+    component.coordinator = 'coord-1';
+    expect(component.getActiveFilterCount()).toBe(3);
+  });
+
+  it('does not count search in the toolbar filter badge', () => {
+    component.search = 'st joseph';
+    expect(component.getActiveFilterCount()).toBe(0);
+  });
+
+  it('applies advanced search filters via query params and closes the drawer', async () => {
+    component.showAdvancedSearch = true;
+    component.onAdvancedSearch({
+      status: 'active',
+      period: '6m',
+      coordinator: 'coord-1',
+      attention: 'no_primary',
+      trend: 'growing',
+    });
+
+    expect(router.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({
+          status: 'active',
+          period: '6m',
+          coordinator: 'coord-1',
+          attention: 'no_primary',
+          trend: 'growing',
+        }),
+        queryParamsHandling: 'merge',
+      })
+    );
+    expect(component.showAdvancedSearch).toBe(false);
+  });
+
+  it('clears drawer filters on reset without clearing search', async () => {
+    component.search = 'st joseph';
+    component.status = 'active';
+    component.period = '3m';
+    component.attention = 'empty';
+
+    component.onClearAdvancedSearch();
+
+    expect(router.navigate).toHaveBeenCalledWith(
+      [],
+      expect.objectContaining({
+        queryParams: expect.objectContaining({
+          status: null,
+          period: null,
+          coordinator: null,
+          attention: null,
+          trend: null,
+          search: 'st joseph',
+        }),
+      })
+    );
   });
 });

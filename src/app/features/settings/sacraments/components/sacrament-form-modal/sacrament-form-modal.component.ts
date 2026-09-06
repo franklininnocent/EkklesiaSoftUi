@@ -53,6 +53,17 @@ import {
 } from '../shared/church-affiliation-control/church-affiliation-control.component';
 import { MinisterPickerComponent } from '../shared/minister-picker/minister-picker.component';
 import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/sacrament-review-panel.component';
+import { SacramentPersonContextService } from '../../services/sacrament-person-context.service';
+import { SacramentContextResponse } from '../../models/sacrament-context.model';
+import { PersonContextSummaryComponent } from '../shared/person-context-summary/person-context-summary.component';
+import { SacramentConflictPanelComponent } from '../shared/sacrament-conflict-panel/sacrament-conflict-panel.component';
+import { MissingFieldsSummaryComponent } from '../shared/missing-fields-summary/missing-fields-summary.component';
+import { CfFieldProvenanceComponent } from '../shared/cf-field-provenance/cf-field-provenance.component';
+import { SacramentEvidenceSummaryComponent } from '../shared/sacrament-evidence-summary/sacrament-evidence-summary.component';
+import {
+  MarriagePartyFieldErrors,
+  MarriagePartyPanelComponent,
+} from '../shared/marriage-party-panel/marriage-party-panel.component';
 
 @Component({
   selector: 'app-sacrament-form-modal',
@@ -67,6 +78,12 @@ import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/
     ChurchAffiliationControlComponent,
     MinisterPickerComponent,
     SacramentReviewPanelComponent,
+    PersonContextSummaryComponent,
+    SacramentConflictPanelComponent,
+    MissingFieldsSummaryComponent,
+    CfFieldProvenanceComponent,
+    SacramentEvidenceSummaryComponent,
+    MarriagePartyPanelComponent,
   ],
   templateUrl: './sacrament-form-modal.component.html',
   styleUrl: './sacrament-form-modal.component.scss',
@@ -157,8 +174,85 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   brideAffiliationDraft: ChurchAffiliationValue | null = null;
   groomAffiliationDraft: ChurchAffiliationValue | null = null;
   witnessDrafts: SacramentParticipantDraft[] = [];
+  brideContext: SacramentContextResponse | null = null;
+  groomContext: SacramentContextResponse | null = null;
+  brideContextLoading = false;
+  groomContextLoading = false;
+  brideContextError: string | null = null;
+  groomContextError: string | null = null;
+  recipientContext: SacramentContextResponse | null = null;
+  recipientContextLoading = false;
+  baptismDuplicateWarning: string | null = null;
+  confirmandDraft: SacramentParticipantDraft | null = null;
   useSharedPeopleControls = true;
   homeParishDisplayName = '';
+  readonly baptismalStatusOptions = [
+    { value: 'baptized_catholic', label: 'Baptized Catholic' },
+    { value: 'baptized_non_catholic', label: 'Baptized Non-Catholic' },
+    { value: 'unbaptized', label: 'Unbaptized' },
+  ];
+  readonly ecclesialAffiliationOptions = [
+    { value: 'roman_catholic', label: 'Roman Catholic Church' },
+    { value: 'syro_malabar', label: 'Syro-Malabar Church' },
+    { value: 'syro_malankara', label: 'Syro-Malankara Church' },
+    { value: 'orthodox', label: 'Orthodox Church' },
+    { value: 'csi', label: 'Church of South India' },
+    { value: 'anglican', label: 'Anglican Communion' },
+    { value: 'lutheran', label: 'Lutheran' },
+    { value: 'hindu', label: 'Hindu' },
+    { value: 'muslim', label: 'Muslim' },
+    { value: 'other', label: 'Other' },
+  ];
+  dispensationDraft: {
+    dispensation_type: string;
+    granting_authority: string;
+    protocol_number: string;
+    date_granted: string;
+  } = {
+    dispensation_type: '',
+    granting_authority: '',
+    protocol_number: '',
+    date_granted: '',
+  };
+
+  get marriageClassificationCode(): string | null {
+    const bride = this.brideDraft?.baptismal_status;
+    const groom = this.groomDraft?.baptismal_status;
+    if (!bride || !groom) {
+      return null;
+    }
+    if (bride === 'baptized_catholic' && groom === 'baptized_catholic') {
+      return 'both_catholic';
+    }
+    const set = [bride, groom];
+    if (set.includes('baptized_catholic') && set.includes('baptized_non_catholic')) {
+      return 'mixed_marriage';
+    }
+    if (set.includes('baptized_catholic') && set.includes('unbaptized')) {
+      return 'disparity_of_cult';
+    }
+    return 'other';
+  }
+
+  get marriageClassificationLabel(): string {
+    switch (this.marriageClassificationCode) {
+      case 'both_catholic':
+        return 'Both Catholic';
+      case 'mixed_marriage':
+        return 'Mixed marriage (permission needed)';
+      case 'disparity_of_cult':
+        return 'Disparity of cult (dispensation needed)';
+      case 'other':
+        return 'Other';
+      default:
+        return 'Complete baptismal status for both spouses to classify this marriage.';
+    }
+  }
+
+  get marriageRequiresDispensation(): boolean {
+    return this.marriageClassificationCode === 'mixed_marriage'
+      || this.marriageClassificationCode === 'disparity_of_cult';
+  }
 
   // Constants for template
   readonly statusOptions = SACRAMENT_STATUS_OPTIONS;
@@ -185,7 +279,8 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     private readonly formService: SacramentFormService,
     private readonly definitionService: SacramentDefinitionService,
     private readonly workflowResolver: SacramentWorkflowResolver,
-    private readonly personService: ParishPersonService
+    private readonly personService: ParishPersonService,
+    private readonly contextService: SacramentPersonContextService,
   ) {}
 
   /**
@@ -526,6 +621,16 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         if (drafts.minister) {
           this.ministerDraft = drafts.minister;
         }
+        const existing = (sacrament.dispensations || [])[0];
+        if (existing) {
+          this.dispensationDraft = {
+            dispensation_type: existing.dispensation_type || '',
+            granting_authority: existing.granting_authority || '',
+            protocol_number: existing.protocol_number || '',
+            date_granted: (existing.date_granted || '').toString().slice(0, 10),
+          };
+        }
+        this.refreshPartyContextsFromDrafts();
       }
       
       // Set family selection if family_id exists
@@ -738,7 +843,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
           if (response.success) {
             this.toastService.success(
               this.continueAfterSave
-                ? 'Baptism saved. Enter the next recipient.'
+                ? `${this.getSelectedSacramentType()?.name || 'Sacrament'} saved. Enter the next recipient.`
                 : 'Sacrament created successfully.'
             );
             if (this.continueAfterSave) {
@@ -754,12 +859,12 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         },
         error: (error) => {
           console.error('Error creating sacrament:', error);
-          const code = error?.error?.code || error?.code;
+          const code = error?.code || error?.error?.code;
           if (code === 'possible_person_match') {
-            this.personMatches = error?.error?.context?.matches || error?.context?.matches || [];
+            this.personMatches = error?.context?.matches || error?.error?.context?.matches || [];
             this.toastService.error('A possible existing person was found. Choose Use Existing Person or Create New Person.');
           } else {
-            this.toastService.error(error?.error?.message || error?.message || 'Failed to create sacrament.');
+            this.toastService.error(error?.message || error?.error?.message || 'Failed to create sacrament.');
           }
           this.continueAfterSave = false;
           this.saving = false;
@@ -904,10 +1009,18 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         this.fieldErrors['minister_name'] = 'Minister is required for Baptism.';
         isValid = false;
       }
+      if (this.baptismDuplicateWarning) {
+        this.fieldErrors['baptism_duplicate'] = this.baptismDuplicateWarning;
+        isValid = false;
+      }
     }
 
     // Marriage: bride/groom required via drafts; minister required; bride ≠ groom
     if (this.isMarriage()) {
+      if (this.brideContext?.has_blocking_conflicts || this.groomContext?.has_blocking_conflicts) {
+        this.fieldErrors['marriage_conflicts'] = 'Resolve identity conflicts before saving.';
+        isValid = false;
+      }
       const brideName = this.partyDisplayName(this.brideDraft, this.formData['marriage_bride_full_name']);
       const groomName = this.partyDisplayName(this.groomDraft, this.formData['marriage_groom_full_name']);
 
@@ -927,6 +1040,10 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         this.fieldErrors['minister_name'] = 'Minister is required for Marriage.';
         isValid = false;
       }
+      if (this.marriageRequiresDispensation && !this.dispensationDraft.dispensation_type) {
+        this.fieldErrors['dispensation_type'] = 'Record the permission or dispensation for this marriage.';
+        isValid = false;
+      }
       if (!this.affiliationValid(this.brideAffiliationDraft, 'bride')) {
         this.fieldErrors['marriage_bride_church_name'] =
           'Parish name and diocese are required when bride affiliation is other.';
@@ -944,24 +1061,32 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         isValid = false;
       }
 
-      const brideDob = validateRequired(this.brideDraft?.external_date_of_birth, "Bride's date of birth");
+      const brideDob = validateRequired(this.resolvePartyBirthDate(this.brideDraft), "Bride's date of birth");
       if (!brideDob.valid) {
-        this.fieldErrors['bride_date_of_birth'] = brideDob.message || '';
+        this.fieldErrors['bride_date_of_birth'] = this.brideDraft?.source === 'member'
+          ? 'This member has no date of birth on file. Add it in Family before recording this sacrament.'
+          : (brideDob.message || '');
         isValid = false;
       }
-      const brideGender = validateRequired(this.brideDraft?.external_gender, "Bride's gender");
+      const brideGender = validateRequired(this.resolvePartyGender(this.brideDraft), "Bride's gender");
       if (!brideGender.valid) {
-        this.fieldErrors['bride_gender'] = brideGender.message || '';
+        this.fieldErrors['bride_gender'] = this.brideDraft?.source === 'member'
+          ? 'This member has no gender on file. Add it in Family before recording this sacrament.'
+          : (brideGender.message || '');
         isValid = false;
       }
-      const groomDob = validateRequired(this.groomDraft?.external_date_of_birth, "Groom's date of birth");
+      const groomDob = validateRequired(this.resolvePartyBirthDate(this.groomDraft), "Groom's date of birth");
       if (!groomDob.valid) {
-        this.fieldErrors['groom_date_of_birth'] = groomDob.message || '';
+        this.fieldErrors['groom_date_of_birth'] = this.groomDraft?.source === 'member'
+          ? 'This member has no date of birth on file. Add it in Family before recording this sacrament.'
+          : (groomDob.message || '');
         isValid = false;
       }
-      const groomGender = validateRequired(this.groomDraft?.external_gender, "Groom's gender");
+      const groomGender = validateRequired(this.resolvePartyGender(this.groomDraft), "Groom's gender");
       if (!groomGender.valid) {
-        this.fieldErrors['groom_gender'] = groomGender.message || '';
+        this.fieldErrors['groom_gender'] = this.groomDraft?.source === 'member'
+          ? 'This member has no gender on file. Add it in Family before recording this sacrament.'
+          : (groomGender.message || '');
         isValid = false;
       }
 
@@ -1021,9 +1146,11 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         isValid = false;
       }
 
-      const birthDateValidation = validateRequired(this.formData['recipient_birth_date'], 'Date of birth');
+      const birthDateValidation = validateRequired(this.resolveRecipientBirthDate(), 'Date of birth');
       if (!birthDateValidation.valid) {
-        this.fieldErrors['recipient_birth_date'] = birthDateValidation.message || '';
+        this.fieldErrors['recipient_birth_date'] = this.personLocked
+          ? 'This member has no date of birth on file. Add it in Family before recording this sacrament.'
+          : (birthDateValidation.message || '');
         isValid = false;
       }
 
@@ -1457,6 +1584,25 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.cdr.markForCheck();
   }
 
+  onConfirmandDraftChange(draft: SacramentParticipantDraft): void {
+    this.confirmandDraft = { ...draft, role: 'candidate' };
+    if (draft.display_name) {
+      this.formData['recipient_name'] = draft.display_name;
+    }
+    if (draft.external_date_of_birth) {
+      this.formData['recipient_birth_date'] = draft.external_date_of_birth;
+    }
+    if (draft.external_gender) {
+      this.formData['recipient_gender'] = draft.external_gender;
+    }
+    if (draft.source === 'member' && draft.family_member_id) {
+      this.loadRecipientContext(draft.family_member_id);
+    } else {
+      this.recipientContext = null;
+    }
+    this.cdr.markForCheck();
+  }
+
   onAffiliationDraftChange(value: ChurchAffiliationValue): void {
     this.affiliationDraft = value;
     this.cdr.markForCheck();
@@ -1468,6 +1614,12 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       this.formData['marriage_bride_full_name'] = draft.display_name;
     }
     this.syncMarriageRecipientName();
+    if (draft.source === 'member' && draft.family_member_id) {
+      this.loadPartyContext('bride', draft.family_member_id);
+    } else {
+      this.brideContext = null;
+      this.brideContextError = null;
+    }
     this.cdr.markForCheck();
   }
 
@@ -1477,7 +1629,222 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       this.formData['marriage_groom_full_name'] = draft.display_name;
     }
     this.syncMarriageRecipientName();
+    if (draft.source === 'member' && draft.family_member_id) {
+      this.loadPartyContext('groom', draft.family_member_id);
+    } else {
+      this.groomContext = null;
+      this.groomContextError = null;
+    }
     this.cdr.markForCheck();
+  }
+
+  partyContext(role: 'bride' | 'groom'): SacramentContextResponse | null {
+    return role === 'bride' ? this.brideContext : this.groomContext;
+  }
+
+  partyContextLoading(role: 'bride' | 'groom'): boolean {
+    return role === 'bride' ? this.brideContextLoading : this.groomContextLoading;
+  }
+
+  partyContextError(role: 'bride' | 'groom'): string | null {
+    return role === 'bride' ? this.brideContextError : this.groomContextError;
+  }
+
+  shouldHideBaptismalStatusInput(role: 'bride' | 'groom'): boolean {
+    const ctx = this.partyContext(role);
+    if (!ctx) {
+      return false;
+    }
+    const field = ctx.fields?.['baptismal_status'];
+    return !!field?.input_hidden || !!field?.auto_resolved;
+  }
+
+  shouldHideEcclesialInput(role: 'bride' | 'groom'): boolean {
+    const ctx = this.partyContext(role);
+    if (!ctx) {
+      return false;
+    }
+    const field = ctx.fields?.['ecclesial_affiliation_code'];
+    return !!field?.input_hidden;
+  }
+
+  partyFieldErrors(role: 'bride' | 'groom'): MarriagePartyFieldErrors {
+    const prefix = role === 'bride' ? 'bride' : 'groom';
+    const marriageNameKey = role === 'bride' ? 'marriage_bride_full_name' : 'marriage_groom_full_name';
+    const churchNameKey = role === 'bride' ? 'marriage_bride_church_name' : 'marriage_groom_church_name';
+    return {
+      fullName: this.getFieldError(marriageNameKey) || null,
+      dateOfBirth: this.getFieldError(`${prefix}_date_of_birth`) || null,
+      gender: this.getFieldError(`${prefix}_gender`) || null,
+      churchName: this.getFieldError(churchNameKey) || null,
+    };
+  }
+
+  private loadPartyContext(role: 'bride' | 'groom', familyMemberId: string): void {
+    if (role === 'bride') {
+      this.brideContextLoading = true;
+      this.brideContextError = null;
+    } else {
+      this.groomContextLoading = true;
+      this.groomContextError = null;
+    }
+
+    this.contextService.getContext({
+      family_member_id: familyMemberId,
+      workflow: 'MATRIMONY',
+      participant_role: role,
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (context) => {
+        if (role === 'bride') {
+          this.brideContext = context;
+          this.brideContextLoading = false;
+          this.applyContextToPartyDraft('bride', context);
+        } else {
+          this.groomContext = context;
+          this.groomContextLoading = false;
+          this.applyContextToPartyDraft('groom', context);
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        const message = 'Could not load person context. You may enter details manually.';
+        if (role === 'bride') {
+          this.brideContextLoading = false;
+          this.brideContextError = message;
+        } else {
+          this.groomContextLoading = false;
+          this.groomContextError = message;
+        }
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  private applyContextToPartyDraft(role: 'bride' | 'groom', context: SacramentContextResponse): void {
+    const draft = role === 'bride' ? this.brideDraft : this.groomDraft;
+    if (!draft) {
+      return;
+    }
+
+    const identity = context.canonical_identity;
+    draft.display_name = identity.name?.value || draft.display_name;
+    draft.external_date_of_birth = identity.date_of_birth?.value || draft.external_date_of_birth;
+    draft.external_gender = (identity.gender?.value as SacramentParticipantDraft['external_gender']) || draft.external_gender;
+    draft.father_name = identity.father_name?.value || draft.father_name;
+    draft.mother_name = identity.mother_name?.value || draft.mother_name;
+
+    const derivedStatus = context.derived?.baptismal_status?.value;
+    if (derivedStatus) {
+      draft.baptismal_status = derivedStatus;
+    }
+    if (context.record_status?.['baptism'] === 'FOUND' && !draft.ecclesial_affiliation_code) {
+      draft.ecclesial_affiliation_code = 'roman_catholic';
+    }
+
+    if (role === 'bride') {
+      this.brideDraft = { ...draft };
+      if (draft.display_name) {
+        this.formData['marriage_bride_full_name'] = draft.display_name;
+      }
+    } else {
+      this.groomDraft = { ...draft };
+      if (draft.display_name) {
+        this.formData['marriage_groom_full_name'] = draft.display_name;
+      }
+    }
+  }
+
+  onPartyMissingFieldFocus(role: 'bride' | 'groom', field: string): void {
+    const targetId = this.partyMissingFieldTargetId(role, field);
+    if (!targetId) {
+      return;
+    }
+    const element = document.getElementById(targetId);
+    if (!element) {
+      return;
+    }
+    element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    element.classList.add('cf-field-focus-highlight');
+    window.setTimeout(() => element.classList.remove('cf-field-focus-highlight'), 2000);
+    this.cdr.markForCheck();
+  }
+
+  private partyMissingFieldTargetId(role: 'bride' | 'groom', field: string): string | null {
+    switch (field) {
+      case 'baptism_register_record':
+      case 'baptism_record_selection':
+        return `party-${role}-baptism-evidence`;
+      case 'baptismal_status':
+        return `party-${role}-baptismal-status`;
+      default:
+        return null;
+    }
+  }
+
+  private refreshPartyContextsFromDrafts(): void {
+    if (this.brideDraft?.source === 'member' && this.brideDraft.family_member_id) {
+      this.loadPartyContext('bride', this.brideDraft.family_member_id);
+    }
+    if (this.groomDraft?.source === 'member' && this.groomDraft.family_member_id) {
+      this.loadPartyContext('groom', this.groomDraft.family_member_id);
+    }
+  }
+
+  onPartyConflictCorrect(role: 'bride' | 'groom', conflict: { field: string; candidates: Array<{ value: string; source_type: string }> }): void {
+    const ctx = this.partyContext(role);
+    const personId = ctx?.subject?.person_id;
+    if (!personId) {
+      return;
+    }
+    const baptismCandidate = conflict.candidates.find((c) => c.source_type === 'BAPTISM_RECORD');
+    const newValue = baptismCandidate?.value ?? conflict.candidates[1]?.value;
+    const reason = window.prompt('Reason for updating canonical member information (required):')?.trim();
+    if (!reason) {
+      this.toastService.error('A reason is required to update member information.');
+      return;
+    }
+    this.contextService.reconcileIdentity(personId, {
+      field: conflict.field,
+      new_value: newValue,
+      source_selected: baptismCandidate?.source_type ?? 'USER_ENTERED',
+      reason,
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.toastService.success('Member information updated.');
+        const memberId = role === 'bride' ? this.brideDraft?.family_member_id : this.groomDraft?.family_member_id;
+        if (memberId) {
+          this.loadPartyContext(role, memberId);
+        }
+      },
+      error: (err) => this.toastService.error(handleApiError(err, 'Could not update member information.')),
+    });
+  }
+
+  private loadRecipientContext(familyMemberId: string): void {
+    const workflow = this.isBaptism() ? 'BAPTISM' : this.isEucharist() ? 'EUCHARIST' : 'CONFIRMATION';
+    this.recipientContextLoading = true;
+    this.baptismDuplicateWarning = null;
+    this.contextService.getContext({
+      family_member_id: familyMemberId,
+      workflow,
+      participant_role: 'recipient',
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (context) => {
+        this.recipientContext = context;
+        this.recipientContextLoading = false;
+        if (this.isBaptism() && context.record_status?.['baptism'] === 'FOUND') {
+          this.baptismDuplicateWarning = 'A baptism record already exists for this person. Review before creating a duplicate.';
+        }
+        if (this.isEucharist() && context.sacraments?.baptism?.evidence?.date?.value) {
+          this.formData['baptism_date'] = context.sacraments.baptism.evidence.date.value;
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.recipientContextLoading = false;
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   onBrideAffiliationChange(value: ChurchAffiliationValue): void {
@@ -1535,10 +1902,12 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.cdr.markForCheck();
   }
 
-  partyAllowedSources(role: 'bride' | 'groom' | 'witness'): string[] {
+  partyAllowedSources(role: 'bride' | 'groom' | 'witness'): Array<'member' | 'external'> {
     const slot = this.workflowPlan?.definition?.participants.find((p) => p.role === role);
     if (slot?.allowed_sources?.length) {
-      return slot.allowed_sources;
+      return slot.allowed_sources.filter(
+        (source): source is 'member' | 'external' => source === 'member' || source === 'external',
+      );
     }
     if (role === 'witness' && this.isMarriage()) {
       return ['external'];
@@ -1552,6 +1921,28 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (groom || bride) {
       this.formData['recipient_name'] = [groom, bride].filter(Boolean).join(' & ');
     }
+  }
+
+  private resolveRecipientBirthDate(): string {
+    const explicit = String(this.formData['recipient_birth_date'] || '').trim();
+    if (explicit) {
+      return explicit;
+    }
+
+    if (this.selectedRecipientMemberId) {
+      const member = this.familyMembers.find((item) => item.id === this.selectedRecipientMemberId);
+      return this.canonicalMemberDateOfBirth(member);
+    }
+
+    return String(this.personDraft.date_of_birth || '').trim();
+  }
+
+  private resolvePartyBirthDate(draft: SacramentParticipantDraft | null): string {
+    return String(draft?.external_date_of_birth || '').trim();
+  }
+
+  private resolvePartyGender(draft: SacramentParticipantDraft | null): string {
+    return String(draft?.external_gender || '').trim();
   }
 
   private partyDisplayName(
@@ -1852,15 +2243,26 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
 
   applyMemberAsRecipient(member: FamilyMember): void {
     const fullName = this.getMemberFullName(member);
+    const birthDate = this.canonicalMemberDateOfBirth(member);
+    const gender = this.canonicalMemberGender(member);
+    const fatherName = this.canonicalMemberFatherName(member);
+    const motherName = this.canonicalMemberMotherName(member);
     this.formData['recipient_name'] = fullName;
-    this.formData['recipient_birth_date'] = member.date_of_birth || '';
-    this.formData['recipient_gender'] = member.gender || undefined;
+    this.formData['recipient_birth_date'] = birthDate;
+    this.formData['recipient_gender'] = gender || undefined;
+    this.formData['father_name'] = fatherName;
+    this.formData['mother_name'] = motherName;
     this.personDraft.first_name = member.first_name;
     this.personDraft.middle_name = member.middle_name || '';
     this.personDraft.last_name = member.last_name;
-    this.personDraft.date_of_birth = member.date_of_birth || '';
-    this.personDraft.gender = (member.gender as typeof this.personDraft.gender) || '';
+    this.personDraft.date_of_birth = birthDate;
+    this.personDraft.gender = (gender as typeof this.personDraft.gender) || '';
+    this.personDraft.father_name = fatherName;
+    this.personDraft.mother_name = motherName;
     this.personLocked = true;
+    if (member.id) {
+      this.loadRecipientContext(member.id);
+    }
     if (member.person_id) {
       this.personService.get(member.person_id).pipe(takeUntil(this.destroy$)).subscribe({
         next: (res) => {
@@ -1957,9 +2359,25 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     const name = this.getMemberFullName(member);
     const extras = [
       member.relationship_to_head,
-      member.date_of_birth || undefined,
+      this.canonicalMemberDateOfBirth(member) || undefined,
     ].filter(Boolean);
     return extras.length ? `${name} (${extras.join(' · ')})` : name;
+  }
+
+  private canonicalMemberDateOfBirth(member?: FamilyMember | null): string {
+    return String(member?.date_of_birth || member?.person?.date_of_birth || '').trim();
+  }
+
+  private canonicalMemberGender(member?: FamilyMember | null): string {
+    return String(member?.gender || member?.person?.gender || '').trim();
+  }
+
+  private canonicalMemberFatherName(member?: FamilyMember | null): string {
+    return String(member?.father_name || member?.person?.father_name || '').trim();
+  }
+
+  private canonicalMemberMotherName(member?: FamilyMember | null): string {
+    return String(member?.mother_name || member?.person?.mother_name || '').trim();
   }
 
   /**
@@ -2266,6 +2684,26 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
    * Build request payload compatible with backend schema
    * Uses the form service to build the payload
    */
+  private buildRecipientDraftFromMember(): SacramentParticipantDraft | null {
+    if (!this.selectedRecipientMemberId) {
+      return null;
+    }
+    const member = this.familyMembers.find((m) => m.id === this.selectedRecipientMemberId);
+    if (!member) {
+      return null;
+    }
+    return {
+      role: 'recipient',
+      source: 'member',
+      family_member_id: member.id,
+      display_name: this.getMemberFullName(member),
+      external_date_of_birth: this.canonicalMemberDateOfBirth(member),
+      external_gender: (this.canonicalMemberGender(member) as SacramentParticipantDraft['external_gender']) || undefined,
+      father_name: this.canonicalMemberFatherName(member),
+      mother_name: this.canonicalMemberMotherName(member),
+    };
+  }
+
   private buildRequestPayload(): SacramentCreateRequest {
     if (!this.currentTenantId) {
       throw new Error('Tenant ID is required');
@@ -2333,7 +2771,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
 
     if (!this.isEditMode && this.isBaptism() && this.useSharedPeopleControls) {
       const participants = this.formService.buildBaptismParticipants({
-        recipient: null,
+        recipient: this.buildRecipientDraftFromMember(),
         affiliation: this.affiliationDraft,
         minister: this.ministerDraft,
         formData: this.formData,
@@ -2358,11 +2796,22 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       if (participants.length > 0) {
         payload.participants = participants;
       }
+      if (this.marriageClassificationCode) {
+        payload.marriage_canonical_classification = this.marriageClassificationCode;
+      }
+      if (this.marriageRequiresDispensation && this.dispensationDraft.dispensation_type) {
+        payload.dispensations = [{
+          dispensation_type: this.dispensationDraft.dispensation_type,
+          granting_authority: this.dispensationDraft.granting_authority || null,
+          protocol_number: this.dispensationDraft.protocol_number || null,
+          date_granted: this.dispensationDraft.date_granted || null,
+        }];
+      }
     }
 
     if (!this.isEditMode && this.isProgressiveParticipantCreate() && this.useSharedPeopleControls) {
       const participants = this.formService.buildProgressiveParticipants({
-        recipient: null,
+        recipient: this.isConfirmation() ? this.confirmandDraft : this.buildRecipientDraftFromMember(),
         minister: this.ministerDraft,
         formData: this.formData,
         includeSponsors: this.isConfirmation(),

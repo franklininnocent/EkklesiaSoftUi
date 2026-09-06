@@ -11,6 +11,7 @@ import { FamilyService } from '@core/services/family.service';
 import { ChurchLeadershipService } from '@core/services/church/church-leadership.service';
 import { SacramentDefinitionService } from '../../services/sacrament-definition.service';
 import { ParishPersonService } from '../../services/person.service';
+import { SacramentPersonContextService } from '../../services/sacrament-person-context.service';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 
 describe('SacramentFormModalComponent', () => {
@@ -94,6 +95,34 @@ describe('SacramentFormModalComponent', () => {
     clearCache: () => undefined
   } as unknown as SacramentDefinitionService;
 
+  const contextStub = {
+    getContext: jasmine.createSpy('getContext').and.returnValue(of({
+      subject: { family_member_id: 'm1', display_name: 'John Connor' },
+      canonical_identity: {
+        name: { value: 'John Connor', field_state: 'CANONICAL', provenance: {} },
+        date_of_birth: { value: '2000-03-01', field_state: 'CANONICAL', provenance: {} },
+        gender: { value: 'male', field_state: 'CANONICAL', provenance: {} },
+        father_name: { value: 'Henry', field_state: 'CANONICAL', provenance: {} },
+        mother_name: { value: 'Emily', field_state: 'CANONICAL', provenance: {} },
+      },
+      family: { record_status: 'FOUND' },
+      parish: { record_status: 'FOUND' },
+      sacraments: {
+        baptism: { record_status: 'FOUND', candidates: [], evidence: { sacrament_id: 1, date: { value: '2000-06-12' } } },
+        confirmation: { record_status: 'NOT_FOUND', candidates: [] },
+        marriage_history: { record_status: 'NOT_FOUND', records: [] },
+      },
+      derived: { baptismal_status: { value: 'baptized_catholic', field_state: 'DERIVED', provenance: {} } },
+      fields: { baptismal_status: { input_hidden: true, auto_resolved: true } },
+      conflicts: [],
+      has_blocking_conflicts: false,
+      missing: [],
+      found_summary: ['member', 'baptism'],
+      record_status: { baptism: 'FOUND', confirmation: 'NOT_FOUND' },
+    })),
+    reconcileIdentity: jasmine.createSpy('reconcileIdentity').and.returnValue(of({ id: 'p1' })),
+  };
+
   beforeEach(async () => {
     await TestBed.configureTestingModule({
       imports: [SacramentFormModalComponent],
@@ -106,6 +135,7 @@ describe('SacramentFormModalComponent', () => {
         { provide: FamilyService, useValue: familyStub },
         { provide: ParishPersonService, useValue: personStub },
         { provide: SacramentDefinitionService, useValue: definitionStub },
+        { provide: SacramentPersonContextService, useValue: contextStub },
         provideMockStore({ initialState: {} })
       ],
       schemas: [NO_ERRORS_SCHEMA]
@@ -349,5 +379,17 @@ describe('SacramentFormModalComponent', () => {
     component.formData = { sacrament_type_id: 2, recipient_name: 'Paul', date_administered: '2025-01-02' } as any;
     component.onSave();
     expect((sacramentServiceStub.updateSacrament as any)).toHaveBeenCalledWith(77, jasmine.any(Object));
+  });
+
+  it('classifies mixed marriage and requires a permission on the register', () => {
+    component.brideDraft = { baptismal_status: 'baptized_catholic' } as any;
+    component.groomDraft = { baptismal_status: 'baptized_non_catholic' } as any;
+    expect(component.marriageClassificationCode).toBe('mixed_marriage');
+    expect(component.marriageRequiresDispensation).toBe(true);
+    expect(component.marriageClassificationLabel).toContain('permission');
+
+    component.groomDraft = { baptismal_status: 'baptized_catholic' } as any;
+    expect(component.marriageClassificationCode).toBe('both_catholic');
+    expect(component.marriageRequiresDispensation).toBe(false);
   });
 });

@@ -72,6 +72,12 @@ describe('CollectionDayComponent', () => {
     expect(component.collectType).toBe('general');
   });
 
+  it('labels unallocated collection-day amounts as family credit', () => {
+    component.amount = 250;
+    component.collectType = 'general';
+    expect(component.allocationPreview[0].label).toContain('Family credit');
+  });
+
   it('opens shortcuts with question mark outside editable fields', () => {
     component.onKeydown({
       key: '?',

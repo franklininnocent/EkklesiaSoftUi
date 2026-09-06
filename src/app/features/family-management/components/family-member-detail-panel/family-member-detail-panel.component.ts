@@ -12,6 +12,7 @@ import { getMemberDisplayName } from '../../utils/profile-completion.util';
 import { getRelationshipLabel } from '../../utils/family-hierarchy.util';
 import { FamilyAffiliationsPanelComponent } from '../family-affiliations-panel/family-affiliations-panel.component';
 import { FamilyHeadProfileBlockComponent } from '../family-head-profile-block/family-head-profile-block.component';
+import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 
 @Component({
   selector: 'app-family-member-detail-panel',
@@ -29,6 +30,8 @@ export class FamilyMemberDetailPanelComponent {
   @Input() headSacramentsExpanded = true;
   @Input() editingHeadImage = false;
   @Input() showHeadWithoutMember = false;
+  @Input() memberRegisterSacraments: Sacrament[] = [];
+  @Input() canViewRegisterSacraments = false;
 
   @Output() editHead = new EventEmitter<void>();
   @Output() editMember = new EventEmitter<number>();

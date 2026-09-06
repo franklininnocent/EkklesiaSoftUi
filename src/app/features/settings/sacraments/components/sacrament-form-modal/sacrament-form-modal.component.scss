@@ -117,3 +117,19 @@
 .cf-split-form-actions {
   justify-content: flex-end;
 }
+
+.party-evidence-anchor.cf-field-focus-highlight {
+  outline: 2px solid #0f766e;
+  outline-offset: 4px;
+  border-radius: 8px;
+  animation: party-evidence-pulse 1.5s ease-out;
+}
+
+@keyframes party-evidence-pulse {
+  0% {
+    background-color: rgba(15, 118, 110, 0.18);
+  }
+  100% {
+    background-color: transparent;
+  }
+}

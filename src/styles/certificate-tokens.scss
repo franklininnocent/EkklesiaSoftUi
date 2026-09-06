@@ -1,0 +1,92 @@
+@font-face {
+  font-family: "Cormorant Garamond";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/certificates/cormorant-garamond-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/certificates/eb-garamond-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/certificates/cinzel-latin.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Playfair Display";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/certificates/playfair-display-latin.woff2") format("woff2");
+}
+
+:root {
+  --cert-page-bg: #fbf7ef;
+  --cert-ink: #1f1a14;
+  --cert-muted: #5c5346;
+  --cert-accent: #6b2d3c;
+  --cert-border-outer: #6b2d3c;
+  --cert-border-inner: #c4a574;
+  --cert-microprint: #d7c4a3;
+  --cert-font-heading: "Cinzel", "Times New Roman", serif;
+  --cert-font-body: "Cormorant Garamond", "EB Garamond", Georgia, serif;
+  --cert-font-display: "Playfair Display", "Cormorant Garamond", serif;
+  --cert-seal: #6b2d3c;
+
+  /* Layout + typography scale (mm) — keep in sync with CertificateLayoutTokens.php */
+  --cert-safe-pt: 11mm;
+  --cert-safe-px: 16mm;
+  --cert-safe-pb: 9mm;
+  --cert-gap-section: 4mm;
+  --cert-gap-after-recipient: 3.5mm;
+  --cert-gap-after-details: 3mm;
+  --cert-spacer-min: 4mm;
+  --cert-spacer-max: 18mm;
+  --cert-size-title: 12mm;
+  --cert-size-kicker: 3.4mm;
+  --cert-size-church: 4.8mm;
+  --cert-size-recipient: 10mm;
+  --cert-size-recipient-label: 3mm;
+  --cert-size-label: 2.8mm;
+  --cert-size-detail: 4.6mm;
+  --cert-size-meta: 3.2mm;
+  --cert-size-meta-label: 2.6mm;
+  --cert-size-registry: 3.4mm;
+  --cert-size-signature-line: 3.6mm;
+  --cert-size-signature-label: 2.6mm;
+  --cert-size-footer: 3mm;
+  --cert-size-field-value: 3.8mm;
+  --cert-line-height-body: 1.35;
+}
+
+.cert-print-root {
+  color: var(--cert-ink);
+  font-family: var(--cert-font-body);
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+
+  .cert-preview-stage {
+    transform: none !important;
+    width: auto !important;
+    height: auto !important;
+  }
+
+  .cert-page {
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}

@@ -29,6 +29,7 @@ import {
   OrganizationType,
 } from '../models/ministries.model';
 import { MinistriesApiService } from '../services/ministries-api.service';
+import { ministriesLink } from '../utils/ministries-links';
 
 type OrganizationStatusFilter = '' | 'active' | 'inactive';
 
@@ -67,6 +68,14 @@ export class OrganizationListPageComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+
+  get newOrganizationLink(): string {
+    return ministriesLink(this.router.url, 'new');
+  }
+
+  get settingsLink(): string {
+    return ministriesLink(this.router.url, 'settings');
+  }
 
   organizations: Organization[] = [];
   categories: OrganizationCategory[] = [];

@@ -1,0 +1,10 @@
+<div class="missing-fields-summary" *ngIf="items.length">
+  <p class="missing-fields-summary__lead">
+    {{ leadText }}
+  </p>
+  <ul>
+    <li *ngFor="let item of items" [class.is-advisory]="isAdvisory(item)">
+      <button type="button" (click)="focusField.emit(item.field)">{{ item.label }}</button>
+    </li>
+  </ul>
+</div>

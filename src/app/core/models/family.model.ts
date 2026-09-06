@@ -56,6 +56,16 @@ export interface FamilyMember {
   // Demographics
   date_of_birth?: string;
   gender?: 'male' | 'female' | 'other';
+  /** Resolved from family relationships when returned by member APIs. */
+  father_name?: string | null;
+  mother_name?: string | null;
+  person?: {
+    id?: string;
+    date_of_birth?: string | null;
+    gender?: 'male' | 'female' | 'other' | null;
+    father_name?: string | null;
+    mother_name?: string | null;
+  };
   relationship_to_head: 'self' | 'spouse' | 'son' | 'daughter' | 'father' | 'mother' | 
                          'brother' | 'sister' | 'grandfather' | 'grandmother' | 
                          'grandson' | 'granddaughter' | 'uncle' | 'aunt' | 
@@ -275,6 +285,8 @@ export interface FamilyFilters {
   search?: string;
   status?: string;
   bcc_id?: string;
+  missing_sacrament?: string;
+  progression?: string;
   parish_zone_id?: string;
   city?: string;
   sort_by?: string;
@@ -295,4 +307,66 @@ export interface BCCFilters {
   page?: number;
 }
 
+export interface BccRelocationPreview {
+  family_id: string;
+  family_name: string;
+  member_count: number;
+  current_bcc_id?: string | null;
+  current_bcc_name?: string | null;
+  target_bcc_id: string;
+  target_bcc_name: string;
+  transfer_mode: string;
+  leadership_impacts: {
+    leader_id: string;
+    member_name: string;
+    role: string;
+    role_label: string;
+  }[];
+  warnings: string[];
+}
+
+export interface RelocateBccPayload {
+  target_bcc_id: string;
+  effective_date: string;
+  transition_id: string;
+  historical_note?: string | null;
+}
+
+export interface MarriageTransitionPayload {
+  transition_id: string;
+  outcome: 'new_household' | 'join_existing';
+  effective_date: string;
+  bride_member_id?: string;
+  groom_member_id?: string;
+  new_household?: {
+    family_name: string;
+    bcc_id: string;
+    address_line_1?: string;
+    city?: string;
+  };
+  new_household_head_member_id?: string;
+  target_family_id?: string;
+  joining_member_id?: string;
+  partner_member_id?: string;
+  origin_successions?: {
+    origin_family_id: string;
+    replacement_head_member_id?: string | null;
+  }[];
+}
+
+export interface FamilyTransitionHistoryRecord {
+  id: string;
+  transition_id: string;
+  member_id: string;
+  from_family_id?: string | null;
+  to_family_id?: string | null;
+  previous_family_role?: string | null;
+  new_family_role?: string | null;
+  transition_type: string;
+  effective_date: string;
+  metadata?: Record<string, unknown> | null;
+  member?: { id: string; first_name: string; last_name: string };
+  performer?: { id: string; name: string };
+  created_at?: string;
+}
 

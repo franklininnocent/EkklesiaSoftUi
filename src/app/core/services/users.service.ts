@@ -7,7 +7,8 @@ import {
   UserListResponse,
   UserResponse,
   UserRequest,
-  UserPermissionsResponse
+  UserPermissionsResponse,
+  LinkableClergy
 } from '../models/user.model';
 
 /**
@@ -327,6 +328,26 @@ export class UsersService {
     return this.http.patch<any>(`${environment.apiUrl}/users/${userId}/status`, { active: status }).pipe(
       catchError(error => {
         console.error('Error updating user status:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Search active parish clergy leaders available for login linking.
+   */
+  getLinkableClergy(search?: string): Observable<{ success: boolean; data: LinkableClergy[] }> {
+    let params = new HttpParams();
+    if (search && search.trim() !== '') {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<{ success: boolean; data: LinkableClergy[] }>(
+      `${this.apiUrl}/linkable-clergy`,
+      { params }
+    ).pipe(
+      catchError(error => {
+        console.error('Error fetching linkable clergy:', error);
         return throwError(() => error);
       })
     );

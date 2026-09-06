@@ -28,8 +28,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             break;
           case 401:
             errorMessage = 'Unauthorized. Please login again.';
-            if (!req.url.includes('/auth/logout')) {
-              router.navigate(['/auth/login']);
+            if (!req.url.includes('/auth/logout') && !req.url.includes('/auth/login')) {
+              auth.clearAuthState();
             }
             break;
           case 403:
@@ -72,6 +72,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         message: errorMessage,
         status: error.status,
         errors: error.error?.errors,
+        code: error.error?.code,
+        context: error.error?.context,
         reason,
         subscription_status: subscriptionStatus,
       }));

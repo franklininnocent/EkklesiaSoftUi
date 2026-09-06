@@ -1,0 +1,420 @@
+<section class="sacraments-dashboard cf-page" [class.sacraments-dashboard--loading]="loading">
+  <app-page-header
+    title="Sacraments"
+    subtitle="Parish sacramental activity, trends, and participation at a glance."
+  >
+    <div class="sacraments-dashboard__action-bar" role="toolbar" aria-label="Dashboard actions and filters">
+      <div class="sacraments-dashboard__action-bar__primary">
+        <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="openCreate()">
+          + Sacrament
+        </button>
+        <a routerLink="/sacraments/register" class="cf-btn cf-btn--sm">Register</a>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon cf-btn--sm"
+          (click)="reload()"
+          aria-label="Refresh dashboard"
+          title="Refresh dashboard"
+        >
+          ↻
+        </button>
+      </div>
+
+      <div class="sacraments-dashboard__action-bar__divider" aria-hidden="true"></div>
+
+      <div class="sacraments-dashboard__action-bar__filters" role="region" aria-label="Dashboard filters">
+        <span class="cf-meta sacraments-dashboard__filter-label">Period</span>
+        <div class="sacraments-dashboard__period-pills" role="tablist" aria-label="Select period">
+          <button
+            type="button"
+            role="tab"
+            class="cf-btn cf-btn--sm"
+            [class.cf-btn-primary]="periodPreset === 'ytd'"
+            [attr.aria-selected]="periodPreset === 'ytd'"
+            [title]="periodButtonTitle('ytd')"
+            (click)="setPeriod('ytd')"
+            (keydown.enter)="setPeriod('ytd')"
+            (keydown.space)="onPeriodKeydown($event, 'ytd')"
+          >{{ periodButtonLabel('ytd') }}</button>
+          <button
+            type="button"
+            role="tab"
+            class="cf-btn cf-btn--sm"
+            [class.cf-btn-primary]="periodPreset === 'month'"
+            [attr.aria-selected]="periodPreset === 'month'"
+            [title]="periodButtonTitle('month')"
+            (click)="setPeriod('month')"
+            (keydown.enter)="setPeriod('month')"
+            (keydown.space)="onPeriodKeydown($event, 'month')"
+          >{{ periodButtonLabel('month') }}</button>
+          <button
+            type="button"
+            role="tab"
+            class="cf-btn cf-btn--sm"
+            [class.cf-btn-primary]="periodPreset === 'last12'"
+            [attr.aria-selected]="periodPreset === 'last12'"
+            [title]="periodButtonTitle('last12')"
+            (click)="setPeriod('last12')"
+            (keydown.enter)="setPeriod('last12')"
+            (keydown.space)="onPeriodKeydown($event, 'last12')"
+          >{{ periodButtonLabel('last12') }}</button>
+          <button
+            type="button"
+            role="tab"
+            class="cf-btn cf-btn--sm"
+            [class.cf-btn-primary]="periodPreset === 'all'"
+            [attr.aria-selected]="periodPreset === 'all'"
+            [title]="periodButtonTitle('all')"
+            (click)="setPeriod('all')"
+            (keydown.enter)="setPeriod('all')"
+            (keydown.space)="onPeriodKeydown($event, 'all')"
+          >{{ periodButtonLabel('all') }}</button>
+        </div>
+
+        <label class="sacraments-dashboard__community-filter">
+          <span>Community</span>
+          <select
+            id="sacraments-dashboard-bcc"
+            [disabled]="loadingBccs"
+            [value]="selectedBccId || ''"
+            (change)="onBccChange($any($event.target).value)"
+          >
+            <option value="">All parish</option>
+            <option *ngFor="let bcc of bccs" [value]="bcc.id">{{ bcc.name }}</option>
+          </select>
+        </label>
+
+        <button
+          type="button"
+          class="cf-btn-text sacraments-dashboard__filter-chip"
+          *ngIf="selectedBccId"
+          (click)="clearBccFilter()"
+          [attr.aria-label]="'Clear community filter: ' + selectedBccLabel"
+        >
+          {{ selectedBccLabel }} ×
+        </button>
+      </div>
+    </div>
+  </app-page-header>
+
+  <section class="bcc-kpi-rail cf-panel sacraments-dashboard__kpi-rail" aria-label="Key metrics" *ngIf="summary">
+    <div class="bcc-kpi-rail__item bcc-kpi-rail__item--emphasis">
+      <span class="bcc-kpi-rail__label">Total in period</span>
+      <span class="bcc-kpi-rail__value">{{ summary.kpis.total_period }}</span>
+    </div>
+    <div class="bcc-kpi-rail__item">
+      <span class="bcc-kpi-rail__label">This month</span>
+      <span class="bcc-kpi-rail__value">{{ summary.kpis.this_month }}</span>
+    </div>
+    <div class="bcc-kpi-rail__item">
+      <span class="bcc-kpi-rail__label">Monthly avg</span>
+      <span class="bcc-kpi-rail__value bcc-kpi-rail__value--sm">{{ summary.kpis.monthly_average }}</span>
+    </div>
+    <div class="bcc-kpi-rail__item">
+      <span class="bcc-kpi-rail__label">All time</span>
+      <span class="bcc-kpi-rail__value">{{ summary.kpis.total_all_time }}</span>
+    </div>
+    <div class="bcc-kpi-rail__item">
+      <span class="bcc-kpi-rail__label">Year-over-year</span>
+      <span
+        class="bcc-kpi-rail__value bcc-kpi-rail__value--sm"
+        [ngClass]="yoyRailClass(summary.kpis.yoy_growth_pct)"
+      >{{ yoyLabel(summary.kpis.yoy_growth_pct) }}</span>
+    </div>
+
+    <div class="sacraments-dashboard__breakdown" *ngIf="topTypeKpis.length" aria-label="Sacrament activity breakdown">
+      <span
+        class="sacraments-dashboard__breakdown-item"
+        *ngFor="let row of topTypeKpis"
+        [ngClass]="typeAccentClass(row.code)"
+      >
+        <span class="sacraments-dashboard__breakdown-dot" aria-hidden="true"></span>
+        <span>{{ row.label }}</span>
+        <strong>{{ row.period }}</strong>
+      </span>
+    </div>
+  </section>
+
+  <app-loading-skeleton *ngIf="loading && !summary" [rows]="4" />
+
+  <div *ngIf="!loading && error" class="cf-inline-alert cf-panel" role="alert">
+    {{ error }}
+    <button type="button" class="cf-btn cf-btn--sm" (click)="reload()">Retry</button>
+  </div>
+
+  <ng-container *ngIf="!loading && summary">
+    <section
+      class="cf-panel sacraments-dashboard__panel sacraments-dashboard__panel--wide sacraments-dashboard__participation-analytics"
+      *ngIf="summary && (gaps || summary.kpis.total_period > 0)"
+    >
+      <div class="sacraments-dashboard__panel-head">
+        <div>
+          <h2 class="cf-section-title">Parish participation</h2>
+          <p class="cf-meta" *ngIf="gaps">
+            {{ gaps.eligible_members }} active family members in {{ participationScopeLabel }} — who has received each sacrament
+          </p>
+        </div>
+        <div class="sacraments-dashboard__panel-actions" *ngIf="gaps">
+          <label class="sacraments-dashboard__toggle">
+            <input
+              type="checkbox"
+              [checked]="includeMarriageGaps"
+              (change)="setMarriageGaps($any($event.target).checked)"
+            />
+            <span>Include marriage (age {{ gaps.thresholds.matrimony }}+)</span>
+          </label>
+          <button type="button" class="cf-btn cf-btn--sm" (click)="openFamilies()">View families</button>
+        </div>
+      </div>
+
+      <div
+        class="sacraments-dashboard__analytics-grid sacraments-dashboard__participation-grid"
+        role="group"
+        aria-label="Parish participation analytics"
+      >
+        <article class="sacraments-dashboard__analytical-card" *ngIf="gaps">
+          <header class="sacraments-dashboard__analytical-card__head">
+            <h3 class="sacraments-dashboard__analytical-card__title">Parish participation</h3>
+            <button
+              type="button"
+              class="sacraments-dashboard__info-btn"
+              title="Eligible parish members who have received each sacrament vs those still missing. Click a red missing flow to view families."
+              aria-label="Eligible parish members who have received each sacrament vs those still missing. Click a red missing flow to view families."
+            >
+              <span aria-hidden="true">ⓘ</span>
+            </button>
+          </header>
+          <div class="sacraments-dashboard__analytical-card__body">
+            <app-sacrament-dashboard-participation-sankey
+              [rows]="gapSacraments"
+              [compact]="true"
+              (missingSelected)="openFamiliesMissing($event)"
+            />
+          </div>
+        </article>
+
+        <article class="sacraments-dashboard__analytical-card">
+          <header class="sacraments-dashboard__analytical-card__head">
+            <h3 class="sacraments-dashboard__analytical-card__title">By sacrament type</h3>
+            <button
+              type="button"
+              class="sacraments-dashboard__info-btn"
+              [title]="'Sacrament counts in ' + (summary.period.label || 'selected period') + '. Click a segment to view the register.'"
+              [attr.aria-label]="'Sacrament counts in ' + (summary.period.label || 'selected period') + '. Click a segment to view the register.'"
+            >
+              <span aria-hidden="true">ⓘ</span>
+            </button>
+          </header>
+          <div class="sacraments-dashboard__analytical-card__body">
+            <app-sacrament-dashboard-type-donut-chart
+              [rows]="summary.breakdowns.by_type_totals"
+              [typeKpis]="summary.kpis.by_type"
+              [compact]="true"
+              (typeSelected)="openRegister({
+                sacrament_type_id: $event.sacrament_type_id,
+                date_from: summary.period.date_from,
+                date_to: summary.period.date_to
+              })"
+            />
+          </div>
+        </article>
+
+        <article class="sacraments-dashboard__analytical-card">
+          <header class="sacraments-dashboard__analytical-card__head">
+            <div class="sacraments-dashboard__analytical-card__title-row">
+              <h3 class="sacraments-dashboard__analytical-card__title">Monthly trend</h3>
+              <button
+                type="button"
+                class="sacraments-dashboard__info-btn"
+                title="Shows monthly celebration counts for all sacrament types. Click a point to view records for that month and sacrament."
+                aria-label="Shows monthly celebration counts for all sacrament types. Click a point to view records for that month and sacrament."
+              >
+                <span aria-hidden="true">ⓘ</span>
+              </button>
+            </div>
+          </header>
+          <div class="sacraments-dashboard__analytical-card__body">
+            <app-sacrament-dashboard-monthly-trend-chart
+              [series]="summary.trends.series"
+              (pointSelected)="openTrendPoint($event.point, $event.seriesCode)"
+            />
+          </div>
+        </article>
+      </div>
+
+      <ng-container *ngIf="gaps as gapData">
+        <div
+          class="sacraments-dashboard__analytics-grid sacraments-dashboard__participation-grid sacraments-dashboard__participation-grid--insights"
+          *ngIf="gapData.progression || summary.matrimony?.canonical_breakdown"
+          role="group"
+          aria-label="Parish participation insights"
+        >
+          <article class="sacraments-dashboard__analytical-card" *ngIf="gapData.progression">
+            <header class="sacraments-dashboard__analytical-card__head">
+              <h3 class="sacraments-dashboard__analytical-card__title">Progression insights</h3>
+              <button
+                type="button"
+                class="sacraments-dashboard__info-btn"
+                title="Members flagged for sacrament progression gaps, plus unmarried women over 18 and unmarried men over 23 who have not received Holy Orders."
+                aria-label="Members flagged for sacrament progression gaps, plus unmarried women over 18 and unmarried men over 23 who have not received Holy Orders."
+              >
+                <span aria-hidden="true">ⓘ</span>
+              </button>
+            </header>
+            <div class="sacraments-dashboard__analytical-card__body">
+              <app-sacrament-dashboard-progression-radial-chart
+                [progression]="gapData.progression"
+                [progressionThreshold]="gapData.thresholds.progression ?? gapData.thresholds.confirmation ?? 10"
+                (progressionSelected)="openMembersProgression($event)"
+              />
+            </div>
+          </article>
+
+          <article
+            class="sacraments-dashboard__analytical-card"
+            *ngIf="summary.matrimony?.canonical_breakdown"
+          >
+            <header class="sacraments-dashboard__analytical-card__head">
+              <div>
+                <h3 class="sacraments-dashboard__analytical-card__title">Canonical breakdown</h3>
+                <p class="cf-meta">Parish marriage register</p>
+              </div>
+              <button
+                type="button"
+                class="sacraments-dashboard__info-btn"
+                title="Canonical classification and profile linkage for all marriages recorded in the parish register."
+                aria-label="Canonical classification and profile linkage for all marriages recorded in the parish register."
+              >
+                <span aria-hidden="true">ⓘ</span>
+              </button>
+            </header>
+            <div class="sacraments-dashboard__analytical-card__body">
+              <app-sacrament-dashboard-marriage-canonical-radial-chart
+                [breakdown]="summary.matrimony!.canonical_breakdown!"
+                [loading]="loading"
+                (ringSelected)="openRegisterMarriageCanonical($event)"
+              />
+            </div>
+          </article>
+        </div>
+      </ng-container>
+    </section>
+
+    <div class="sacraments-dashboard__panels" *ngIf="summary.kpis.total_period > 0; else emptyDashboard">
+      <section class="cf-panel sacraments-dashboard__panel sacraments-dashboard__panel--wide sacraments-dashboard__demographics-analytics">
+        <div class="sacraments-dashboard__panel-head" *ngIf="demographicsTypeOptions.length">
+          <div>
+            <h2 class="cf-section-title">Demographics</h2>
+            <p class="cf-meta">Gender and age at time of sacrament</p>
+          </div>
+        </div>
+
+        <div
+          class="sacraments-dashboard__analytics-grid sacraments-dashboard__demographics-row"
+          [class.sacraments-dashboard__demographics-row--solo]="!demographicsTypeOptions.length"
+          role="group"
+          aria-label="Parish membership and demographics analytics"
+        >
+          <article class="sacraments-dashboard__analytical-card">
+            <header class="sacraments-dashboard__analytical-card__head">
+              <h3 class="sacraments-dashboard__analytical-card__title">Parish members vs visitors</h3>
+            </header>
+            <div class="sacraments-dashboard__analytical-card__body">
+              <app-sacrament-dashboard-member-status-chart
+                [memberStatus]="summary.breakdowns.member_status"
+                [compact]="true"
+              />
+            </div>
+          </article>
+
+          <article class="sacraments-dashboard__analytical-card" *ngIf="demographicsTypeOptions.length">
+            <header class="sacraments-dashboard__analytical-card__head">
+              <div class="sacraments-dashboard__analytical-card__title-row">
+                <h3 class="sacraments-dashboard__analytical-card__title">Gender</h3>
+                <p class="cf-meta sacraments-dashboard__age-meta">All sacrament types</p>
+              </div>
+            </header>
+            <div class="sacraments-dashboard__analytical-card__body">
+              <app-sacrament-dashboard-gender-chart
+                [rows]="summary.demographics.gender_by_type"
+                [compact]="true"
+                (segmentSelected)="openRegister({
+                  sacrament_type_id: $event.sacrament_type_id,
+                  date_from: summary.period.date_from,
+                  date_to: summary.period.date_to
+                })"
+              />
+            </div>
+          </article>
+
+          <article class="sacraments-dashboard__analytical-card" *ngIf="demographicsTypeOptions.length">
+            <header class="sacraments-dashboard__analytical-card__head">
+              <div class="sacraments-dashboard__analytical-card__title-row">
+                <h3 class="sacraments-dashboard__analytical-card__title">Age distribution</h3>
+                <p class="cf-meta sacraments-dashboard__age-meta">All sacrament types</p>
+              </div>
+            </header>
+            <div class="sacraments-dashboard__analytical-card__body">
+              <app-sacrament-dashboard-age-chart
+                [rows]="summary.demographics.age_by_type"
+                [compact]="true"
+                (bucketSelected)="openRegister({
+                  sacrament_type_id: $event.sacrament_type_id,
+                  date_from: summary.period.date_from,
+                  date_to: summary.period.date_to
+                })"
+              />
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="cf-panel sacraments-dashboard__panel">
+        <div class="sacraments-dashboard__panel-head">
+          <div>
+            <h2 class="cf-section-title">Recent records</h2>
+            <p class="cf-meta">Latest sacraments in this period</p>
+          </div>
+          <button type="button" class="cf-btn cf-btn--sm" (click)="openRegister({ date_from: summary.period.date_from, date_to: summary.period.date_to })">
+            View all
+          </button>
+        </div>
+
+        <div class="cf-table-responsive" *ngIf="summary.recent.length; else noRecent">
+          <table class="cf-table">
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Recipient</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let record of summary.recent">
+                <td>{{ record.type?.name }}</td>
+                <td>{{ record.recipient_name }}</td>
+                <td>{{ record.date_administered | date:'mediumDate' }}</td>
+                <td>
+                  <button type="button" class="cf-btn cf-btn--sm" (click)="openRecord(record.id)">Open</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <ng-template #noRecent>
+          <p class="cf-meta">No recent records in this period.</p>
+        </ng-template>
+      </section>
+    </div>
+
+    <ng-template #emptyDashboard>
+      <app-cf-empty-state
+        title="No sacraments in this period"
+        description="When you record baptisms, marriages, and other sacraments, they will appear here with trends and breakdowns."
+      >
+        <button type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">Record sacrament</button>
+      </app-cf-empty-state>
+    </ng-template>
+  </ng-container>
+</section>

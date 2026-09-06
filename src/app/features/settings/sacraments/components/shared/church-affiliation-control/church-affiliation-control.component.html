@@ -1,6 +1,6 @@
 <div class="cf-affiliation">
   <p class="cf-affiliation__label" [id]="'aff_label_' + controlId">{{ label }}</p>
-  <p class="cf-split-field__hint">
+  <p class="cf-split-field__hint" *ngIf="showHint">
     Church affiliation is where this person belonged for this sacrament. It is separate from whether they are a member in this parish’s directory.
   </p>
 

@@ -1,0 +1,51 @@
+@import '../../../../../donations/styles/stewardship-split-layout.scss';
+@import '../_sacrament-control-chrome.scss';
+
+:host {
+  display: block;
+  grid-column: 1 / -1;
+  min-width: 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--cf-panel-border);
+}
+
+:host(:last-of-type) {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.marriage-party-panel {
+  gap: 0.65rem;
+}
+
+.marriage-party-panel__records {
+  margin-top: 0;
+}
+
+.marriage-party-panel__evidence {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.marriage-party-panel__confirmation {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--cf-slate-700);
+  line-height: 1.4;
+}
+
+.marriage-party-panel__confirmation-label {
+  display: block;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--cf-muted);
+  margin-bottom: 0.125rem;
+}
+
+.party-evidence-anchor.cf-field-focus-highlight {
+  outline: 2px solid var(--cf-primary);
+  outline-offset: 2px;
+  border-radius: var(--cf-radius-sm);
+}

@@ -17,7 +17,8 @@ describe('UserFormModalComponent', () => {
 
   const usersServiceStub = {
     createUser: jasmine.createSpy('createUser').and.returnValue(of({ success: true, data: {} })),
-    updateUser: jasmine.createSpy('updateUser').and.returnValue(of({ success: true, data: {} }))
+    updateUser: jasmine.createSpy('updateUser').and.returnValue(of({ success: true, data: {} })),
+    getLinkableClergy: jasmine.createSpy('getLinkableClergy').and.returnValue(of({ success: true, data: [] }))
   } as unknown as UsersService;
 
   const rolesServiceStub = {
@@ -65,7 +66,8 @@ describe('UserFormModalComponent', () => {
       contact_number: '',
       user_type: 1,
       role_ids: [],
-      active: 1
+      active: 1,
+      person_id: null
     };
 
     component.isFormValid();

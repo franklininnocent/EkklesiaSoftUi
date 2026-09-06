@@ -3,8 +3,10 @@ import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SacramentService } from '../../services/sacrament.service';
-import { Sacrament, SacramentType, SacramentListParams, SacramentListResponse, SacramentParticipant } from '../../models/sacrament.model';
+import { Sacrament, SacramentType, SacramentListParams, SacramentListResponse, SacramentParticipant, MarriageRegisterFilterKey } from '../../models/sacrament.model';
 import { ToastService } from '@core/services/toast.service';
+import { BCCService } from '@core/services/bcc.service';
+import { BCC } from '@core/models/family.model';
 import { AuthService } from '@core/services/auth.service';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
@@ -80,6 +82,8 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   bookNumberFilter = '';
   selectedFamilyId: string | null = null;
   selectedBccId: string | null = null;
+  marriageRegisterFilter: MarriageRegisterFilterKey | '' = '';
+  bccs: BCC[] = [];
   
   // Sorting
   sortBy = 'date_administered';
@@ -124,25 +128,14 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   showAdvancedSearch = false;
   searchFields: SearchField[] = [];
 
-  // Bulk operations
-  selectedSacraments: Set<number> = new Set();
-  selectAll = false;
-  showBulkActions = false;
-  bulkActionType: 'delete' | 'status' | 'export' | null = null;
-  bulkStatusValue: string = 'registered';
-
-  /** Bulk confirmation / export chooser (replaces native confirm/prompt). */
-  showBulkConfirmModal = false;
-  bulkConfirmTitle = '';
-  bulkConfirmMessage = '';
-  bulkConfirmAction: (() => void) | null = null;
-  showExportFormatModal = false;
   loadError: string | null = null;
   loaded = false;
   showOverflowMenu = false;
+  openRowMenuId: number | null = null;
 
   constructor(
     private sacramentService: SacramentService,
+    private bccService: BCCService,
     private toastService: ToastService,
     private router: Router,
     private route: ActivatedRoute,
@@ -187,21 +180,80 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    if (!this.showOverflowMenu) {
+    const target = event.target as HTMLElement | null;
+    if (!target) {
       return;
     }
-    const target = event.target as HTMLElement | null;
-    if (target && !target.closest('.sacrament-list__overflow')) {
+
+    if (this.showOverflowMenu && !target.closest('.sacrament-list__overflow')) {
       this.showOverflowMenu = false;
       this.cdr.markForCheck();
+    }
+
+    if (this.openRowMenuId !== null && !target.closest('.sacrament-list__row-overflow')) {
+      this.closeRowMenu();
     }
   }
 
   @HostListener('document:keydown.escape')
   onEscape(): void {
+    let changed = false;
     if (this.showOverflowMenu) {
       this.showOverflowMenu = false;
+      changed = true;
+    }
+    if (this.openRowMenuId !== null) {
+      this.openRowMenuId = null;
+      changed = true;
+    }
+    if (changed) {
       this.cdr.markForCheck();
+    }
+  }
+
+  toggleRowMenu(sacramentId: number, event: MouseEvent): void {
+    event.stopPropagation();
+    this.showOverflowMenu = false;
+    this.openRowMenuId = this.openRowMenuId === sacramentId ? null : sacramentId;
+    this.cdr.markForCheck();
+  }
+
+  closeRowMenu(): void {
+    if (this.openRowMenuId === null) {
+      return;
+    }
+    this.openRowMenuId = null;
+    this.cdr.markForCheck();
+  }
+
+  hasDestructiveRowActions(sacrament: Sacrament): boolean {
+    return this.canVoidSacrament(sacrament) || this.isTenantAdmin;
+  }
+
+  onRowMenuAction(
+    action: 'certificate' | 'edit' | 'correct' | 'void' | 'remove' | 'details',
+    sacrament: Sacrament
+  ): void {
+    this.closeRowMenu();
+    switch (action) {
+      case 'details':
+        this.viewSacrament(sacrament);
+        break;
+      case 'certificate':
+        this.viewCertificate(sacrament);
+        break;
+      case 'edit':
+        this.onEditSacrament(sacrament);
+        break;
+      case 'correct':
+        this.openCorrectDialog(sacrament);
+        break;
+      case 'void':
+        this.openVoidDialog(sacrament);
+        break;
+      case 'remove':
+        this.onDeleteSacrament(sacrament);
+        break;
     }
   }
 
@@ -214,6 +266,8 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       error: () => undefined,
     });
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      this.applyFilterQueryParams(params);
+
       const editId = params.get('edit');
       const create = params.get('create');
       if (editId) {
@@ -236,6 +290,84 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
           replaceUrl: true,
         });
       }
+    });
+  }
+
+  /**
+   * Apply dashboard drill-down filters from query parameters.
+   */
+  private applyFilterQueryParams(params: import('@angular/router').ParamMap): void {
+    const typeId = params.get('sacrament_type_id');
+    const status = params.get('status');
+    const dateFrom = params.get('date_from');
+    const dateTo = params.get('date_to');
+    const familyId = params.get('family_id');
+    const bccId = params.get('bcc_id');
+    const marriageRegisterFilter = params.get('marriage_register_filter');
+
+    let changed = false;
+
+    if (typeId) {
+      const parsed = Number(typeId);
+      if (!Number.isNaN(parsed) && this.selectedSacramentType !== parsed) {
+        this.selectedSacramentType = parsed;
+        changed = true;
+      }
+    }
+
+    if (status && this.selectedStatus !== status) {
+      this.selectedStatus = status;
+      changed = true;
+    }
+
+    if (dateFrom && this.dateFrom !== dateFrom) {
+      this.dateFrom = dateFrom;
+      changed = true;
+    }
+
+    if (dateTo && this.dateTo !== dateTo) {
+      this.dateTo = dateTo;
+      changed = true;
+    }
+
+    if (familyId && this.selectedFamilyId !== familyId) {
+      this.selectedFamilyId = familyId;
+      changed = true;
+    }
+
+    if (bccId && this.selectedBccId !== bccId) {
+      this.selectedBccId = bccId;
+      changed = true;
+    }
+
+    if (marriageRegisterFilter) {
+      const parsedFilter = this.parseMarriageRegisterFilter(marriageRegisterFilter);
+      if (parsedFilter && this.marriageRegisterFilter !== parsedFilter) {
+        this.marriageRegisterFilter = parsedFilter;
+        changed = true;
+      }
+    }
+
+    if (changed && this.currentTenantId) {
+      this.syncSearchFieldValues();
+      this.currentPage = 1;
+      this.loadSacraments();
+    }
+  }
+
+  private syncSearchFieldValues(): void {
+    const values: Record<string, unknown> = {
+      sacrament_type_id: this.selectedSacramentType ?? undefined,
+      status: this.selectedStatus || undefined,
+      date_from: this.dateFrom || undefined,
+      date_to: this.dateTo || undefined,
+      minister_name: this.ministerNameFilter || undefined,
+      certificate_number: this.certificateNumberFilter || undefined,
+      book_number: this.bookNumberFilter || undefined,
+    };
+
+    this.searchFields.forEach((field) => {
+      field.value = values[field.key];
     });
   }
 
@@ -344,6 +476,25 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   /**
+   * Load BCC options for filter chips
+   */
+  loadBccs(): void {
+    this.bccService
+      .getBCCs({ status: 'active', per_page: 500, sort_by: 'name', sort_order: 'asc' })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          this.bccs = response.data ?? [];
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.bccs = [];
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /**
    * Load current user to get tenant_id
    */
   loadCurrentUser(): void {
@@ -353,6 +504,8 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       next: (user) => {
         if (user && user.tenant_id) {
           this.currentTenantId = user.tenant_id;
+          this.loadBccs();
+          this.applyFilterQueryParams(this.route.snapshot.queryParamMap);
           this.loadSacraments();
         } else {
           this.toastService.error('You must be associated with a church to manage sacraments.');
@@ -418,6 +571,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       book_number: this.bookNumberFilter || undefined,
       family_id: this.selectedFamilyId || undefined,
       bcc_id: this.selectedBccId || undefined,
+      marriage_register_filter: this.marriageRegisterFilter === '' ? undefined : this.marriageRegisterFilter,
       sort_by: this.sortBy,
       sort_dir: this.sortDir
     };
@@ -469,6 +623,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     this.bookNumberFilter = '';
     this.selectedFamilyId = null;
     this.selectedBccId = null;
+    this.marriageRegisterFilter = '';
     this.currentPage = 1;
     this.loadSacraments();
   }
@@ -848,14 +1003,16 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       clearTimeout(this.undoTimeout);
     }
 
-    // Show success message with undo option
     this.toastService.success(
-      'Sacrament deleted successfully. Click to undo.',
+      'Sacrament deleted successfully.',
       'Success',
-      8000 // 8 seconds to allow undo
+      5000
     );
+    // Soft-delete can be undone from the detail/list restore action when permitted.
+    this.deletedSacrament = deletedId
+      ? ({ id: deletedId } as Sacrament)
+      : null;
 
-    // Set timeout to clear undo option after 8 seconds
     this.undoTimeout = setTimeout(() => {
       this.deletedSacrament = null;
     }, 8000);
@@ -1108,7 +1265,59 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       });
     }
 
+    if (this.selectedBccId) {
+      const bcc = this.bccs.find((row) => row.id === this.selectedBccId);
+      filters.push({
+        key: 'bcc_id',
+        label: 'Community group',
+        value: this.selectedBccId,
+        displayValue: bcc?.name || this.selectedBccId,
+      });
+    }
+
+    if (this.marriageRegisterFilter) {
+      filters.push({
+        key: 'marriage_register_filter',
+        label: 'Marriage register',
+        value: this.marriageRegisterFilter,
+        displayValue: this.marriageRegisterFilterLabel(this.marriageRegisterFilter),
+      });
+    }
+
     return filters;
+  }
+
+  private parseMarriageRegisterFilter(value: string): MarriageRegisterFilterKey | '' {
+    switch (value) {
+      case 'catholic_both':
+      case 'mixed_disparity':
+      case 'convalidations':
+      case 'profile_linked':
+      case 'same_parish':
+      case 'inter_parish':
+        return value;
+      default:
+        return '';
+    }
+  }
+
+  private marriageRegisterFilterLabel(filter: MarriageRegisterFilterKey): string {
+    switch (filter) {
+      case 'catholic_both':
+        return 'Both Catholic';
+      case 'mixed_disparity':
+        return 'Mixed / disparity of cult';
+      case 'convalidations':
+        return 'Convalidations';
+      case 'profile_linked':
+        return 'Profile linked';
+      case 'same_parish':
+        return 'Same parish (bride & groom)';
+      case 'inter_parish':
+        return 'Different parishes (bride & groom)';
+      default:
+        return filter;
+    }
   }
 
   /**
@@ -1136,6 +1345,10 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       this.certificateNumberFilter = '';
     } else if (filter.key === 'book_number') {
       this.bookNumberFilter = '';
+    } else if (filter.key === 'bcc_id') {
+      this.selectedBccId = null;
+    } else if (filter.key === 'marriage_register_filter') {
+      this.marriageRegisterFilter = '';
     }
 
     // Update search field value
@@ -1161,307 +1374,13 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     this.bookNumberFilter = '';
     this.selectedFamilyId = null;
     this.selectedBccId = null;
+    this.marriageRegisterFilter = '';
     this.searchTerm = '';
     this.searchFields.forEach(field => {
       field.value = undefined;
     });
     this.currentPage = 1;
     this.loadSacraments();
-  }
-
-  /**
-   * Bulk export selected sacraments — opens format chooser (no native prompt).
-   */
-  onBulkExport(): void {
-    if (this.selectedSacraments.size === 0) {
-      this.toastService.error('Please select at least one sacrament to export.');
-      return;
-    }
-    this.showExportFormatModal = true;
-    this.cdr.markForCheck();
-  }
-
-  confirmExportFormat(format: 'pdf' | 'csv'): void {
-    this.showExportFormatModal = false;
-    const selectedData = this.sacraments.filter((s) => this.selectedSacraments.has(s.id));
-    this.exportSacraments(selectedData, 'selected', format);
-    this.cdr.markForCheck();
-  }
-
-  cancelExportFormat(): void {
-    this.showExportFormatModal = false;
-    this.cdr.markForCheck();
-  }
-
-  /**
-   * Export sacraments to PDF or Excel
-   */
-  exportSacraments(
-    sacraments: Sacrament[],
-    exportType: 'all' | 'selected' | 'filtered' = 'all',
-    format: 'pdf' | 'csv' = 'csv'
-  ): void {
-    if (!sacraments || sacraments.length === 0) {
-      this.toastService.error('No sacraments to export.');
-      return;
-    }
-    if (format === 'pdf') {
-      this.exportToPDF(sacraments, exportType);
-    } else {
-      this.exportToExcel(sacraments, exportType);
-    }
-  }
-
-  /**
-   * Export to PDF using browser print
-   */
-  exportToPDF(sacraments: Sacrament[], exportType: string): void {
-    // Create a printable table
-    let html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Sacraments Export - ${new Date().toLocaleDateString()}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          h1 { color: #333; }
-          table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-          th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-          th { background-color: #667eea; color: white; }
-          tr:nth-child(even) { background-color: #f2f2f2; }
-        </style>
-      </head>
-      <body>
-        <h1>Sacraments Export (${exportType})</h1>
-        <p>Generated: ${new Date().toLocaleString()}</p>
-        <table>
-          <thead>
-            <tr>
-              <th>Recipient</th>
-              <th>Sacrament Type</th>
-              <th>Date Administered</th>
-              <th>Place</th>
-              <th>Minister</th>
-              <th>Certificate #</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-    `;
-
-    sacraments.forEach(sacrament => {
-      html += `
-        <tr>
-          <td>${sacrament.recipient_name || 'N/A'}</td>
-          <td>${sacrament.sacrament_type?.name || 'N/A'}</td>
-          <td>${this.datePipe.transform(sacrament.date_administered, 'MMM d, y') || 'N/A'}</td>
-          <td>${sacrament.place_administered || 'N/A'}</td>
-          <td>${sacrament.minister_name || 'N/A'}</td>
-          <td>${sacrament.certificate_number || 'N/A'}</td>
-          <td>${sacrament.status || 'N/A'}</td>
-        </tr>
-      `;
-    });
-
-    html += `
-          </tbody>
-        </table>
-      </body>
-      </html>
-    `;
-
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.onload = () => {
-        printWindow.print();
-      };
-    }
-  }
-
-  /**
-   * Export to Excel (CSV format)
-   */
-  exportToExcel(sacraments: Sacrament[], exportType: string): void {
-    // Create CSV content
-    const headers = ['Recipient', 'Sacrament Type', 'Date Administered', 'Place', 'Minister', 'Minister Title', 'Certificate #', 'Book #', 'Page #', 'Status'];
-    const rows = sacraments.map(sacrament => [
-      sacrament.recipient_name || '',
-      sacrament.sacrament_type?.name || '',
-      this.datePipe.transform(sacrament.date_administered, 'yyyy-MM-dd') || '',
-      sacrament.place_administered || '',
-      sacrament.minister_name || '',
-      sacrament.minister_title || '',
-      sacrament.certificate_number || '',
-      sacrament.book_number || '',
-      sacrament.page_number || '',
-      sacrament.status || ''
-    ]);
-
-    // Convert to CSV
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-    ].join('\n');
-
-    // Create blob and download
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    link.setAttribute('href', url);
-    link.setAttribute('download', `sacraments_export_${exportType}_${new Date().toISOString().split('T')[0]}.csv`);
-    link.style.visibility = 'hidden';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    this.toastService.success(`Exported ${sacraments.length} sacrament${sacraments.length > 1 ? 's' : ''} to CSV.`);
-  }
-
-  /**
-   * Toggle select all checkbox
-   */
-  toggleSelectAll(event: Event): void {
-    const target = event.target as HTMLInputElement;
-    this.selectAll = target.checked;
-    
-    if (this.selectAll) {
-      this.sacraments.forEach(sacrament => {
-        this.selectedSacraments.add(sacrament.id);
-      });
-    } else {
-      this.selectedSacraments.clear();
-    }
-    this.cdr.markForCheck();
-  }
-
-  /**
-   * Toggle individual sacrament selection
-   */
-  toggleSacramentSelection(sacramentId: number, event: Event): void {
-    const target = event.target as HTMLInputElement;
-    if (target.checked) {
-      this.selectedSacraments.add(sacramentId);
-    } else {
-      this.selectedSacraments.delete(sacramentId);
-      this.selectAll = false;
-    }
-    this.cdr.markForCheck();
-  }
-
-  /**
-   * Clear all selections
-   */
-  clearSelection(): void {
-    this.selectedSacraments.clear();
-    this.selectAll = false;
-    this.cdr.markForCheck();
-  }
-
-  /**
-   * Bulk status update — Voided is not offered here (requires per-record void + reason).
-   */
-  onBulkStatusUpdate(status: string): void {
-    if (this.selectedSacraments.size === 0) {
-      this.toastService.error('Please select at least one sacrament.');
-      return;
-    }
-    if (status === 'voided') {
-      this.toastService.info(
-        'To void a record, open it and use Void with a reason. Bulk void is not available.',
-        'Use Void on each record'
-      );
-      return;
-    }
-
-    const ids = Array.from(this.selectedSacraments);
-    const statusLabel = this.statusLabel(status);
-    this.bulkConfirmTitle = `Set status to ${statusLabel}?`;
-    this.bulkConfirmMessage = `Update ${ids.length} selected record(s) to ${statusLabel}?`;
-    this.bulkConfirmAction = () => this.executeBulkStatusUpdate(ids, status, statusLabel);
-    this.showBulkConfirmModal = true;
-    this.cdr.markForCheck();
-  }
-
-  private executeBulkStatusUpdate(ids: number[], status: string, statusLabel: string): void {
-    this.sacramentService
-      .bulkUpdateStatus(ids, status)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success(
-              response.message || `Successfully updated ${ids.length} sacrament(s) to ${statusLabel}`
-            );
-            this.clearSelection();
-            this.loadSacraments();
-          } else {
-            this.toastService.error(response.message || 'Failed to update sacraments');
-          }
-          this.cdr.markForCheck();
-        },
-        error: (error) => {
-          this.toastService.error(error.message || 'Failed to update sacraments');
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  /**
-   * Bulk delete with confirmation modal (no native confirm).
-   */
-  onBulkDelete(): void {
-    if (this.selectedSacraments.size === 0) {
-      this.toastService.error('Please select at least one sacrament.');
-      return;
-    }
-
-    const ids = Array.from(this.selectedSacraments);
-    const count = ids.length;
-    this.bulkConfirmTitle = 'Remove from register view?';
-    this.bulkConfirmMessage = `Remove ${count} selected sacrament record(s) from the register view? This is a soft delete; administrators can restore records.`;
-    this.bulkConfirmAction = () => this.executeBulkDelete(ids, count);
-    this.showBulkConfirmModal = true;
-    this.cdr.markForCheck();
-  }
-
-  private executeBulkDelete(ids: number[], count: number): void {
-    this.sacramentService
-      .bulkDelete(ids)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success(response.message || `Successfully deleted ${count} sacrament(s)`);
-            this.clearSelection();
-            this.loadSacraments();
-          } else {
-            this.toastService.error(response.message || 'Failed to delete sacraments');
-          }
-          this.cdr.markForCheck();
-        },
-        error: (error) => {
-          this.toastService.error(error.message || 'Failed to delete sacraments');
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  confirmBulkAction(): void {
-    const action = this.bulkConfirmAction;
-    this.showBulkConfirmModal = false;
-    this.bulkConfirmAction = null;
-    if (action) {
-      action();
-    }
-    this.cdr.markForCheck();
-  }
-
-  cancelBulkAction(): void {
-    this.showBulkConfirmModal = false;
-    this.bulkConfirmAction = null;
-    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void {
