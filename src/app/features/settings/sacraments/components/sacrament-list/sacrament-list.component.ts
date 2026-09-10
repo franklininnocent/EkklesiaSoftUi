@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewChecked, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewChecked, HostListener, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -32,6 +32,8 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
 import { VoidSacramentDialogComponent } from '../shared/void-sacrament-dialog/void-sacrament-dialog.component';
 import { CorrectSacramentDialogComponent } from '../shared/correct-sacrament-dialog/correct-sacrament-dialog.component';
 import { HttpErrorResponse } from '@angular/common/http';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
 
 @Component({
   selector: 'app-sacrament-list',
@@ -53,6 +55,7 @@ import { HttpErrorResponse } from '@angular/common/http';
     ConfirmationModalComponent,
     VoidSacramentDialogComponent,
     CorrectSacramentDialogComponent,
+    DisableWhenReadOnlyDirective,
   ],
   templateUrl: './sacrament-list.component.html',
   styleUrl: './sacrament-list.component.scss',
@@ -60,6 +63,8 @@ import { HttpErrorResponse } from '@angular/common/http';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SacramentListComponent implements OnInit, OnDestroy, AfterViewChecked {
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+
   sacraments: Sacrament[] = [];
   sacramentTypes: SacramentType[] = [];
   loading = false;
@@ -371,8 +376,19 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     });
   }
 
+  private guardWrite(action: string): boolean {
+    if (!this.subscriptionAccess.isReadOnly()) {
+      return true;
+    }
+    this.toastService.warning(`Read-only mode: renew subscription to ${action}.`, 'Read-only');
+    return false;
+  }
+
   /** Open edit modal from deep link / certificate page (UX-0). */
   openEditById(id: number): void {
+    if (!this.guardWrite('edit sacraments')) {
+      return;
+    }
     this.sacramentService
       .getSacrament(id)
       .pipe(takeUntil(this.destroy$))
@@ -662,6 +678,9 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Show create modal
    */
   onCreateSacrament(): void {
+    if (!this.guardWrite('register sacraments')) {
+      return;
+    }
     this.correctionReason = null;
     this.sacramentToEdit = null;
     this.showFormModal = true;
@@ -671,6 +690,9 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Show edit modal
    */
   onEditSacrament(sacrament: Sacrament): void {
+    if (!this.guardWrite('edit sacraments')) {
+      return;
+    }
     this.correctionReason = null;
     this.sacramentToEdit = sacrament;
     this.showFormModal = true;
@@ -765,6 +787,9 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
    * Edit sacrament from detail modal
    */
   editSacrament(sacrament: Sacrament): void {
+    if (!this.guardWrite('edit sacraments')) {
+      return;
+    }
     this.correctionReason = null;
     this.sacramentToEdit = sacrament;
     this.showFormModal = true;
@@ -788,6 +813,9 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   openVoidDialog(sacrament: Sacrament): void {
+    if (!this.guardWrite('void sacraments')) {
+      return;
+    }
     if (!this.canVoidSacrament(sacrament)) {
       return;
     }
@@ -846,6 +874,9 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
   }
 
   openCorrectDialog(sacrament: Sacrament): void {
+    if (!this.guardWrite('correct sacraments')) {
+      return;
+    }
     if (!this.canCorrectSacrament(sacrament)) {
       return;
     }

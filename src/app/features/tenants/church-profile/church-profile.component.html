@@ -41,6 +41,14 @@
         <span class="tab-label">Social Media</span>
         <span class="tab-badge" *ngIf="socialMedia.length > 0">{{ socialMedia.length }}</span>
       </button>
+      <button
+        class="tab-btn"
+        *ngIf="canViewDiocesanBishop"
+        [class.active]="activeTab === 'diocesan-bishop'"
+        (click)="setActiveTab('diocesan-bishop')">
+        <span class="tab-icon">✝</span>
+        <span class="tab-label">Diocesan Bishop</span>
+      </button>
       </div>
     </div>
   </div>
@@ -72,24 +80,75 @@
         <!-- Section 1: Hero Banner -->
         <section class="cp-hero">
           <div class="cp-hero__banner">
-            <div class="cp-hero__logo">
-              <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name" loading="lazy" />
-              <div *ngIf="!churchProfile.logo_full_url" class="cp-hero__logo-fallback" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-                </svg>
+            <div class="cp-hero__col cp-hero__col--church">
+              <div class="cp-hero__logo">
+                <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name" loading="lazy" />
+                <div *ngIf="!churchProfile.logo_full_url" class="cp-hero__logo-fallback" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="cp-hero__copy">
+                <h2 class="cp-hero__name">{{ churchProfile.name }}</h2>
+                <p class="cp-hero__subtitle" *ngIf="getChurchSubtitle()">{{ getChurchSubtitle() }}</p>
+                <p class="cp-hero__diocese">{{ getDenominationName() }} · {{ getArchdioceseName() }}</p>
+                <div class="cp-hero__chips">
+                  <span class="cp-chip" [class.cp-chip--active]="churchProfile.active === 1" [class.cp-chip--inactive]="churchProfile.active !== 1">
+                    {{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}
+                  </span>
+                  <span class="cp-chip cp-chip--neutral" *ngIf="getFoundedYear()">Founded {{ getFoundedYear() }}</span>
+                  <span class="cp-chip cp-chip--plan">{{ (churchProfile.plan || 'basic') | titlecase }} Plan</span>
+                </div>
               </div>
             </div>
-            <div class="cp-hero__copy">
-              <h2 class="cp-hero__name">{{ churchProfile.name }}</h2>
-              <p class="cp-hero__subtitle" *ngIf="getChurchSubtitle()">{{ getChurchSubtitle() }}</p>
-              <p class="cp-hero__diocese">{{ getDenominationName() }} · {{ getArchdioceseName() }}</p>
-              <div class="cp-hero__chips">
-                <span class="cp-chip" [class.cp-chip--active]="churchProfile.active === 1" [class.cp-chip--inactive]="churchProfile.active !== 1">
-                  {{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}
-                </span>
-                <span class="cp-chip cp-chip--neutral" *ngIf="getFoundedYear()">Founded {{ getFoundedYear() }}</span>
-                <span class="cp-chip cp-chip--plan">{{ (churchProfile.plan || 'basic') | titlecase }} Plan</span>
+
+            <div class="cp-hero__col cp-hero__col--patron">
+              <div class="cp-hero__figure" *ngIf="getPatronImageUrl() || getPatronName()">
+                <div class="cp-hero__figure-media">
+                  <img
+                    *ngIf="getPatronImageUrl()"
+                    [src]="getPatronImageUrlWithFallback()"
+                    [alt]="getPatronName() || 'Patron saint'"
+                    (error)="handlePatronImageError($event)"
+                    loading="lazy"
+                  />
+                  <div *ngIf="!getPatronImageUrl()" class="cp-hero__figure-fallback" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="cp-hero__figure-copy">
+                  <span class="cp-hero__figure-label">Our Patron</span>
+                  <span class="cp-hero__figure-name" *ngIf="getPatronName()">{{ getPatronName() }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="cp-hero__col cp-hero__col--pope">
+              <div class="cp-hero__figure" *ngIf="getPopeDisplayName()">
+                <div class="cp-hero__figure-media">
+                  <img
+                    *ngIf="getPopeImageUrl()"
+                    [src]="getPopeImageUrlWithFallback()"
+                    [alt]="getPopeDisplayName()!"
+                    (error)="handlePopeImageError($event)"
+                    loading="lazy"
+                  />
+                  <div *ngIf="!getPopeImageUrl()" class="cp-hero__figure-fallback" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="cp-hero__figure-copy">
+                  <span class="cp-hero__figure-label">The Pope</span>
+                  <span class="cp-hero__figure-name">{{ getPopeDisplayName() }}</span>
+                  <span class="cp-hero__figure-meta" *ngIf="popeDetails?.pope_effective_from">
+                    Since {{ formatDate(popeDetails?.pope_effective_from) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -137,10 +196,24 @@
               <button type="button" class="cp-link" (click)="setActiveTab('leadership')">View all</button>
             </header>
             <div class="cp-leadership-grid">
-              <div class="cp-leader-card" *ngIf="popeDetails?.pope_name">
-                <span class="cp-leader-card__role">Pope</span>
-                <span class="cp-leader-card__name">{{ getPopeName() }}</span>
-                <span class="cp-leader-card__meta" *ngIf="popeDetails?.pope_effective_from">Since {{ formatDate(popeDetails?.pope_effective_from) }}</span>
+              <div class="cp-leader-card" *ngIf="getDiocesanBishop() as bishop">
+                <app-bishop-avatar
+                  [name]="bishop.full_name"
+                  [source]="bishop"
+                  size="md"
+                ></app-bishop-avatar>
+                <span class="cp-leader-card__role">Diocesan Bishop</span>
+                <span class="cp-leader-card__name">{{ bishop.full_name }}</span>
+                <span class="cp-leader-card__meta">{{ bishop.full_title || bishop.title }}</span>
+                <span class="cp-leader-card__meta" *ngIf="bishop.appointed_date">Since {{ formatDate(bishop.appointed_date) }}</span>
+                <button
+                  type="button"
+                  class="cp-link"
+                  *ngIf="canViewDiocesanBishop || canSubmitBishopUpdate"
+                  (click)="setActiveTab('diocesan-bishop')"
+                >
+                  {{ canSubmitBishopUpdate ? 'Suggest New Bishop' : 'View diocesan bishop' }}
+                </button>
               </div>
               <div class="cp-leader-card" *ngIf="getParishPriest() as priest">
                 <span class="cp-leader-card__role">{{ priest.role }}</span>
@@ -152,12 +225,7 @@
                 <span class="cp-leader-card__name">{{ assistant.full_name }}</span>
                 <span class="cp-leader-card__meta" *ngIf="assistant.title">{{ assistant.title }}</span>
               </div>
-              <div class="cp-leader-card" *ngIf="extendedProfile?.bishop as bishop">
-                <span class="cp-leader-card__role">Diocesan Bishop</span>
-                <span class="cp-leader-card__name">{{ bishop.full_name }}</span>
-                <span class="cp-leader-card__meta">{{ bishop.full_title || bishop.title }}</span>
-              </div>
-              <p class="cp-empty" *ngIf="!popeDetails?.pope_name && !getParishPriest() && getAssistantPriests().length === 0 && !extendedProfile?.bishop">
+              <p class="cp-empty" *ngIf="!getDiocesanBishop() && !getParishPriest() && getAssistantPriests().length === 0">
                 No leadership records configured yet.
               </p>
             </div>
@@ -451,6 +519,13 @@
 
         </div>
 
+      </div>
+
+      <!-- ====================================================================== -->
+      <!-- DIOCESAN BISHOP TAB -->
+      <!-- ====================================================================== -->
+      <div *ngIf="activeTab === 'diocesan-bishop'" class="tab-pane diocesan-bishop-pane">
+        <app-diocesan-bishop-panel></app-diocesan-bishop-panel>
       </div>
 
     </div>
@@ -881,18 +956,6 @@
       <h3 id="general-section-patron" class="cf-split-section__title">Patron saint</h3>
       <div class="cf-split-grid">
         <div class="cf-split-field cf-split-field--full">
-          <label for="modal_patron_name">
-            Patron name <span class="cf-split-optional">optional</span>
-          </label>
-          <input
-            type="text"
-            id="modal_patron_name"
-            formControlName="patron_name"
-            placeholder="e.g., Saint Peter, Saint Mary"
-          />
-        </div>
-
-        <div class="cf-split-field cf-split-field--full">
           <label for="patron_image_input">
             Patron image <span class="cf-split-optional">optional</span>
           </label>
@@ -928,6 +991,18 @@
             />
           </div>
           <p class="cf-split-field__hint">JPG, PNG, or WEBP. Max 3MB.</p>
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="modal_patron_name">
+            Patron Name <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="modal_patron_name"
+            formControlName="patron_name"
+            placeholder="e.g., Sacred Heart of Jesus"
+          />
         </div>
       </div>
     </section>

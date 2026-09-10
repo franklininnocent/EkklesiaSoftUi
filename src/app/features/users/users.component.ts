@@ -15,6 +15,8 @@ import { User } from '@core/models';
 import { UserFormModalComponent } from './user-form-modal/user-form-modal.component';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
 
 @Component({
   selector: 'app-users',
@@ -30,6 +32,7 @@ import { takeUntil } from 'rxjs/operators';
     StatusBadgeComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
+    DisableWhenReadOnlyDirective,
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
@@ -61,6 +64,7 @@ export class UsersComponent implements OnInit, OnDestroy {
 
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
 
   constructor(
     private usersService: UsersService,
@@ -310,11 +314,19 @@ export class UsersComponent implements OnInit, OnDestroy {
   }
 
   openCreateUserModal(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to add users.', 'Read-only');
+      return;
+    }
     this.selectedUser = null;
     this.showUserModal = true;
   }
 
   openEditUserModal(user: User): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to edit users.', 'Read-only');
+      return;
+    }
     this.selectedUser = user;
     this.showUserModal = true;
   }

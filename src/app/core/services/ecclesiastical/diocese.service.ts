@@ -1,16 +1,37 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, BehaviorSubject, of } from 'rxjs';
-import { tap, shareReplay, catchError } from 'rxjs/operators';
+import { Observable, of } from 'rxjs';
+import { tap, shareReplay, catchError, map } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import { 
   Diocese, 
   DioceseCreateRequest, 
   DioceseUpdateRequest,
   DioceseListParams,
-  DioceseStatistics 
+  DioceseStatistics,
+  DiocesanLeadership,
+  BishopAppointment,
+  ReplaceOrdinaryRequest,
+  ReplaceOrdinaryResponse,
 } from '@core/models/ecclesiastical';
-import { ApiResponse, PaginatedResponse } from '@core/models';
+import { ApiResponse } from '@core/models';
+
+const DIOCESE_DROPDOWN_PAGE_SIZE = 1000;
+
+/**
+ * Diocese list API returns either a top-level array (`data: Diocese[]`)
+ * or a nested Laravel paginator (`data.data`). Dropdowns must accept both.
+ */
+export function extractDioceseList(response: ApiResponse<any> | null | undefined): Diocese[] {
+  const payload = response?.data;
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (payload && Array.isArray(payload.data)) {
+    return payload.data;
+  }
+  return [];
+}
 
 @Injectable({
   providedIn: 'root'
@@ -137,6 +158,17 @@ export class DioceseService {
   }
 
   /**
+   * Flat list for diocese dropdowns (Create Bishop, filters).
+   * Requests a large page and normalizes both API response shapes.
+   */
+  getDioceseOptions(forceRefresh: boolean = false): Observable<Diocese[]> {
+    return this.getDioceses(
+      { per_page: DIOCESE_DROPDOWN_PAGE_SIZE, page: 1, sort_by: 'name' },
+      forceRefresh
+    ).pipe(map(response => extractDioceseList(response)));
+  }
+
+  /**
    * Get dioceses by country
    */
   getDiocesesByCountry(countryId: number): Observable<ApiResponse<Diocese[]>> {
@@ -168,6 +200,58 @@ export class DioceseService {
     );
 
     return this.archdiocesesCache$;
+  }
+
+  /**
+   * Current diocesan leadership (ordinary + current appointments).
+   */
+  getLeadership(dioceseId: number): Observable<ApiResponse<DiocesanLeadership>> {
+    return this.http.get<ApiResponse<DiocesanLeadership>>(
+      `${this.baseUrl}/${dioceseId}/leadership`
+    );
+  }
+
+  /**
+   * Historical bishop appointments for a diocese.
+   */
+  getLeadershipHistory(
+    dioceseId: number,
+    params?: { page?: number; per_page?: number; canonical_role?: string }
+  ): Observable<ApiResponse<{
+    data: BishopAppointment[];
+    total: number;
+    current_page: number;
+    last_page: number;
+    per_page: number;
+  }>> {
+    let httpParams = new HttpParams();
+    if (params?.page) {
+      httpParams = httpParams.set('page', String(params.page));
+    }
+    if (params?.per_page) {
+      httpParams = httpParams.set('per_page', String(params.per_page));
+    }
+    if (params?.canonical_role) {
+      httpParams = httpParams.set('canonical_role', params.canonical_role);
+    }
+
+    return this.http.get<ApiResponse<any>>(
+      `${this.baseUrl}/${dioceseId}/leadership/history`,
+      { params: httpParams }
+    );
+  }
+
+  /**
+   * Atomically end the current ordinary and appoint a successor.
+   */
+  replaceOrdinary(
+    dioceseId: number,
+    payload: ReplaceOrdinaryRequest
+  ): Observable<ApiResponse<ReplaceOrdinaryResponse>> {
+    return this.http.post<ApiResponse<ReplaceOrdinaryResponse>>(
+      `${this.baseUrl}/${dioceseId}/succession/replace-ordinary`,
+      payload
+    );
   }
 
   /**

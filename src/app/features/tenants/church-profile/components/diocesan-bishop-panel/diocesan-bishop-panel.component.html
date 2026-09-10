@@ -1,0 +1,325 @@
+<section class="diocesan-bishop-panel" aria-labelledby="diocesan-bishop-heading">
+  <div class="cf-inline-alert cf-panel" *ngIf="!canViewLeadership" role="alert">
+    <p>You do not have permission to view diocesan bishop information.</p>
+  </div>
+
+  <ng-container *ngIf="canViewLeadership">
+    <header class="diocesan-bishop-panel__intro">
+      <h1 id="diocesan-bishop-heading">Diocesan Bishop</h1>
+      <p class="diocesan-bishop-panel__subtitle">
+        Read-only authoritative record for your parish diocese.
+      </p>
+    </header>
+
+    <div class="cf-decision-strip" *ngIf="leadership && canSubmitUpdate">
+      <div class="cf-decision-strip__copy">
+        <strong>Suggest New Bishop / Report an Update</strong>
+        <span>
+          If a new bishop has been appointed or the current bishop information needs updating,
+          submit a suggestion for Ekklesia Admin review. Your parish cannot change the official
+          bishop record directly.
+        </span>
+      </div>
+      <div class="cf-decision-strip__actions">
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="openSuggestionWizard()"
+          aria-haspopup="dialog"
+        >
+          Suggest New Bishop / Report an Update
+        </button>
+      </div>
+    </div>
+
+    <app-loading-skeleton *ngIf="loadingLeadership" type="card" [rows]="5"></app-loading-skeleton>
+
+    <div class="cf-inline-alert cf-panel diocesan-bishop-panel__alert" *ngIf="!loadingLeadership && leadershipError" role="alert">
+      <p>{{ leadershipError }}</p>
+      <button type="button" class="cf-btn cf-btn-sm" (click)="loadLeadership()">Try again</button>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!loadingLeadership && noDioceseLinked"
+      icon="🏛️"
+      title="Diocese not linked"
+      description="Link your parish to a diocese in Church Profile before viewing the diocesan bishop record."
+    ></app-cf-empty-state>
+
+    <article
+      class="diocesan-bishop-panel__record cf-panel"
+      *ngIf="!loadingLeadership && leadership"
+      aria-labelledby="official-bishop-record"
+    >
+      <div class="diocesan-bishop-panel__record-banner">
+        <span class="diocesan-bishop-panel__managed" aria-label="Record managed centrally">
+          <span class="diocesan-bishop-panel__managed-icon" aria-hidden="true">🔒</span>
+          Managed centrally by Ekklesia Admin
+        </span>
+        <span
+          class="diocesan-bishop-panel__status"
+          [attr.data-tone]="statusTone()"
+        >
+          {{ statusLabel() }}
+        </span>
+      </div>
+
+      <h2 id="official-bishop-record" class="diocesan-bishop-panel__record-title">Official diocesan bishop record</h2>
+
+      <dl class="diocesan-bishop-panel__facts">
+        <div class="diocesan-bishop-panel__fact">
+          <dt>Diocese</dt>
+          <dd>{{ leadership.diocese_name || '—' }}</dd>
+        </div>
+        <div class="diocesan-bishop-panel__fact">
+          <dt>Status</dt>
+          <dd>{{ statusLabel() }}</dd>
+        </div>
+        <div class="diocesan-bishop-panel__fact" *ngIf="leadership.last_verified_at">
+          <dt>Last verified</dt>
+          <dd>{{ leadership.last_verified_at | date:'longDate' }}</dd>
+        </div>
+      </dl>
+
+      <div class="diocesan-bishop-panel__ordinary" *ngIf="!isVacant() && leadership.ordinary as ordinary">
+        <app-bishop-avatar
+          [name]="ordinary.bishop_name || 'Diocesan bishop'"
+          [source]="ordinary"
+          size="lg"
+        ></app-bishop-avatar>
+        <div class="diocesan-bishop-panel__ordinary-copy">
+          <p class="diocesan-bishop-panel__role-label">Current Bishop</p>
+          <h3>{{ ordinary.bishop_name }}</h3>
+          <p class="diocesan-bishop-panel__title">{{ ordinaryDisplayTitle(ordinary) }}</p>
+          <p class="diocesan-bishop-panel__meta" *ngIf="ordinary.effective_date">
+            Since {{ ordinary.effective_date | date:'longDate' }}
+          </p>
+        </div>
+      </div>
+
+      <app-cf-empty-state
+        *ngIf="isVacant()"
+        icon="✝"
+        title="Diocese seat is vacant"
+        description="No current ordinary is on record. If a bishop has been appointed, submit a suggestion for Ekklesia Admin review."
+      >
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          *ngIf="canSubmitUpdate"
+          (click)="openSuggestionWizard()"
+        >
+          Suggest New Bishop / Report an Update
+        </button>
+      </app-cf-empty-state>
+
+      <section
+        class="diocesan-bishop-panel__aux"
+        *ngIf="auxiliaryAppointments().length"
+        aria-label="Other bishops in this diocese"
+      >
+        <h3>Other bishops in this diocese</h3>
+        <ul>
+          <li *ngFor="let auxiliary of auxiliaryAppointments()">
+            <app-bishop-avatar
+              [name]="auxiliary.bishop_name || 'Bishop'"
+              [source]="auxiliary"
+              size="sm"
+            ></app-bishop-avatar>
+            <div>
+              <strong>{{ auxiliary.bishop_name }}</strong>
+              <span>{{ formatRole(auxiliary.canonical_role) }}</span>
+              <span *ngIf="auxiliary.effective_date">Since {{ auxiliary.effective_date | date:'mediumDate' }}</span>
+            </div>
+          </li>
+        </ul>
+      </section>
+    </article>
+
+    <section
+      class="diocesan-bishop-panel__requests cf-panel"
+      *ngIf="canViewRequests"
+      aria-labelledby="bishop-suggestions-heading"
+    >
+      <header class="diocesan-bishop-panel__requests-head">
+        <div>
+          <h2 id="bishop-suggestions-heading">Your Bishop Suggestions</h2>
+          <p>Submissions from your parish for Ekklesia Admin review. These never change the official record until approved.</p>
+        </div>
+        <button
+          type="button"
+          class="cf-btn"
+          (click)="loadRequests()"
+          [disabled]="loadingRequests"
+          aria-label="Refresh bishop suggestions"
+        >
+          {{ loadingRequests ? 'Refreshing…' : 'Refresh' }}
+        </button>
+      </header>
+
+      <div class="cf-inline-alert" *ngIf="requestsError" role="alert">
+        <p>{{ requestsError }}</p>
+      </div>
+
+      <app-loading-skeleton *ngIf="loadingRequests" type="table" [rows]="4" [columns]="6"></app-loading-skeleton>
+
+      <div class="diocesan-bishop-panel__table-wrap" *ngIf="!loadingRequests && requests.length">
+        <table class="cf-table diocesan-bishop-panel__table">
+          <thead>
+            <tr>
+              <th scope="col">Submitted</th>
+              <th scope="col">Suggested bishop</th>
+              <th scope="col">Reason / type</th>
+              <th scope="col">Submitted by</th>
+              <th scope="col">Review status</th>
+              <th scope="col">Reviewer</th>
+              <th scope="col"><span class="sr-only">Actions</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of requests">
+              <td [attr.data-label]="'Submitted'">
+                {{ submissionDate(item) ? (submissionDate(item) | date:'mediumDate') : '—' }}
+              </td>
+              <td [attr.data-label]="'Suggested bishop'">{{ proposedBishopName(item) }}</td>
+              <td [attr.data-label]="'Reason / type'">{{ formatType(item.request_type) }}</td>
+              <td [attr.data-label]="'Submitted by'">{{ submitterName(item) }}</td>
+              <td [attr.data-label]="'Review status'">
+                <span class="diocesan-bishop-panel__status-pill" [attr.data-tone]="statusToneForRequest(item.status)">
+                  {{ formatStatus(item.status) }}
+                </span>
+                <p class="diocesan-bishop-panel__feedback" *ngIf="item.submitter_feedback && item.status === 'changes_requested'">
+                  <strong>Reviewer note:</strong> {{ item.submitter_feedback }}
+                </p>
+                <p class="diocesan-bishop-panel__feedback" *ngIf="item.reviewer_comments && item.status === 'rejected'">
+                  <strong>Reason:</strong> {{ item.reviewer_comments }}
+                </p>
+              </td>
+              <td [attr.data-label]="'Reviewer'">{{ reviewerSummary(item) }}</td>
+              <td class="diocesan-bishop-panel__actions" [attr.data-label]="'Actions'">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-sm"
+                  (click)="openDetail(item)"
+                  [attr.aria-label]="'View details for suggestion ' + proposedBishopName(item)"
+                >
+                  View details
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-sm"
+                  *ngIf="item.is_editable && canSubmitUpdate"
+                  (click)="openEditWizard(item)"
+                >
+                  Update &amp; resend
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <app-cf-empty-state
+        *ngIf="!loadingRequests && !requests.length && !requestsError"
+        icon="📋"
+        title="No suggestions yet"
+        description="When you suggest a new bishop or report an update, it will appear here with its review status."
+      >
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          *ngIf="canSubmitUpdate && leadership"
+          (click)="openSuggestionWizard()"
+        >
+          Suggest New Bishop / Report an Update
+        </button>
+      </app-cf-empty-state>
+    </section>
+  </ng-container>
+
+  <app-bishop-report-update-wizard
+    *ngIf="showWizard && leadership"
+    [leadership]="leadership"
+    [editingRequest]="editingRequest"
+    [initialType]="wizardInitialType"
+    (completed)="onWizardCompleted()"
+    (cancel)="onWizardCancel()"
+  ></app-bishop-report-update-wizard>
+
+  <app-modal-shell
+    *ngIf="selectedRequest"
+    [title]="'Suggestion details'"
+    size="md"
+    headerVariant="compact"
+    bodyPadding="default"
+    closeAriaLabel="Close suggestion details"
+    (closeRequested)="closeDetail()"
+  >
+    <app-loading-skeleton *ngIf="detailLoading" type="card" [rows]="6"></app-loading-skeleton>
+
+    <div class="diocesan-bishop-panel__detail" *ngIf="!detailLoading && selectedRequest as item">
+      <dl class="diocesan-bishop-panel__detail-list">
+        <div>
+          <dt>Submitted</dt>
+          <dd>{{ submissionDate(item) ? (submissionDate(item) | date:'medium') : '—' }}</dd>
+        </div>
+        <div>
+          <dt>Suggested bishop</dt>
+          <dd>{{ proposedBishopName(item) }}</dd>
+        </div>
+        <div>
+          <dt>Reason / type</dt>
+          <dd>{{ formatType(item.request_type) }}</dd>
+        </div>
+        <div>
+          <dt>Submitted by</dt>
+          <dd>{{ submitterName(item) }}</dd>
+        </div>
+        <div>
+          <dt>Review status</dt>
+          <dd>
+            <span class="diocesan-bishop-panel__status-pill" [attr.data-tone]="statusToneForRequest(item.status)">
+              {{ formatStatus(item.status) }}
+            </span>
+          </dd>
+        </div>
+        <div *ngIf="item.reviewed_at">
+          <dt>Reviewed</dt>
+          <dd>{{ reviewerSummary(item) }}</dd>
+        </div>
+        <div *ngIf="item.source_reference">
+          <dt>Source</dt>
+          <dd>{{ item.source_reference }}</dd>
+        </div>
+        <div *ngIf="item.supporting_information">
+          <dt>What you noticed</dt>
+          <dd>{{ item.supporting_information }}</dd>
+        </div>
+        <div *ngIf="item.submission_notes">
+          <dt>Note for reviewer</dt>
+          <dd>{{ item.submission_notes }}</dd>
+        </div>
+        <div *ngIf="item.submitter_feedback && item.status === 'changes_requested'">
+          <dt>Reviewer note</dt>
+          <dd>{{ item.submitter_feedback }}</dd>
+        </div>
+        <div *ngIf="item.reviewer_comments && item.status === 'rejected'">
+          <dt>Rejection reason</dt>
+          <dd>{{ item.reviewer_comments }}</dd>
+        </div>
+      </dl>
+
+      <div class="diocesan-bishop-panel__detail-actions">
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          *ngIf="item.is_editable && canSubmitUpdate"
+          (click)="openEditWizard(item)"
+        >
+          Update &amp; resend
+        </button>
+        <button type="button" class="cf-btn" (click)="closeDetail()">Close</button>
+      </div>
+    </div>
+  </app-modal-shell>
+</section>

@@ -1,0 +1,12 @@
+<div class="bishop-avatar" [class]="'bishop-avatar--' + size">
+  <img
+    *ngIf="showPhoto && photoUrl"
+    [src]="photoUrl"
+    [alt]="imageAlt"
+    class="bishop-avatar__image"
+    loading="lazy"
+  />
+  <div *ngIf="!showPhoto || !photoUrl" class="bishop-avatar__placeholder" aria-hidden="true">
+    {{ initials }}
+  </div>
+</div>

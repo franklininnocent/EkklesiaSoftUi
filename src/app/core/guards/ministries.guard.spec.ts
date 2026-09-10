@@ -40,6 +40,7 @@ describe('ministriesGuard', () => {
             ensureLoaded: jest.fn(),
             refresh: jest.fn(() => of(null)),
             allowsGatedAccess: true,
+            canViewGatedModules: jest.fn(() => true),
             snapshot: null,
           },
         },

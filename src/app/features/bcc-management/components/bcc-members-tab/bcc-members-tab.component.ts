@@ -15,6 +15,7 @@ import { RouterLink } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { BCCService } from '@core/services/bcc.service';
 import { ToastService } from '@core/services/toast.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import {
   AdvancedSearchPanelComponent,
   SearchField,
@@ -101,6 +102,7 @@ export class BccMembersTabComponent implements OnChanges {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
 
   view: MembersView = 'people';
   search = '';
@@ -419,6 +421,10 @@ export class BccMembersTabComponent implements OnChanges {
   }
 
   openAssign(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toast.warning('Read-only mode: renew subscription to assign families.', 'Read-only');
+      return;
+    }
     this.showAssign = true;
     this.selectedFamily = null;
     this.lookupSearch = '';
@@ -437,6 +443,10 @@ export class BccMembersTabComponent implements OnChanges {
   }
 
   assignSelected(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toast.warning('Read-only mode: renew subscription to assign families.', 'Read-only');
+      return;
+    }
     if (!this.selectedFamily) {
       return;
     }
@@ -471,6 +481,10 @@ export class BccMembersTabComponent implements OnChanges {
     const row = this.confirmRemove;
     this.confirmRemove = null;
     if (!result.confirmed || !row) {
+      return;
+    }
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toast.warning('Read-only mode: renew subscription to remove families.', 'Read-only');
       return;
     }
     this.api.removeMember(this.bccId, row.id).subscribe({

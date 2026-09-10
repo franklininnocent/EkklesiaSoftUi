@@ -51,9 +51,9 @@ export class SubscriptionStatusBannerComponent implements OnInit, OnDestroy {
       case 'GRACE_PERIOD':
         return 'Your subscription end date has passed. You are in a grace period. Contact your administrator to renew.';
       case 'EXPIRED':
-        return 'Your subscription has ended. Some features are unavailable. Contact EkklesiaSoft or your administrator.';
+        return 'Your subscription has ended. You can view, print, and download records, but you cannot save changes. Contact EkklesiaSoft or your administrator to renew.';
       case 'SUSPENDED':
-        return 'Subscription access is suspended. Contact EkklesiaSoft or your administrator.';
+        return 'Subscription access is suspended. You can view records, but you cannot save changes. Contact EkklesiaSoft or your administrator.';
       default:
         return '';
     }

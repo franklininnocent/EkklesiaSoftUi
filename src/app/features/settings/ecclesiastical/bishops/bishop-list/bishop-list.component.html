@@ -29,8 +29,33 @@
         <span class="btn-icon">➕</span>
         Add Bishop
       </button>
+      <a routerLink="/settings/ecclesiastical/bishop-updates" class="btn btn-outline">Suggestions</a>
     </div>
   </app-page-header>
+
+  <div class="bishop-tenure-tabs" role="tablist" aria-label="Bishop tenure filter">
+    <button
+      type="button"
+      class="tenure-tab"
+      [class.active]="tenureFilter === 'all'"
+      (click)="setTenureFilter('all')">
+      All
+    </button>
+    <button
+      type="button"
+      class="tenure-tab"
+      [class.active]="tenureFilter === 'current'"
+      (click)="setTenureFilter('current')">
+      Current
+    </button>
+    <button
+      type="button"
+      class="tenure-tab"
+      [class.active]="tenureFilter === 'historical'"
+      (click)="setTenureFilter('historical')">
+      Historical
+    </button>
+  </div>
 
   <!-- Active Filter Chips - Inline Compact Design -->
   <div *ngIf="getActiveFilters().length > 0" class="filter-chips-container animate-fade-in">
@@ -99,6 +124,7 @@
           <th>Diocese/Archdiocese</th>
           <th>Title</th>
           <th>Status</th>
+          <th>Current</th>
           <th (click)="onSort('ordained_bishop_date')" class="sortable" tabindex="0" role="button"
               [attr.aria-sort]="sortBy === 'ordained_bishop_date' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'">
             Ordained {{ getSortIcon('ordained_bishop_date') }}
@@ -109,16 +135,11 @@
       <tbody>
         <tr *ngFor="let bishop of bishops; trackBy: trackByBishopId" class="data-row">
           <td class="photo-cell">
-            <div class="photo-wrapper">
-              <img 
-                *ngIf="hasPhoto(bishop)" 
-                [src]="getPhotoUrl(bishop)" 
-                [alt]="bishop.full_name"
-                class="bishop-photo">
-              <div *ngIf="!hasPhoto(bishop)" class="photo-placeholder">
-                {{ getInitials(bishop) }}
-              </div>
-            </div>
+            <app-bishop-avatar
+              [name]="bishop.full_name"
+              [source]="bishop"
+              size="md"
+            ></app-bishop-avatar>
           </td>
           <td class="name-cell">
             <strong>{{ bishop.full_name }}</strong>
@@ -127,11 +148,14 @@
             </small>
           </td>
           <td>{{ bishop.archdiocese?.name || 'N/A' }}</td>
-          <td>{{ bishop.ecclesiastical_title?.name || 'N/A' }}</td>
+          <td>{{ bishop.ecclesiastical_title?.title || bishop.ecclesiastical_title?.name || 'N/A' }}</td>
           <td>
             <span [class]="getStatusBadgeClass(bishop.status)">
               {{ getStatusLabel(bishop.status) }}
             </span>
+          </td>
+          <td>
+            <span [class]="getTenureBadgeClass(bishop)">{{ getTenureLabel(bishop) }}</span>
           </td>
           <td>
             {{ bishop.ordained_bishop_date ? (bishop.ordained_bishop_date | date: 'MMM d, y') : 'N/A' }}

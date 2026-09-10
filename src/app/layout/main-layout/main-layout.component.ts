@@ -266,9 +266,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
     // Soft-gate: hide when tenant subscription is expired/suspended.
     if (user?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin()) {
-      return this.subscriptionAccess.allowsGatedAccess;
+      return this.subscriptionAccess.canViewGatedModules();
     }
     return true;
+  }
+
+  isSubscriptionReadOnly(): boolean {
+    return this.subscriptionAccess.isReadOnly();
   }
 
   canAccessBcc(user: User | null): boolean {
@@ -282,12 +286,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       return false;
     }
     if (user?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin()) {
-      return this.subscriptionAccess.allowsGatedAccess;
+      return this.subscriptionAccess.canViewGatedModules();
     }
     return true;
   }
 
   openQuickCollect(): void {
+    if (this.isSubscriptionReadOnly()) {
+      return;
+    }
     this.quickCollectService.open();
   }
 

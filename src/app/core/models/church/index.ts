@@ -58,6 +58,9 @@ export interface Bishop {
   phone?: string;
   biography?: string;
   photo_url?: string;
+  photo_path?: string;
+  photo_public_url?: string;
+  has_photo?: boolean;
   active: number;
   created_at?: string;
   updated_at?: string;

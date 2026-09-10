@@ -17,6 +17,8 @@ import { DataTableComponent } from '@shared/components/data-table/data-table.com
 import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
 
 @Component({
   selector: 'app-family-list',
@@ -34,6 +36,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
     StatusBadgeComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
+    DisableWhenReadOnlyDirective,
   ],
   templateUrl: './family-list.html',
   styleUrls: ['./family-list.scss'],
@@ -42,6 +45,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 export class FamilyListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
 
   families: Family[] = [];
   bccs: BCC[] = [];
@@ -501,12 +505,24 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.router.navigate(['/families', family.id]);
   }
 
+  isReadOnly(): boolean {
+    return this.subscriptionAccess.isReadOnly();
+  }
+
   createFamily(): void {
+    if (this.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to add families.', 'Read-only');
+      return;
+    }
     this.selectedFamily = null;
     this.showForm = true;
   }
 
   deleteFamily(family: Family): void {
+    if (this.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to delete families.', 'Read-only');
+      return;
+    }
     if (!this.isTenantAdmin) {
       this.toastService.error('Only Tenant Administrators can delete families.', 'Permission Denied', 5000);
       return;

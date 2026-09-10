@@ -19,7 +19,8 @@ import {
   CreateTenantRequest,
   UpdateTenantRequest,
   TenantListParams,
-  TenantState
+  TenantState,
+  TenantDetailsResponse
 } from '@core/models/tenant.model';
 
 @Injectable({
@@ -76,6 +77,16 @@ export class TenantService {
         catchError(error => this.handleError(error)),
         finalize(() => this.setLoading(false))
       );
+  }
+
+  /**
+   * Platform-admin 360° tenant snapshot for /tenants/:id.
+   */
+  getTenantDetails(id: number): Observable<TenantDetailsResponse> {
+    this.clearError();
+
+    return this.http.get<TenantDetailsResponse>(`${this.apiUrl}/${id}/details`)
+      .pipe(catchError(error => this.handleError(error)));
   }
 
   /**
@@ -652,6 +663,15 @@ export class TenantService {
     }
     if (params.plan) {
       queryParams['plan'] = params.plan;
+    }
+    if (params.tenant_tier) {
+      queryParams['tenant_tier'] = params.tenant_tier;
+    }
+    if (params.archdiocese_id !== undefined) {
+      queryParams['archdiocese_id'] = String(params.archdiocese_id);
+    }
+    if (params.subscription_status) {
+      queryParams['subscription_status'] = params.subscription_status;
     }
     if (params.search) {
       queryParams['search'] = params.search;

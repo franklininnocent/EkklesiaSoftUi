@@ -267,6 +267,72 @@ export class AuthService {
   }
 
   /**
+   * Tenant-scoped permission check.
+   * Mirrors backend AuthorizesTenantPermission::allows().
+   */
+  hasTenantPermission(permission: string): boolean {
+    const user = this.currentUserValue;
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || user.is_super_admin) {
+      return true;
+    }
+
+    if (user.is_primary_admin) {
+      return true;
+    }
+
+    if (user.tenant_id && this.isTenantAdmin()) {
+      return true;
+    }
+
+    return this.hasPermission(permission);
+  }
+
+  /**
+   * Platform ecclesiastical permission check.
+   * Mirrors backend AuthorizesEcclesiasticalPermission::allowsPlatform().
+   */
+  hasEcclesiasticalPermission(permission: string): boolean {
+    const user = this.currentUserValue;
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || user.is_super_admin) {
+      return true;
+    }
+
+    if (!user.has_ekklesia_role) {
+      return false;
+    }
+
+    if (user.is_primary_admin) {
+      return true;
+    }
+
+    const legacy = this.legacyEcclesiasticalPermissionName(permission);
+    return this.hasPermission(permission) || (legacy ? this.hasPermission(legacy) : false);
+  }
+
+  private legacyEcclesiasticalPermissionName(permission: string): string | null {
+    const legacyMap: Record<string, string> = {
+      'bishops.view': 'view_bishops',
+      'bishops.create': 'create_bishops',
+      'bishops.update': 'edit_bishops',
+      'bishops.archive': 'delete_bishops',
+      'dioceses.view': 'view_dioceses',
+      'dioceses.create': 'create_dioceses',
+      'dioceses.update': 'edit_dioceses',
+      'dioceses.delete': 'delete_dioceses',
+    };
+
+    return legacyMap[permission] ?? null;
+  }
+
+  /**
    * Check if the current user has any of the given permissions.
    * 
    * @param permissions Array of permission names
@@ -322,7 +388,8 @@ export class AuthService {
     if (!user) return false;
     
     // Never treat generic has_ekklesia_role as SuperAdmin (covers Manager/User too).
-    return this.hasRole('SuperAdmin') || 
+    return user.is_super_admin === true ||
+           this.hasRole('SuperAdmin') || 
            this.hasRole('Super Admin') ||
            user.role_name === 'SuperAdmin' ||
            user.role?.name === 'SuperAdmin';

@@ -23,6 +23,13 @@
       <span>Bishops</span>
     </a>
     <a 
+      routerLink="bishop-updates" 
+      routerLinkActive="active"
+      class="nav-tab">
+      <span class="tab-icon">📥</span>
+      <span>Suggestions</span>
+    </a>
+    <a 
       *ngIf="hasEkklesiaRole"
       routerLink="pope-details" 
       routerLinkActive="active"

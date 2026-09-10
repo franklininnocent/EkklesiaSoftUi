@@ -11,6 +11,7 @@ import { Observable, BehaviorSubject, throwError } from 'rxjs';
 import { tap, catchError, finalize } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 import { ChurchProfile, ChurchDataResponse, UpdateChurchProfileRequest } from '@core/models/church';
+import { DiocesanLeadership } from '@core/models/ecclesiastical';
 
 @Injectable({
   providedIn: 'root'
@@ -59,6 +60,10 @@ export class ChurchProfileService {
       catchError(error => this.handleError(error)),
       finalize(() => this.setLoading(false))
     );
+  }
+
+  getDiocesanLeadership(): Observable<ChurchDataResponse<DiocesanLeadership>> {
+    return this.http.get<ChurchDataResponse<DiocesanLeadership>>(`${this.apiUrl}/leadership/diocesan`);
   }
 
   /**

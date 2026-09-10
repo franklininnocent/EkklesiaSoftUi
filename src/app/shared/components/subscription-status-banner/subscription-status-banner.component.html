@@ -5,7 +5,7 @@
   aria-live="polite"
   [attr.data-tone]="s.status">
   <div class="subscription-status-banner__copy">
-    <strong>{{ s.status === 'EXPIRED' || s.status === 'SUSPENDED' ? 'Access limited' : 'Subscription notice' }}</strong>
+    <strong>{{ s.status === 'EXPIRED' || s.status === 'SUSPENDED' ? 'Read-only mode' : 'Subscription notice' }}</strong>
     <span>{{ message(s.status) }}</span>
   </div>
   <div class="subscription-status-banner__actions" *ngIf="canViewDetails">

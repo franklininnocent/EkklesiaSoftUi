@@ -12,4 +12,5 @@ export * from './church-leadership-governance.service';
 export * from './church-statistics.service';
 export * from './church-social-media.service';
 export * from './pope-details.service';
+export * from './church-bishop-update.service';
 

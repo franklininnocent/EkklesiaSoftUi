@@ -11,7 +11,7 @@
       (searchChange)="onSearchChange($event)"
       (filtersOpened)="openFilters()"
     >
-      <button type="button" class="cf-btn cf-btn-primary" (click)="onCreateSacrament()">
+      <button type="button" class="cf-btn cf-btn-primary" cfDisableWhenReadOnly (click)="onCreateSacrament()">
         Add Sacrament
       </button>
       <div class="sacrament-list__overflow">
@@ -268,6 +268,7 @@
           *ngIf="!hasActiveFilters"
           type="button"
           class="cf-btn cf-btn-primary"
+          cfDisableWhenReadOnly
           (click)="onCreateSacrament()"
         >
           Add Sacrament

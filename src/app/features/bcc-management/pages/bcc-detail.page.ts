@@ -16,6 +16,8 @@ import { BccLeadershipTabComponent } from '../components/bcc-leadership-tab/bcc-
 import { BccHistoryTabComponent } from '../components/bcc-history-tab/bcc-history-tab.component';
 import { BccAuditTabComponent } from '../components/bcc-audit-tab/bcc-audit-tab.component';
 import { BccOverview, BccTab } from '../models/bcc.model';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
 
 const TABS: BccTab[] = ['overview', 'members', 'leadership', 'member-history', 'audit'];
 
@@ -34,6 +36,7 @@ const TABS: BccTab[] = ['overview', 'members', 'leadership', 'member-history', '
     BccLeadershipTabComponent,
     BccHistoryTabComponent,
     BccAuditTabComponent,
+    DisableWhenReadOnlyDirective,
   ],
   templateUrl: './bcc-detail.page.html',
   styleUrl: './bcc-detail.page.scss',
@@ -47,6 +50,7 @@ export class BccDetailPageComponent implements OnInit, OnDestroy {
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
 
   bcc: BCC | null = null;
   loading = true;
@@ -217,6 +221,10 @@ export class BccDetailPageComponent implements OnInit, OnDestroy {
   }
 
   openEdit(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toast.warning('Read-only mode: renew subscription to edit BCCs.', 'Read-only');
+      return;
+    }
     if (!this.canEdit || !this.bcc) {
       return;
     }

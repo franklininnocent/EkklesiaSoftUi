@@ -63,7 +63,7 @@ export const ministriesGuard: CanActivateFn = (_route, state) => {
       access.ensureLoaded();
       return access.refresh().pipe(
         map(() => {
-          if (access.allowsGatedAccess) {
+          if (access.canViewGatedModules()) {
             return true;
           }
           const canViewSub = authService.canViewMySubscription(user);

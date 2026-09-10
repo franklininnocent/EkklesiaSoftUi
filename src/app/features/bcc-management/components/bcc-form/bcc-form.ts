@@ -7,6 +7,8 @@ import { BCC } from '../../../../core/models/family.model';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { ToastService } from '@core/services/toast.service';
 
 @Component({
   selector: 'app-bcc-form',
@@ -24,6 +26,8 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly toast = inject(ToastService);
   bccForm: FormGroup;
   loading = false;
   error: string | null = null;
@@ -161,6 +165,10 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onSubmit(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toast.warning('Read-only mode: renew subscription to save BCCs.', 'Read-only');
+      return;
+    }
     // Re-validate status before submission
     const status = this.bccForm.get('status')?.value;
     if (status === 'inactive' && this.bcc) {

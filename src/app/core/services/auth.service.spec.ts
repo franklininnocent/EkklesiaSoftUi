@@ -159,4 +159,48 @@ describe('AuthService RBAC access helpers', () => {
     } as any;
     expect(service.canAccessPastoral(user)).toBe(true);
   });
+
+  it('grants ecclesiastical permissions to SuperAdmin without explicit permission rows', () => {
+    const user = {
+      is_super_admin: true,
+      has_ekklesia_role: true,
+      permissions: [],
+    } as any;
+    (service as any).currentUserSubject.next(user);
+
+    expect(service.hasEcclesiasticalPermission('bishops.view_audit')).toBe(true);
+    expect(service.hasEcclesiasticalPermission('bishops.manage_images')).toBe(true);
+  });
+
+  it('grants ecclesiastical permissions to primary platform admins', () => {
+    const user = {
+      has_ekklesia_role: true,
+      is_primary_admin: true,
+      permissions: [],
+    } as any;
+    (service as any).currentUserSubject.next(user);
+
+    expect(service.hasEcclesiasticalPermission('bishops.view_audit')).toBe(true);
+  });
+
+  it('denies ecclesiastical permissions to tenant users', () => {
+    const user = {
+      tenant_id: 42,
+      has_ekklesia_role: false,
+      permissions: [{ name: 'bishops.view_audit' }],
+    } as any;
+    (service as any).currentUserSubject.next(user);
+
+    expect(service.hasEcclesiasticalPermission('bishops.view_audit')).toBe(false);
+  });
+
+  it('allows ecclesiastical permissions via legacy bishop permission names', () => {
+    const user = {
+      has_ekklesia_role: true,
+      permissions: [{ name: 'view_bishops' }],
+    } as any;
+    (service as any).currentUserSubject.next(user);
+
+    expect(service.hasEcclesiasticalPermission('bishops.view')).toBe(true);
+  });
 });

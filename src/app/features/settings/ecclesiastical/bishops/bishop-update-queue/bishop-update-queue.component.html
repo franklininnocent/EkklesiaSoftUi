@@ -1,0 +1,151 @@
+<div class="bishop-update-queue cf-page">
+  <app-page-header
+    title="Bishop Suggestions"
+    subtitle="Review church-submitted bishop suggestions before they change official records"
+    backLink="/settings/ecclesiastical/bishops"
+    backLabel="Bishops">
+  </app-page-header>
+
+  <div class="cf-decision-strip" *ngIf="canReview">
+    <p>Churches never edit bishop master data directly. Approve only when the proposed change matches your diocesan records.</p>
+  </div>
+
+  <p *ngIf="!canReview" class="cf-state cf-state--error">You do not have permission to review bishop suggestions.</p>
+
+  <ng-container *ngIf="canReview">
+    <div class="queue-toolbar cf-panel">
+      <label>
+        Status
+        <select [(ngModel)]="statusFilter" (change)="onFilterChange()" class="cf-input">
+          <option *ngFor="let opt of statusOptions" [ngValue]="opt.value">{{ opt.label }}</option>
+        </select>
+      </label>
+      <button type="button" class="cf-btn" (click)="load()">Refresh</button>
+    </div>
+
+    <div class="queue-layout">
+      <div class="queue-list cf-panel">
+        <app-loading-skeleton *ngIf="loading" type="table" [rows]="6" [columns]="4"></app-loading-skeleton>
+
+        <table *ngIf="!loading && requests.length" class="table cf-table">
+          <thead>
+            <tr>
+              <th>Submitted</th>
+              <th>Church</th>
+              <th>Bishop</th>
+              <th>Type</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let item of requests"
+              class="queue-row"
+              [class.active]="selected?.request?.id === item.id"
+              (click)="openReview(item)">
+              <td>{{ item.submitted_at | date:'mediumDate' }}</td>
+              <td>{{ item.tenant?.name || ('Tenant #' + item.tenant_id) }}</td>
+              <td>{{ proposedName(item) }}</td>
+              <td>{{ formatType(item.request_type) }}</td>
+              <td>{{ formatStatus(item.status) }}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <app-cf-empty-state
+          *ngIf="!loading && !requests.length"
+          icon="✓"
+          title="No suggestions in this queue"
+          description="Church-submitted bishop suggestions appear here for your review."
+        ></app-cf-empty-state>
+      </div>
+
+      <div class="queue-detail cf-panel" *ngIf="selected || detailLoading">
+        <app-loading-skeleton *ngIf="detailLoading" type="card" [rows]="8"></app-loading-skeleton>
+
+        <ng-container *ngIf="selected && !detailLoading">
+          <header class="detail-header">
+            <h2>{{ formatType(selected.request.request_type) }}</h2>
+            <button type="button" class="cf-btn" (click)="closeReview()">Close</button>
+          </header>
+
+          <p class="cf-meta">
+            From {{ selected.request.tenant?.name || ('Tenant #' + selected.request.tenant_id) }}
+            · {{ selected.request.diocese?.name }}
+          </p>
+          <p class="cf-meta" *ngIf="selected.request.source_reference">
+            Source: {{ selected.request.source_reference }}
+          </p>
+
+          <div class="diff-grid">
+            <article>
+              <h3>Current</h3>
+              <div class="review-person">
+                <app-bishop-avatar
+                  [name]="ordinaryName() || 'Current bishop'"
+                  [source]="{ photo_public_url: currentPhotoUrl() }"
+                  size="md"
+                ></app-bishop-avatar>
+                <div>
+                  <p class="review-name">{{ ordinaryName() || 'No current ordinary' }}</p>
+                  <p class="cf-meta" *ngIf="currentValue('status')">Status: {{ currentValue('status') }}</p>
+                </div>
+              </div>
+            </article>
+            <article>
+              <h3>Proposed</h3>
+              <div class="review-person">
+                <app-bishop-avatar
+                  [name]="proposedValue('full_name') || 'Proposed bishop'"
+                  [source]="{ photo_public_url: proposedPhotoUrl() }"
+                  size="md"
+                ></app-bishop-avatar>
+                <div>
+                  <p class="review-name">{{ proposedValue('full_name') || '—' }}</p>
+                  <p class="cf-meta" *ngIf="appointmentValue('effective_date')">
+                    Effective {{ appointmentValue('effective_date') }}
+                  </p>
+                  <p class="cf-meta" *ngIf="appointmentValue('end_reason')">
+                    Previous bishop: {{ appointmentValue('end_reason') }}
+                  </p>
+                </div>
+              </div>
+              <dl class="review-fields" *ngIf="proposedFields().length">
+                <div *ngFor="let field of proposedFields()">
+                  <dt>{{ field.label }}</dt>
+                  <dd>{{ field.value }}</dd>
+                </div>
+              </dl>
+            </article>
+          </div>
+
+          <p *ngIf="duplicateIds().length" class="review-warning">
+            Possible matching bishop records: {{ duplicateIds().join(', ') }}. Check these before creating a new person.
+          </p>
+
+          <p *ngIf="selected.request.supporting_information" class="notes">
+            <strong>What they noticed:</strong> {{ selected.request.supporting_information }}
+          </p>
+          <p *ngIf="selected.request.submission_notes" class="notes">
+            <strong>Church notes:</strong> {{ selected.request.submission_notes }}
+          </p>
+          <p *ngIf="selected.request.reviewer_comments" class="notes">
+            <strong>Rejection reason:</strong> {{ selected.request.reviewer_comments }}
+          </p>
+
+          <div class="review-actions" *ngIf="['submitted','under_review'].includes(selected.request.status)">
+            <button *ngIf="canApprove" type="button" class="cf-btn cf-btn-primary" [disabled]="saving" (click)="approve()">Approve & apply</button>
+            <div class="clarify-block" *ngIf="canClarify">
+              <textarea [(ngModel)]="clarifyText" rows="2" placeholder="Ask the church for clarification…" class="cf-input"></textarea>
+              <button type="button" class="cf-btn" [disabled]="saving || !clarifyText.trim()" (click)="requestClarification()">Request clarification</button>
+            </div>
+            <div class="reject-block" *ngIf="canReject">
+              <textarea [(ngModel)]="rejectReason" rows="2" placeholder="Reason for rejection…" class="cf-input"></textarea>
+              <button type="button" class="cf-btn" [disabled]="saving || !rejectReason.trim()" (click)="reject()">Reject</button>
+            </div>
+          </div>
+        </ng-container>
+      </div>
+    </div>
+  </ng-container>
+</div>

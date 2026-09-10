@@ -11,6 +11,7 @@ import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil, tap, catchError } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { trapFocus, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 
 /**
  * UserFormModalComponent - Create/Edit User with Multi-Role Selection
@@ -38,6 +39,7 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
   private authService = inject(AuthService);
+  private subscriptionAccess = inject(SubscriptionAccessService);
   private cdr = inject(ChangeDetectorRef);
 
   // Form state
@@ -457,6 +459,10 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
 
   // Form submission
   onSubmit(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to save users.', 'Read-only');
+      return;
+    }
     // Mark all fields as touched
     Object.keys(this.formData).forEach(key => this.markFieldAsTouched(key));
     

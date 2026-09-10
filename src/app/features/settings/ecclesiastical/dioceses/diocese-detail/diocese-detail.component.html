@@ -124,66 +124,108 @@
       </div>
     </div>
 
-    <!-- Related Bishops Card -->
+    <!-- Current Bishop -->
     <div class="detail-card full-width">
       <div class="card-header-with-action">
-        <h2 class="card-title">Bishops in this {{ getTypeBadge(diocese.is_archdiocese) }}</h2>
-        <span class="badge-count">{{ relatedBishops.length }}</span>
+        <h2 class="card-title">Current Bishop</h2>
+        <button
+          *ngIf="canManageAppointments"
+          type="button"
+          class="btn btn-primary"
+          (click)="openSuccessorModal()">
+          Appoint Successor
+        </button>
       </div>
 
-      <!-- Loading Bishops -->
-      <div *ngIf="loadingBishops">
-        <app-loading-skeleton type="list" [rows]="3"></app-loading-skeleton>
+      <div *ngIf="loadingLeadership">
+        <app-loading-skeleton type="list" [rows]="2"></app-loading-skeleton>
       </div>
 
-      <!-- No Bishops -->
       <app-empty-state
-        *ngIf="!loadingBishops && relatedBishops.length === 0"
+        *ngIf="!loadingLeadership && isVacant()"
         icon="👤"
-        title="No bishops assigned"
-        description="There are currently no bishops assigned to this diocese."
+        title="Seat vacant"
+        description="No bishop is currently serving as the diocesan ordinary."
         [showButton]="false">
       </app-empty-state>
 
-      <!-- Bishops List -->
-      <div *ngIf="!loadingBishops && relatedBishops.length > 0" class="bishops-list">
-        <div 
-          *ngFor="let bishop of relatedBishops" 
-          class="bishop-item hover-lift transition-all"
-          (click)="viewBishop(bishop.id)"
-          role="button"
-          tabindex="0"
-          [attr.aria-label]="'View details for ' + bishop.full_name">
-          
-          <div class="bishop-photo">
-            <img 
-              *ngIf="bishop.photo_url" 
-              [src]="bishop.photo_url" 
-              [alt]="bishop.full_name"
-              class="photo">
-            <div *ngIf="!bishop.photo_url" class="photo-placeholder">
-              {{ bishop.full_name?.substring(0, 2).toUpperCase() }}
-            </div>
-          </div>
+      <div
+        *ngIf="!loadingLeadership && currentOrdinary as ordinary"
+        class="bishop-item current-ordinary hover-lift transition-all"
+        (click)="viewBishop(ordinary.bishop_id)"
+        role="button"
+        tabindex="0"
+        [attr.aria-label]="'View details for ' + ordinary.bishop_name">
+        <app-bishop-avatar
+          [name]="ordinary.bishop_name || 'Bishop'"
+          [source]="ordinary"
+          size="lg"
+        ></app-bishop-avatar>
 
-          <div class="bishop-info">
-            <h3 class="bishop-name">{{ bishop.full_name }}</h3>
-            <p class="bishop-title" *ngIf="bishop.ecclesiastical_title">
-              {{ bishop.ecclesiastical_title?.name }}
-            </p>
-            <p class="bishop-dates">
-              <span *ngIf="bishop.ordained_bishop_date">
-                Ordained: {{ formatDate(bishop.ordained_bishop_date) }}
-              </span>
-            </p>
-          </div>
-
-          <div class="bishop-status">
-            <span class="status-badge" [ngClass]="'badge-' + bishop.status">
-              {{ bishop.status }}
+        <div class="bishop-info">
+          <h3 class="bishop-name">{{ ordinary.bishop_name }}</h3>
+          <p class="bishop-title" *ngIf="ordinary.title">{{ ordinary.title }}</p>
+          <p class="bishop-dates">
+            <span *ngIf="ordinary.effective_date">
+              Serving since {{ formatDate(ordinary.effective_date) }}
             </span>
-          </div>
+          </p>
         </div>
+
+        <div class="bishop-status">
+          <span class="status-badge badge-current">Current</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bishop History -->
+    <div class="detail-card full-width">
+      <div class="card-header-with-action">
+        <h2 class="card-title">Bishop History</h2>
+        <span class="badge-count">{{ appointmentHistory.length }}</span>
+      </div>
+
+      <app-empty-state
+        *ngIf="appointmentHistory.length === 0"
+        icon="📜"
+        title="No appointment history"
+        description="Historical bishop assignments will appear here after appointments are recorded."
+        [showButton]="false">
+      </app-empty-state>
+
+      <div *ngIf="appointmentHistory.length > 0" class="history-table-wrapper">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Bishop</th>
+              <th>Role</th>
+              <th>Tenure</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let appointment of appointmentHistory"
+              class="history-row"
+              (click)="viewBishop(appointment.bishop_id)"
+              role="button"
+              tabindex="0">
+              <td>
+                <strong>{{ appointment.bishop?.full_name || ('Bishop #' + appointment.bishop_id) }}</strong>
+              </td>
+              <td>{{ formatRole(appointment.canonical_role) }}</td>
+              <td>{{ formatTenure(appointment) }}</td>
+              <td>
+                <span
+                  class="status-badge"
+                  [class.badge-current]="appointment.is_current"
+                  [class.badge-historical]="!appointment.is_current">
+                  {{ formatAppointmentStatus(appointment) }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
   </div>
@@ -201,4 +243,14 @@
   (confirmed)="confirmDelete()"
   (cancelled)="cancelDelete()">
 </app-confirmation-modal>
+
+<app-appoint-successor-modal
+  *ngIf="diocese"
+  [show]="showSuccessorModal"
+  [dioceseId]="diocese.id"
+  [dioceseName]="diocese.name"
+  [currentOrdinary]="currentOrdinary"
+  (succeeded)="onSuccessorAppointed()"
+  (cancelled)="onSuccessorCancelled()">
+</app-appoint-successor-modal>
 

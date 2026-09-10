@@ -256,6 +256,9 @@
           *ngIf="canViewDonations((currentUser$ | async))"
           type="button"
           class="collect-btn"
+          [disabled]="isSubscriptionReadOnly()"
+          [attr.aria-disabled]="isSubscriptionReadOnly()"
+          [title]="isSubscriptionReadOnly() ? 'Read-only: renew subscription to collect' : 'Quick collect'"
           (click)="openQuickCollect()"
         >
           + Collect

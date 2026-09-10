@@ -56,9 +56,6 @@ import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/
 import { SacramentPersonContextService } from '../../services/sacrament-person-context.service';
 import { SacramentContextResponse } from '../../models/sacrament-context.model';
 import { PersonContextSummaryComponent } from '../shared/person-context-summary/person-context-summary.component';
-import { SacramentConflictPanelComponent } from '../shared/sacrament-conflict-panel/sacrament-conflict-panel.component';
-import { MissingFieldsSummaryComponent } from '../shared/missing-fields-summary/missing-fields-summary.component';
-import { CfFieldProvenanceComponent } from '../shared/cf-field-provenance/cf-field-provenance.component';
 import { SacramentEvidenceSummaryComponent } from '../shared/sacrament-evidence-summary/sacrament-evidence-summary.component';
 import {
   MarriagePartyFieldErrors,
@@ -79,9 +76,6 @@ import {
     MinisterPickerComponent,
     SacramentReviewPanelComponent,
     PersonContextSummaryComponent,
-    SacramentConflictPanelComponent,
-    MissingFieldsSummaryComponent,
-    CfFieldProvenanceComponent,
     SacramentEvidenceSummaryComponent,
     MarriagePartyPanelComponent,
   ],

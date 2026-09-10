@@ -18,6 +18,8 @@ import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { BccSubNavComponent } from '../bcc-sub-nav/bcc-sub-nav.component';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
 
 @Component({
   selector: 'app-bcc-list',
@@ -37,6 +39,7 @@ import { BccSubNavComponent } from '../bcc-sub-nav/bcc-sub-nav.component';
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
     BccSubNavComponent,
+    DisableWhenReadOnlyDirective,
   ],
   templateUrl: './bcc-list.html',
   styleUrls: ['./bcc-list.scss'],
@@ -45,6 +48,7 @@ import { BccSubNavComponent } from '../bcc-sub-nav/bcc-sub-nav.component';
 export class BCCListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
 
   bccs: BCC[] = [];
   statistics: BCCStatistics | null = null;
@@ -420,16 +424,28 @@ export class BCCListComponent implements OnInit, OnDestroy {
   }
 
   editBCC(bcc: BCC): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to edit BCCs.', 'Read-only');
+      return;
+    }
     this.selectedBCC = bcc;
     this.showForm = true;
   }
 
   createBCC(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to add BCCs.', 'Read-only');
+      return;
+    }
     this.selectedBCC = null;
     this.showForm = true;
   }
 
   deleteBCC(bcc: BCC): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to delete BCCs.', 'Read-only');
+      return;
+    }
     if (!this.isTenantAdmin) {
       this.toastService.error('Only Tenant Administrators can delete BCCs.', 'Permission Denied', 5000);
       return;

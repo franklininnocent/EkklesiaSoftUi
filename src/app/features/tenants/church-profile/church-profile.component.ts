@@ -27,15 +27,18 @@ import { GeographyService, Country } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ChurchLeaderWorkspaceComponent } from './components/church-leader-workspace/church-leader-workspace.component';
 import { ChurchLeaderDetailComponent } from './components/church-leader-detail/church-leader-detail.component';
 import { ChurchLeadershipGovernanceComponent } from './components/church-leadership-governance/church-leadership-governance.component';
+import { DiocesanBishopPanelComponent } from './components/diocesan-bishop-panel/diocesan-bishop-panel.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
 import { environment } from '@environments/environment';
 import { Subject } from 'rxjs';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 
 // Import all church management services
 import {
@@ -46,13 +49,16 @@ import {
   ChurchLeadershipGovernanceService,
   ChurchStatisticsService,
   ChurchSocialMediaService,
-  PopeDetailsService
+  PopeDetailsService,
+  ChurchBishopUpdateService,
 } from '@core/services/church';
+import { DiocesanLeadership } from '@core/models/ecclesiastical';
 
 // Import church models
 import {
   Denomination,
   Archdiocese,
+  Bishop,
   ChurchProfile,
   ChurchLeadership,
   ChurchStatistic,
@@ -60,6 +66,8 @@ import {
   PopeDetails,
   CurrentLeadershipResponse,
 } from '@core/models/church';
+
+type ChurchProfileTab = 'profile' | 'leadership' | 'statistics' | 'social' | 'diocesan-bishop';
 
 @Component({
   selector: 'app-church-profile',
@@ -74,7 +82,9 @@ import {
     ChurchLeaderWorkspaceComponent,
     ChurchLeaderDetailComponent,
     ChurchLeadershipGovernanceComponent,
+    DiocesanBishopPanelComponent,
     PageHeaderComponent,
+    BishopAvatarComponent,
   ],
   templateUrl: './church-profile.component.html',
   styleUrl: './church-profile.component.scss',
@@ -84,14 +94,24 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private leadersLoadTrigger$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+
+  private guardWrite(action: string): boolean {
+    if (!this.subscriptionAccess.isReadOnly()) {
+      return true;
+    }
+    this.toastService.warning(`Read-only mode: renew subscription to ${action}.`, 'Read-only');
+    return false;
+  }
+
   // Tab Management
-  activeTab: 'profile' | 'leadership' | 'statistics' | 'social' = 'profile';
+  activeTab: ChurchProfileTab = 'profile';
 
   // Church Profile Data
   churchProfile: Tenant | null = null;
   extendedProfile: ChurchProfile | null = null;
+  diocesanLeadership: DiocesanLeadership | null = null;
   popeDetails: PopeDetails | null = null;
-  
   // Patron Image Upload State
   patronImagePreview: string | null = null;
   patronImageFile: File | null = null;
@@ -174,6 +194,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private statisticsService = inject(ChurchStatisticsService);
   private socialMediaService = inject(ChurchSocialMediaService);
   private popeDetailsService = inject(PopeDetailsService);
+  private churchBishopUpdateService = inject(ChurchBishopUpdateService);
   
   // Geography and Phone Code Services
   private geographyService = inject(GeographyService);
@@ -185,6 +206,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private bccService = inject(BCCService);
 
   canEdit = false;
+  canViewDiocesanBishop = false;
+  canSubmitBishopUpdate = false;
   designVariant: 'summary' | 'tiles' | 'definition' = 'summary';
   aboutExpanded = false;
 
@@ -390,6 +413,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Save both General and Contact sections together
    */
   saveGeneralAndContact(): void {
+    if (!this.guardWrite('update church profile')) {
+      return;
+    }
     console.log('💾 saveGeneralAndContact called');
     console.log('Form valid:', this.profileForm.valid);
     console.log('Form value:', this.profileForm.value);
@@ -644,8 +670,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     this.route.queryParams
       .pipe(takeUntil(this.destroy$))
       .subscribe(params => {
-        if (params['tab'] && ['profile', 'leadership', 'statistics', 'social'].includes(params['tab'])) {
-          this.setActiveTab(params['tab'] as 'profile' | 'leadership' | 'statistics' | 'social');
+        if (params['tab'] && ['profile', 'leadership', 'statistics', 'social', 'diocesan-bishop'].includes(params['tab'])) {
+          this.setActiveTab(params['tab'] as ChurchProfileTab);
         }
         this.cdr.markForCheck();
       });
@@ -665,6 +691,12 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     const hasTenant = !!currentUser?.tenant_id;
     
     this.canEdit = hasTenant && (hasChurchSettingsEdit || isPrimaryAdmin || isTenantAdmin);
+    this.canSubmitBishopUpdate = hasTenant && this.authService.hasTenantPermission('bishops.submit_update_request');
+    this.canViewDiocesanBishop = hasTenant && (
+      this.authService.hasTenantPermission('bishops.view')
+      || this.canSubmitBishopUpdate
+      || this.authService.hasTenantPermission('bishops.view_own_requests')
+    );
     
     // Comprehensive debug logging
     console.log('🔍 Church Profile Edit Permission Check:', {
@@ -803,15 +835,24 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       case 'social':
         this.loadSocialMedia();
         break;
+      case 'diocesan-bishop':
+        break;
     }
   }
 
   /**
    * Change active tab
    */
-  setActiveTab(tab: 'profile' | 'leadership' | 'statistics' | 'social'): void {
+  setActiveTab(tab: ChurchProfileTab): void {
     this.activeTab = tab;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.loadTabData();
+    this.cdr.markForCheck();
   }
 
   // ===============================================================
@@ -989,6 +1030,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
           }
           
           this.populateProfileForm(response.data);
+          this.loadDiocesanLeadership();
           this.refreshOperationalMetrics();
           this.cdr.markForCheck();
           
@@ -1114,6 +1156,29 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     return this.popeDetails?.pope_name || 'Not Set';
   }
 
+  getPopeDisplayName(): string | null {
+    const name = this.popeDetails?.pope_name?.trim();
+    return name || null;
+  }
+
+  getPopeImageUrlWithFallback(): string {
+    const thumbnailUrl = this.getPopeImageUrl('300x300');
+    if (thumbnailUrl) {
+      return thumbnailUrl;
+    }
+
+    const originalUrl = this.getPopeImageUrl('original');
+    if (originalUrl) {
+      return originalUrl;
+    }
+
+    if (this.popeDetails?.pope_image_url) {
+      return this.popeDetails.pope_image_url;
+    }
+
+    return '';
+  }
+
   /**
    * Handle pope image error - try fallback
    */
@@ -1230,6 +1295,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Upload patron image file
    */
   private uploadPatronImageFile(): void {
+    if (!this.guardWrite('upload images')) {
+      return;
+    }
     if (!this.patronImageFile) {
       return;
     }
@@ -1343,6 +1411,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Remove patron image
    */
   removePatronImage(): void {
+    if (!this.guardWrite('delete images')) {
+      return;
+    }
     if (!this.extendedProfile?.patron_image_path) {
       this.patronImagePreview = null;
       this.patronImageFile = null;
@@ -1692,7 +1763,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       const controlsToEnable = [
         'denomination_id',
         'founded_year',
-        'country_id'
+        'country_id',
+        'patron_name'
       ];
       
       controlsToEnable.forEach(controlName => {
@@ -1774,6 +1846,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Save a specific section
    */
   saveSection(section: 'general' | 'contact' | 'identity'): void {
+    if (!this.guardWrite('update church profile')) {
+      return;
+    }
     // Validate fields for this section
     let sectionFields: string[] = [];
     
@@ -1892,6 +1967,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Open new leader modal
    */
   openNewLeaderModal(): void {
+    if (!this.guardWrite('add leaders')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to add leaders.', 'Permission Denied');
       return;
@@ -1922,6 +2000,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Open edit leader modal
    */
   openEditLeaderModal(leader: ChurchLeadership): void {
+    if (!this.guardWrite('edit leaders')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to edit leaders.', 'Permission Denied');
       return;
@@ -1977,6 +2058,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Delete leader
    */
   deleteLeader(leader: ChurchLeadership): void {
+    if (!this.guardWrite('delete leaders')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to delete leaders.', 'Permission Denied');
       return;
@@ -2010,6 +2094,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Open new statistic modal
    */
   openNewStatisticModal(): void {
+    if (!this.guardWrite('add statistics')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to add statistics.', 'Permission Denied');
       return;
@@ -2023,6 +2110,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Open edit statistic modal
    */
   openEditStatisticModal(statistic: ChurchStatistic): void {
+    if (!this.guardWrite('edit statistics')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to edit statistics.', 'Permission Denied');
       return;
@@ -2045,6 +2135,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Save statistic
    */
   saveStatistic(): void {
+    if (!this.guardWrite('save statistics')) {
+      return;
+    }
     if (this.statisticForm.invalid) {
       this.toastService.warning('Please fill in all required fields.', 'Validation Error');
       return;
@@ -2078,6 +2171,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Delete statistic
    */
   deleteStatistic(statistic: ChurchStatistic): void {
+    if (!this.guardWrite('delete statistics')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to delete statistics.', 'Permission Denied');
       return;
@@ -2108,6 +2204,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Open new social media modal
    */
   openNewSocialModal(): void {
+    if (!this.guardWrite('add social media')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to add social media accounts.', 'Permission Denied');
       return;
@@ -2121,6 +2220,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Open edit social media modal
    */
   openEditSocialModal(social: ChurchSocialMedia): void {
+    if (!this.guardWrite('edit social media')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to edit social media accounts.', 'Permission Denied');
       return;
@@ -2143,6 +2245,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Save social media
    */
   saveSocialMedia(): void {
+    if (!this.guardWrite('save social media')) {
+      return;
+    }
     if (this.socialForm.invalid) {
       this.toastService.warning('Please fill in all required fields.', 'Validation Error');
       return;
@@ -2176,6 +2281,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Delete social media
    */
   deleteSocialMedia(social: ChurchSocialMedia): void {
+    if (!this.guardWrite('delete social media')) {
+      return;
+    }
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to delete social media accounts.', 'Permission Denied');
       return;
@@ -2438,8 +2546,52 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
 
   getChurchSubtitle(): string {
     if (this.churchProfile?.slogan) return this.churchProfile.slogan;
-    if (this.extendedProfile?.patron_name) return `Dedicated to ${this.extendedProfile.patron_name}`;
+    if (this.getPatronName()) return `Dedicated to ${this.getPatronName()}`;
     return '';
+  }
+
+  getPatronName(): string | null {
+    const name = this.extendedProfile?.patron_name?.trim();
+    return name || null;
+  }
+
+  private loadDiocesanLeadership(): void {
+    if (!this.canViewDiocesanBishop || !this.extendedProfile?.archdiocese_id) {
+      this.diocesanLeadership = null;
+      return;
+    }
+
+    this.churchProfileService.getDiocesanLeadership().subscribe({
+      next: (response) => {
+        this.diocesanLeadership = response.data ?? null;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.diocesanLeadership = null;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  getDiocesanBishop(): Bishop | null {
+    const ordinary = this.diocesanLeadership?.ordinary;
+    if (ordinary?.bishop_id) {
+      const title = ordinary.title ?? '';
+      const name = ordinary.bishop_name ?? '';
+      return {
+        id: ordinary.bishop_id,
+        full_name: name,
+        title,
+        full_title: title ? `${title} ${name}`.trim() : name,
+        appointed_date: ordinary.effective_date,
+        photo_url: ordinary.photo_url,
+        photo_public_url: ordinary.photo_public_url,
+        has_photo: ordinary.has_photo,
+        active: 1,
+      };
+    }
+
+    return null;
   }
 
   getFoundedYear(): string | null {

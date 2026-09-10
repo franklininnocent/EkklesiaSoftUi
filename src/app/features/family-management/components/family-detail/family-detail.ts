@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FamilyService } from '../../../../core/services/family.service';
@@ -40,6 +40,7 @@ import {
 } from '../../utils/prepare-family-member-payload.util';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { AuthService } from '@core/services/auth.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { SacramentService } from '@features/settings/sacraments/services/sacrament.service';
 import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 
@@ -75,6 +76,8 @@ const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FamilyDetail implements OnInit, OnDestroy {
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+
   family: Family | null = null;
   loading = true;
   error: string | null = null;
@@ -128,6 +131,14 @@ export class FamilyDetail implements OnInit, OnDestroy {
 
   get callingCode(): string {
     return this.phoneCodeService.getPhoneCodeSync();
+  }
+
+  private guardWrite(action: string): boolean {
+    if (!this.subscriptionAccess.isReadOnly()) {
+      return true;
+    }
+    this.toastService.warning(`Read-only mode: renew subscription to ${action}.`, 'Read-only');
+    return false;
   }
 
   constructor(
@@ -568,6 +579,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   openBccTransferModal(): void {
+    if (!this.guardWrite('transfer BCC')) {
+      return;
+    }
     if (!this.family || !this.canRelocateBcc) {
       return;
     }
@@ -590,6 +604,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   openRequestVisitModal(): void {
+    if (!this.guardWrite('request a visit')) {
+      return;
+    }
     if (!this.family || !this.canCreatePastoralVisit) {
       return;
     }
@@ -630,6 +647,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   openMarriageHouseholdModal(): void {
+    if (!this.guardWrite('record marriage changes')) {
+      return;
+    }
     if (!this.family || !this.canMarriageTransition) {
       return;
     }
@@ -728,6 +748,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   openEdit(): void {
+    if (!this.guardWrite('edit families')) {
+      return;
+    }
     this.showEdit = true;
   }
 
@@ -1244,6 +1267,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   onNavigatorAddMember(): void {
+    if (!this.guardWrite('add members')) {
+      return;
+    }
     this.memberToEditIndex = null;
     this.memberToEdit = null;
     this.isHeadMemberMode = false;
@@ -1262,6 +1288,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
 
   openSacramentModal(memberIndex: number, sacrament: string, event?: Event): void {
     event?.stopPropagation();
+    if (!this.guardWrite('update sacraments')) {
+      return;
+    }
 
     const modalSacrament = this.resolveCanonicalSacrament(sacrament);
     if (!modalSacrament) {
@@ -1470,6 +1499,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * This method handles both adding a new head and editing an existing head
    */
   openAddOrEditHeadMember(): void {
+    if (!this.guardWrite('edit members')) {
+      return;
+    }
     const head = this.getFamilyHead();
     this.isHeadMemberMode = true; // Set flag to lock relationship dropdown
     
@@ -1547,6 +1579,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   openEditMember(index: number): void {
+    if (!this.guardWrite('edit members')) {
+      return;
+    }
     this.memberToEditIndex = index;
     this.isHeadMemberMode = false; // Regular member edit, not head mode
     // Store the member data once when opening the modal to prevent re-patching the form
@@ -1584,6 +1619,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   onMemberModalSave(value: FamilyMemberFormValue): void {
+    if (!this.guardWrite('save members')) {
+      return;
+    }
     this.memberModalError = null;
 
     // CRITICAL: If this is head member mode, ensure relationship is always 'self'
@@ -1770,6 +1808,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Upload family profile image
    */
   uploadProfileImage(file: File): void {
+    if (!this.guardWrite('upload images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;
@@ -1810,6 +1851,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Delete family profile image
    */
   deleteProfileImage(): void {
+    if (!this.guardWrite('delete images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;
@@ -1889,6 +1933,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Upload family head profile image
    */
   uploadHeadProfileImage(file: File): void {
+    if (!this.guardWrite('upload images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;
@@ -1930,6 +1977,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Delete family head profile image
    */
   deleteHeadProfileImage(): void {
+    if (!this.guardWrite('delete images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;

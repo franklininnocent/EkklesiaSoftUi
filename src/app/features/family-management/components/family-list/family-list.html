@@ -13,6 +13,7 @@
       <button
         type="button"
         class="cf-btn cf-btn-primary"
+        cfDisableWhenReadOnly
         (click)="createFamily()"
         aria-label="Add new family"
       >
@@ -156,6 +157,7 @@
                 <button
                   type="button"
                   class="cf-btn cf-btn--sm cf-btn-danger"
+                  cfDisableWhenReadOnly
                   (click)="deleteFamily(family)"
                   title="Delete family"
                 >
@@ -193,6 +195,7 @@
         *ngIf="!hasActiveFiltersOrSearch"
         type="button"
         class="cf-btn cf-btn-primary"
+        cfDisableWhenReadOnly
         (click)="createFamily()"
       >
         Add Family

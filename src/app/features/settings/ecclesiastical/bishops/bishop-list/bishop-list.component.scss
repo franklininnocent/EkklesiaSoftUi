@@ -2,6 +2,51 @@
   padding: 0;
 }
 
+.bishop-tenure-tabs {
+  display: inline-flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: #f3f4f6;
+}
+
+.tenure-tab {
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+
+  &.active {
+    background: #fff;
+    color: #4338ca;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  }
+}
+
+.badge-current,
+.badge-historical {
+  display: inline-block;
+  padding: 0.25rem 0.625rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-current {
+  background: rgba(16, 185, 129, 0.15);
+  color: #065f46;
+}
+
+.badge-historical {
+  background: rgba(107, 114, 128, 0.15);
+  color: #374151;
+}
+
 /* Toolbar projected into app-page-header actions */
 .bishop-page-header-actions {
   display: flex;

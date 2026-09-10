@@ -10,6 +10,53 @@
 
 // Detail Grid / Cards continue below
 
+.current-ordinary {
+  border: 1px solid rgba(102, 126, 234, 0.25);
+  background: rgba(102, 126, 234, 0.04);
+}
+
+.history-table-wrapper {
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 0.75rem 1rem;
+    text-align: left;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: #6b7280;
+  }
+}
+
+.history-row {
+  cursor: pointer;
+  transition: background 0.15s ease;
+
+  &:hover {
+    background: #f9fafb;
+  }
+}
+
+.badge-current {
+  background: rgba(16, 185, 129, 0.15);
+  color: #065f46;
+}
+
+.badge-historical {
+  background: rgba(107, 114, 128, 0.15);
+  color: #374151;
+}
+
 
 // Status badges used in body content
 .badge-success,

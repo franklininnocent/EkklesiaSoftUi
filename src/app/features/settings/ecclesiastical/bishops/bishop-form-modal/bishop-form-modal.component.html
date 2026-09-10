@@ -7,19 +7,15 @@
 >
   <!-- Modal Body -->
   <form [formGroup]="bishopForm" (ngSubmit)="onSubmit()">
-    <!-- Photo Preview Section -->
-    <div class="photo-section" *ngIf="photoPreviewUrl || bishopForm.get('full_name')?.value">
-      <div class="photo-preview-wrapper">
-        <img 
-          *ngIf="photoPreviewUrl" 
-          [src]="photoPreviewUrl" 
-          alt="Bishop Photo"
-          class="photo-preview">
-        <div *ngIf="!photoPreviewUrl" class="photo-placeholder-large">
-          {{ getInitials() }}
-        </div>
-      </div>
-    </div>
+    <app-bishop-photo-control
+      [name]="bishopDisplayName"
+      [source]="photoSource"
+      [disabled]="isSubmitting"
+      [uploading]="isSubmitting"
+      [canManage]="canManageImages"
+      (stateChange)="onPhotoStateChange($event)"
+      (error)="onPhotoError($event)"
+    ></app-bishop-photo-control>
 
     <div class="form-grid">
       <!-- Full Name -->
@@ -73,19 +69,34 @@
       <!-- Diocese/Archdiocese -->
       <div class="form-group">
         <label for="archdiocese_id" class="form-label required">Diocese/Archdiocese</label>
-        <select
+        <ng-select
           id="archdiocese_id"
           formControlName="archdiocese_id"
-          class="form-select"
-          [class.error]="hasError('archdiocese_id')">
-          <option [value]="null">Select Diocese</option>
-          <option *ngFor="let diocese of dioceses" [value]="diocese.id">
-            {{ diocese.name }}
-          </option>
-        </select>
+          [items]="dioceses"
+          bindLabel="name"
+          bindValue="id"
+          placeholder="Type to find a diocese"
+          notFoundText="No diocese matches that name"
+          [clearable]="!isEditMode"
+          [searchable]="true"
+          [readonly]="isEditMode"
+          [loading]="loadingDioceses"
+          [searchFn]="searchDiocese"
+          [class.error]="hasError('archdiocese_id')"
+          class="form-select-searchable">
+          <ng-template ng-option-tmp let-item="item">
+            <div class="diocese-option">
+              <strong>{{ item.name }}</strong>
+              <span class="diocese-option-meta" *ngIf="item.country?.name">{{ item.country.name }}</span>
+            </div>
+          </ng-template>
+        </ng-select>
         <span class="field-error" *ngIf="hasError('archdiocese_id')">
           {{ getErrorMessage('archdiocese_id') }}
         </span>
+        <small class="form-hint" *ngIf="isEditMode">
+          Diocese changes are managed on the bishop's Appointments tab.
+        </small>
       </div>
 
       <!-- Ecclesiastical Title -->
@@ -97,7 +108,7 @@
           class="form-select">
           <option [value]="null">Select Title</option>
           <option *ngFor="let title of titles" [value]="title.id">
-            {{ title.name }}
+            {{ title.title || title.name }}
           </option>
         </select>
       </div>
@@ -119,15 +130,10 @@
         </span>
       </div>
 
-      <!-- Is Current -->
-      <div class="form-group checkbox-group">
-        <label class="checkbox-label">
-          <input
-            type="checkbox"
-            formControlName="is_current"
-            class="checkbox-input">
-          <span>Currently Serving</span>
-        </label>
+      <div class="form-group full-width" *ngIf="isEditMode">
+        <p class="form-hint">
+          Current office and succession are managed on the bishop's Appointments tab.
+        </p>
       </div>
 
       <!-- Date of Birth -->
@@ -201,16 +207,26 @@
         ></app-phone-input>
       </div>
 
-      <!-- Photo URL -->
+      <!-- External Photo URL (optional fallback) -->
       <div class="form-group full-width">
-        <label for="photo_url" class="form-label">Photo URL</label>
-        <input
-          type="url"
-          id="photo_url"
-          formControlName="photo_url"
-          class="form-input"
-          placeholder="https://example.com/photo.jpg">
-        <small class="form-hint">Enter a public URL to the bishop's photo</small>
+        <button
+          type="button"
+          class="cf-btn cf-btn-link bishop-photo-url-toggle"
+          (click)="showExternalPhotoUrl = !showExternalPhotoUrl"
+          *ngIf="canManageImages && !photoState.pendingFile"
+        >
+          {{ showExternalPhotoUrl ? 'Hide external photo URL' : 'Use external photo URL instead' }}
+        </button>
+        <ng-container *ngIf="showExternalPhotoUrl && !photoState.pendingFile">
+          <label for="photo_url" class="form-label">External Photo URL</label>
+          <input
+            type="url"
+            id="photo_url"
+            formControlName="photo_url"
+            class="form-input"
+            placeholder="https://example.com/photo.jpg">
+          <small class="form-hint">Use only when the photo is hosted outside EkklesiaSoft.</small>
+        </ng-container>
       </div>
 
       <!-- Education -->

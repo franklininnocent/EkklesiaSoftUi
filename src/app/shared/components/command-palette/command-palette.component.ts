@@ -10,6 +10,7 @@ import { AuthService } from '@core/services/auth.service';
 import { CommandPaletteService } from '@shared/services/command-palette.service';
 import { QuickCollectService } from '@features/donations/services/quick-collect.service';
 import { DonationsService } from '@features/donations/services/donations.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { FinancialAiResponse, FinancialGlobalSearchResult, FinancialSearchResultItem } from '@features/donations/models/donation.model';
 
 
@@ -107,6 +108,7 @@ export class CommandPaletteComponent implements OnInit {
   private readonly donationsService = inject(DonationsService);
   private readonly familyService = inject(FamilyService);
   private readonly authService = inject(AuthService);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly search$ = new Subject<string>();
@@ -136,7 +138,11 @@ export class CommandPaletteComponent implements OnInit {
   get filteredActions() {
     const q = this.query.trim().toLowerCase();
     const canDonations = this.authService.canAccessDonations();
+    const readOnly = this.subscriptionAccess.isReadOnly();
     return this.actions.filter((action) => {
+      if (readOnly && (action.id === 'collect' || action.id === 'collection-day')) {
+        return false;
+      }
       if (action.donations && !canDonations) {
         return false;
       }

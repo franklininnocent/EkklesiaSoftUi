@@ -32,6 +32,7 @@ import {
   prepareFamilyMemberPayload
 } from '../../utils/prepare-family-member-payload.util';
 import { ToastService } from '../../../../core/services/toast.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 
 @Component({
   selector: 'app-family-form',
@@ -93,6 +94,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
     private phoneCodeService: PhoneCodeService,
     private authService: AuthService,
     private toastService: ToastService,
+    private subscriptionAccess: SubscriptionAccessService,
     private cdr: ChangeDetectorRef
   ) {
     this.familyForm = this.fb.group({
@@ -1331,6 +1333,10 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
    * Submit the form
    */
   onSubmit(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to save families.', 'Read-only');
+      return;
+    }
     // Re-validate status before submission
     const status = this.familyForm.get('status')?.value;
     if (status === 'inactive') {

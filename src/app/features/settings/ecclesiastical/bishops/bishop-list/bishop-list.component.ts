@@ -1,9 +1,15 @@
 import { Component, OnInit, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { BishopService, DioceseService } from '@core/services/ecclesiastical';
-import { Bishop, BishopListParams } from '@core/models/ecclesiastical';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
+import {
+  BishopService,
+  DioceseService,
+  EcclesiasticalTitleService,
+  extractBishopList,
+  extractBishopPagination,
+} from '@core/services/ecclesiastical';
+import { Bishop, BishopListParams, EcclesiasticalTitle } from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
@@ -12,13 +18,15 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
 import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
 
 @Component({
   selector: 'app-bishop-list',
   standalone: true,
   imports: [
     CommonModule, 
-    FormsModule, 
+    FormsModule,
+    RouterModule,
     PaginationComponent, 
     ConfirmationModalComponent, 
     BishopFormModalComponent,
@@ -26,6 +34,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
     EmptyStateComponent,
     AdvancedSearchPanelComponent,
     PageHeaderComponent,
+    BishopAvatarComponent,
   ],
   templateUrl: './bishop-list.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -34,7 +43,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 export class BishopListComponent implements OnInit {
   bishops: Bishop[] = [];
   dioceses: any[] = [];
-  titles: any[] = [];
+  titles: EcclesiasticalTitle[] = [];
   
   // Pagination
   currentPage = 1;
@@ -47,6 +56,8 @@ export class BishopListComponent implements OnInit {
   selectedDiocese: number | null = null;
   selectedTitle: number | null = null;
   selectedStatus: string | null = null;
+  selectedIsCurrent: boolean | null = null;
+  tenureFilter: 'all' | 'current' | 'historical' = 'all';
   sortBy = 'full_name';
   sortDir: 'asc' | 'desc' = 'asc';
 
@@ -54,6 +65,7 @@ export class BishopListComponent implements OnInit {
   loading = false;
   showDeleteModal = false;
   showFormModal = false;
+  loadingEditBishop = false;
   bishopToDelete: Bishop | null = null;
   selectedBishop: Bishop | null = null;
 
@@ -76,7 +88,9 @@ export class BishopListComponent implements OnInit {
   constructor(
     private bishopService: BishopService,
     private dioceseService: DioceseService,
+    private titleService: EcclesiasticalTitleService,
     private router: Router,
+    private route: ActivatedRoute,
     private toastService: ToastService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -84,6 +98,21 @@ export class BishopListComponent implements OnInit {
   ngOnInit(): void {
     this.loadBishops();
     this.loadFilters();
+    this.route.queryParamMap.subscribe((params) => {
+      const editId = params.get('edit');
+      if (editId) {
+        const bishop = this.bishops.find((b) => String(b.id) === editId);
+        if (bishop) {
+          this.onEditBishop(bishop);
+        } else {
+          this.bishopService.getBishop(parseInt(editId, 10)).subscribe({
+            next: (res) => {
+              if (res.data) this.onEditBishop(res.data);
+            },
+          });
+        }
+      }
+    });
   }
 
   loadBishops(): void {
@@ -95,58 +124,29 @@ export class BishopListComponent implements OnInit {
       search: this.searchTerm || undefined,
       diocese_id: this.selectedDiocese || undefined,
       title_id: this.selectedTitle || undefined,
-      is_active: this.selectedStatus ? (this.selectedStatus === 'active') : undefined,
+      status: this.selectedStatus || undefined,
+      is_current: this.resolveIsCurrentFilter(),
       sort_by: this.sortBy,
       sort_dir: this.sortDir
     };
 
     this.bishopService.getBishops(params).subscribe({
       next: (response) => {
-        console.log('Bishops API Response:', response);
-        console.log('Response.data:', response.data);
-        
-        if (response && response.success !== false && response.data) {
-          // Handle both nested and direct data structures
-          let bishopsData: Bishop[] = [];
-          
-          if (Array.isArray(response.data)) {
-            // Direct array response
-            bishopsData = response.data;
-          } else if (response.data.data && Array.isArray(response.data.data)) {
-            // Nested data structure (paginated response)
-            bishopsData = response.data.data;
-            this.totalItems = response.data.total || 0;
-            this.currentPage = response.data.current_page || 1;
-            this.totalPages = response.data.last_page || 1;
-          } else if (response.data && typeof response.data === 'object') {
-            // Try to extract array from object
-            const dataObj = response.data;
-            if (Array.isArray(dataObj)) {
-              bishopsData = dataObj;
-            } else if (dataObj.data && Array.isArray(dataObj.data)) {
-              bishopsData = dataObj.data;
-            }
-          }
-          
-          console.log('Extracted bishops:', bishopsData);
-          console.log('Bishops count:', bishopsData.length);
-          
-          // Create new array reference to trigger change detection
-          this.bishops = Array.from(bishopsData);
-          
-          console.log('Final bishops array length:', this.bishops.length);
+        if (response && response.success !== false) {
+          this.bishops = [...extractBishopList(response)];
+          const pagination = extractBishopPagination(response);
+          this.totalItems = pagination.total;
+          this.currentPage = pagination.currentPage;
+          this.totalPages = pagination.lastPage;
         } else {
-          console.warn('API response indicates failure:', response);
           this.bishops = [];
+          this.totalItems = 0;
+          this.totalPages = 0;
         }
-        
+
         this.loading = false;
-        
-        // Force change detection to update the view
         this.cdr.markForCheck();
         this.cdr.detectChanges();
-        
-        console.log('After change detection - bishops.length:', this.bishops.length);
       },
       error: (error) => {
         console.error('Error loading bishops:', error);
@@ -159,25 +159,23 @@ export class BishopListComponent implements OnInit {
 
   loadFilters(): void {
     // Load dioceses for filter (with minimal params to get all for dropdown)
-    this.dioceseService.getDioceses({ per_page: 1000, page: 1 }).subscribe({
-      next: (response) => {
-        this.dioceses = response.data?.data || [];
+    this.dioceseService.getDioceseOptions().subscribe({
+      next: (dioceses) => {
+        this.dioceses = dioceses;
         this.initializeSearchFields();
+        this.cdr.detectChanges();
       },
       error: (error) => console.error('Error loading dioceses:', error)
     });
 
-    // Note: We need an endpoint to get ecclesiastical titles
-    // For now, using hardcoded values
-    this.titles = [
-      { id: 1, name: 'Archbishop' },
-      { id: 2, name: 'Bishop' },
-      { id: 3, name: 'Cardinal' },
-      { id: 4, name: 'Auxiliary Bishop' },
-      { id: 5, name: 'Emeritus Archbishop' },
-      { id: 6, name: 'Emeritus Bishop' }
-    ];
-    this.initializeSearchFields();
+    this.titleService.getTitleOptions().subscribe({
+      next: (titles) => {
+        this.titles = titles;
+        this.initializeSearchFields();
+        this.cdr.detectChanges();
+      },
+      error: (error) => console.error('Error loading ecclesiastical titles:', error)
+    });
   }
 
   initializeSearchFields(): void {
@@ -198,7 +196,7 @@ export class BishopListComponent implements OnInit {
         key: 'title_id',
         label: 'Title',
         type: 'select',
-        options: this.titles.map(t => ({ value: t.id, label: t.name }))
+        options: this.titles.map(t => ({ value: t.id, label: t.title || t.name || '' }))
       },
       {
         key: 'status',
@@ -240,6 +238,9 @@ export class BishopListComponent implements OnInit {
     }
     if (searchValues['status']) {
       this.selectedStatus = searchValues['status'];
+    }
+    if (searchValues['is_current'] !== undefined && searchValues['is_current'] !== null && searchValues['is_current'] !== '') {
+      this.selectedIsCurrent = searchValues['is_current'] === true || searchValues['is_current'] === 'true';
     }
 
     this.currentPage = 1;
@@ -304,6 +305,7 @@ export class BishopListComponent implements OnInit {
     if (filter.key === 'diocese_id') this.selectedDiocese = null;
     if (filter.key === 'title_id') this.selectedTitle = null;
     if (filter.key === 'status') this.selectedStatus = null;
+    if (filter.key === 'is_current') this.selectedIsCurrent = null;
     
     this.currentPage = 1;
     this.loadBishops();
@@ -357,8 +359,39 @@ export class BishopListComponent implements OnInit {
     this.selectedDiocese = null;
     this.selectedTitle = null;
     this.selectedStatus = null;
+    this.selectedIsCurrent = null;
+    this.tenureFilter = 'all';
     this.currentPage = 1;
     this.loadBishops();
+  }
+
+  setTenureFilter(filter: 'all' | 'current' | 'historical'): void {
+    this.tenureFilter = filter;
+    this.selectedIsCurrent = filter === 'all' ? null : filter === 'current';
+    delete this.advancedSearchValues['is_current'];
+    this.currentPage = 1;
+    this.loadBishops();
+  }
+
+  private resolveIsCurrentFilter(): boolean | undefined {
+    if (this.selectedIsCurrent !== null) {
+      return this.selectedIsCurrent;
+    }
+    if (this.tenureFilter === 'current') {
+      return true;
+    }
+    if (this.tenureFilter === 'historical') {
+      return false;
+    }
+    return undefined;
+  }
+
+  getTenureLabel(bishop: Bishop): string {
+    return bishop.is_current ? 'Current' : 'Historical';
+  }
+
+  getTenureBadgeClass(bishop: Bishop): string {
+    return bishop.is_current ? 'badge-current' : 'badge-historical';
   }
 
   onSort(column: string): void {
@@ -388,14 +421,28 @@ export class BishopListComponent implements OnInit {
   }
 
   onEditBishop(bishop: Bishop): void {
-    this.selectedBishop = bishop;
-    this.showFormModal = true;
+    this.loadingEditBishop = true;
+    this.bishopService.getBishop(bishop.id).subscribe({
+      next: (response) => {
+        this.selectedBishop = response.data ?? bishop;
+        this.showFormModal = true;
+        this.loadingEditBishop = false;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Error loading bishop for edit:', error);
+        this.toastService.error('Failed to load bishop details for editing');
+        this.loadingEditBishop = false;
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   onFormSaved(bishop: Bishop): void {
     this.showFormModal = false;
     this.selectedBishop = null;
-    this.loadBishops(); // Refresh the list
+    this.currentPage = 1;
+    this.loadBishops();
   }
 
   onFormCancelled(): void {
@@ -457,20 +504,6 @@ export class BishopListComponent implements OnInit {
       inactive: 'Inactive'
     };
     return labelMap[status] || status;
-  }
-
-  getPhotoUrl(bishop: Bishop): string {
-    return bishop.photo_url || 'assets/images/default-bishop.png';
-  }
-
-  hasPhoto(bishop: Bishop): boolean {
-    return !!bishop.photo_url;
-  }
-
-  getInitials(bishop: Bishop): string {
-    const given = bishop.given_name || bishop.full_name?.split(' ')[0] || '';
-    const family = bishop.family_name || bishop.full_name?.split(' ').pop() || '';
-    return `${given.charAt(0)}${family.charAt(0)}`.toUpperCase();
   }
 
   /**

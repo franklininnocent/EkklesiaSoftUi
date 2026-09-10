@@ -1,0 +1,79 @@
+<app-modal-shell
+  *ngIf="show"
+  title="Appoint Successor"
+  size="lg"
+  [isSubmitting]="isSubmitting"
+  (closeRequested)="onCancel()"
+>
+  <p class="appoint-successor-modal__intro">
+    End the current ordinary for <strong>{{ dioceseName }}</strong> and appoint a successor in one atomic step.
+  </p>
+
+  <div class="appoint-successor-modal__current" *ngIf="currentOrdinary as ordinary">
+    <span class="appoint-successor-modal__label">Current Bishop</span>
+    <strong>{{ ordinary.bishop_name }}</strong>
+    <span *ngIf="ordinary.effective_date"> · since {{ ordinary.effective_date | date:'mediumDate' }}</span>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" class="appoint-successor-modal__form">
+    <div class="form-group">
+      <label class="form-label required" for="end_reason">Reason current bishop leaves office</label>
+      <select id="end_reason" class="form-select" formControlName="end_reason">
+        <option *ngFor="let reason of endReasonOptions" [value]="reason.value">{{ reason.label }}</option>
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label required" for="effective_date">Successor effective date</label>
+      <input id="effective_date" type="date" class="form-input" formControlName="effective_date" />
+      <small class="form-hint">The current ordinary's tenure ends the day before this date.</small>
+    </div>
+
+    <fieldset class="form-group">
+      <legend class="form-label required">Successor</legend>
+      <div class="appoint-successor-modal__mode">
+        <label class="radio-label">
+          <input type="radio" formControlName="successor_mode" value="new" />
+          <span>Create new bishop</span>
+        </label>
+        <label class="radio-label">
+          <input type="radio" formControlName="successor_mode" value="existing" />
+          <span>Select existing bishop</span>
+        </label>
+      </div>
+    </fieldset>
+
+    <div class="form-group" *ngIf="successorMode === 'new'">
+      <label class="form-label required" for="full_name">New bishop full name</label>
+      <input
+        id="full_name"
+        type="text"
+        class="form-input"
+        formControlName="full_name"
+        placeholder="Most Rev. David Smith"
+      />
+    </div>
+
+    <div class="form-group" *ngIf="successorMode === 'existing'">
+      <label class="form-label required" for="bishop_id">Existing bishop</label>
+      <ng-select
+        id="bishop_id"
+        formControlName="bishop_id"
+        [items]="bishopOptions"
+        bindLabel="full_name"
+        bindValue="id"
+        placeholder="Search bishops..."
+        [loading]="loadingBishops"
+        [clearable]="true"
+        [searchable]="true"
+      ></ng-select>
+    </div>
+  </form>
+
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="isSubmitting">Cancel</button>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="onSubmit()" [disabled]="isSubmitting || form.invalid">
+      Appoint Successor
+    </button>
+  </div>
+</app-modal-shell>

@@ -1,675 +1,534 @@
-<div class="tenant-detail-container cf-page">
+<div class="tenant-detail cf-page">
   <app-page-header
-    [title]="tenant?.name || 'Loading...'"
-    subtitle="Manage tenant details, subscription, and settings"
+    [title]="details?.identity?.name || 'Loading...'"
+    [subtitle]="details ? ('#' + details.identity.id + ' · ' + (details.identity.slug || '')) : 'Platform tenant management'"
     backLink="/tenants"
     backLabel="Tenants"
     [statusLabel]="headerStatusLabel"
     [statusTone]="headerStatusTone">
+    <div class="tenant-detail__header-actions" *ngIf="details">
+      <button type="button" class="cf-btn cf-btn--sm" (click)="toggleEdit()" *ngIf="!isEditing">Edit</button>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="openUpgradeModal()">Manage plan</button>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="toggleTenantStatus()">
+        {{ details.operational.active ? 'Deactivate' : 'Activate' }}
+      </button>
+    </div>
   </app-page-header>
 
-  <!-- Loading State -->
-  <div *ngIf="loading && !tenant" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading tenant details...</p>
+  <div *ngIf="loading && !details" class="tenant-detail__loading">
+    <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
   </div>
 
-  <!-- Error State -->
-  <div *ngIf="error && !loading" class="error-container" role="alert">
-    <div class="error-icon">
-      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
-        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
-        <line x1="12" y1="9" x2="12" y2="13"></line>
-        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-      </svg>
+  <div *ngIf="error && !loading" class="cf-inline-alert" role="alert">
+    <div>
+      <strong>Failed to load tenant</strong>
+      <p>{{ error }}</p>
     </div>
-    <h3>Failed to Load Tenant</h3>
-    <p>{{ error }}</p>
-    <button class="btn-retry" (click)="loadTenant()" type="button">Retry</button>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="loadDetails()">Retry</button>
   </div>
 
-  <!-- Tenant Content -->
-  <div *ngIf="tenant && !loading" class="tenant-content">
-    <!-- Tabs -->
-    <div class="tabs-container">
-      <button 
-        class="tab-button" 
-        [class.active]="activeTab === 'details'"
-        (click)="setActiveTab('details')"
-        type="button">
-        Details
-      </button>
-      <button 
-        class="tab-button" 
-        [class.active]="activeTab === 'subscription'"
-        (click)="setActiveTab('subscription')"
-        type="button">
-        Subscription
-      </button>
-      <button 
-        class="tab-button" 
-        [class.active]="activeTab === 'actions'"
-        (click)="setActiveTab('actions')"
-        type="button">
-        Actions
-      </button>
+  <ng-container *ngIf="details && !loading">
+    <div class="tenant-detail__warnings" *ngIf="details.warnings.length">
+      <div class="cf-inline-alert" *ngFor="let w of details.warnings" [class.cf-inline-alert--critical]="w.severity === 'critical'">
+        <app-status-badge [label]="w.message" [tone]="warningTone(w.severity)"></app-status-badge>
+      </div>
     </div>
 
-    <!-- Tab Content -->
-    <div class="tab-content">
-      <!-- Details Tab -->
-      <div *ngIf="activeTab === 'details'" class="tab-panel">
-        <div class="panel-header">
-          <h2>Tenant Details</h2>
-          <button 
-            *ngIf="!isEditing"
-            class="btn-edit" 
-            (click)="toggleEdit()"
-            type="button">
-            Edit
-          </button>
-          <div *ngIf="isEditing" class="edit-actions">
-            <button class="btn-save" (click)="saveTenant()" [disabled]="loading" type="button">Save</button>
-            <button class="btn-cancel" (click)="cancelEdit()" type="button">Cancel</button>
+    <section class="tenant-detail__hero cf-panel" aria-label="Tenant identity">
+      <div class="tenant-detail__hero-main">
+        <div class="tenant-detail__logo" *ngIf="getLogoUrl()">
+          <img [src]="getLogoUrl()" [alt]="details.identity.name + ' logo'" />
+        </div>
+        <div class="tenant-detail__hero-copy">
+          <p class="tenant-detail__meta">
+            <span *ngIf="details.identity.diocese_name">{{ details.identity.diocese_name }}</span>
+            <span *ngIf="details.identity.tenant_tier"> · {{ details.identity.tenant_tier }}</span>
+            <span *ngIf="details.subscription.plan_name"> · {{ details.subscription.plan_name }}</span>
+          </p>
+          <p class="tenant-detail__meta">
+            <app-status-badge
+              [label]="formatSubscriptionStatus(details.subscription.status ?? null)"
+              [tone]="subscriptionStatusTone(details.subscription.status ?? null)">
+            </app-status-badge>
+            <app-status-badge
+              [label]="accessModeLabel(details.subscription.access_mode)"
+              [tone]="details.subscription.access_mode === 'read_only' ? 'warning' : 'success'">
+            </app-status-badge>
+          </p>
+          <p class="tenant-detail__meta">Created {{ formatDate(details.identity.created_at) }} · Last activity {{ formatDateTime($any(details.kpis)['last_activity_at']) }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-kpi-grid" aria-label="Tenant KPIs" *ngIf="kpiEntries().length">
+      <div class="cf-kpi" *ngFor="let kpi of kpiEntries()">
+        <span>{{ kpi.label }}</span>
+        <strong>{{ kpi.value }}</strong>
+      </div>
+    </section>
+
+    <app-tab-strip
+      [tabs]="tabs"
+      [activeId]="activeTab"
+      mode="inpage"
+      ariaLabel="Tenant sections"
+      (tabChange)="onTabChange($event)">
+    </app-tab-strip>
+
+    <div class="tenant-detail__panel cf-panel" [ngSwitch]="activeTab">
+      <!-- Overview -->
+      <div *ngSwitchCase="'overview'" class="tenant-detail__section">
+        <div class="tenant-detail__section-header">
+          <h2>Overview</h2>
+          <div *ngIf="isEditing" class="tenant-detail__edit-actions">
+            <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="saveTenant()" [disabled]="loading">Save</button>
+            <button type="button" class="cf-btn cf-btn--sm" (click)="cancelEdit()">Cancel</button>
           </div>
         </div>
 
-        <div class="details-grid">
-          <!-- Basic Information -->
-          <div class="detail-section">
-            <h3>Basic Information</h3>
-            <div class="detail-fields">
-              <div class="field-group">
-                <label>Tenant Name</label>
-                <input 
-                  *ngIf="isEditing"
-                  type="text" 
-                  [(ngModel)]="editForm.name"
-                  class="form-input"
-                  [disabled]="loading">
-                <span *ngIf="!isEditing" class="field-value">{{ tenant.name }}</span>
-              </div>
-              <div class="field-group">
-                <label>Slogan</label>
-                <input 
-                  *ngIf="isEditing"
-                  type="text" 
-                  [(ngModel)]="editForm.slogan"
-                  class="form-input"
-                  [disabled]="loading">
-                <span *ngIf="!isEditing" class="field-value">{{ tenant.slogan || 'N/A' }}</span>
-              </div>
-              <div class="field-group">
-                <label>Slug</label>
-                <input 
-                  *ngIf="isEditing"
-                  type="text" 
-                  [(ngModel)]="editForm.slug"
-                  class="form-input"
-                  [disabled]="loading">
-                <span *ngIf="!isEditing" class="field-value">{{ tenant.slug }}</span>
-              </div>
-              <div class="field-group">
-                <label>Domain</label>
-                <input 
-                  *ngIf="isEditing"
-                  type="text" 
-                  [(ngModel)]="editForm.domain"
-                  class="form-input"
-                  [disabled]="loading">
-                <span *ngIf="!isEditing" class="field-value">{{ tenant.domain || 'N/A' }}</span>
-              </div>
-            </div>
+        <div class="tenant-detail__grid">
+          <div class="tenant-detail__card">
+            <h3>Identity</h3>
+            <dl>
+              <dt>Name</dt>
+              <dd>
+                <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.name" class="cf-input" />
+                <span *ngIf="!isEditing">{{ details.identity.name }}</span>
+              </dd>
+              <dt>Slogan</dt>
+              <dd>
+                <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.slogan" class="cf-input" />
+                <span *ngIf="!isEditing">{{ details.identity.slogan || '—' }}</span>
+              </dd>
+              <dt>Code</dt>
+              <dd>{{ details.identity.slug }}</dd>
+              <dt>Domain</dt>
+              <dd>
+                <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.domain" class="cf-input" />
+                <span *ngIf="!isEditing">{{ details.identity.domain || '—' }}</span>
+              </dd>
+              <dt>Diocese</dt>
+              <dd>{{ details.identity.diocese_name || '—' }}</dd>
+              <dt>Tier</dt>
+              <dd>{{ details.identity.tenant_tier || '—' }}</dd>
+            </dl>
           </div>
 
-          <!-- Contact Information -->
-          <div class="detail-section">
-            <h3>Contact Information</h3>
-            <div class="detail-fields">
-              <div class="field-group">
-                <label>Primary Contact</label>
-                <span class="field-value">{{ tenant.primary_contact?.name || tenant.primaryContact?.name || 'N/A' }}</span>
-              </div>
-              <div class="field-group">
-                <label>Email</label>
-                <span class="field-value">{{ tenant.primary_contact?.email || tenant.primaryContact?.email || tenant.email || 'N/A' }}</span>
-              </div>
-              <div class="field-group">
-                <label>Phone</label>
-                <span class="field-value">{{ tenant.phone || 'N/A' }}</span>
-              </div>
-              <div class="field-group">
-                <label>Website</label>
-                <span class="field-value">
-                  <a *ngIf="tenant.website" [href]="tenant.website" target="_blank" rel="noopener noreferrer">{{ tenant.website }}</a>
-                  <span *ngIf="!tenant.website">N/A</span>
-                </span>
-              </div>
-            </div>
+          <div class="tenant-detail__card">
+            <h3>Contact</h3>
+            <dl>
+              <dt>Primary contact</dt>
+              <dd>{{ details.contact.primary_contact?.name || '—' }}</dd>
+              <dt>Email</dt>
+              <dd>{{ details.contact.email || details.contact.primary_contact?.email || '—' }}</dd>
+              <dt>Phone</dt>
+              <dd>{{ details.contact.phone || details.contact.primary_contact?.phone || '—' }}</dd>
+              <dt>Website</dt>
+              <dd>{{ details.contact.website || '—' }}</dd>
+              <dt>Address</dt>
+              <dd *ngIf="details.contact.address; else noAddress">
+                {{ details.contact.address.line1 }}<br *ngIf="details.contact.address.line2" />
+                {{ details.contact.address.line2 }}<br />
+                {{ details.contact.address.city }}, {{ details.contact.address.state_province }}<br />
+                {{ details.contact.address.country }} {{ details.contact.address.postal_code }}
+              </dd>
+              <ng-template #noAddress><dd>—</dd></ng-template>
+            </dl>
           </div>
 
-          <!-- Logo -->
-          <div class="detail-section">
+          <div class="tenant-detail__card">
+            <h3>Administration</h3>
+            <dl>
+              <dt>Primary admin</dt>
+              <dd>{{ details.administration.primary_admin?.name || '—' }}</dd>
+              <dt>Users</dt>
+              <dd>{{ details.administration.active_users }} active / {{ details.administration.total_users }} total</dd>
+              <dt>Slots remaining</dt>
+              <dd>{{ details.administration.remaining_user_slots }}</dd>
+            </dl>
+          </div>
+
+          <div class="tenant-detail__card">
+            <h3>Storage</h3>
+            <ng-container *ngIf="details.usage.storage.available; else storageUnavailable">
+              <dl>
+                <dt>Used</dt>
+                <dd>{{ details.usage.storage.used_mb }} MB</dd>
+                <dt>Quota</dt>
+                <dd>{{ details.usage.storage.max_storage_mb }} MB</dd>
+                <dt>Remaining</dt>
+                <dd>{{ details.usage.storage.remaining_mb }} MB</dd>
+                <dt>Files</dt>
+                <dd>{{ details.usage.storage.file_count }}</dd>
+              </dl>
+            </ng-container>
+            <ng-template #storageUnavailable>
+              <p class="tenant-detail__muted">Storage usage unavailable.</p>
+            </ng-template>
+          </div>
+
+          <div class="tenant-detail__card">
             <h3>Logo</h3>
-            <div class="logo-section">
-              <div class="logo-preview">
-                <img 
-                  *ngIf="getLogoUrl() && !logoPreview"
-                  [src]="getLogoUrl()"
-                  alt="Tenant Logo"
-                  class="logo-image">
-                <img 
-                  *ngIf="logoPreview"
-                  [src]="logoPreview"
-                  alt="Logo Preview"
-                  class="logo-image">
-                <div *ngIf="!getLogoUrl() && !logoPreview" class="logo-placeholder">
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="48" height="48">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-                    <line x1="9" y1="3" x2="9" y2="21"></line>
-                    <line x1="15" y1="3" x2="15" y2="21"></line>
-                    <line x1="3" y1="9" x2="21" y2="9"></line>
-                    <line x1="3" y1="15" x2="21" y2="15"></line>
-                  </svg>
-                  <p>No Logo</p>
+            <div class="tenant-detail__logo-upload">
+              <img *ngIf="getLogoUrl()" [src]="getLogoUrl()" alt="Tenant logo" class="tenant-detail__logo-preview" />
+              <input type="file" accept="image/*" (change)="onLogoSelected($event)" />
+              <div class="tenant-detail__logo-actions">
+                <button type="button" class="cf-btn cf-btn--sm cf-btn-primary" (click)="uploadLogo()" [disabled]="!logoFile || loading">Upload</button>
+                <button type="button" class="cf-btn cf-btn--sm" (click)="deleteLogo()" [disabled]="!getLogoUrl() || loading">Remove</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Subscription -->
+      <div *ngSwitchCase="'subscription'" class="tenant-detail__section">
+        <div class="tenant-detail__section-header">
+          <h2>Subscription &amp; lifecycle</h2>
+          <div class="tenant-detail__actions">
+            <button type="button" class="cf-btn cf-btn--sm" (click)="openUpgradeModal()">Change plan</button>
+            <button type="button" class="cf-btn cf-btn--sm" (click)="openRenewModal()">Renew</button>
+            <button type="button" class="cf-btn cf-btn--sm" *ngIf="!isSubscriptionSuspended()" (click)="openSuspendModal()">Suspend</button>
+            <button type="button" class="cf-btn cf-btn--sm cf-btn-primary" *ngIf="isSubscriptionSuspended()" (click)="openReactivateModal()">Reactivate</button>
+          </div>
+        </div>
+
+        <div class="tenant-detail__grid tenant-detail__grid--2">
+          <div class="tenant-detail__card">
+            <h3>Subscription state</h3>
+            <dl>
+              <dt>Status</dt>
+              <dd><app-status-badge [label]="formatSubscriptionStatus(details.subscription.status ?? null)" [tone]="subscriptionStatusTone(details.subscription.status ?? null)"></app-status-badge></dd>
+              <dt>Access mode</dt>
+              <dd>{{ accessModeLabel(details.subscription.access_mode) }}</dd>
+              <dt>Plan</dt>
+              <dd>{{ details.subscription.plan_name || details.subscription.plan_key }}</dd>
+              <dt>End date</dt>
+              <dd>{{ formatDate(details.subscription.subscription_ends_at) }}</dd>
+              <dt>Grace ends</dt>
+              <dd>{{ formatDate(details.subscription.grace_ends_at) }}</dd>
+              <dt>Days remaining</dt>
+              <dd>{{ details.subscription.days_until_end ?? '—' }}</dd>
+              <dt>Trial ends</dt>
+              <dd>{{ formatDate(details.subscription.trial_ends_at) }}</dd>
+            </dl>
+          </div>
+          <div class="tenant-detail__card">
+            <h3>Operational state</h3>
+            <dl>
+              <dt>Tenant active</dt>
+              <dd>{{ details.operational.active ? 'Yes' : 'No' }}</dd>
+              <dt>Max users</dt>
+              <dd>{{ formatUsersLimit(details.subscription.max_users) }}</dd>
+              <dt>Max storage</dt>
+              <dd>{{ formatStorageLimit(details.subscription.max_storage_mb) }}</dd>
+              <dt>Suspended at</dt>
+              <dd>{{ formatDateTime(details.subscription.subscription_suspended_at) }}</dd>
+            </dl>
+          </div>
+        </div>
+
+        <h3 class="tenant-detail__subheading">Subscription history</h3>
+        <div *ngIf="auditsLoading" class="cf-loading-block"><p>Loading history…</p></div>
+        <div *ngIf="auditsError" class="cf-inline-alert" role="alert">
+          <p>{{ auditsError }}</p>
+          <button type="button" class="cf-btn cf-btn--sm" (click)="loadSubscriptionAudits(true)">Retry</button>
+        </div>
+        <app-data-table *ngIf="!auditsLoading && !auditsError && subscriptionAudits.length">
+          <table class="cf-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Action</th>
+                <th>Summary</th>
+                <th>Actor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let audit of subscriptionAudits">
+                <td>{{ formatDateTime(audit.created_at) }}</td>
+                <td>{{ audit.operation_label }}</td>
+                <td>{{ audit.summary }}</td>
+                <td>{{ audit.actor_name || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </app-data-table>
+        <app-cf-empty-state *ngIf="!auditsLoading && !auditsError && !subscriptionAudits.length" title="No subscription history" description="Lifecycle events will appear here." [hasActions]="false"></app-cf-empty-state>
+      </div>
+
+      <!-- Modules -->
+      <div *ngSwitchCase="'modules'" class="tenant-detail__section">
+        <h2>Modules &amp; entitlements</h2>
+        <app-data-table>
+          <table class="cf-table">
+            <thead>
+              <tr>
+                <th>Module</th>
+                <th>Entitled</th>
+                <th>Accessibility</th>
+                <th>Access mode</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let mod of details.modules">
+                <td>{{ mod.label }}</td>
+                <td>{{ mod.entitled ? 'Yes' : 'No' }}</td>
+                <td><app-status-badge [label]="moduleStatusLabel(mod)" [tone]="moduleStatusTone(mod)"></app-status-badge></td>
+                <td>{{ accessModeLabel(mod.access_mode) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </app-data-table>
+      </div>
+
+      <!-- Users -->
+      <div *ngSwitchCase="'users'" class="tenant-detail__section">
+        <h2>Users &amp; activity</h2>
+        <div class="cf-kpi-grid tenant-detail__user-kpis">
+          <div class="cf-kpi"><span>Total</span><strong>{{ details.usage.users.total_users }}</strong></div>
+          <div class="cf-kpi"><span>Active</span><strong>{{ details.usage.users.active_users }}</strong></div>
+          <div class="cf-kpi"><span>Frequent (30d)</span><strong>{{ details.usage.users.frequent_users_30d ?? '—' }}</strong></div>
+          <div class="cf-kpi"><span>Seen (7d)</span><strong>{{ details.usage.users.seen_last_7d ?? '—' }}</strong></div>
+          <div class="cf-kpi"><span>Never signed in</span><strong>{{ details.usage.users.never_signed_in ?? '—' }}</strong></div>
+        </div>
+        <app-data-table>
+          <table class="cf-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Last seen</th>
+                <th>Sign-ins (30d)</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let user of details.users_preview">
+                <td>{{ user.name }}</td>
+                <td>{{ user.email }}</td>
+                <td>{{ user.role || '—' }}</td>
+                <td>{{ user.status }}</td>
+                <td>{{ formatDateTime(user.last_seen_at) }}</td>
+                <td>{{ user.sign_ins_30d ?? '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </app-data-table>
+        <app-cf-empty-state *ngIf="!details.users_preview.length" title="No users" description="This tenant has no users yet." [hasActions]="false"></app-cf-empty-state>
+      </div>
+
+      <!-- Church -->
+      <div *ngSwitchCase="'church'" class="tenant-detail__section">
+        <h2>Church &amp; ecclesiastical</h2>
+        <p class="tenant-detail__muted">Read-only snapshot for platform administration.</p>
+        <ng-container *ngIf="details.church; else noChurch">
+          <div class="tenant-detail__grid tenant-detail__grid--2">
+            <div class="tenant-detail__card">
+              <h3>Parish profile</h3>
+              <dl>
+                <dt>Denomination</dt>
+                <dd>{{ details.church.denomination || '—' }}</dd>
+                <dt>Diocese</dt>
+                <dd>{{ details.church.archdiocese?.name || '—' }}</dd>
+                <dt>Patron</dt>
+                <dd>{{ details.church.patron_name || '—' }}</dd>
+                <dt>Founded</dt>
+                <dd>{{ details.church.founded_year || '—' }}</dd>
+              </dl>
+            </div>
+            <div class="tenant-detail__card">
+              <h3>Current bishop</h3>
+              <ng-container *ngIf="details.church.bishop; else noBishop">
+                <div class="tenant-detail__bishop">
+                  <img *ngIf="details.church.bishop.photo_url" [src]="details.church.bishop.photo_url" alt="" class="tenant-detail__bishop-photo" />
+                  <dl>
+                    <dt>Name</dt>
+                    <dd>{{ details.church.bishop.name }}</dd>
+                    <dt>Title</dt>
+                    <dd>{{ details.church.bishop.title || details.church.bishop.canonical_role || '—' }}</dd>
+                    <dt>Since</dt>
+                    <dd>{{ formatDate(details.church.bishop.effective_date) }}</dd>
+                  </dl>
                 </div>
-              </div>
-              <div class="logo-actions">
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  (change)="onLogoSelected($event)"
-                  id="logo-upload"
-                  class="file-input">
-                <label for="logo-upload" class="btn-upload">Choose Logo</label>
-                <button 
-                  *ngIf="logoFile"
-                  class="btn-upload-submit" 
-                  (click)="uploadLogo()"
-                  [disabled]="loading"
-                  type="button">
-                  Upload
-                </button>
-                <button 
-                  *ngIf="getLogoUrl() && !logoFile"
-                  class="btn-delete-logo" 
-                  (click)="deleteLogo()"
-                  [disabled]="loading"
-                  type="button">
-                  Delete Logo
-                </button>
-              </div>
+              </ng-container>
+              <ng-template #noBishop><p class="tenant-detail__muted">No current bishop resolved.</p></ng-template>
             </div>
+            <div class="tenant-detail__card">
+              <h3>Primary parish priest</h3>
+              <ng-container *ngIf="details.church.primary_pastor; else noPastor">
+                <dl>
+                  <dt>Name</dt>
+                  <dd>{{ details.church.primary_pastor.name }}</dd>
+                  <dt>Role</dt>
+                  <dd>{{ details.church.primary_pastor.role || '—' }}</dd>
+                  <dt>Appointed</dt>
+                  <dd>{{ formatDate(details.church.primary_pastor.appointed_date) }}</dd>
+                </dl>
+              </ng-container>
+              <ng-template #noPastor><p class="tenant-detail__muted">No primary pastor on record.</p></ng-template>
+            </div>
+          </div>
+        </ng-container>
+        <ng-template #noChurch>
+          <app-cf-empty-state title="No church profile" description="This tenant has not configured a church profile yet." [hasActions]="false"></app-cf-empty-state>
+        </ng-template>
+      </div>
+
+      <!-- Security -->
+      <div *ngSwitchCase="'security'" class="tenant-detail__section">
+        <h2>Security &amp; access</h2>
+        <div class="tenant-detail__grid tenant-detail__grid--2">
+          <div class="tenant-detail__card">
+            <dl>
+              <dt>Operational status</dt>
+              <dd>{{ details.operational.active ? 'Active' : 'Inactive' }}</dd>
+              <dt>Subscription status</dt>
+              <dd>{{ formatSubscriptionStatus(details.subscription.status ?? null) }}</dd>
+              <dt>Access mode</dt>
+              <dd>{{ accessModeLabel(details.subscription.access_mode) }}</dd>
+              <dt>Active users</dt>
+              <dd>{{ details.administration.active_users }}</dd>
+              <dt>Last sign-in</dt>
+              <dd>{{ formatDateTime(details.usage.users.last_seen_at) }}</dd>
+            </dl>
+          </div>
+          <div class="tenant-detail__card">
+            <h3>Role distribution</h3>
+            <ul class="tenant-detail__role-list">
+              <li *ngFor="let role of details.administration.role_distribution">
+                {{ role.role }} — {{ role.count }}
+              </li>
+            </ul>
           </div>
         </div>
       </div>
 
-      <!-- Subscription Tab -->
-      <div *ngIf="activeTab === 'subscription'" class="tab-panel">
-        <div class="panel-header">
-          <h2>Subscription</h2>
-          <p class="panel-subtitle">Manage this church's plan and access. Payments are not handled here.</p>
-        </div>
-
-        <div class="subscription-info">
-          <div class="info-card">
-            <div class="info-item">
-              <label>Current plan</label>
-              <span class="plan-badge" [ngClass]="'plan-' + tenant.plan">{{ getPlanName(tenant.plan) }}</span>
-            </div>
-            <div class="info-item">
-              <label>Status</label>
-              <app-status-badge
-                [label]="formatSubscriptionStatus(subscriptionStatus)"
-                [tone]="subscriptionStatusTone(subscriptionStatus)">
-              </app-status-badge>
-            </div>
-            <div class="info-item">
-              <label>User limit</label>
-              <span class="info-value">{{ formatUsersLimit(tenant.max_users) }}</span>
-            </div>
-            <div class="info-item">
-              <label>Storage limit</label>
-              <span class="info-value">{{ formatStorageLimit(tenant.max_storage_mb) }}</span>
-            </div>
-            <div class="info-item">
-              <label>Trial ends</label>
-              <span class="info-value">{{ formatDate(tenant.trial_ends_at) }}</span>
-            </div>
-            <div class="info-item">
-              <label>Subscription ends</label>
-              <span class="info-value">{{ formatDate(tenant.subscription_ends_at) }}</span>
-            </div>
-          </div>
-
-          <div class="subscription-actions" role="group" aria-label="Subscription actions">
-            <button class="cf-btn cf-btn-primary" (click)="openUpgradeModal()" type="button" [disabled]="loading || subscriptionActionSaving">
-              Change plan
-            </button>
-            <button class="cf-btn" (click)="openRenewModal()" type="button" [disabled]="loading || subscriptionActionSaving">
-              Renew access
-            </button>
-            <button
-              *ngIf="!isSubscriptionSuspended()"
-              class="cf-btn cf-btn-danger"
-              (click)="openSuspendModal()"
-              type="button"
-              [disabled]="loading || subscriptionActionSaving">
-              Suspend access
-            </button>
-            <button
-              *ngIf="isSubscriptionSuspended()"
-              class="cf-btn cf-btn-primary"
-              (click)="openReactivateModal()"
-              type="button"
-              [disabled]="loading || subscriptionActionSaving">
-              Reactivate access
-            </button>
-          </div>
-        </div>
-
-        <section class="subscription-audits" aria-labelledby="subscription-audits-title">
-          <div class="subscription-audits__header">
-            <div>
-              <h3 id="subscription-audits-title">Subscription history</h3>
-              <p>Plan changes, renewals, and access actions for this church</p>
-            </div>
-            <div class="subscription-audits__toolbar">
-              <label class="subscription-audits__filter">
-                <span class="sr-only">Filter by operation</span>
-                <select
-                  [(ngModel)]="auditFilterOperation"
-                  (ngModelChange)="onAuditFilterChange()"
-                  [disabled]="auditsLoading">
-                  <option value="">All actions</option>
-                  <option *ngFor="let op of auditOperationEntries()" [value]="op.value">{{ op.label }}</option>
-                </select>
-              </label>
-              <button
-                type="button"
-                class="cf-btn"
-                (click)="loadSubscriptionAudits(false)"
-                [disabled]="auditsLoading">
-                {{ auditsLoading ? 'Refreshing…' : 'Refresh' }}
-              </button>
-            </div>
-          </div>
-
-          <div *ngIf="auditsLoading && subscriptionAudits.length === 0" class="subscription-audits__state" role="status">
-            Loading subscription history…
-          </div>
-
-          <div *ngIf="auditsError && !auditsLoading" class="subscription-audits__state subscription-audits__state--error" role="alert">
-            <p>{{ auditsError }}</p>
-            <button type="button" class="cf-btn cf-btn-primary" (click)="loadSubscriptionAudits(false)">Try again</button>
-          </div>
-
-          <div *ngIf="!auditsLoading && !auditsError && subscriptionAudits.length === 0" class="subscription-audits__state">
-            No subscription changes recorded yet for this church.
-          </div>
-
-          <div *ngIf="subscriptionAudits.length > 0" class="subscription-audits__table-wrap" [attr.aria-busy]="auditsLoading">
-            <table class="subscription-audits__table">
-              <caption class="sr-only">Subscription audit history</caption>
-              <thead>
-                <tr>
-                  <th scope="col">When</th>
-                  <th scope="col">Action</th>
-                  <th scope="col">Summary</th>
-                  <th scope="col">By</th>
-                  <th scope="col"><span class="sr-only">Details</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngFor="let audit of subscriptionAudits">
-                  <td data-label="When">{{ formatAuditDateTime(audit.created_at) }}</td>
-                  <td data-label="Action">
-                    <span class="audit-op">{{ audit.operation_label }}</span>
-                    <span class="audit-source" *ngIf="audit.source">{{ audit.source }}</span>
-                  </td>
-                  <td data-label="Summary">
-                    <div>{{ audit.summary }}</div>
-                    <div class="audit-reason" *ngIf="audit.reason">Reason: {{ audit.reason }}</div>
-                    <div class="audit-details" *ngIf="expandedAuditId === audit.id">
-                      <div>
-                        <strong>Before</strong>
-                        <pre>{{ audit.before_state | json }}</pre>
-                      </div>
-                      <div>
-                        <strong>After</strong>
-                        <pre>{{ audit.after_state | json }}</pre>
-                      </div>
-                    </div>
-                  </td>
-                  <td data-label="By">
-                    <div>{{ audit.actor_name || 'System' }}</div>
-                    <div class="audit-role" *ngIf="audit.actor_role">{{ audit.actor_role }}</div>
-                  </td>
-                  <td data-label="Details">
-                    <button
-                      type="button"
-                      class="cf-btn btn-audit-details"
-                      (click)="toggleAuditDetails(audit.id)"
-                      [attr.aria-expanded]="expandedAuditId === audit.id">
-                      {{ expandedAuditId === audit.id ? 'Hide' : 'Details' }}
-                    </button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="subscription-audits__pager" *ngIf="auditsTotal > 0">
-            <span>{{ auditsTotal }} event<span *ngIf="auditsTotal !== 1">s</span></span>
-            <div class="subscription-audits__pager-actions" *ngIf="auditsLastPage > 1">
-              <button
-                type="button"
-                class="cf-btn"
-                (click)="goToAuditPage(auditsPage - 1)"
-                [disabled]="auditsLoading || auditsPage <= 1">
-                Previous
-              </button>
-              <span>Page {{ auditsPage }} of {{ auditsLastPage }}</span>
-              <button
-                type="button"
-                class="cf-btn"
-                (click)="goToAuditPage(auditsPage + 1)"
-                [disabled]="auditsLoading || auditsPage >= auditsLastPage">
-                Next
-              </button>
-            </div>
-          </div>
-        </section>
+      <!-- History -->
+      <div *ngSwitchCase="'history'" class="tenant-detail__section">
+        <h2>Audit &amp; history</h2>
+        <app-data-table *ngIf="details.history_preview.length">
+          <table class="cf-table">
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Category</th>
+                <th>Action</th>
+                <th>Summary</th>
+                <th>Actor</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let item of details.history_preview">
+                <td>{{ formatDateTime(item.created_at) }}</td>
+                <td>{{ item.category }}</td>
+                <td>{{ item.action_label }}</td>
+                <td>{{ item.summary }}</td>
+                <td>{{ item.actor_name || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </app-data-table>
+        <app-cf-empty-state *ngIf="!details.history_preview.length" title="No history" description="Tenant lifecycle events will appear here." [hasActions]="false"></app-cf-empty-state>
       </div>
 
-
-      <!-- Actions Tab -->
-      <div *ngIf="activeTab === 'actions'" class="tab-panel">
-        <div class="panel-header">
-          <h2>Tenant Actions</h2>
-        </div>
-
-        <div class="actions-grid">
-          <div class="action-card">
-            <h3>Status Management</h3>
-            <p>Activate or deactivate this tenant</p>
-            <button 
-              class="btn-action-status" 
-              [class.btn-deactivate]="tenant.active === 1"
-              [class.btn-activate]="tenant.active === 0"
-              (click)="toggleTenantStatus()"
-              [disabled]="loading"
-              type="button">
-              {{ tenant.active === 1 ? 'Deactivate Tenant' : 'Activate Tenant' }}
-            </button>
-          </div>
-
-          <div class="action-card">
-            <h3>Reset Password</h3>
-            <p>Send password reset email to primary contact</p>
-            <button class="btn-action-secondary" type="button" disabled>Coming Soon</button>
-          </div>
-
-          <div class="action-card">
-            <h3>Export Data</h3>
-            <p>Download all tenant data as CSV</p>
-            <button class="btn-action-secondary" type="button" disabled>Coming Soon</button>
-          </div>
-        </div>
+      <!-- Technical -->
+      <div *ngSwitchCase="'technical'" class="tenant-detail__section">
+        <h2>Technical metadata</h2>
+        <dl class="tenant-detail__meta-list">
+          <dt>Tenant ID</dt><dd>{{ details.meta.tenant_id }}</dd>
+          <dt>Tenant code</dt><dd>{{ details.meta.tenant_code }}</dd>
+          <dt>Cache version</dt><dd>{{ details.meta.cache_version }}</dd>
+          <dt>Write policy</dt><dd>{{ details.meta.write_policy || '—' }}</dd>
+          <dt>Generated at</dt><dd>{{ formatDateTime(details.meta.generated_at) }}</dd>
+          <dt>Features</dt><dd>{{ (details.meta.features || []).join(', ') || '—' }}</dd>
+        </dl>
       </div>
     </div>
-  </div>
+  </ng-container>
 </div>
 
-<!-- Upgrade / Change Plan Modal -->
-<app-modal-shell
-  *ngIf="showUpgradeModal"
-  title="Change plan"
-  [isSubmitting]="subscriptionActionSaving"
-  (closeRequested)="closeUpgradeModal()">
+<!-- Subscription modals (preserved) -->
+<app-modal-shell *ngIf="showUpgradeModal" title="Change plan" [isSubmitting]="subscriptionActionSaving" (closeRequested)="closeUpgradeModal()">
   <div class="sub-modal-body">
-    <p class="modal-description">
-      Choose a new plan for this church. Catalog price is for reference only — this does not process payment.
-    </p>
-    <p class="plan-rules-help">
-      You can move to a higher plan or to Free. Other downgrades are not allowed.
-    </p>
-
-    <div *ngIf="plansLoading" class="cf-loading-block" role="status" aria-live="polite" aria-busy="true">
-      <p class="cf-loading-block__label">Loading plans…</p>
-    </div>
-
+    <p class="modal-description">Choose a new plan. Catalog price is for reference only — this does not process payment.</p>
+    <div *ngIf="plansLoading" class="cf-loading-block"><p>Loading plans…</p></div>
     <div *ngIf="!plansLoading && plansLoadError" class="cf-inline-alert" role="alert">
-      <div>
-        <strong>Could not load plans</strong>
-        <p>{{ plansLoadError }}</p>
-      </div>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="loadSubscriptionPlans()">Try again</button>
+      <p>{{ plansLoadError }}</p>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="loadSubscriptionPlans()">Retry</button>
     </div>
-
-    <app-cf-empty-state
-      *ngIf="!plansLoading && !plansLoadError && getAvailablePlanKeys().length === 0"
-      title="No plans available"
-      description="Add active plans in Subscription Management, then try again."
-      icon="◎"
-      [hasActions]="true">
-      <button type="button" class="cf-btn cf-btn-primary" (click)="loadSubscriptionPlans()">Reload plans</button>
-    </app-cf-empty-state>
-
-    <div
-      *ngIf="!plansLoading && !plansLoadError && getAvailablePlanKeys().length > 0"
-      class="plans-grid"
-      role="listbox"
-      aria-label="Available plans">
-      <button
-        type="button"
-        *ngFor="let planKey of getAvailablePlanKeys()"
-        class="plan-card"
-        role="option"
-        [attr.aria-selected]="selectedPlan === planKey"
-        [class.selected]="selectedPlan === planKey"
-        [class.current]="tenant?.plan === planKey"
-        [class.disabled]="!canSelectPlan(planKey)"
-        [disabled]="!canSelectPlan(planKey) || subscriptionActionSaving"
+    <div *ngIf="!plansLoading && !plansLoadError && getAvailablePlanKeys().length" class="plans-grid">
+      <button type="button" *ngFor="let planKey of getAvailablePlanKeys()" class="plan-card"
+        [class.selected]="selectedPlan === planKey" [disabled]="!canSelectPlan(planKey) || subscriptionActionSaving"
         (click)="selectPlan(planKey)">
-        <div class="plan-header">
-          <h3>{{ getPlanName(planKey) }}</h3>
-          <div class="plan-price">
-            <span class="price-amount">{{ formatPrice(getPlanPrice(planKey)) }}</span>
-            <span class="price-period" *ngIf="getPlanPrice(planKey) > 0">catalog</span>
-          </div>
-        </div>
-        <div class="plan-features">
-          <div class="feature-item">
-            <span class="feature-label">Users</span>
-            <span class="feature-value">{{ formatUsersLimit(availablePlans[planKey]?.max_users) }}</span>
-          </div>
-          <div class="feature-item">
-            <span class="feature-label">Storage</span>
-            <span class="feature-value">{{ formatStorageLimit(availablePlans[planKey]?.max_storage_mb) }}</span>
-          </div>
-        </div>
-        <div *ngIf="tenant?.plan === planKey" class="plan-badge-current">Current plan</div>
+        <h3>{{ getPlanName(planKey) }}</h3>
+        <span>{{ formatPrice(getPlanPrice(planKey)) }}</span>
       </button>
     </div>
-
-    <div class="duration-selector" *ngIf="getAvailablePlanKeys().length > 0">
+    <div class="duration-selector" *ngIf="durationOptions.length">
       <label for="subscription-duration">Access duration</label>
-      <select
-        *ngIf="durationOptions.length > 0"
-        id="subscription-duration"
-        [(ngModel)]="subscriptionDuration"
-        class="form-select"
-        [disabled]="subscriptionActionSaving">
+      <select id="subscription-duration" [(ngModel)]="subscriptionDuration" class="cf-input" [disabled]="subscriptionActionSaving">
         <option *ngFor="let option of durationOptions" [ngValue]="option.value">{{ option.label }}</option>
       </select>
-      <p class="duration-empty" *ngIf="durationOptions.length === 0" role="status">
-        No duration options loaded.
-        <button type="button" class="cf-btn cf-btn--sm" (click)="loadSubscriptionPlans()">Reload</button>
-      </p>
-      <p class="renew-preview" *ngIf="durationOptions.length > 0">
-        New end date (preview): <strong>{{ getNewEndDate(null, subscriptionDuration) }}</strong>
-      </p>
     </div>
-
     <div class="reason-field">
       <label for="upgrade-reason">Reason <span class="optional">optional</span></label>
-      <textarea
-        id="upgrade-reason"
-        [(ngModel)]="subscriptionReason"
-        rows="2"
-        maxlength="500"
-        class="form-textarea"
-        placeholder="e.g. Parish request, complimentary upgrade"
-        [disabled]="subscriptionActionSaving"></textarea>
-      <small>{{ subscriptionReason.length }}/500 — saved to subscription history</small>
+      <textarea id="upgrade-reason" [(ngModel)]="subscriptionReason" rows="2" maxlength="500" class="cf-input" [disabled]="subscriptionActionSaving"></textarea>
     </div>
   </div>
   <ng-container modalFooter>
     <button class="cf-btn" (click)="closeUpgradeModal()" type="button" [disabled]="subscriptionActionSaving">Cancel</button>
-    <button
-      class="cf-btn cf-btn-primary"
-      (click)="upgradeSubscription()"
-      [disabled]="!canConfirmPlanChange()"
-      type="button">
+    <button class="cf-btn cf-btn-primary" (click)="upgradeSubscription()" [disabled]="!canConfirmPlanChange()" type="button">
       {{ subscriptionActionSaving ? 'Saving…' : confirmPlanActionLabel() }}
     </button>
   </ng-container>
 </app-modal-shell>
 
-<!-- Renew Access Modal -->
-<app-modal-shell
-  *ngIf="showRenewModal"
-  title="Renew access"
-  size="sm"
-  [isSubmitting]="subscriptionActionSaving"
-  (closeRequested)="closeRenewModal()">
+<app-modal-shell *ngIf="showRenewModal" title="Renew access" size="sm" [isSubmitting]="subscriptionActionSaving" (closeRequested)="closeRenewModal()">
   <div class="sub-modal-body">
-    <p class="modal-description">Extend this church's subscription period. This updates access dates only — it does not charge a payment.</p>
-
-    <div class="current-subscription-info" *ngIf="tenant">
-      <div class="info-row">
-        <span class="info-label">Current plan</span>
-        <span class="info-value">{{ getPlanName(tenant.plan) }}</span>
-      </div>
-      <div class="info-row">
-        <span class="info-label">Current end date</span>
-        <span class="info-value">{{ formatDate(tenant.subscription_ends_at) }}</span>
-      </div>
-    </div>
-
-    <div class="duration-selector">
+    <p class="modal-description">Extend this church's subscription period.</p>
+    <div class="duration-selector" *ngIf="durationOptions.length">
       <label for="renew-duration">Renewal duration</label>
-      <select
-        *ngIf="durationOptions.length > 0"
-        id="renew-duration"
-        [(ngModel)]="subscriptionDuration"
-        class="form-select"
-        [disabled]="subscriptionActionSaving">
+      <select id="renew-duration" [(ngModel)]="subscriptionDuration" class="cf-input" [disabled]="subscriptionActionSaving">
         <option *ngFor="let option of durationOptions" [ngValue]="option.value">{{ option.label }}</option>
       </select>
-      <p class="duration-empty" *ngIf="durationOptions.length === 0" role="status">
-        No duration options loaded.
-        <button type="button" class="cf-btn cf-btn--sm" (click)="loadSubscriptionPlans()">Reload</button>
-      </p>
-      <p class="renew-preview" *ngIf="tenant && durationOptions.length > 0">
-        New end date (preview): <strong>{{ getNewEndDate(tenant.subscription_ends_at || null, subscriptionDuration) }}</strong>
-      </p>
+      <p *ngIf="tenant">New end date: <strong>{{ getNewEndDate(tenant.subscription_ends_at || null, subscriptionDuration) }}</strong></p>
     </div>
-
     <div class="reason-field">
       <label for="renew-reason">Reason <span class="optional">optional</span></label>
-      <textarea
-        id="renew-reason"
-        [(ngModel)]="subscriptionReason"
-        rows="2"
-        maxlength="500"
-        class="form-textarea"
-        placeholder="e.g. Annual renewal confirmed"
-        [disabled]="subscriptionActionSaving"></textarea>
-      <small>{{ subscriptionReason.length }}/500 — saved to subscription history</small>
+      <textarea id="renew-reason" [(ngModel)]="subscriptionReason" rows="2" maxlength="500" class="cf-input" [disabled]="subscriptionActionSaving"></textarea>
     </div>
   </div>
   <ng-container modalFooter>
     <button class="cf-btn" (click)="closeRenewModal()" type="button" [disabled]="subscriptionActionSaving">Cancel</button>
-    <button
-      class="cf-btn cf-btn-primary"
-      (click)="renewSubscription()"
-      [disabled]="subscriptionActionSaving || durationOptions.length === 0"
-      type="button">
+    <button class="cf-btn cf-btn-primary" (click)="renewSubscription()" [disabled]="subscriptionActionSaving || !durationOptions.length" type="button">
       {{ subscriptionActionSaving ? 'Renewing…' : 'Renew access' }}
     </button>
   </ng-container>
 </app-modal-shell>
 
-<!-- Suspend Access Modal -->
-<app-modal-shell
-  *ngIf="showSuspendModal"
-  title="Suspend access"
-  size="sm"
-  [isSubmitting]="subscriptionActionSaving"
-  (closeRequested)="closeSuspendModal()">
+<app-modal-shell *ngIf="showSuspendModal" title="Suspend access" size="sm" [isSubmitting]="subscriptionActionSaving" (closeRequested)="closeSuspendModal()">
   <div class="sub-modal-body">
-    <p class="modal-description">
-      Suspended churches lose gated features (such as Donations) until reactivated.
-      Always-on settings remain available.
-    </p>
-    <div class="reason-field">
-      <label for="suspend-reason">Reason <span class="optional">optional</span></label>
-      <textarea
-        id="suspend-reason"
-        [(ngModel)]="subscriptionReason"
-        rows="3"
-        maxlength="500"
-        class="form-textarea"
-        placeholder="e.g. Non-payment follow-up, temporary hold"
-        [disabled]="subscriptionActionSaving"></textarea>
-      <small>{{ subscriptionReason.length }}/500 — saved to subscription history</small>
-    </div>
+    <p class="modal-description">Suspended churches lose gated features until reactivated.</p>
+    <textarea [(ngModel)]="subscriptionReason" rows="3" maxlength="500" class="cf-input" placeholder="Reason (optional)" [disabled]="subscriptionActionSaving"></textarea>
   </div>
   <ng-container modalFooter>
     <button class="cf-btn" (click)="closeSuspendModal()" type="button" [disabled]="subscriptionActionSaving">Cancel</button>
-    <button
-      class="cf-btn cf-btn-danger"
-      (click)="suspendSubscription()"
-      [disabled]="subscriptionActionSaving"
-      type="button">
+    <button class="cf-btn cf-btn-danger" (click)="suspendSubscription()" [disabled]="subscriptionActionSaving" type="button">
       {{ subscriptionActionSaving ? 'Suspending…' : 'Suspend access' }}
     </button>
   </ng-container>
 </app-modal-shell>
 
-<!-- Reactivate Access Modal -->
-<app-modal-shell
-  *ngIf="showReactivateModal"
-  title="Reactivate access"
-  size="sm"
-  [isSubmitting]="subscriptionActionSaving"
-  (closeRequested)="closeReactivateModal()">
+<app-modal-shell *ngIf="showReactivateModal" title="Reactivate access" size="sm" [isSubmitting]="subscriptionActionSaving" (closeRequested)="closeReactivateModal()">
   <div class="sub-modal-body">
-    <p class="modal-description">
-      Clear the suspension so this church can use gated features again, subject to their subscription end date.
-    </p>
-    <div class="reason-field">
-      <label for="reactivate-reason">Reason <span class="optional">optional</span></label>
-      <textarea
-        id="reactivate-reason"
-        [(ngModel)]="subscriptionReason"
-        rows="3"
-        maxlength="500"
-        class="form-textarea"
-        placeholder="e.g. Issue resolved, access restored"
-        [disabled]="subscriptionActionSaving"></textarea>
-      <small>{{ subscriptionReason.length }}/500 — saved to subscription history</small>
-    </div>
+    <p class="modal-description">Clear the suspension so this church can use gated features again.</p>
+    <textarea [(ngModel)]="subscriptionReason" rows="3" maxlength="500" class="cf-input" placeholder="Reason (optional)" [disabled]="subscriptionActionSaving"></textarea>
   </div>
   <ng-container modalFooter>
     <button class="cf-btn" (click)="closeReactivateModal()" type="button" [disabled]="subscriptionActionSaving">Cancel</button>
-    <button
-      class="cf-btn cf-btn-primary"
-      (click)="reactivateSubscription()"
-      [disabled]="subscriptionActionSaving"
-      type="button">
+    <button class="cf-btn cf-btn-primary" (click)="reactivateSubscription()" [disabled]="subscriptionActionSaving" type="button">
       {{ subscriptionActionSaving ? 'Reactivating…' : 'Reactivate access' }}
     </button>
   </ng-container>

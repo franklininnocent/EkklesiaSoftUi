@@ -147,4 +147,43 @@ describe('TenantCreateModalComponent', () => {
     expect(component.formData.primary_user_address.line1).toBe('A');
     expect(component.formData.primary_user_address.country_id).toBe(1);
   });
+
+  it('uses enterprise modal shell chrome and in-form footer actions', () => {
+    const shell = fixture.nativeElement.querySelector('app-modal-shell');
+    expect(shell).toBeTruthy();
+
+    const modalShell = fixture.debugElement.children[0].componentInstance;
+    expect(modalShell.size).toBe('lg');
+    expect(modalShell.headerVariant).toBe('compact');
+    expect(modalShell.bodyPadding).toBe('none');
+
+    const form = fixture.nativeElement.querySelector('form.cf-split-form-body.tenant-create-modal');
+    expect(form).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[modalFooter]')).toBeNull();
+
+    const actions = fixture.nativeElement.querySelector('.cf-split-form-actions');
+    expect(actions).toBeTruthy();
+
+    const buttons = actions.querySelectorAll('button');
+    expect(buttons.length).toBe(2);
+    expect(buttons[0].getAttribute('type')).toBe('submit');
+    expect(buttons[0].classList.contains('cf-btn-primary')).toBe(true);
+    expect(buttons[1].getAttribute('type')).toBe('button');
+    expect(buttons[1].textContent?.trim()).toBe('Cancel');
+    expect(buttons[1].classList.contains('cf-btn')).toBe(true);
+    expect(buttons[1].classList.contains('cf-btn-primary')).toBe(false);
+  });
+
+  it('shows Saving… label and disables footer buttons while submitting', () => {
+    component.isSubmitting = true;
+    fixture.detectChanges();
+
+    const actions = fixture.nativeElement.querySelector('.cf-split-form-actions');
+    const submitBtn = actions.querySelector('button[type="submit"]');
+    const cancelBtn = actions.querySelector('button[type="button"]');
+
+    expect(submitBtn.textContent?.trim()).toBe('Saving…');
+    expect(submitBtn.disabled).toBe(true);
+    expect(cancelBtn.disabled).toBe(true);
+  });
 });

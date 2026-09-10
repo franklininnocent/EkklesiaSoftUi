@@ -1,5 +1,6 @@
 import { Routes, Router, ActivatedRouteSnapshot, UrlTree } from '@angular/router';
 import { inject } from '@angular/core';
+import { tenantReadOnlyBlockGuard } from '@core/guards/tenant-read-only.guard';
 
 /**
  * Legacy /create and /edit/:id redirect to the registry list, which opens
@@ -42,6 +43,7 @@ export const SACRAMENTS_ROUTES: Routes = [
   },
   {
     path: 'holy-orders/create',
+    canActivate: [tenantReadOnlyBlockGuard],
     loadComponent: () =>
       import('./components/holy-orders-form/holy-orders-form.component').then(
         (m) => m.HolyOrdersFormComponent

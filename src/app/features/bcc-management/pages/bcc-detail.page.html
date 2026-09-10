@@ -58,7 +58,7 @@
         *ngIf="canEdit || hasMeetingMeta || bcc.created_at || bcc.updated_at"
       >
         <div class="bcc-detail__actions" *ngIf="canEdit">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openEdit()">Edit BCC</button>
+          <button type="button" class="cf-btn cf-btn-primary" cfDisableWhenReadOnly (click)="openEdit()">Edit BCC</button>
         </div>
 
         <dl class="bcc-detail__facts" *ngIf="hasMeetingMeta || bcc.created_at || bcc.updated_at">

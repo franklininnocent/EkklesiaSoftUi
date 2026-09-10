@@ -9,6 +9,8 @@ import { Subject, takeUntil } from 'rxjs';
 
 export interface MySubscriptionSummary {
   status: string;
+  access_mode?: 'full' | 'read_only';
+  is_read_only?: boolean;
   plan_key?: string;
   plan_name: string;
   trial_ends_at?: string | null;
@@ -192,6 +194,9 @@ export class MySubscriptionComponent implements OnInit, OnDestroy {
   }
 
   accessHeadline(summary: MySubscriptionSummary): string {
+    if (summary.status === 'EXPIRED' || summary.status === 'SUSPENDED') {
+      return 'Read-only mode';
+    }
     if (summary.allows_gated_access) {
       return 'Included features are available';
     }
@@ -209,9 +214,9 @@ export class MySubscriptionComponent implements OnInit, OnDestroy {
           ? `Your end date has passed. Access continues until ${this.formatDate(summary.grace_ends_at)}. Contact your administrator to renew.`
           : 'Your end date has passed and you are in a grace period. Contact your administrator to renew.';
       case 'EXPIRED':
-        return 'Your subscription has ended. Contact EkklesiaSoft or your administrator to restore access.';
+        return 'Your subscription has ended. You can view, print, and download records, but you cannot save changes. Contact EkklesiaSoft or your administrator to renew.';
       case 'SUSPENDED':
-        return 'Subscription access is suspended. Contact EkklesiaSoft or your administrator.';
+        return 'Subscription access is suspended. You can view records, but you cannot save changes. Contact EkklesiaSoft or your administrator.';
       case 'TRIAL':
         return summary.trial_ends_at
           ? `You are on a trial until ${this.formatDate(summary.trial_ends_at)}.`

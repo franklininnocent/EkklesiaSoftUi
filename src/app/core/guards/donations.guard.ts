@@ -43,10 +43,10 @@ export const donationsGuard: CanActivateFn = (_route, state) => {
         return of(true);
       }
 
-          access.ensureLoaded();
+      access.ensureLoaded();
       return access.refresh().pipe(
         map(() => {
-          if (access.allowsGatedAccess) {
+          if (access.canViewGatedModules()) {
             return true;
           }
           const canViewSub = authService.canViewMySubscription(user);

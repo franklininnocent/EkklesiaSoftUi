@@ -1,36 +1,64 @@
-import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges, ViewChild, ElementRef, AfterViewInit, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnInit, OnChanges, SimpleChanges, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { BishopService, DioceseService } from '@core/services/ecclesiastical';
-import { Bishop, BishopCreateRequest, BishopUpdateRequest } from '@core/models/ecclesiastical';
+import { NgSelectModule } from '@ng-select/ng-select';
+import { BishopService, DioceseService, EcclesiasticalTitleService } from '@core/services/ecclesiastical';
+import {
+  Bishop,
+  BishopCreateRequest,
+  BishopUpdateRequest,
+  Diocese,
+  EcclesiasticalTitle,
+} from '@core/models/ecclesiastical';
 import { ToastService } from '@core/services';
+import { AuthService } from '@core/services/auth.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import {
+  BishopPhotoControlComponent,
+  BishopPhotoControlState,
+} from '@shared/components/bishop-photo-control/bishop-photo-control.component';
+import { forkJoin, of, switchMap, map, Observable } from 'rxjs';
 
 @Component({
   selector: 'app-bishop-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    NgSelectModule,
+    PhoneInputComponent,
+    ModalShellComponent,
+    BishopPhotoControlComponent,
+  ],
   templateUrl: './bishop-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './bishop-form-modal.component.scss'
 })
 export class BishopFormModalComponent implements OnInit, OnChanges {
   @Input() show = false;
-  @Input() bishop: Bishop | null = null; // For edit mode
+  @Input() bishop: Bishop | null = null;
   @Output() saved = new EventEmitter<Bishop>();
   @Output() cancelled = new EventEmitter<void>();
+
+  @ViewChild(BishopPhotoControlComponent) photoControl?: BishopPhotoControlComponent;
 
   bishopForm!: FormGroup;
   isSubmitting = false;
   isEditMode = false;
+  loadingDioceses = false;
+  canManageImages = false;
+  showExternalPhotoUrl = false;
+  photoState: BishopPhotoControlState = {
+    pendingFile: null,
+    removeExisting: false,
+    previewUrl: null,
+  };
 
-  // Dropdown data
-  dioceses: any[] = [];
-  titles: any[] = [];
+  dioceses: Diocese[] = [];
+  titles: EcclesiasticalTitle[] = [];
 
-  // Status options
   statusOptions = [
     { value: 'active', label: 'Active' },
     { value: 'retired', label: 'Retired' },
@@ -38,17 +66,18 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     { value: 'inactive', label: 'Inactive' }
   ];
 
-  // Photo preview
-  photoPreviewUrl: string | null = null;
-
   constructor(
     private fb: FormBuilder,
     private bishopService: BishopService,
     private dioceseService: DioceseService,
-    private toastService: ToastService
+    private titleService: EcclesiasticalTitleService,
+    private toastService: ToastService,
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.canManageImages = this.authService.hasEcclesiasticalPermission('bishops.manage_images');
     this.initializeForm();
     this.loadDropdownData();
   }
@@ -57,13 +86,16 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     if (changes['bishop'] && changes['bishop'].currentValue) {
       this.isEditMode = true;
       this.populateForm(changes['bishop'].currentValue);
+      this.bishopForm.get('archdiocese_id')?.disable({ emitEvent: false });
     } else if (changes['show'] && changes['show'].currentValue && !this.bishop) {
       this.isEditMode = false;
       this.bishopForm?.reset({
         status: 'active',
         is_current: true
       });
-      this.photoPreviewUrl = null;
+      this.bishopForm?.get('archdiocese_id')?.enable({ emitEvent: false });
+      this.showExternalPhotoUrl = false;
+      this.photoControl?.reset();
     }
   }
 
@@ -86,36 +118,36 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
       status: ['active', [Validators.required]],
       is_current: [true]
     });
-
-    // Watch photo_url changes for preview
-    this.bishopForm.get('photo_url')?.valueChanges.subscribe(url => {
-      this.updatePhotoPreview(url);
-    });
   }
 
   loadDropdownData(): void {
-    // Load dioceses
-    this.dioceseService.getDioceses().subscribe({
-      next: (response) => {
-        this.dioceses = response.data?.data || [];
+    this.loadingDioceses = true;
+    this.dioceseService.getDioceseOptions().subscribe({
+      next: (dioceses) => {
+        this.dioceses = dioceses;
+        this.loadingDioceses = false;
+        this.cdr.detectChanges();
       },
       error: (error) => {
         console.error('Error loading dioceses:', error);
+        this.dioceses = [];
+        this.loadingDioceses = false;
         this.toastService.error('Failed to load dioceses');
+        this.cdr.detectChanges();
       }
     });
 
-    // Load ecclesiastical titles (hardcoded for now - would come from API)
-    this.titles = [
-      { id: 1, name: 'Archbishop' },
-      { id: 2, name: 'Bishop' },
-      { id: 3, name: 'Cardinal' },
-      { id: 4, name: 'Auxiliary Bishop' },
-      { id: 5, name: 'Emeritus Archbishop' },
-      { id: 6, name: 'Emeritus Bishop' },
-      { id: 7, name: 'Apostolic Administrator' },
-      { id: 8, name: 'Coadjutor Bishop' }
-    ];
+    this.titleService.getTitleOptions().subscribe({
+      next: (titles) => {
+        this.titles = titles;
+        this.cdr.detectChanges();
+      },
+      error: (error) => {
+        console.error('Error loading ecclesiastical titles:', error);
+        this.titles = [];
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   populateForm(bishop: Bishop): void {
@@ -132,33 +164,40 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
       date_of_birth: bishop.date_of_birth ? this.formatDateForInput(bishop.date_of_birth) : '',
       email: bishop.email,
       phone: bishop.phone,
-      photo_url: bishop.photo_url,
+      photo_url: bishop.photo_path ? '' : (bishop.photo_url || ''),
       education: bishop.education,
       status: bishop.status,
       is_current: bishop.is_current
     });
 
-    // Update photo preview
-    if (bishop.photo_url) {
-      this.updatePhotoPreview(bishop.photo_url);
-    }
+    this.showExternalPhotoUrl = !!(!bishop.photo_path && bishop.photo_url);
+    this.photoControl?.reset();
   }
 
-  updatePhotoPreview(url: string): void {
-    if (url && this.isValidUrl(url)) {
-      this.photoPreviewUrl = url;
-    } else {
-      this.photoPreviewUrl = null;
-    }
+  get photoSource(): Bishop | null {
+    return this.bishop;
   }
 
-  isValidUrl(url: string): boolean {
-    try {
-      new URL(url);
+  get bishopDisplayName(): string {
+    return this.bishopForm.get('full_name')?.value || this.bishop?.full_name || '';
+  }
+
+  onPhotoStateChange(state: BishopPhotoControlState): void {
+    this.photoState = state;
+  }
+
+  onPhotoError(message: string): void {
+    this.toastService.error(message);
+  }
+
+  searchDiocese(term: string, item: Diocese): boolean {
+    const query = term.trim().toLowerCase();
+    if (!query) {
       return true;
-    } catch {
-      return false;
     }
+
+    const haystack = `${item.name ?? ''} ${item.country?.name ?? ''}`.toLowerCase();
+    return haystack.includes(query);
   }
 
   onSubmit(): void {
@@ -174,11 +213,23 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
       ? this.bishopService.updateBishop(this.bishop!.id, formData as BishopUpdateRequest)
       : this.bishopService.createBishop(formData as BishopCreateRequest);
 
-    operation.subscribe({
+    operation.pipe(
+      switchMap((response) => {
+        const savedBishop = response.data;
+        if (!savedBishop) {
+          throw new Error('Bishop save failed');
+        }
+        return this.syncPhoto(savedBishop.id).pipe(
+          switchMap(() => this.bishopService.getBishop(savedBishop.id))
+        );
+      })
+    ).subscribe({
       next: (response) => {
         const message = this.isEditMode ? 'Bishop updated successfully' : 'Bishop created successfully';
         this.toastService.success(message);
-        this.saved.emit(response.data);
+        if (response.data) {
+          this.saved.emit(response.data);
+        }
         this.onCancel();
       },
       error: (error) => {
@@ -186,20 +237,44 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
         const message = this.isEditMode ? 'Failed to update bishop' : 'Failed to create bishop';
         this.toastService.error(message);
         this.isSubmitting = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
+  private syncPhoto(bishopId: number): Observable<void> {
+    const requests: Observable<unknown>[] = [];
+
+    if (this.photoState.pendingFile && this.canManageImages) {
+      requests.push(this.bishopService.uploadPhoto(bishopId, this.photoState.pendingFile));
+    } else if (this.photoState.removeExisting && this.canManageImages) {
+      requests.push(this.bishopService.deletePhoto(bishopId));
+    }
+
+    if (requests.length === 0) {
+      return of(undefined);
+    }
+
+    return forkJoin(requests).pipe(map(() => undefined));
+  }
+
   prepareFormData(): Partial<BishopCreateRequest & BishopUpdateRequest> {
-    const formValue = this.bishopForm.value;
-    
-    // Remove empty strings and null values
-    const data: any = {};
+    const formValue = this.bishopForm.getRawValue();
+
+    const data: Record<string, unknown> = {};
     Object.keys(formValue).forEach(key => {
-      if (formValue[key] !== '' && formValue[key] !== null) {
+      if (formValue[key] !== '' && formValue[key] !== null && formValue[key] !== undefined) {
         data[key] = formValue[key];
       }
     });
+
+    if (this.isEditMode) {
+      delete data['archdiocese_id'];
+    }
+
+    if (this.photoState.pendingFile || this.photoState.removeExisting) {
+      delete data['photo_url'];
+    }
 
     return data;
   }
@@ -211,7 +286,8 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     });
     this.isSubmitting = false;
     this.isEditMode = false;
-    this.photoPreviewUrl = null;
+    this.showExternalPhotoUrl = false;
+    this.photoControl?.reset();
     this.cancelled.emit();
   }
 
@@ -223,12 +299,20 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
 
   private formatDateForInput(date: string): string {
     if (!date) return '';
-    // Convert to YYYY-MM-DD format for input type="date"
+    const isoDate = date.includes('T') ? date.split('T')[0] : date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) {
+      return isoDate;
+    }
     const d = new Date(date);
-    return d.toISOString().split('T')[0];
+    if (Number.isNaN(d.getTime())) {
+      return '';
+    }
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
 
-  // Validation helpers using helper utility
   isFieldInvalid(fieldName: string): boolean {
     return isFieldInvalid(fieldName, this.bishopForm);
   }
@@ -237,7 +321,6 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     return getErrorMessage(fieldName, this.bishopForm);
   }
 
-  // Alias for template compatibility
   hasError(fieldName: string): boolean {
     return this.isFieldInvalid(fieldName);
   }
@@ -246,42 +329,14 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     return this.getFieldError(fieldName);
   }
 
-  private getFieldLabel(fieldName: string): string {
-    const labels: Record<string, string> = {
-      full_name: 'Full Name',
-      given_name: 'Given Name',
-      family_name: 'Family Name',
-      religious_name: 'Religious Name',
-      archdiocese_id: 'Diocese/Archdiocese',
-      ecclesiastical_title_id: 'Ecclesiastical Title',
-      appointed_date: 'Appointed Date',
-      ordained_priest_date: 'Ordained Priest Date',
-      ordained_bishop_date: 'Ordained Bishop Date',
-      date_of_birth: 'Date of Birth',
-      email: 'Email',
-      phone: 'Phone',
-      photo_url: 'Photo URL',
-      education: 'Education',
-      status: 'Status'
-    };
-    return labels[fieldName] || fieldName;
-  }
-
   get modalTitle(): string {
     return this.isEditMode ? 'Edit Bishop' : 'Create New Bishop';
   }
 
   get submitButtonText(): string {
+    if (this.isSubmitting) {
+      return this.isEditMode ? 'Saving…' : 'Creating…';
+    }
     return this.isEditMode ? 'Update' : 'Create';
   }
-
-  getInitials(): string {
-    const fullName = this.bishopForm.get('full_name')?.value || '';
-    const parts = fullName.split(' ');
-    if (parts.length >= 2) {
-      return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
-    }
-    return fullName.substring(0, 2).toUpperCase();
-  }
 }
-

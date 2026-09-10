@@ -26,7 +26,15 @@ export interface Tenant {
   trial_ends_at?: string | null;
   subscription_ends_at?: string | null;
   subscription_suspended_at?: string | null;
+  /** Resolved lifecycle state from SubscriptionService::resolveStatus (list/detail). */
+  subscription_status?: string | null;
+  /** full | read_only — from SubscriptionService::accessMode (list/detail). */
+  access_mode?: 'full' | 'read_only' | string | null;
   
+  // Hierarchy
+  tenant_tier?: TenantTier;
+  parent_tenant_id?: number | null;
+
   // Status & settings
   active: 0 | 1;
   settings?: Record<string, any> | null;
@@ -78,6 +86,10 @@ export interface Tenant {
   creator?: User;
   updater?: User;
   
+  // List aggregates (from withCount on list endpoint)
+  users_count?: number;
+  active_users_count?: number;
+
   // UI state properties (not from API)
   isTogglingStatus?: boolean;
 }
@@ -171,11 +183,18 @@ export interface UpdateTenantRequest extends Partial<CreateTenantRequest> {}
 /**
  * Tenant list query parameters
  */
+export type TenantTier = 'platform' | 'diocese' | 'parish' | 'branch';
+
+export type TenantSubscriptionStatusFilter = 'trial' | 'subscribed' | 'grace' | 'suspended' | 'expired';
+
 export interface TenantListParams {
   per_page?: number | 'all';
   page?: number;
   active?: 0 | 1;
   plan?: TenantPlan;
+  tenant_tier?: TenantTier;
+  archdiocese_id?: number;
+  subscription_status?: TenantSubscriptionStatusFilter;
   search?: string;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
@@ -187,6 +206,8 @@ export interface TenantListParams {
 export interface TenantListResponse {
   success: boolean;
   data: Tenant[];
+  /** Present when per_page=all */
+  total?: number;
   pagination?: {
     current_page: number;
     last_page: number;
@@ -205,6 +226,195 @@ export interface TenantResponse {
   success: boolean;
   data: Tenant;
   stats?: TenantStats;
+  message?: string;
+}
+
+export interface TenantDetailsWarning {
+  code: string;
+  severity: 'info' | 'warning' | 'critical';
+  message: string;
+}
+
+export interface TenantDetailsModule {
+  key: string;
+  label: string;
+  entitled: boolean;
+  gated: boolean;
+  always_on: boolean;
+  accessible: boolean;
+  access_reason: string | null;
+  subscription_status: string | null;
+  access_mode: string;
+}
+
+export interface TenantDetailsUserPreview {
+  id: number;
+  name: string;
+  email: string;
+  role: string | null;
+  status: 'active' | 'inactive' | string;
+  is_primary_admin: boolean;
+  last_seen_at: string | null;
+  sign_ins_30d: number | null;
+  created_at: string | null;
+}
+
+export interface TenantDetailsHistoryItem {
+  id: string;
+  category: string;
+  action: string;
+  action_label: string;
+  summary: string;
+  actor_name: string | null;
+  actor_role: string | null;
+  created_at: string | null;
+}
+
+export interface TenantDetailsSnapshot {
+  identity: {
+    id: number;
+    name: string;
+    slogan?: string | null;
+    slug: string;
+    domain?: string | null;
+    tenant_tier?: TenantTier | string | null;
+    parent_tenant_id?: number | null;
+    parent_tenant_name?: string | null;
+    hierarchy_path?: string | null;
+    diocese_name?: string | null;
+    diocese_id?: number | null;
+    logo_url?: string | null;
+    logo_full_url?: string | null;
+    primary_color?: string;
+    secondary_color?: string;
+    created_at?: string | null;
+    updated_at?: string | null;
+    created_by?: { id: number; name: string } | null;
+    updated_by?: { id: number; name: string } | null;
+  };
+  operational: {
+    active: boolean;
+    active_flag: 0 | 1;
+  };
+  subscription: Record<string, unknown> & {
+    status?: string;
+    access_mode?: 'full' | 'read_only' | string;
+    plan_key?: string;
+    plan_name?: string;
+    is_read_only?: boolean;
+    subscription_ends_at?: string | null;
+    grace_ends_at?: string | null;
+    days_until_end?: number | null;
+    trial_ends_at?: string | null;
+    subscription_suspended_at?: string | null;
+    max_users?: number;
+    max_storage_mb?: number;
+    features?: string[];
+  };
+  modules: TenantDetailsModule[];
+  contact: {
+    primary_contact?: { id: number; name: string; email: string; phone?: string | null } | null;
+    secondary_contact?: { id: number; name: string; email: string; phone?: string | null } | null;
+    email?: string | null;
+    phone?: string | null;
+    website?: string | null;
+    address?: {
+      line1?: string;
+      line2?: string | null;
+      city?: string | null;
+      district?: string;
+      state_province?: string;
+      country?: string;
+      postal_code?: string;
+    } | null;
+  };
+  administration: {
+    primary_admin?: { id: number; name: string; email: string } | null;
+    total_users: number;
+    active_users: number;
+    inactive_users: number;
+    remaining_user_slots: number;
+    max_users: number;
+    role_distribution: Array<{ role: string; count: number }>;
+  };
+  church: {
+    profile_configured?: boolean;
+    denomination?: string | null;
+    archdiocese?: { id: number; name: string; code?: string; country?: string } | null;
+    bishop?: {
+      id?: number;
+      name?: string;
+      title?: string;
+      canonical_role?: string;
+      photo_url?: string | null;
+      effective_date?: string | null;
+      is_current?: boolean;
+    } | null;
+    primary_pastor?: {
+      id: number;
+      name: string;
+      role?: string;
+      title?: string;
+      email?: string;
+      phone?: string;
+      appointed_date?: string;
+      photo_url?: string | null;
+    } | null;
+    founded_year?: number | null;
+    patron_name?: string | null;
+    about?: string | null;
+    vision?: string | null;
+    mission?: string | null;
+    service_times?: string | null;
+    country?: string | null;
+    phone?: string | null;
+    email?: string | null;
+    website?: string | null;
+  } | null;
+  kpis: Record<string, number | string | null | undefined>;
+  usage: {
+    storage: {
+      available: boolean;
+      error?: string | null;
+      used_bytes?: number | null;
+      used_mb?: number | null;
+      max_storage_mb?: number;
+      remaining_mb?: number | null;
+      percent_used?: number | null;
+      file_count?: number | null;
+    };
+    users: {
+      available: boolean;
+      error?: string | null;
+      total_users: number;
+      active_users: number;
+      inactive_users: number;
+      seen_last_7d?: number | null;
+      seen_last_30d?: number | null;
+      frequent_users_30d?: number | null;
+      never_signed_in?: number | null;
+      last_seen_at?: string | null;
+      role_distribution: Array<{ role: string; count: number }>;
+      preview: TenantDetailsUserPreview[];
+    };
+  };
+  users_preview: TenantDetailsUserPreview[];
+  history_preview: TenantDetailsHistoryItem[];
+  warnings: TenantDetailsWarning[];
+  meta: {
+    tenant_id: number;
+    tenant_code: string;
+    cache_version?: number;
+    features?: string[];
+    plan_key?: string;
+    write_policy?: string;
+    generated_at?: string;
+  };
+}
+
+export interface TenantDetailsResponse {
+  success: boolean;
+  data: TenantDetailsSnapshot;
   message?: string;
 }
 

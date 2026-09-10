@@ -14,6 +14,7 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     catchError((error: HttpErrorResponse) => {
       let errorMessage = 'An unknown error occurred';
       const reason = error.error?.reason as string | undefined;
+      const code = error.error?.code as string | undefined;
       const subscriptionStatus = error.error?.subscription_status as string | undefined;
 
       if (error.error instanceof ErrorEvent) {
@@ -33,21 +34,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             }
             break;
           case 403:
-            if (reason === 'subscription_blocked') {
+            if (reason === 'subscription_blocked' || code === 'SUBSCRIPTION_READ_ONLY') {
               errorMessage =
                 error.error?.message ||
-                'Your subscription has ended or is suspended. Contact your administrator to restore access.';
-              toast.error(errorMessage, 'Subscription');
-              const canViewSub = auth.canViewMySubscription();
-              if (canViewSub && !router.url.includes('/settings/my-subscription')) {
-                router.navigate(['/settings/my-subscription'], {
-                  queryParams: { status: subscriptionStatus || 'EXPIRED' },
-                });
-              } else if (!canViewSub && !router.url.includes('/dashboard')) {
-                router.navigate(['/dashboard'], {
-                  queryParams: { error: 'subscription', message: errorMessage },
-                });
-              }
+                'Your subscription has ended. You can view records, but you cannot save changes.';
+              toast.error(errorMessage, 'Read-only');
             } else {
               errorMessage = error.error?.message || 'Forbidden. You do not have permission.';
             }
