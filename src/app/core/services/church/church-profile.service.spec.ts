@@ -60,7 +60,7 @@ describe('ChurchProfileService', () => {
       success: true,
       data: {
         patron_image_path: 'tenants/1/patron/patron.jpg',
-        patron_image_url: '/storage/tenants/1/patron/patron.jpg',
+        patron_image_url: 'https://api.example.test/api/tenant/media/serve?token=patron-signed',
       },
     });
   });

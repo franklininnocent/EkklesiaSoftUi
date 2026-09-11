@@ -84,4 +84,10 @@ export const SETTINGS_ROUTES: Routes = [
     loadComponent: () =>
       import('./data-export/data-export.page').then((m) => m.DataExportPage),
   },
+  {
+    path: 'default-seeds',
+    data: { breadcrumbLabel: 'Default Seeds' },
+    loadComponent: () =>
+      import('./default-seeds/default-seeds.page').then((m) => m.DefaultSeedsPage),
+  },
 ];

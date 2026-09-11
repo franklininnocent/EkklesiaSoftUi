@@ -17,6 +17,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 
 @Component({
   selector: 'app-member-list',
@@ -34,6 +35,7 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
     ModalShellComponent,
+    ImageViewerComponent,
   ],
   templateUrl: './member-list.component.html',
   styleUrls: ['./member-list.component.scss'],
@@ -65,10 +67,11 @@ export class MemberListComponent implements OnInit, OnDestroy {
   selectedProgression: MemberFilters['progression'] | '' = '';
   showHeadOnly = false;
   
-  // Sorting state
-  sortColumn: string = ''; // Backend sort column name
-  sortDirection: 'asc' | 'desc' | null = null;
-  frontendSortColumn: string = ''; // Frontend column name for UI display
+  // Sorting state — default to member name ascending (API); header indicator only after user clicks
+  sortColumn = 'name';
+  sortDirection: 'asc' | 'desc' = 'asc';
+  headerSortColumn = '';
+  headerSortDirection: 'asc' | 'desc' | null = null;
   
   // Advanced search panel state
   showAdvancedSearch = false;
@@ -97,6 +100,8 @@ export class MemberListComponent implements OnInit, OnDestroy {
   // Detail Modal
   showDetailModal = false;
   selectedMember: FamilyMember | null = null;
+  photoViewer: { src: string; alt: string; title: string; subtitle: string; nested: boolean } | null = null;
+  private brokenAvatarIds = new Set<string>();
   loadingDetail = false;
 
   // Expose DatePipe for template
@@ -240,8 +245,8 @@ export class MemberListComponent implements OnInit, OnDestroy {
       bcc_id: this.selectedBccId || undefined,
       progression: this.selectedProgression || undefined,
       is_head: this.showHeadOnly ? 'true' : undefined,
-      sort_by: this.sortColumn || undefined,
-      sort_order: this.sortDirection || undefined,
+      sort_by: this.sortColumn,
+      sort_order: this.sortDirection,
       per_page: this.perPage,
       page: this.currentPage
     };
@@ -630,6 +635,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
   closeDetailModal(): void {
     this.showDetailModal = false;
     this.selectedMember = null;
+    this.photoViewer = null;
     this.cdr.markForCheck();
   }
 
@@ -734,9 +740,8 @@ export class MemberListComponent implements OnInit, OnDestroy {
   onSort(event: SortEvent): void {
     // Map frontend column names to backend sort field names
     let backendSortColumn = event.column;
-    
-    if (event.column === 'last_name') {
-      // Backend expects 'name' to sort by both last_name and first_name
+
+    if (event.column === 'name') {
       backendSortColumn = 'name';
     } else if (event.column === 'address') {
       // Backend handles 'address' directly
@@ -749,10 +754,10 @@ export class MemberListComponent implements OnInit, OnDestroy {
       backendSortColumn = 'father_name';
     }
     
-    // Store both frontend and backend column names
-    this.frontendSortColumn = event.column;
+    this.headerSortColumn = event.column;
+    this.headerSortDirection = event.direction ?? 'asc';
     this.sortColumn = backendSortColumn;
-    this.sortDirection = event.direction;
+    this.sortDirection = event.direction ?? 'asc';
     this.currentPage = 1; // Reset to first page when sorting
     this.loadMembers();
   }
@@ -865,12 +870,79 @@ export class MemberListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get member photo URL (if available)
+   * Head photos live on the nested family record, not on FamilyMember.
+   * Non-heads have no person photo in this architecture — return null for initials.
    */
-  getMemberPhotoUrl(): string | null {
-    // Check if member has a photo field (may not exist in current model)
-    const member = this.selectedMember as any;
-    return member?.photo_url || member?.profile_image_url || member?.profile_image_full_url || null;
+  getMemberPhotoUrl(member: FamilyMember | null | undefined): string | null {
+    if (!member || !this.isFamilyHead(member) || this.isAvatarBroken(member)) {
+      return null;
+    }
+
+    const family = member.family;
+    if (!family) {
+      return null;
+    }
+
+    if (family.head_profile_image_full_url?.trim()) {
+      return family.head_profile_image_full_url;
+    }
+
+    if (family.head_profile_image_url?.trim()) {
+      return family.head_profile_image_url;
+    }
+
+    if (family.head_avatar_url?.trim()) {
+      return family.head_avatar_url;
+    }
+
+    return null;
+  }
+
+  isAvatarBroken(member: FamilyMember): boolean {
+    return this.brokenAvatarIds.has(member.id);
+  }
+
+  onAvatarError(member: FamilyMember): void {
+    this.brokenAvatarIds.add(member.id);
+    this.cdr.markForCheck();
+  }
+
+  getAvatarColorClass(seed: string | undefined): string {
+    const text = (seed || '').trim();
+    if (!text) {
+      return 'avatar-color-1';
+    }
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    const idx = Math.abs(hash) % 8;
+    return `avatar-color-${idx + 1}`;
+  }
+
+  openPhotoViewer(member: FamilyMember, event: Event, nested = false): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const photoUrl = this.getMemberPhotoUrl(member);
+    if (!photoUrl) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: photoUrl,
+      alt: this.getFullName(member),
+      title: this.getFullName(member),
+      subtitle: this.isFamilyHead(member) ? 'Family head' : (member.relationship_to_head || 'Member'),
+      nested,
+    };
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 }
 

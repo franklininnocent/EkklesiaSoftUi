@@ -45,6 +45,8 @@ export class FormFieldComponent implements AfterContentInit, OnChanges {
   @Input() errorText?: string | null;
   /** Spans the full width of a `.cf-form-grid` row. */
   @Input() wide = false;
+  /** When false, label is linked via aria-labelledby (e.g. multi-part datetime field). */
+  @Input() useLabelFor = true;
 
   get helpId(): string | null {
     return this.fieldId ? `${this.fieldId}-help` : null;
@@ -63,6 +65,15 @@ export class FormFieldComponent implements AfterContentInit, OnChanges {
   }
 
   private syncControlA11y(): void {
+    const datetimeField = this.host.nativeElement.querySelector(
+      'app-cf-datetime-field'
+    ) as HTMLElement | null;
+
+    if (datetimeField) {
+      this.syncDateTimeFieldA11y(datetimeField);
+      return;
+    }
+
     const control = this.host.nativeElement.querySelector(
       'input:not([type="hidden"]):not([type="checkbox"]):not([type="radio"]), select, textarea'
     ) as HTMLElement | null;
@@ -71,13 +82,25 @@ export class FormFieldComponent implements AfterContentInit, OnChanges {
       return;
     }
 
+    this.applyControlA11y(control);
+  }
+
+  private syncDateTimeFieldA11y(datetimeField: HTMLElement): void {
+    const invalid = !!this.errorText;
+    datetimeField.classList.toggle('cf-datetime-field--invalid', invalid);
+
+    const controls = datetimeField.querySelectorAll('input');
+    controls.forEach((control) => this.applyControlA11y(control, invalid));
+  }
+
+  private applyControlA11y(control: HTMLElement, invalidOverride?: boolean): void {
     if (this.required) {
       control.setAttribute('aria-required', 'true');
     } else {
       control.removeAttribute('aria-required');
     }
 
-    const invalid = !!this.errorText;
+    const invalid = invalidOverride ?? !!this.errorText;
     control.setAttribute('aria-invalid', invalid ? 'true' : 'false');
     control.classList.toggle('cf-form-field__control--invalid', invalid);
 

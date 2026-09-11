@@ -1,0 +1,7 @@
+@use '../../../donations/styles/stewardship-split-layout.scss';
+
+.st-support-create-modal {
+  .cf-split-form-actions {
+    justify-content: flex-end;
+  }
+}

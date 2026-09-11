@@ -1,13 +1,17 @@
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
-  Output
+  Output,
+  ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { SectionCollapseToggleComponent } from '@shared/components/section-collapse-toggle/section-collapse-toggle.component';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 import { FamilyMember } from '@core/models/family.model';
 import { SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
 import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
@@ -30,13 +34,18 @@ import { MemberSacramentDetailComponent } from '../family-member-detail-panel/me
     CommonModule,
     EditIconButtonComponent,
     SectionCollapseToggleComponent,
-    MemberSacramentDetailComponent
+    MemberSacramentDetailComponent,
+    ImageViewerComponent
   ],
   templateUrl: './family-head-profile-block.component.html',
   styleUrls: ['./family-head-profile-block.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FamilyHeadProfileBlockComponent {
+  constructor(private readonly cdr: ChangeDetectorRef) {}
+
+  @ViewChild('profileImageInput') profileImageInput?: ElementRef<HTMLInputElement>;
+
   @Input({ required: true }) member!: FamilyMember;
   @Input() relationshipEyebrow = 'Family Head';
   @Input() isFamilyHead = false;
@@ -53,6 +62,8 @@ export class FamilyHeadProfileBlockComponent {
   @Output() headProfileImageSelected = new EventEmitter<Event>();
   @Output() deleteHeadProfileImage = new EventEmitter<void>();
   @Output() editSacrament = new EventEmitter<string>();
+
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
 
   get isSacramentsComplete(): boolean {
     if (!this.sacramentTypesDisplay.length) {
@@ -120,5 +131,47 @@ export class FamilyHeadProfileBlockComponent {
 
   onSacramentEdit(code: string): void {
     this.editSacrament.emit(code);
+  }
+
+  onHeadAvatarClick(): void {
+    if (this.editingHeadImage) {
+      this.profileImageInput?.nativeElement.click();
+      return;
+    }
+
+    if (this.avatarImageUrl) {
+      this.openPhotoViewer();
+      return;
+    }
+
+    this.toggleHeadImageEdit.emit();
+  }
+
+  onMemberAvatarClick(event: MouseEvent): void {
+    if (!this.avatarImageUrl) {
+      return;
+    }
+
+    event.stopPropagation();
+    this.openPhotoViewer();
+  }
+
+  openPhotoViewer(): void {
+    if (!this.avatarImageUrl) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: this.avatarImageUrl,
+      alt: this.getDisplayName(this.member),
+      title: this.getDisplayName(this.member),
+      subtitle: this.relationshipEyebrow,
+    };
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 }

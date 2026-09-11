@@ -1,0 +1,102 @@
+.cf-datetime-field {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: var(--cf-space-2);
+  width: 100%;
+  min-width: 0;
+}
+
+.cf-datetime-field__date,
+.cf-datetime-field__time {
+  display: flex;
+  align-items: center;
+  gap: var(--cf-space-1);
+  flex: 1 1 9rem;
+  min-width: 0;
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-panel-bg);
+  padding: 0 var(--cf-control-pad-x);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cf-datetime-field__date:focus-within,
+.cf-datetime-field__time:focus-within {
+  border-color: var(--cf-indigo, var(--primary-color, #4f46e5));
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.12);
+}
+
+.cf-datetime-field--invalid .cf-datetime-field__date,
+.cf-datetime-field--invalid .cf-datetime-field__time {
+  border-color: var(--cf-critical);
+}
+
+.cf-datetime-field--disabled .cf-datetime-field__date,
+.cf-datetime-field--disabled .cf-datetime-field__time {
+  opacity: 0.65;
+  background: var(--cf-slate-50);
+}
+
+.cf-datetime-field__icon {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.cf-datetime-field__control {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  padding: var(--cf-control-pad-y) 0;
+  font-size: var(--cf-text-base);
+  color: var(--cf-slate-900);
+  width: 100%;
+  transform: none !important;
+}
+
+.cf-datetime-field__control:focus {
+  outline: none;
+}
+
+.cf-datetime-field__control::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.75;
+}
+
+.cf-datetime-field__control::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
+.cf-datetime-field__clear {
+  flex: 0 0 auto;
+  align-self: center;
+  border: 0;
+  background: transparent;
+  color: var(--cf-indigo, var(--primary-color, #4f46e5));
+  font-size: var(--cf-text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  padding: var(--cf-control-pad-y) var(--cf-space-1);
+  border-radius: var(--cf-radius-sm);
+  min-height: 2.25rem;
+}
+
+.cf-datetime-field__clear:hover {
+  background: var(--cf-slate-50);
+}
+
+.cf-datetime-field__clear:focus-visible {
+  outline: 2px solid var(--cf-indigo, var(--primary-color, #4f46e5));
+  outline-offset: 2px;
+}
+
+@media (max-width: 480px) {
+  .cf-datetime-field__date,
+  .cf-datetime-field__time {
+    flex-basis: 100%;
+  }
+}

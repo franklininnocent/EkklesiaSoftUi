@@ -4,9 +4,6 @@
     subtitle="Define gift types for voluntary collections — create and manage categories side by side.">
     <ng-container *ngIf="canManage && categoriesLoaded && !showForm">
       <a routerLink="/donations/register" class="cf-btn">Today's Register</a>
-      <button type="button" class="cf-btn" *ngIf="!categories.length" (click)="seedDefaults()" [disabled]="seeding">
-        {{ seeding ? 'Adding defaults…' : 'Add defaults' }}
-      </button>
       <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Add category</button>
     </ng-container>
   </app-page-header>
@@ -38,9 +35,6 @@
             <p class="cf-split-form-cta__title">Add an offering category</p>
             <p class="cf-split-form-cta__text">Categories help volunteers pick the right gift type during Quick Collect.</p>
             <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Add category</button>
-            <button type="button" class="cf-btn" *ngIf="!categories.length" (click)="seedDefaults()" [disabled]="seeding">
-              {{ seeding ? 'Adding…' : 'Add default categories' }}
-            </button>
           </div>
 
           <form *ngIf="showForm" [formGroup]="form" (ngSubmit)="save()" class="cf-split-form-body" novalidate>
@@ -159,7 +153,14 @@
                 description="Categories help volunteers pick the right gift type during Quick Collect and register entry."
                 [hasActions]="canManage"
               >
-                <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="seedDefaults()" [disabled]="seeding">Add default categories</button>
+                <a
+                  routerLink="/settings/default-seeds"
+                  [queryParams]="{ module: 'donations' }"
+                  class="cf-btn cf-btn-primary"
+                  *ngIf="canManage"
+                >
+                  Add recommended defaults
+                </a>
               </app-cf-empty-state>
             </div>
           </div>

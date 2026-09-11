@@ -44,7 +44,7 @@ export class DataExportPage implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
   private pollSub: Subscription | null = null;
 
-  readonly canExport = this.auth.hasPermission('tenant.data.export');
+  readonly canExport = this.auth.hasTenantPermission('tenant.data.export');
 
   modules: TenantDataExportModule[] = [];
   selectedModules: Record<string, boolean> = {};

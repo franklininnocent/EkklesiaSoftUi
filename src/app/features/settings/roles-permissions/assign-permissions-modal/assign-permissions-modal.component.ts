@@ -5,9 +5,12 @@ import { Role, Permission } from '@core/models';
 import { PermissionsService } from '@core/services/permissions.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
-import { FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components/filter-panel/filter-panel.component';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
+import { isHighRiskPermissionName } from '@shared/utils/rbac-permission.util';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 
 interface PermissionGroup {
   module: string;
@@ -18,10 +21,19 @@ interface PermissionGroup {
   someSelected: boolean;
 }
 
+type AssignmentFilter = '' | 'all' | 'assigned' | 'not_assigned';
+
 @Component({
   selector: 'app-assign-permissions-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, FilterPanelComponent, ModalShellComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ModalShellComponent,
+    ListToolbarComponent,
+    AdvancedSearchPanelComponent,
+    CfEmptyStateComponent
+  ],
   templateUrl: './assign-permissions-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './assign-permissions-modal.component.scss'
@@ -38,48 +50,42 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     'users.update'
   ];
 
+  private static readonly AUTO_EXPAND_ALL_THRESHOLD = 30;
+
+  private static readonly ACTION_LABEL_ORDER = [
+    'view', 'create', 'update', 'delete', 'manage', 'export', 'assign', 'approve'
+  ];
+
   @Input() show = false;
   @Input() role: Role | null = null;
   @Input() tenantMode = false;
-  @Input() isInline = false; // New: Support inline rendering in tabs
+  @Input() isInline = false;
   @Output() closed = new EventEmitter<void>();
   @Output() saved = new EventEmitter<void>();
 
-  // Permissions data
   allPermissions: Permission[] = [];
   selectedPermissionIds: Set<number> = new Set();
   originalPermissionIds: Set<number> = new Set();
   permissionGroups: PermissionGroup[] = [];
-  
-  // Loading and error states
+
   isLoading = false;
   isSaving = false;
   errorMessage: string | null = null;
-  
-  // Search and filter
+
   searchQuery = '';
   filteredGroups: PermissionGroup[] = [];
-  showFilterPanel = false;
+  showAdvancedSearch = false;
   moduleFilter = '';
-  
-  // Module collapse states
+  actionFilter = '';
+  assignmentFilter: AssignmentFilter = '';
+
   moduleCollapsedState: { [module: string]: boolean } = {};
-  
-  // Filter Panel Configuration
-  filterConfig: FilterPanelConfig = {
-    title: 'Filter Permissions',
-    showSearch: true,
-    showModuleFilter: true,
-    showStatusFilter: false,
-    showTypeFilter: false,
-    showRoleFilter: false,
-    searchPlaceholder: 'Search permissions by name...',
-    moduleOptions: []
-  };
-  
-  // Statistics
+  searchFields: SearchField[] = [];
+
   totalPermissions = 0;
   selectedPermissionsCount = 0;
+  filteredPermissionCount = 0;
+  selectedInViewCount = 0;
 
   constructor(
     private permissionsService: PermissionsService,
@@ -102,22 +108,19 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     }
   }
 
-  /**
-   * Load all permissions and currently assigned permissions for the role
-   */
   private loadData(): void {
     this.isLoading = true;
     this.errorMessage = null;
 
-    // Load all permissions and role's permissions in parallel
     Promise.all([
       this.loadAllPermissions(),
       this.loadRolePermissions()
     ]).then(() => {
       this.groupPermissionsByModule();
-      this.updateFilterPanelConfig(); // Update filter options
+      this.updateSearchFields();
       this.updateStatistics();
-      this.applySearch();
+      this.applyDefaultCollapseState();
+      this.applyFilters();
       this.isLoading = false;
       this.cdr.detectChanges();
     }).catch((error) => {
@@ -128,10 +131,6 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     });
   }
 
-  /**
-   * Load all available permissions
-   * CRITICAL SECURITY: Filters out "Tenants" and "Pope" module permissions for non-SuperAdmin users
-   */
   private loadAllPermissions(): Promise<void> {
     return new Promise((resolve, reject) => {
       this.permissionsService.getPermissions({ per_page: 'all' }, { tenantMode: this.tenantMode }).subscribe({
@@ -140,15 +139,13 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
           if (!permissions) {
             permissions = [];
           }
-          
-          // CRITICAL SECURITY: Filter out "Tenants" and "Pope" module permissions for non-SuperAdmin users
-          // This is a defense-in-depth measure in addition to backend filtering
+
           if (!this.authService.isSuperAdmin()) {
             permissions = permissions.filter((permission: Permission) => {
               return permission.module !== 'Tenants' && permission.module !== 'Pope';
             });
           }
-          
+
           this.allPermissions = permissions;
           this.totalPermissions = this.allPermissions.length;
           resolve();
@@ -161,10 +158,6 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     });
   }
 
-  /**
-   * Load permissions currently assigned to the role
-   * CRITICAL SECURITY: Filters out "Tenants" and "Pope" module permissions for non-SuperAdmin users
-   */
   private loadRolePermissions(): Promise<void> {
     if (!this.role) {
       return Promise.resolve();
@@ -174,25 +167,23 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
       this.permissionsService.getPermissionsForRole(this.role!.id, { tenantMode: this.tenantMode }).subscribe({
         next: (response) => {
           let rolePermissions = Array.isArray(response) ? response : (response.data || []);
-          
-          // CRITICAL SECURITY: Filter out "Tenants" and "Pope" module permissions for non-SuperAdmin users
-          // This is a defense-in-depth measure in addition to backend filtering
+
           if (!this.authService.isSuperAdmin()) {
             rolePermissions = rolePermissions.filter((perm: Permission) => {
               return perm.module !== 'Tenants' && perm.module !== 'Pope';
             });
           }
-          
+
           this.selectedPermissionIds.clear();
           this.originalPermissionIds.clear();
-          
+
           if (rolePermissions && Array.isArray(rolePermissions)) {
             rolePermissions.forEach((perm: Permission) => {
               this.selectedPermissionIds.add(perm.id);
               this.originalPermissionIds.add(perm.id);
             });
           }
-          
+
           resolve();
         },
         error: (err) => {
@@ -203,21 +194,14 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     });
   }
 
-  /**
-   * Group permissions by their module
-   * CRITICAL SECURITY: Excludes "Tenants" and "Pope" modules for non-SuperAdmin users
-   */
   private groupPermissionsByModule(): void {
     const grouped: { [module: string]: Permission[] } = {};
 
-    // Group permissions by module
-    // CRITICAL SECURITY: Additional filter to ensure "Tenants" and "Pope" modules are excluded for non-SuperAdmin users
     this.allPermissions.forEach(permission => {
-      // Skip "Tenants" and "Pope" module permissions for non-SuperAdmin users (defense in depth)
       if ((permission.module === 'Tenants' || permission.module === 'Pope') && !this.authService.isSuperAdmin()) {
         return;
       }
-      
+
       const module = this.resolvePermissionModule(permission);
       if (!grouped[module]) {
         grouped[module] = [];
@@ -225,15 +209,12 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
       grouped[module].push(permission);
     });
 
-    // Sort permissions within each module
     Object.keys(grouped).forEach(module => {
       grouped[module].sort((a, b) => a.display_name.localeCompare(b.display_name));
     });
 
-    // Convert to PermissionGroup array
     this.permissionGroups = Object.keys(grouped)
       .sort((a, b) => {
-        // Put 'Uncategorized' at the end
         if (a === 'Uncategorized') return 1;
         if (b === 'Uncategorized') return -1;
         return a.localeCompare(b);
@@ -243,7 +224,6 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
         const selectedCount = permissions.filter(p => this.selectedPermissionIds.has(p.id)).length;
         const totalCount = permissions.length;
 
-        // Initialize collapsed state (collapsed by default)
         if (this.moduleCollapsedState[module] === undefined) {
           this.moduleCollapsedState[module] = true;
         }
@@ -259,9 +239,6 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
       });
   }
 
-  /**
-   * Toggle permission selection
-   */
   togglePermission(permission: Permission): void {
     if (this.selectedPermissionIds.has(permission.id)) {
       this.selectedPermissionIds.delete(permission.id);
@@ -272,9 +249,6 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     this.updateStatistics();
   }
 
-  /**
-   * Toggle all permissions in a module
-   */
   toggleModule(group: PermissionGroup): void {
     const shouldSelectAll = !group.allSelected;
 
@@ -290,23 +264,14 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     this.updateStatistics();
   }
 
-  /**
-   * Toggle module collapse state
-   */
   toggleModuleCollapse(module: string): void {
     this.moduleCollapsedState[module] = !this.moduleCollapsedState[module];
   }
 
-  /**
-   * Check if a module is collapsed
-   */
   isModuleCollapsed(module: string): boolean {
     return this.moduleCollapsedState[module] || false;
   }
 
-  /**
-   * Update group selection statistics
-   */
   private updateGroupStatistics(): void {
     this.permissionGroups.forEach(group => {
       group.selectedCount = group.permissions.filter(p => this.selectedPermissionIds.has(p.id)).length;
@@ -314,43 +279,44 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
       group.someSelected = group.selectedCount > 0 && group.selectedCount < group.totalCount;
     });
 
-    // Update filtered groups as well
-    this.applySearch();
+    this.applyFilters();
   }
 
-  /**
-   * Update overall statistics
-   */
   private updateStatistics(): void {
     this.selectedPermissionsCount = this.selectedPermissionIds.size;
   }
 
-  /**
-   * Apply search and module filters
-   */
-  applySearch(): void {
+  applyFilters(): void {
     let groups = [...this.permissionGroups];
+    const query = this.searchQuery.trim().toLowerCase();
 
-    // Apply module filter
     if (this.moduleFilter) {
       groups = groups.filter(group => group.module === this.moduleFilter);
     }
 
-    // Apply search filter
-    if (!this.searchQuery.trim()) {
-      this.filteredGroups = groups;
-      return;
-    }
-
-    const query = this.searchQuery.toLowerCase();
     this.filteredGroups = groups
       .map(group => {
-        const filteredPermissions = group.permissions.filter(permission =>
-          permission.name.toLowerCase().includes(query) ||
-          permission.display_name.toLowerCase().includes(query) ||
-          permission.description?.toLowerCase().includes(query) ||
-          permission.category?.toLowerCase().includes(query)
-        );
+        let filteredPermissions = [...group.permissions];
+
+        if (this.actionFilter) {
+          filteredPermissions = filteredPermissions.filter(permission =>
+            this.getPermissionAction(permission.name) === this.actionFilter
+          );
+        }
+
+        if (this.assignmentFilter === 'assigned') {
+          filteredPermissions = filteredPermissions.filter(permission =>
+            this.selectedPermissionIds.has(permission.id)
+          );
+        } else if (this.assignmentFilter === 'not_assigned') {
+          filteredPermissions = filteredPermissions.filter(permission =>
+            !this.selectedPermissionIds.has(permission.id)
+          );
+        }
+
+        if (query) {
+          filteredPermissions = filteredPermissions.filter(permission => this.matchesSearch(permission, query));
+        }
 
         if (filteredPermissions.length === 0) {
           return null;
@@ -367,24 +333,116 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
         };
       })
       .filter(group => group !== null) as PermissionGroup[];
+
+    this.filteredPermissionCount = this.filteredGroups.reduce((sum, group) => sum + group.permissions.length, 0);
+    this.selectedInViewCount = this.filteredGroups.reduce((sum, group) => sum + group.selectedCount, 0);
+
+    if (this.hasActiveFiltersOrSearch()) {
+      this.filteredGroups.forEach(group => {
+        this.moduleCollapsedState[group.module] = false;
+      });
+    }
   }
 
-  /**
-   * Clear search
-   */
+  onSearchChange(value: string): void {
+    this.searchQuery = value;
+    this.applyFilters();
+  }
+
   clearSearch(): void {
     this.searchQuery = '';
-    this.applySearch();
+    this.applyFilters();
   }
 
-  /**
-   * Select all permissions
-   * CRITICAL SECURITY: Only selects permissions that are visible (Tenants and Pope modules excluded for non-SuperAdmin)
-   */
+  onAdvancedSearch(searchValues: { [key: string]: unknown }): void {
+    this.moduleFilter = (searchValues['module'] as string) || '';
+    this.actionFilter = (searchValues['action'] as string) || '';
+    this.assignmentFilter = (searchValues['assignment'] as AssignmentFilter) || '';
+    this.syncSearchFieldValues(searchValues);
+    this.applyFilters();
+    this.showAdvancedSearch = false;
+  }
+
+  onClearAdvancedSearch(): void {
+    this.moduleFilter = '';
+    this.actionFilter = '';
+    this.assignmentFilter = '';
+    this.searchFields.forEach(field => {
+      field.value = undefined;
+    });
+    this.applyFilters();
+    this.showAdvancedSearch = false;
+  }
+
+  clearAllFilters(): void {
+    this.clearSearch();
+    this.onClearAdvancedSearch();
+  }
+
+  getActiveFilters(): ActiveFilter[] {
+    const filters: ActiveFilter[] = [];
+
+    if (this.moduleFilter) {
+      filters.push({
+        key: 'module',
+        label: 'Module',
+        value: this.moduleFilter,
+        displayValue: this.moduleFilter
+      });
+    }
+
+    if (this.actionFilter) {
+      filters.push({
+        key: 'action',
+        label: 'Action',
+        value: this.actionFilter,
+        displayValue: this.formatActionLabel(this.actionFilter)
+      });
+    }
+
+    if (this.assignmentFilter && this.assignmentFilter !== 'all') {
+      filters.push({
+        key: 'assignment',
+        label: 'Assignment',
+        value: this.assignmentFilter,
+        displayValue: this.assignmentFilter === 'assigned' ? 'Assigned' : 'Not Assigned'
+      });
+    }
+
+    return filters;
+  }
+
+  getActiveFilterCount(): number {
+    return this.getActiveFilters().length;
+  }
+
+  hasActiveFiltersOrSearch(): boolean {
+    return this.getActiveFilterCount() > 0 || this.searchQuery.trim().length > 0;
+  }
+
+  hasActiveDrawerFilters(): boolean {
+    return this.getActiveFilterCount() > 0;
+  }
+
+  removeFilter(filter: ActiveFilter): void {
+    if (filter.key === 'module') {
+      this.moduleFilter = '';
+    } else if (filter.key === 'action') {
+      this.actionFilter = '';
+    } else if (filter.key === 'assignment') {
+      this.assignmentFilter = '';
+    }
+
+    const field = this.searchFields.find(item => item.key === filter.key);
+    if (field) {
+      field.value = undefined;
+    }
+
+    this.applyFilters();
+  }
+
   selectAll(): void {
-    // Only select permissions that are currently visible (already filtered to exclude Tenants and Pope for non-SuperAdmin)
     this.allPermissions.forEach(permission => {
-      // Additional safety check (defense in depth)
       if ((permission.module === 'Tenants' || permission.module === 'Pope') && !this.authService.isSuperAdmin()) {
         return;
       }
@@ -394,54 +452,38 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     this.updateStatistics();
   }
 
-  /**
-   * Deselect all permissions
-   */
   deselectAll(): void {
     this.selectedPermissionIds.clear();
     this.updateGroupStatistics();
     this.updateStatistics();
   }
 
-  /**
-   * Expand all modules
-   */
   expandAll(): void {
     Object.keys(this.moduleCollapsedState).forEach(module => {
       this.moduleCollapsedState[module] = false;
     });
   }
 
-  /**
-   * Collapse all modules
-   */
   collapseAll(): void {
     Object.keys(this.moduleCollapsedState).forEach(module => {
       this.moduleCollapsedState[module] = true;
     });
   }
 
-  /**
-   * Check if there are unsaved changes
-   */
   hasChanges(): boolean {
     if (this.selectedPermissionIds.size !== this.originalPermissionIds.size) {
       return true;
     }
-    
+
     for (const id of this.selectedPermissionIds) {
       if (!this.originalPermissionIds.has(id)) {
         return true;
       }
     }
-    
+
     return false;
   }
 
-  /**
-   * Save permission assignments
-   * CRITICAL SECURITY: Validates that non-SuperAdmin users cannot submit Tenants or Pope permission IDs
-   */
   save(): void {
     if (!this.role) {
       return;
@@ -466,16 +508,14 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
       return;
     }
 
-    // CRITICAL SECURITY: Filter out any Tenants and Pope permission IDs for non-SuperAdmin users (defense in depth)
     if (!this.authService.isSuperAdmin()) {
       const restrictedPermissionIds = this.allPermissions
         .filter(p => p.module === 'Tenants' || p.module === 'Pope')
         .map(p => p.id);
-      
+
       const originalCount = permissionIds.length;
       permissionIds = permissionIds.filter(id => !restrictedPermissionIds.includes(id));
-      
-      // If any restricted permissions were filtered out, log a warning
+
       const filteredCount = originalCount - permissionIds.length;
       if (filteredCount > 0) {
         console.warn(`Filtered out ${filteredCount} restricted module permission(s) - SuperAdmin only`);
@@ -509,9 +549,6 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     });
   }
 
-  /**
-   * Close modal
-   */
   close(): void {
     if (this.isSaving) {
       return;
@@ -527,9 +564,6 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     this.closed.emit();
   }
 
-  /**
-   * Reset modal state
-   */
   private reset(): void {
     this.selectedPermissionIds.clear();
     this.originalPermissionIds.clear();
@@ -537,69 +571,60 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     this.permissionGroups = [];
     this.filteredGroups = [];
     this.searchQuery = '';
+    this.moduleFilter = '';
+    this.actionFilter = '';
+    this.assignmentFilter = '';
+    this.showAdvancedSearch = false;
+    this.filteredPermissionCount = 0;
+    this.selectedInViewCount = 0;
+    this.moduleCollapsedState = {};
     this.errorMessage = null;
     this.isLoading = false;
     this.isSaving = false;
   }
 
-  /**
-   * Handle backdrop click
-   */
-  onBackdropClick(event: MouseEvent): void {
-    if (event.target === event.currentTarget) {
-      this.close();
+  openAdvancedSearch(): void {
+    this.showAdvancedSearch = true;
+  }
+
+  getRoleBadgeClass(): string {
+    const classification = this.getRoleClassification();
+    if (classification === 'protected') return 'badge-protected';
+    if (classification === 'default') return 'badge-default';
+    if (classification === 'custom') return 'badge-custom';
+    return 'badge-system';
+  }
+
+  getRoleBadgeLabel(): string {
+    const classification = this.getRoleClassification();
+    if (classification === 'protected') return 'Protected';
+    if (classification === 'default') return 'Default';
+    if (classification === 'custom') return 'Custom';
+    return 'System';
+  }
+
+  private getRoleClassification(): 'protected' | 'default' | 'custom' | 'system' {
+    if (!this.role) {
+      return 'system';
     }
-  }
 
-  // ============ FILTER PANEL METHODS ============
+    if (this.role.role_classification === 'protected_system') {
+      return 'protected';
+    }
 
-  /**
-   * Open filter panel
-   */
-  openFilterPanel(): void {
-    this.showFilterPanel = true;
-  }
+    if (this.role.role_classification === 'default_template') {
+      return 'default';
+    }
 
-  /**
-   * Close filter panel
-   */
-  closeFilterPanel(): void {
-    this.showFilterPanel = false;
-  }
+    if (this.role.role_classification === 'custom') {
+      return 'custom';
+    }
 
-  /**
-   * Apply filters from filter panel
-   */
-  applyFilters(values: FilterValues): void {
-    this.searchQuery = values.search || '';
-    this.moduleFilter = values.module || '';
-    this.applySearch();
-  }
+    if (isProtectedRoleDefinition(this.role)) {
+      return 'protected';
+    }
 
-  /**
-   * Reset filters
-   */
-  resetFilters(): void {
-    this.searchQuery = '';
-    this.moduleFilter = '';
-    this.applySearch();
-  }
-
-  /**
-   * Get current filter values for filter panel
-   */
-  getCurrentFilterValues(): FilterValues {
-    return {
-      search: this.searchQuery,
-      module: this.moduleFilter
-    };
-  }
-
-  /**
-   * Check if any filters are active
-   */
-  hasActiveFilters(): boolean {
-    return this.searchQuery !== '' || this.moduleFilter !== '';
+    return this.role.is_custom ? 'custom' : 'system';
   }
 
   isProtectedTenantRole(): boolean {
@@ -648,7 +673,8 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
   }
 
   getPermissionAriaLabel(permission: Permission): string {
-    return `Toggle permission ${permission.display_name || permission.name} (${permission.name})`;
+    const state = this.selectedPermissionIds.has(permission.id) ? 'assigned' : 'not assigned';
+    return `Toggle permission ${permission.display_name || permission.name} (${permission.name}), currently ${state}`;
   }
 
   getPermissionLabel(permission: Permission): string {
@@ -665,8 +691,48 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     return permission.name;
   }
 
+  getPermissionSubtitle(permission: Permission): string | null {
+    const label = this.getPermissionLabel(permission);
+    const displayName = permission.display_name?.trim();
+    const description = permission.description?.trim();
+
+    if (description && label === description && displayName) {
+      return displayName;
+    }
+
+    if (!description && displayName && label === displayName) {
+      return permission.name;
+    }
+
+    if (description && label !== description) {
+      return description;
+    }
+
+    return displayName && label !== displayName ? displayName : null;
+  }
+
+  getPermissionAction(name: string): string {
+    const parts = (name || '').split('.');
+    const action = (parts[parts.length - 1] || 'other').toLowerCase();
+    if (action === 'list' || action === 'read') {
+      return 'view';
+    }
+    return action;
+  }
+
+  formatActionLabel(action: string): string {
+    if (!action) {
+      return '';
+    }
+    return action.charAt(0).toUpperCase() + action.slice(1).replace(/_/g, ' ');
+  }
+
   isMandatoryAdminPermission(permission: Permission): boolean {
     return AssignPermissionsModalComponent.REQUIRED_ADMIN_PERMISSION_NAMES.includes(permission.name);
+  }
+
+  isHighRiskPermission(permission: Permission): boolean {
+    return isHighRiskPermissionName(permission.name);
   }
 
   getModuleRiskLevel(module: string): 'high' | 'medium' | 'low' {
@@ -694,31 +760,110 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     return 'Standard';
   }
 
-  /**
-   * Update filter panel configuration with module options
-   * CRITICAL SECURITY: Excludes "Tenants" and "Pope" modules from filter options for non-SuperAdmin users
-   */
-  private updateFilterPanelConfig(): void {
+  getResultsSummary(): string {
+    const count = this.filteredPermissionCount;
+    const noun = count === 1 ? 'permission' : 'permissions';
+    let summary = `${count} ${noun}`;
+
+    if (this.hasActiveFiltersOrSearch()) {
+      summary += ` · ${this.selectedInViewCount} selected in view`;
+    }
+
+    return summary;
+  }
+
+  private applyDefaultCollapseState(): void {
+    if (this.hasActiveFiltersOrSearch()) {
+      this.expandAll();
+      return;
+    }
+
+    if (this.allPermissions.length <= AssignPermissionsModalComponent.AUTO_EXPAND_ALL_THRESHOLD) {
+      this.expandAll();
+      return;
+    }
+
+    this.permissionGroups.forEach((group, index) => {
+      this.moduleCollapsedState[group.module] = index !== 0;
+    });
+  }
+
+  private updateSearchFields(): void {
     let modules = Array.from(new Set(this.allPermissions.map((permission) => this.resolvePermissionModule(permission))));
-    
-    // CRITICAL SECURITY: Filter out "Tenants" and "Pope" modules from filter options for non-SuperAdmin users
+
     if (!this.authService.isSuperAdmin()) {
       modules = modules.filter(m => m !== 'Tenants' && m !== 'Pope');
     }
-    
+
     modules.sort((a, b) => {
       if (a === 'Uncategorized') return 1;
       if (b === 'Uncategorized') return -1;
       return a.localeCompare(b);
     });
 
-    this.filterConfig = {
-      ...this.filterConfig,
-      moduleOptions: [
-        { value: '', label: 'All Modules' },
-        ...modules.map(m => ({ value: m, label: m }))
-      ]
-    };
+    const actionSet = new Set(this.allPermissions.map(permission => this.getPermissionAction(permission.name)));
+    const orderedActions = AssignPermissionsModalComponent.ACTION_LABEL_ORDER.filter(action => actionSet.has(action));
+    const remainingActions = Array.from(actionSet)
+      .filter(action => !AssignPermissionsModalComponent.ACTION_LABEL_ORDER.includes(action))
+      .sort((a, b) => a.localeCompare(b));
+
+    this.searchFields = [
+      {
+        key: 'module',
+        label: 'Module',
+        type: 'select',
+        group: 'Permission filters',
+        options: [
+          { value: '', label: 'All Modules' },
+          ...modules.map(module => ({ value: module, label: module }))
+        ],
+        value: this.moduleFilter || undefined
+      },
+      {
+        key: 'action',
+        label: 'Action',
+        type: 'select',
+        group: 'Permission filters',
+        options: [
+          { value: '', label: 'All Actions' },
+          ...[...orderedActions, ...remainingActions].map(action => ({
+            value: action,
+            label: this.formatActionLabel(action)
+          }))
+        ],
+        value: this.actionFilter || undefined
+      },
+      {
+        key: 'assignment',
+        label: 'Assignment State',
+        type: 'select',
+        group: 'Permission filters',
+        options: [
+          { value: '', label: 'All' },
+          { value: 'assigned', label: 'Assigned' },
+          { value: 'not_assigned', label: 'Not Assigned' }
+        ],
+        value: this.assignmentFilter || undefined
+      }
+    ];
+  }
+
+  private syncSearchFieldValues(searchValues: { [key: string]: unknown }): void {
+    this.searchFields.forEach(field => {
+      field.value = searchValues[field.key];
+    });
+  }
+
+  private matchesSearch(permission: Permission, query: string): boolean {
+    const module = this.resolvePermissionModule(permission);
+    return (
+      permission.name.toLowerCase().includes(query) ||
+      permission.display_name.toLowerCase().includes(query) ||
+      (permission.description?.toLowerCase().includes(query) ?? false) ||
+      (permission.category?.toLowerCase().includes(query) ?? false) ||
+      module.toLowerCase().includes(query) ||
+      (permission.module?.toLowerCase().includes(query) ?? false)
+    );
   }
 
   private getFriendlyErrorMessage(error: any, fallback: string): string {
@@ -752,11 +897,11 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     return apiMessage || fallback;
   }
 
-  private toDomId(value: string): string {
+  toDomId(value: string): string {
     return value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'uncategorized';
   }
 
-  private resolvePermissionModule(permission: Permission): string {
+  resolvePermissionModule(permission: Permission): string {
     const permissionName = (permission.name || '').toLowerCase();
     const prefix = permissionName.includes('.') ? permissionName.split('.')[0] : '';
     const prefixModuleMap: Record<string, string> = {
@@ -839,4 +984,3 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     });
   }
 }
-

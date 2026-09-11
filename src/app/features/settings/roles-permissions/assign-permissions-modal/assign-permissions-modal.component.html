@@ -1,4 +1,184 @@
-<!-- Modal Mode -->
+<ng-template #permissionToolbar>
+  <app-list-toolbar
+    searchPlaceholder="Search permissions (name, description, module)…"
+    [searchValue]="searchQuery"
+    [filterCount]="getActiveFilterCount()"
+    (searchChange)="onSearchChange($event)"
+    (filtersOpened)="openAdvancedSearch()"
+  >
+    <div class="toolbar-actions">
+      <button class="cf-btn cf-btn--sm" type="button" (click)="selectAll()" [disabled]="isSaving" title="Select all permissions">
+        Select All
+      </button>
+      <button class="cf-btn cf-btn--sm" type="button" (click)="deselectAll()" [disabled]="isSaving" title="Deselect all permissions">
+        Deselect All
+      </button>
+      <button class="cf-btn cf-btn--sm" type="button" (click)="expandAll()" [disabled]="isSaving" title="Expand all modules">
+        Expand All
+      </button>
+      <button class="cf-btn cf-btn--sm" type="button" (click)="collapseAll()" [disabled]="isSaving" title="Collapse all modules">
+        Collapse All
+      </button>
+    </div>
+  </app-list-toolbar>
+</ng-template>
+
+<ng-template #permissionWorkspace>
+  <div class="workspace-toolbar" *ngIf="!isInline">
+    <ng-container *ngTemplateOutlet="permissionToolbar"></ng-container>
+  </div>
+
+  <div
+    class="active-filters"
+    *ngIf="getActiveFilters().length > 0"
+    role="region"
+    aria-label="Active filters"
+  >
+    <span class="cf-meta">Active filters</span>
+    <div class="active-filters__chips">
+      <span class="cf-badge cf-badge--info" *ngFor="let filter of getActiveFilters()">
+        {{ filter.label }}: {{ filter.displayValue }}
+        <button
+          type="button"
+          class="active-filters__chip-remove"
+          (click)="removeFilter(filter)"
+          [attr.aria-label]="'Remove filter: ' + filter.label"
+        >
+          ×
+        </button>
+      </span>
+    </div>
+    <button type="button" class="cf-btn cf-btn--sm" (click)="onClearAdvancedSearch()">Clear all</button>
+  </div>
+
+  <div class="stats-bar" aria-live="polite">
+    <div class="stats-bar__counts">
+      <span class="stat-item">
+        <span class="stat-label">Total:</span>
+        <span class="stat-value">{{ totalPermissions }}</span>
+      </span>
+      <span class="stat-item stat-selected">
+        <span class="stat-label">Selected:</span>
+        <span class="stat-value">{{ selectedPermissionsCount }}</span>
+      </span>
+      <span class="stat-item" *ngIf="hasChanges()">
+        <span class="stat-badge stat-badge-warning">Unsaved</span>
+      </span>
+    </div>
+    <p class="results-summary">{{ getResultsSummary() }}</p>
+  </div>
+
+  <div class="safeguard-hint" *ngIf="tenantMode">
+    Tenant safeguard: permission escalation is blocked. You can only assign permissions you currently hold.
+  </div>
+
+  <div class="error-banner" *ngIf="hasAdminPermissionConflict()" role="alert" aria-live="polite">
+    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="10"></circle>
+      <line x1="12" y1="8" x2="12" y2="12"></line>
+      <line x1="12" y1="16" x2="12.01" y2="16"></line>
+    </svg>
+    <span>Administrator safeguard: missing required permissions - {{ getMissingRequiredAdminPermissionLabels().join(', ') }}</span>
+  </div>
+
+  <div class="permissions-container">
+    <app-cf-empty-state
+      *ngIf="filteredGroups.length === 0"
+      [title]="hasActiveFiltersOrSearch() ? 'No permissions match your search and filters' : 'No permissions available'"
+      [description]="hasActiveFiltersOrSearch() ? 'Try clearing search or filters to see more permissions.' : 'There are no permissions available to assign for this role.'"
+      icon="◇"
+    >
+      <button *ngIf="searchQuery.trim()" type="button" class="cf-btn" (click)="clearSearch()">Clear search</button>
+      <button *ngIf="hasActiveDrawerFilters()" type="button" class="cf-btn" (click)="onClearAdvancedSearch()">Clear filters</button>
+      <button *ngIf="hasActiveFiltersOrSearch()" type="button" class="cf-btn cf-btn-primary" (click)="clearAllFilters()">Clear all</button>
+    </app-cf-empty-state>
+
+    <div
+      class="module-group"
+      *ngFor="let group of filteredGroups; trackBy: trackByModuleName"
+      [class.collapsed]="isModuleCollapsed(group.module)"
+    >
+      <button
+        type="button"
+        class="module-header"
+        (click)="toggleModuleCollapse(group.module)"
+        [attr.aria-expanded]="!isModuleCollapsed(group.module)"
+        [attr.aria-controls]="'module-content-' + toDomId(group.module)"
+      >
+        <div class="module-header-left">
+          <svg class="collapse-icon" [class.collapsed]="isModuleCollapsed(group.module)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="9 18 15 12 9 6"></polyline>
+          </svg>
+          <label class="checkbox-container module-checkbox" [for]="getModuleCheckboxId(group.module)" (click)="$event.stopPropagation()">
+            <input
+              [id]="getModuleCheckboxId(group.module)"
+              type="checkbox"
+              [checked]="group.allSelected"
+              [indeterminate]="group.someSelected"
+              (change)="toggleModule(group)"
+              [disabled]="isSaving"
+              [attr.aria-label]="'Select all permissions in ' + group.module + ' module'">
+            <span class="checkmark" [class.indeterminate]="group.someSelected"></span>
+          </label>
+          <span class="module-name">{{ group.module }}</span>
+          <span class="module-count">{{ group.selectedCount }} / {{ group.totalCount }}</span>
+          <span class="permission-badge permission-badge--risk" [ngClass]="'risk-' + getModuleRiskLevel(group.module)">
+            {{ getModuleRiskLabel(group.module) }}
+          </span>
+        </div>
+        <span class="toggle-hint">{{ isModuleCollapsed(group.module) ? 'Expand' : 'Collapse' }}</span>
+      </button>
+
+      <div
+        class="module-content"
+        *ngIf="!isModuleCollapsed(group.module)"
+        [id]="'module-content-' + toDomId(group.module)"
+      >
+        <div class="permissions-grid" role="list" [attr.aria-label]="group.module + ' permissions'">
+          <label
+            *ngFor="let permission of group.permissions; trackBy: trackByPermissionId"
+            [for]="getPermissionCheckboxId(group.module, permission.id)"
+            class="permission-item"
+            role="listitem"
+            [class.selected]="selectedPermissionIds.has(permission.id)"
+            [class.high-risk]="isHighRiskPermission(permission)"
+          >
+            <div class="checkbox-container">
+              <input
+                [id]="getPermissionCheckboxId(group.module, permission.id)"
+                type="checkbox"
+                [checked]="selectedPermissionIds.has(permission.id)"
+                (change)="togglePermission(permission)"
+                [disabled]="isSaving"
+                [attr.aria-label]="getPermissionAriaLabel(permission)">
+              <span class="checkmark"></span>
+            </div>
+            <div class="permission-info">
+              <div class="permission-name">{{ getPermissionLabel(permission) }}</div>
+              <div class="permission-subtitle" *ngIf="getPermissionSubtitle(permission) as subtitle">
+                {{ subtitle }}
+              </div>
+              <div class="permission-meta">
+                <span class="cf-badge cf-badge--neutral">{{ resolvePermissionModule(permission) }}</span>
+                <span class="cf-badge cf-badge--neutral" *ngIf="permission.category">{{ permission.category }}</span>
+                <span class="permission-badge permission-badge--admin" *ngIf="isMandatoryAdminPermission(permission)">
+                  Mandatory Admin
+                </span>
+                <span class="permission-badge permission-badge--risk" *ngIf="isHighRiskPermission(permission)">
+                  High Risk
+                </span>
+                <span class="permission-state" [class.permission-state--assigned]="selectedPermissionIds.has(permission.id)">
+                  {{ selectedPermissionIds.has(permission.id) ? 'Assigned' : 'Not assigned' }}
+                </span>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
+</ng-template>
+
 <app-modal-shell
   *ngIf="show && !isInline"
   title="Assign Permissions"
@@ -7,15 +187,13 @@
   [isSubmitting]="isSaving"
   (closeRequested)="close()"
 >
-  <!-- Loading State -->
   <div *ngIf="isLoading" class="loading-container">
     <div class="loading-spinner"></div>
     <p>Loading permissions...</p>
   </div>
 
-  <!-- Error State -->
   <div *ngIf="errorMessage && !isLoading" class="error-banner" role="alert" aria-live="polite">
-    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <circle cx="12" cy="12" r="10"></circle>
       <line x1="12" y1="8" x2="12" y2="12"></line>
       <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -23,157 +201,8 @@
     <span>{{ errorMessage }}</span>
   </div>
 
-  <!-- Content -->
   <div *ngIf="!isLoading && !errorMessage" class="modal-content">
-    <!-- Combined Stats and Actions Bar -->
-    <div class="combined-controls-bar">
-      <!-- Statistics Section -->
-      <div class="stats-section">
-        <div class="stat-item">
-          <span class="stat-label">Total:</span>
-          <span class="stat-value">{{ totalPermissions }}</span>
-        </div>
-        <div class="stat-item stat-selected">
-          <span class="stat-label">Selected:</span>
-          <span class="stat-value">{{ selectedPermissionsCount }}</span>
-        </div>
-        <div class="stat-item" *ngIf="hasChanges()">
-          <span class="stat-badge stat-badge-warning">Unsaved</span>
-        </div>
-      </div>
-
-      <!-- Actions Section -->
-      <div class="actions-section">
-        <button
-          class="btn-filter"
-          (click)="openFilterPanel()"
-          type="button"
-          [class.active]="hasActiveFilters()"
-          title="Filter permissions">
-          <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-          </svg>
-          <span class="btn-text">Filters</span>
-          <span class="filter-badge" *ngIf="hasActiveFilters()">●</span>
-        </button>
-
-        <div class="action-buttons">
-          <button class="btn-action" (click)="selectAll()" [disabled]="isSaving" type="button" title="Select all permissions">
-            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-              <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-            <span class="btn-text">Select All</span>
-          </button>
-          <button class="btn-action" (click)="deselectAll()" [disabled]="isSaving" type="button" title="Deselect all permissions">
-            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="15" y1="9" x2="9" y2="15"></line>
-              <line x1="9" y1="9" x2="15" y2="15"></line>
-            </svg>
-            <span class="btn-text">Deselect All</span>
-          </button>
-          <button class="btn-action" (click)="expandAll()" [disabled]="isSaving" type="button" title="Expand all modules">
-            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="18 15 12 9 6 15"></polyline>
-            </svg>
-            <span class="btn-text">Expand All</span>
-          </button>
-          <button class="btn-action" (click)="collapseAll()" [disabled]="isSaving" type="button" title="Collapse all modules">
-            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-            <span class="btn-text">Collapse All</span>
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <div class="safeguard-hint" *ngIf="tenantMode">
-      Tenant safeguard: permission escalation is blocked. You can only assign permissions you currently hold.
-    </div>
-
-    <div class="error-banner" *ngIf="hasAdminPermissionConflict()" role="alert" aria-live="polite">
-      <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"></circle>
-        <line x1="12" y1="8" x2="12" y2="12"></line>
-        <line x1="12" y1="16" x2="12.01" y2="16"></line>
-      </svg>
-      <span>Administrator safeguard: missing required permissions - {{ getMissingRequiredAdminPermissionLabels().join(', ') }}</span>
-    </div>
-
-    <!-- Permissions Groups -->
-    <div class="permissions-container">
-      <!-- Empty State -->
-      <div *ngIf="filteredGroups.length === 0" class="empty-state">
-        <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="11" cy="11" r="8"></circle>
-          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-        </svg>
-        <h3>No Permissions Found</h3>
-        <p *ngIf="searchQuery">No permissions match your search query: "{{ searchQuery }}"</p>
-        <p *ngIf="!searchQuery">No permissions available to assign.</p>
-      </div>
-
-      <!-- Module Groups -->
-      <div class="module-group" *ngFor="let group of filteredGroups; trackBy: trackByModuleName" [class.collapsed]="isModuleCollapsed(group.module)">
-        <!-- Module Header -->
-        <div class="module-header" (click)="toggleModuleCollapse(group.module)">
-          <div class="module-header-left">
-            <svg class="collapse-icon" [class.collapsed]="isModuleCollapsed(group.module)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="9 18 15 12 9 6"></polyline>
-            </svg>
-            <label class="checkbox-container module-checkbox" [for]="getModuleCheckboxId(group.module)" (click)="$event.stopPropagation()">
-              <input
-                [id]="getModuleCheckboxId(group.module)"
-                type="checkbox"
-                [checked]="group.allSelected"
-                [indeterminate]="group.someSelected"
-                (change)="toggleModule(group)"
-                [disabled]="isSaving"
-                [attr.aria-label]="'Select all permissions in ' + group.module + ' module'">
-              <span class="checkmark" [class.indeterminate]="group.someSelected"></span>
-            </label>
-            <span class="module-name">{{ group.module }}</span>
-            <span class="module-count">({{ group.selectedCount }} / {{ group.totalCount }})</span>
-            <span class="permission-category" [ngClass]="'risk-' + getModuleRiskLevel(group.module)">
-              {{ getModuleRiskLabel(group.module) }}
-            </span>
-          </div>
-          <span class="toggle-hint">{{ isModuleCollapsed(group.module) ? 'Expand' : 'Collapse' }}</span>
-        </div>
-
-        <!-- Module Content (Permissions List) -->
-        <div class="module-content" *ngIf="!isModuleCollapsed(group.module)">
-          <div class="permissions-grid">
-            <label
-              *ngFor="let permission of group.permissions; trackBy: trackByPermissionId"
-              [for]="getPermissionCheckboxId(group.module, permission.id)"
-              class="permission-item"
-              [class.selected]="selectedPermissionIds.has(permission.id)">
-              <div class="checkbox-container">
-                <input
-                  [id]="getPermissionCheckboxId(group.module, permission.id)"
-                  type="checkbox"
-                  [checked]="selectedPermissionIds.has(permission.id)"
-                  (change)="togglePermission(permission)"
-                  [disabled]="isSaving"
-                  [attr.aria-label]="getPermissionAriaLabel(permission)">
-                <span class="checkmark"></span>
-              </div>
-              <div class="permission-info">
-                <div class="permission-name">{{ getPermissionLabel(permission) }}</div>
-                <div class="permission-details">
-                  <span class="permission-category risk-high" *ngIf="isMandatoryAdminPermission(permission)">
-                    Mandatory Admin
-                  </span>
-                </div>
-              </div>
-            </label>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ng-container *ngTemplateOutlet="permissionWorkspace"></ng-container>
   </div>
 
   <div modalFooter>
@@ -190,19 +219,39 @@
   </div>
 </app-modal-shell>
 
-<!-- Inline Mode (for tab integration) -->
 <div class="inline-container" *ngIf="show && isInline" role="region" aria-label="Assign permissions panel">
-  <!-- Modal Body (reused) -->
+  <div class="assignment-context-bar">
+    <div class="assignment-context-bar__left">
+      <button class="btn-back" (click)="close()" type="button" title="Back to Roles">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <line x1="19" y1="12" x2="5" y2="12"></line>
+          <polyline points="12 19 5 12 12 5"></polyline>
+        </svg>
+        <span>Back to Roles</span>
+      </button>
+      <div class="assignment-context-bar__role" *ngIf="role">
+        <span class="assignment-context-bar__label">Assigning permissions to</span>
+        <span class="role-badge">
+          <span class="role-name">{{ role.name }}</span>
+          <span class="role-type" [ngClass]="getRoleBadgeClass()">
+            {{ getRoleBadgeLabel() }}
+          </span>
+        </span>
+      </div>
+    </div>
+    <div class="assignment-context-bar__toolbar" *ngIf="!isLoading && !errorMessage">
+      <ng-container *ngTemplateOutlet="permissionToolbar"></ng-container>
+    </div>
+  </div>
+
   <div class="modal-body inline-body">
-    <!-- Loading State -->
     <div *ngIf="isLoading" class="loading-container">
       <div class="loading-spinner"></div>
       <p>Loading permissions...</p>
     </div>
 
-    <!-- Error State -->
     <div *ngIf="errorMessage && !isLoading" class="error-banner" role="alert" aria-live="polite">
-      <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <circle cx="12" cy="12" r="10"></circle>
         <line x1="12" y1="8" x2="12" y2="12"></line>
         <line x1="12" y1="16" x2="12.01" y2="16"></line>
@@ -210,161 +259,11 @@
       <span>{{ errorMessage }}</span>
     </div>
 
-    <!-- Content -->
     <div *ngIf="!isLoading && !errorMessage" class="modal-content">
-      <!-- Combined Stats and Actions Bar (hidden in inline mode) -->
-      <div class="combined-controls-bar" *ngIf="!isInline">
-        <!-- Statistics Section -->
-        <div class="stats-section">
-          <div class="stat-item">
-            <span class="stat-label">Total:</span>
-            <span class="stat-value">{{ totalPermissions }}</span>
-          </div>
-          <div class="stat-item stat-selected">
-            <span class="stat-label">Selected:</span>
-            <span class="stat-value">{{ selectedPermissionsCount }}</span>
-          </div>
-          <div class="stat-item" *ngIf="hasChanges()">
-            <span class="stat-badge stat-badge-warning">Unsaved</span>
-          </div>
-        </div>
-
-        <!-- Actions Section -->
-        <div class="actions-section">
-          <button
-            class="btn-filter"
-            (click)="openFilterPanel()"
-            type="button"
-            [class.active]="hasActiveFilters()"
-            title="Filter permissions">
-            <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-            </svg>
-            <span class="btn-text">Filters</span>
-            <span class="filter-badge" *ngIf="hasActiveFilters()">●</span>
-          </button>
-
-          <div class="action-buttons">
-            <button class="btn-action" (click)="selectAll()" [disabled]="isSaving" type="button" title="Select all permissions">
-              <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 11 12 14 22 4"></polyline>
-                <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"></path>
-              </svg>
-              <span class="btn-text">Select All</span>
-            </button>
-            <button class="btn-action" (click)="deselectAll()" [disabled]="isSaving" type="button" title="Deselect all permissions">
-              <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              </svg>
-              <span class="btn-text">Deselect All</span>
-            </button>
-            <button class="btn-action" (click)="expandAll()" [disabled]="isSaving" type="button" title="Expand all modules">
-              <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="17 11 12 6 7 11"></polyline>
-                <polyline points="17 18 12 13 7 18"></polyline>
-              </svg>
-              <span class="btn-text">Expand All</span>
-            </button>
-            <button class="btn-action" (click)="collapseAll()" [disabled]="isSaving" type="button" title="Collapse all modules">
-              <svg class="btn-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="7 13 12 18 17 13"></polyline>
-                <polyline points="7 6 12 11 17 6"></polyline>
-              </svg>
-              <span class="btn-text">Collapse All</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="safeguard-hint" *ngIf="tenantMode">
-        Tenant safeguard: permission escalation is blocked. You can only assign permissions you currently hold.
-      </div>
-
-      <div class="error-banner" *ngIf="hasAdminPermissionConflict()" role="alert" aria-live="polite">
-        <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="10"></circle>
-          <line x1="12" y1="8" x2="12" y2="12"></line>
-          <line x1="12" y1="16" x2="12.01" y2="16"></line>
-        </svg>
-        <span>Administrator safeguard: missing required permissions - {{ getMissingRequiredAdminPermissionLabels().join(', ') }}</span>
-      </div>
-
-      <!-- Permissions Groups -->
-      <div class="permissions-container">
-        <!-- Empty State -->
-        <div *ngIf="filteredGroups.length === 0" class="empty-state">
-          <svg class="empty-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="11" cy="11" r="8"></circle>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-          </svg>
-          <h3>No Permissions Found</h3>
-          <p *ngIf="searchQuery">No permissions match your search query: "{{ searchQuery }}"</p>
-          <p *ngIf="!searchQuery">No permissions available to assign.</p>
-        </div>
-
-        <!-- Module Groups -->
-        <div class="module-group" *ngFor="let group of filteredGroups; trackBy: trackByModuleName" [class.collapsed]="isModuleCollapsed(group.module)">
-          <!-- Module Header -->
-          <div class="module-header" (click)="toggleModuleCollapse(group.module)">
-            <div class="module-header-left">
-              <svg class="collapse-icon" [class.collapsed]="isModuleCollapsed(group.module)" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <polyline points="9 18 15 12 9 6"></polyline>
-              </svg>
-              <label class="checkbox-container module-checkbox" [for]="getModuleCheckboxId(group.module)" (click)="$event.stopPropagation()">
-                <input
-                  [id]="getModuleCheckboxId(group.module)"
-                  type="checkbox"
-                  [checked]="group.allSelected"
-                  [indeterminate]="group.someSelected"
-                  (change)="toggleModule(group)"
-                  [disabled]="isSaving"
-                  [attr.aria-label]="'Select all permissions in ' + group.module + ' module'">
-                <span class="checkmark" [class.indeterminate]="group.someSelected"></span>
-              </label>
-              <span class="module-name">{{ group.module }}</span>
-              <span class="module-count">({{ group.selectedCount }} / {{ group.totalCount }})</span>
-              <span class="permission-category" [ngClass]="'risk-' + getModuleRiskLevel(group.module)">
-                {{ getModuleRiskLabel(group.module) }}
-              </span>
-            </div>
-            <span class="toggle-hint">{{ isModuleCollapsed(group.module) ? 'Expand' : 'Collapse' }}</span>
-          </div>
-
-          <!-- Module Content (Permissions List) -->
-          <div class="module-content" *ngIf="!isModuleCollapsed(group.module)">
-            <div class="permissions-grid">
-              <label
-                *ngFor="let permission of group.permissions; trackBy: trackByPermissionId"
-                [for]="getPermissionCheckboxId(group.module, permission.id)"
-                class="permission-item"
-                [class.selected]="selectedPermissionIds.has(permission.id)">
-                <div class="checkbox-container">
-                  <input
-                    [id]="getPermissionCheckboxId(group.module, permission.id)"
-                    type="checkbox"
-                    [checked]="selectedPermissionIds.has(permission.id)"
-                    (change)="togglePermission(permission)"
-                    [disabled]="isSaving"
-                    [attr.aria-label]="getPermissionAriaLabel(permission)">
-                  <span class="checkmark"></span>
-                </div>
-                <div class="permission-info">
-                  <div class="permission-name">{{ getPermissionLabel(permission) }}</div>
-                  <div class="permission-details">
-                    <span class="permission-category risk-high" *ngIf="isMandatoryAdminPermission(permission)">
-                      Mandatory Admin
-                    </span>
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ng-container *ngTemplateOutlet="permissionWorkspace"></ng-container>
     </div>
   </div>
 
-  <!-- Inline Footer -->
   <div class="inline-footer">
     <button class="btn-secondary" (click)="close()" [disabled]="isSaving" type="button">Cancel</button>
     <button
@@ -379,12 +278,11 @@
   </div>
 </div>
 
-<!-- Filter Panel -->
-<app-filter-panel
-  [isOpen]="showFilterPanel"
-  [config]="filterConfig"
-  [initialValues]="getCurrentFilterValues()"
-  (close)="closeFilterPanel()"
-  (apply)="applyFilters($event)"
-  (reset)="resetFilters()">
-</app-filter-panel>
+<app-advanced-search-panel
+  mode="sidepanel"
+  [fields]="searchFields"
+  [isExpanded]="showAdvancedSearch"
+  (search)="onAdvancedSearch($event)"
+  (clear)="onClearAdvancedSearch()"
+  (close)="showAdvancedSearch = false"
+></app-advanced-search-panel>

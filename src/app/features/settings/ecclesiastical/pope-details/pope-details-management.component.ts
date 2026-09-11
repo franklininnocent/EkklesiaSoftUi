@@ -1,36 +1,49 @@
 /**
  * Pope Details Management Component
- * 
+ *
  * Manages Pope details within the Ecclesiastical Data Management interface.
- * Tenant-specific: Each tenant manages their own pope details.
- * Requires Ekklesia Roles permissions.
+ * Global Pope record — SuperAdmin only.
  */
 
-import { Component, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
+import { Component, Input, OnInit, inject, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { PopeDetailsService } from '@core/services/church';
 import { AuthService } from '@core/services';
 import { ToastService } from '@core/services/toast.service';
 import { PopeDetails, UpdatePopeDetailsRequest } from '@core/models/church';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 
 @Component({
   selector: 'app-pope-details-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    PageHeaderComponent,
+    LoadingSkeletonComponent,
+    CfEmptyStateComponent,
+  ],
   templateUrl: './pope-details-management.component.html',
-  changeDetection: ChangeDetectionStrategy.Eager,
+  changeDetection: ChangeDetectionStrategy.Default,
   styleUrl: './pope-details-management.component.scss'
 })
 export class PopeDetailsManagementComponent implements OnInit {
+  /** When true (e.g. Roles & Permissions tab), suppress duplicate page header. */
+  @Input() embedded = false;
+
   private fb = inject(FormBuilder);
   private popeDetailsService = inject(PopeDetailsService);
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
 
   loading = false;
+  loaded = false;
   saving = false;
   uploading = false;
+  loadError: string | null = null;
   popeForm!: FormGroup;
   popeDetails: PopeDetails | null = null;
   imagePreview: string | null = null;
@@ -46,24 +59,19 @@ export class PopeDetailsManagementComponent implements OnInit {
 
   /**
    * Check if user has permission to manage pope details
-   * CRITICAL SECURITY: Pope Details is SuperAdmin only (changed from Ekklesia roles)
+   * CRITICAL SECURITY: Pope Details is SuperAdmin only
    */
   private checkPermissions(): void {
     const user = this.authService.currentUserValue;
-    
-    // CRITICAL SECURITY: Only SuperAdmin can manage Pope Details
-    // Check for SuperAdmin explicitly
+
     const isSuperAdmin = this.authService.isSuperAdmin() ||
                         (user?.role_name === 'SuperAdmin') ||
                         (user?.role?.name === 'SuperAdmin') ||
                         (user?.is_super_admin === true) ||
                         (user?.is_admin === true);
-    
-    // User can manage pope details ONLY if they are SuperAdmin
-    // Even if they have the permission, we enforce SuperAdmin check for security
+
     this.canManage = isSuperAdmin;
-    
-    // If user is not SuperAdmin, log a warning for audit
+
     if (!this.canManage && user) {
       console.warn('Non-SuperAdmin user attempted to access Pope Details (SuperAdmin only)', {
         user_id: user.id,
@@ -71,15 +79,12 @@ export class PopeDetailsManagementComponent implements OnInit {
         role_name: user.role_name || user.role?.name,
       });
     }
-    
+
     if (!this.canManage) {
       this.toastService.error('You do not have permission to manage pope details.');
     }
   }
 
-  /**
-   * Initialize form
-   */
   private initForm(): void {
     this.popeForm = this.fb.group({
       pope_name: ['', [Validators.required, Validators.maxLength(255)]],
@@ -88,15 +93,14 @@ export class PopeDetailsManagementComponent implements OnInit {
     });
   }
 
-  /**
-   * Load current pope details (public method for refresh button)
-   */
   loadPopeDetails(): void {
     if (!this.canManage) {
       return;
     }
 
     this.loading = true;
+    this.loadError = null;
+
     this.popeDetailsService.getPopeDetails().subscribe({
       next: (response) => {
         if (response.success) {
@@ -104,18 +108,23 @@ export class PopeDetailsManagementComponent implements OnInit {
           this.populateForm(response.data);
         }
         this.loading = false;
+        this.loaded = true;
       },
       error: (err) => {
         console.error('Failed to load pope details:', err);
+        this.loadError = err?.message || 'Failed to load pope details. Please try again.';
         this.toastService.error('Failed to load pope details');
         this.loading = false;
+        this.loaded = true;
       }
     });
   }
 
-  /**
-   * Populate form with existing data
-   */
+  retryLoad(): void {
+    this.loaded = false;
+    this.loadPopeDetails();
+  }
+
   private populateForm(data: PopeDetails): void {
     this.popeForm.patchValue({
       pope_name: data.pope_name || '',
@@ -123,21 +132,29 @@ export class PopeDetailsManagementComponent implements OnInit {
       pope_effective_from: data.pope_effective_from || ''
     });
 
-    // Set image preview if available
     if (data.pope_image_url) {
       this.imagePreview = data.pope_image_url;
+    } else {
+      this.imagePreview = null;
     }
   }
 
-  /**
-   * Handle image file selection
-   */
+  hasCurrentPope(): boolean {
+    return !!(this.popeDetails?.pope_name?.trim());
+  }
+
+  imageStatusLabel(): string {
+    if (this.popeDetails?.pope_image_url || this.imagePreview) {
+      return 'Portrait uploaded';
+    }
+    return 'No portrait';
+  }
+
   onFileSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
     if (input.files && input.files.length > 0) {
       const file = input.files[0];
-      
-      // Validate file type
+
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
         this.toastService.error('Invalid file type. Please upload a JPG, PNG, or WebP image.');
@@ -145,8 +162,7 @@ export class PopeDetailsManagementComponent implements OnInit {
         return;
       }
 
-      // Validate file size (3MB max)
-      const maxSize = 3 * 1024 * 1024; // 3MB in bytes
+      const maxSize = 3 * 1024 * 1024;
       if (file.size > maxSize) {
         this.toastService.error('File size exceeds 3MB limit. Please choose a smaller image.');
         input.value = '';
@@ -155,30 +171,23 @@ export class PopeDetailsManagementComponent implements OnInit {
 
       this.selectedFile = file;
 
-      // Create preview
       const reader = new FileReader();
-      reader.onload = (e: any) => {
-        this.imagePreview = e.target.result;
+      reader.onload = (e: ProgressEvent<FileReader>) => {
+        this.imagePreview = e.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
   }
 
-  /**
-   * Remove selected image
-   */
   removeImage(): void {
     this.selectedFile = null;
-    // If there's an existing image, keep the preview
-    // Otherwise, clear it
     if (!this.popeDetails?.pope_image_url) {
       this.imagePreview = null;
+    } else if (this.popeDetails.pope_image_url) {
+      this.imagePreview = this.popeDetails.pope_image_url;
     }
   }
 
-  /**
-   * Upload pope image
-   */
   uploadImage(): void {
     if (!this.selectedFile || !this.canManage) {
       return;
@@ -190,11 +199,9 @@ export class PopeDetailsManagementComponent implements OnInit {
         if (response.success) {
           this.toastService.success('Pope image uploaded successfully');
           this.selectedFile = null;
-          // Update image preview with new URL
           if (response.data.pope_image_url) {
             this.imagePreview = response.data.pope_image_url;
           }
-          // Reload pope details to get updated data
           this.loadPopeDetails();
         }
         this.uploading = false;
@@ -208,9 +215,6 @@ export class PopeDetailsManagementComponent implements OnInit {
     });
   }
 
-  /**
-   * Delete pope image
-   */
   deleteImage(): void {
     if (!this.canManage || !confirm('Are you sure you want to delete the pope image?')) {
       return;
@@ -223,7 +227,6 @@ export class PopeDetailsManagementComponent implements OnInit {
           this.toastService.success('Pope image deleted successfully');
           this.imagePreview = null;
           this.selectedFile = null;
-          // Reload pope details
           this.loadPopeDetails();
         }
         this.uploading = false;
@@ -237,9 +240,6 @@ export class PopeDetailsManagementComponent implements OnInit {
     });
   }
 
-  /**
-   * Save pope details
-   */
   savePopeDetails(): void {
     if (!this.canManage || this.popeForm.invalid) {
       this.markFormGroupTouched(this.popeForm);
@@ -248,7 +248,7 @@ export class PopeDetailsManagementComponent implements OnInit {
 
     this.saving = true;
     const formValue = this.popeForm.value;
-    
+
     const updateData: UpdatePopeDetailsRequest = {
       pope_name: formValue.pope_name,
       pope_title: formValue.pope_title || undefined,
@@ -272,9 +272,6 @@ export class PopeDetailsManagementComponent implements OnInit {
     });
   }
 
-  /**
-   * Mark all form controls as touched
-   */
   private markFormGroupTouched(formGroup: FormGroup): void {
     Object.keys(formGroup.controls).forEach(key => {
       const control = formGroup.get(key);
@@ -285,9 +282,6 @@ export class PopeDetailsManagementComponent implements OnInit {
     });
   }
 
-  /**
-   * Get form control error message
-   */
   getFieldError(fieldName: string): string {
     const control = this.popeForm.get(fieldName);
     if (control?.errors && control.touched) {
@@ -301,17 +295,11 @@ export class PopeDetailsManagementComponent implements OnInit {
     return '';
   }
 
-  /**
-   * Check if field has error
-   */
   hasFieldError(fieldName: string): boolean {
     const control = this.popeForm.get(fieldName);
     return !!(control?.errors && control.touched);
   }
 
-  /**
-   * Format date for display
-   */
   formatDate(dateString: string | null | undefined): string {
     if (!dateString) {
       return '';
@@ -323,5 +311,13 @@ export class PopeDetailsManagementComponent implements OnInit {
       return dateString;
     }
   }
-}
 
+  popeDisplayName(): string {
+    return this.popeDetails?.pope_name?.trim() || 'Not set';
+  }
+
+  popePhotoAlt(): string {
+    const name = this.popeDetails?.pope_name?.trim();
+    return name ? `Portrait of ${name}` : 'Pope portrait';
+  }
+}

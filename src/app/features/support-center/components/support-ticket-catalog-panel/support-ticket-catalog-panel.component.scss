@@ -1,0 +1,33 @@
+@use '../../../donations/styles/stewardship-split-layout.scss';
+
+.support-ticket-catalog {
+  margin-top: 1.5rem;
+}
+
+.support-ticket-catalog__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.support-ticket-catalog__category-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.support-ticket-catalog__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.st-catalog-type-modal,
+.st-catalog-category-modal {
+  .cf-split-form-actions {
+    justify-content: flex-end;
+  }
+}

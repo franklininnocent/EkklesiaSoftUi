@@ -19,6 +19,7 @@ export interface User {
   is_primary_admin?: boolean;  // Primary admin created during tenant onboarding - cannot be deleted/deactivated by tenant users
   tenant_id?: number | null;
   person_id?: string | null;
+  profile_image_full_url?: string | null;
   // Legacy single role support (deprecated)
   role_id?: number | null;
   role_name?: string | null;

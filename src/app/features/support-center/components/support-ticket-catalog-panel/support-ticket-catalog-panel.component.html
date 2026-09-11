@@ -1,0 +1,160 @@
+<section class="support-ticket-catalog cf-panel">
+  <header class="support-ticket-catalog__header">
+    <div>
+      <h3 class="cf-form-section__title">Ticket request types</h3>
+      <p class="cf-form-section__intro">
+        Types tenants choose when opening a support ticket. Only active types appear in parish forms.
+      </p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateType()">Add request type</button>
+  </header>
+
+  <div class="cf-inline-alert" *ngIf="error" role="alert">
+    <p>{{ error }}</p>
+  </div>
+
+  <div class="cf-loading-block" *ngIf="loading">
+    <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <app-cf-empty-state
+    *ngIf="!loading && !rows.length"
+    title="No request types yet"
+    description="Add the types tenants will choose when they ask for help."
+    actionLabel="Add request type"
+    (action)="openCreateType()"
+  ></app-cf-empty-state>
+
+  <app-data-table *ngIf="!loading && rows.length">
+    <thead>
+      <tr>
+        <th scope="col">Name</th>
+        <th scope="col">Categories</th>
+        <th scope="col">Bug details</th>
+        <th scope="col">Order</th>
+        <th scope="col">Status</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of rows">
+        <td>{{ row.name }}</td>
+        <td>
+          <span *ngIf="!row.categories?.length">—</span>
+          <ul class="support-ticket-catalog__category-list" *ngIf="row.categories?.length">
+            <li *ngFor="let category of row.categories">
+              {{ category.name }}
+              <span class="cf-meta" *ngIf="!category.active">(inactive)</span>
+              <button
+                type="button"
+                class="cf-btn-text"
+                (click)="openEditCategory(row, category)"
+              >
+                Edit
+              </button>
+            </li>
+          </ul>
+          <button type="button" class="cf-btn-text" (click)="openCreateCategory(row)">Add category</button>
+        </td>
+        <td>{{ row.requires_bug_fields ? 'Yes' : 'No' }}</td>
+        <td>{{ row.sort_order }}</td>
+        <td>
+          <app-status-badge
+            [label]="row.active ? 'Active' : 'Inactive'"
+            [tone]="row.active ? 'success' : 'neutral'"
+          ></app-status-badge>
+        </td>
+        <td class="support-ticket-catalog__actions">
+          <button type="button" class="cf-btn-text" (click)="openEditType(row)">Edit</button>
+          <button type="button" class="cf-btn-text" (click)="toggleTypeActive(row)">
+            {{ row.active ? 'Deactivate' : 'Activate' }}
+          </button>
+        </td>
+      </tr>
+    </tbody>
+  </app-data-table>
+</section>
+
+<app-modal-shell
+  *ngIf="showTypeModal"
+  [title]="editingType ? 'Edit request type' : 'Add request type'"
+  size="sm"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close request type"
+  [isSubmitting]="saving"
+  (closeRequested)="closeTypeModal()"
+>
+  <form class="cf-split-form-body st-catalog-type-modal" [formGroup]="typeForm" (ngSubmit)="saveType()" novalidate>
+    <section class="cf-split-section" aria-labelledby="catalog-type-fields">
+      <h3 id="catalog-type-fields" class="cf-split-section__title">Request type</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="catalog_type_name">Name <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <input id="catalog_type_name" type="text" formControlName="name" maxlength="128" aria-required="true" />
+        </div>
+        <div class="cf-split-field">
+          <label for="catalog_type_sort">Sort order</label>
+          <input id="catalog_type_sort" type="number" formControlName="sort_order" min="0" />
+        </div>
+        <label class="cf-split-toggle cf-split-toggle--block cf-split-field--full">
+          <input type="checkbox" formControlName="active" />
+          <span>Active <small>Inactive types are hidden from parish ticket forms.</small></span>
+        </label>
+        <label class="cf-split-toggle cf-split-toggle--block cf-split-field--full">
+          <input type="checkbox" formControlName="requires_bug_fields" />
+          <span>Ask for bug details <small>Show steps, expected/actual result, browser, and device fields.</small></span>
+        </label>
+      </div>
+    </section>
+    <div class="cf-split-form-actions">
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="typeForm.invalid || saving">
+        {{ saving ? 'Saving…' : (editingType ? 'Save changes' : 'Add request type') }}
+      </button>
+      <button type="button" class="cf-btn" (click)="closeTypeModal()" [disabled]="saving">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>
+
+<app-modal-shell
+  *ngIf="showCategoryModal"
+  [title]="editingCategory ? 'Edit category' : 'Add category'"
+  size="sm"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close category"
+  [isSubmitting]="saving"
+  (closeRequested)="closeCategoryModal()"
+>
+  <form
+    class="cf-split-form-body st-catalog-category-modal"
+    [formGroup]="categoryForm"
+    (ngSubmit)="saveCategory()"
+    novalidate
+  >
+    <p class="cf-meta" *ngIf="categoryParentType as parent">For request type: {{ parent.name }}</p>
+    <section class="cf-split-section" aria-labelledby="catalog-category-fields">
+      <h3 id="catalog-category-fields" class="cf-split-section__title">Category</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="catalog_category_name">Name <span class="cf-split-req" aria-hidden="true">*</span></label>
+          <input id="catalog_category_name" type="text" formControlName="name" maxlength="128" aria-required="true" />
+        </div>
+        <div class="cf-split-field">
+          <label for="catalog_category_sort">Sort order</label>
+          <input id="catalog_category_sort" type="number" formControlName="sort_order" min="0" />
+        </div>
+        <label class="cf-split-toggle cf-split-toggle--block cf-split-field--full">
+          <input type="checkbox" formControlName="active" />
+          <span>Active</span>
+        </label>
+      </div>
+    </section>
+    <div class="cf-split-form-actions">
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="categoryForm.invalid || saving">
+        {{ saving ? 'Saving…' : (editingCategory ? 'Save changes' : 'Add category') }}
+      </button>
+      <button type="button" class="cf-btn" (click)="closeCategoryModal()" [disabled]="saving">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>

@@ -25,6 +25,7 @@ import { DonationDashboardSummary } from '../models/donation.model';
     <section class="donations-dashboard cf-page cf-financial-dashboard">
       <app-page-header
         title="Financial Dashboard"
+        [titleLevel]="3"
         subtitle="Church financial health, collections, and families requiring attention."
       >
         <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">+ Quick Collect</button>

@@ -1,4 +1,4 @@
-@import '../../../../styles/church-financial-os-mixins';
+@use '../../../../styles/church-financial-os-mixins' as *;
 
 :host {
   display: contents;
@@ -17,6 +17,12 @@
 
   &--nested {
     z-index: var(--cf-z-modal-nested);
+  }
+
+  &--media {
+    background: rgba(15, 23, 42, 0.72);
+    align-items: center;
+    justify-content: center;
   }
 }
 
@@ -54,6 +60,13 @@
 
   &--full {
     width: min(var(--cf-modal-width-full), 96vw);
+  }
+
+  &--media {
+    width: min(var(--cf-modal-width-full), 96vw);
+    max-height: min(96dvh, var(--cf-modal-max-height));
+    border: 0;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.28);
   }
 }
 
@@ -174,6 +187,11 @@
   &--flush {
     padding: 0;
   }
+
+  &--media {
+    overflow: hidden;
+    padding: 0;
+  }
 }
 
 .cf-modal-shell__footer {
@@ -222,19 +240,29 @@
 }
 
 @media (max-width: $cf-bp-md) {
-  .cf-modal-shell__overlay {
+  .cf-modal-shell__overlay:not(.cf-modal-shell__overlay--media) {
     padding: var(--cf-space-2);
     align-items: flex-end;
   }
 
-  .cf-modal-shell__dialog,
-  .cf-modal-shell__dialog--xs,
-  .cf-modal-shell__dialog--sm,
-  .cf-modal-shell__dialog--md,
-  .cf-modal-shell__dialog--lg,
-  .cf-modal-shell__dialog--xl,
-  .cf-modal-shell__dialog--full {
+  .cf-modal-shell__overlay--media {
+    padding: var(--cf-space-2);
+    align-items: center;
+  }
+
+  .cf-modal-shell__dialog:not(.cf-modal-shell__dialog--media),
+  .cf-modal-shell__dialog--xs:not(.cf-modal-shell__dialog--media),
+  .cf-modal-shell__dialog--sm:not(.cf-modal-shell__dialog--media),
+  .cf-modal-shell__dialog--md:not(.cf-modal-shell__dialog--media),
+  .cf-modal-shell__dialog--lg:not(.cf-modal-shell__dialog--media),
+  .cf-modal-shell__dialog--xl:not(.cf-modal-shell__dialog--media),
+  .cf-modal-shell__dialog--full:not(.cf-modal-shell__dialog--media) {
     width: 100%;
     max-height: min(var(--cf-modal-max-height), 100dvh);
+  }
+
+  .cf-modal-shell__dialog--media {
+    width: 100%;
+    max-height: min(96dvh, var(--cf-modal-max-height));
   }
 }

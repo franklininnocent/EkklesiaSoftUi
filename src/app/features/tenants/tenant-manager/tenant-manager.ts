@@ -43,7 +43,6 @@ import {
 } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
-import { environment } from '@environments/environment';
 
 export type TenantListView = 'table' | 'card';
 
@@ -725,18 +724,16 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   }
 
   getTenantLogoUrl(logoUrl: string): string {
-    if (!logoUrl) {
+    if (!logoUrl?.trim()) {
       return '';
     }
 
-    if (logoUrl.startsWith('http://') || logoUrl.startsWith('https://')) {
-      return logoUrl;
+    const trimmed = logoUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
     }
 
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    const cleanLogoUrl = logoUrl.startsWith('/') ? logoUrl.substring(1) : logoUrl;
-
-    return `${baseUrl}/${cleanLogoUrl}`;
+    return '';
   }
 
   onLogoError(event: Event): void {

@@ -9,6 +9,7 @@ import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { AuthService } from '@core/services';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
@@ -21,6 +22,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
+  private supportSessions = inject(SupportSessionService);
   private cdr = inject(ChangeDetectorRef);
   private sanitizer = inject(DomSanitizer);
   private destroy$ = new Subject<void>();
@@ -95,15 +97,23 @@ export class SettingsComponent implements OnInit, OnDestroy {
       route: '/settings/support-access',
       requiresAnyPermission: ['support.grants.parish.view', 'support.grants.parish.manage'],
     },
-    {
-      title: 'Data Export',
-      description: 'Download your parish business data as a portable ZIP',
-      icon: 'file',
-      route: '/settings/data-export',
-      requiresTenantAccess: true,
-      requiresAnyPermission: ['tenant.data.export'],
-    },
-  ];
+  {
+    title: 'Data Export',
+    description: 'Download your parish business data as a portable ZIP',
+    icon: 'file',
+    route: '/settings/data-export',
+    requiresTenantAccess: true,
+    requiresAnyPermission: ['tenant.data.export'],
+  },
+  {
+    title: 'Recommended defaults',
+    description: 'Add missing offering categories, ministry types, and leadership positions.',
+    icon: 'settings',
+    route: '/settings/default-seeds',
+    requiresTenantAccess: true,
+    requiresAnyPermission: ['settings.default-seeds.view', 'settings.default-seeds.run'],
+  },
+];
 
   constructor(
     private router: Router,
@@ -252,16 +262,17 @@ export class SettingsComponent implements OnInit, OnDestroy {
       return false;
     }
     if (section.requiresTenantAccess) {
-      // ONLY Tenant users (NOT Ekklesia users) — must have tenant_id AND must NOT have Ekklesia role
-      if (!(user !== null && user.tenant_id !== null && !this.hasEkklesiaRole(user))) {
+      const parishHome = user !== null && user.tenant_id !== null && !this.hasEkklesiaRole(user);
+      const supportElevated = this.supportSessions.isSessionLive && this.authService.canAccessSupportCenter(user);
+      if (!parishHome && !supportElevated) {
         return false;
       }
     }
-    if (section.requiresPermission && !this.authService.hasPermission(section.requiresPermission)) {
+    if (section.requiresPermission && !this.authService.hasTenantPermission(section.requiresPermission)) {
       return false;
     }
     if (section.requiresAnyPermission?.length) {
-      if (!section.requiresAnyPermission.some((p: string) => this.authService.hasPermission(p))) {
+      if (!section.requiresAnyPermission.some((p: string) => this.authService.hasTenantPermission(p))) {
         return false;
       }
     }

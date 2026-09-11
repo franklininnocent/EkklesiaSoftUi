@@ -2,9 +2,10 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
-import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
+import { Subject, debounceTime, takeUntil, distinctUntilChanged, filter, map } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { BCC, BCCStatistics } from '../../../../core/models/family.model';
 import { BCCFormComponent } from '../bcc-form/bcc-form';
@@ -49,6 +50,7 @@ export class BCCListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly supportSessions = inject(SupportSessionService);
 
   bccs: BCC[] = [];
   statistics: BCCStatistics | null = null;
@@ -105,9 +107,15 @@ export class BCCListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.initializeSearchFields();
-    this.loadReferenceData();
-    this.loadStatistics();
-    this.loadBCCs();
+    this.tryLoadParishData();
+    this.supportSessions.session$
+      .pipe(
+        map((session) => session?.id ?? null),
+        distinctUntilChanged(),
+        filter((id) => id !== null),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => this.tryLoadParishData());
     this.setupSearchDebounce();
 
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
@@ -182,9 +190,23 @@ export class BCCListComponent implements OnInit, OnDestroy {
       });
   }
 
+  private tryLoadParishData(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
+    this.loadReferenceData();
+    this.loadStatistics();
+    this.loadBCCs();
+  }
+
   private loadReferenceData(): void {}
 
   private loadStatistics(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.bccService.getStatistics()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -202,6 +224,10 @@ export class BCCListComponent implements OnInit, OnDestroy {
   }
 
   loadBCCs(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.loading = true;
     this.error = null;
     this.cdr.markForCheck();

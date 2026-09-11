@@ -36,15 +36,6 @@
         >
           Add {{ singularLabel }}
         </button>
-        <button
-          *ngIf="canConfigure"
-          type="button"
-          class="cf-btn"
-          (click)="seedDefaults()"
-          [disabled]="seeding"
-        >
-          {{ seeding ? 'Seeding…' : 'Seed defaults' }}
-        </button>
       </app-list-toolbar>
 
       <ng-container *ngIf="filteredItems.length; else emptyList">
@@ -114,20 +105,18 @@
           [title]="'No ' + listTitle.toLowerCase()"
           [description]="
             kind === 'positions'
-              ? 'Seed default positions or add the offices your organizations use.'
-              : 'Seed parish defaults or add custom labels before creating organizations.'
+              ? 'Add recommended positions in Settings, or add the offices your organizations use.'
+              : 'Add recommended labels in Settings, or add custom labels before creating organizations.'
           "
           [hasActions]="canConfigure"
         >
-          <button
-            type="button"
+          <a
+            routerLink="/settings/default-seeds"
+            [queryParams]="{ module: 'ministries' }"
             class="cf-btn cf-btn-primary"
-            *ngIf="canConfigure"
-            (click)="seedDefaults()"
-            [disabled]="seeding"
           >
-            {{ seeding ? 'Adding defaults…' : 'Seed defaults' }}
-          </button>
+            Add recommended defaults
+          </a>
           <button
             type="button"
             class="cf-btn"
@@ -261,15 +250,4 @@
       </button>
     </ng-container>
   </app-modal-shell>
-
-  <app-confirmation-modal
-    *ngIf="showSeedConfirm"
-    [show]="showSeedConfirm"
-    title="Seed defaults"
-    [message]="seedConfirmMessage"
-    confirmText="Seed defaults"
-    cancelText="Cancel"
-    (confirmed)="confirmSeedDefaults()"
-    (cancelled)="cancelSeedDefaults()"
-  ></app-confirmation-modal>
 </div>

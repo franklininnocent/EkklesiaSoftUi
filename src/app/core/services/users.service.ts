@@ -171,6 +171,45 @@ export class UsersService {
   }
 
   /**
+   * Upload or replace a user's profile image.
+   */
+  uploadProfileImage(userId: number, file: File): Observable<UserResponse> {
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    return this.http.post<UserResponse>(`${this.apiUrl}/${userId}/profile-image`, formData).pipe(
+      map(response => {
+        if (response.data && !response.data.roles) {
+          response.data.roles = [];
+        }
+        return response;
+      }),
+      catchError(error => {
+        console.error('Error uploading user profile image:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Remove a user's profile image.
+   */
+  deleteProfileImage(userId: number): Observable<UserResponse> {
+    return this.http.delete<UserResponse>(`${this.apiUrl}/${userId}/profile-image`).pipe(
+      map(response => {
+        if (response.data && !response.data.roles) {
+          response.data.roles = [];
+        }
+        return response;
+      }),
+      catchError(error => {
+        console.error('Error deleting user profile image:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
    * Delete a user (soft delete)
    * 
    * @param id User ID

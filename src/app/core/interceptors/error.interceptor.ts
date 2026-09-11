@@ -1,14 +1,39 @@
-import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
+import { HttpInterceptorFn, HttpErrorResponse, HttpRequest } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
+
+function isSupportSessionAuthFailure(message: string): boolean {
+  const normalized = message.toLowerCase();
+  return (
+    normalized.includes('support session') ||
+    normalized.includes('invalid support session') ||
+    normalized.includes('session header does not match')
+  );
+}
+
+function requestSupportSessionId(req: HttpRequest<unknown>): string | null {
+  const headerId = req.headers.get('X-Support-Session-Id');
+  if (headerId) {
+    return headerId;
+  }
+
+  const match = /\/support\/sessions\/([^/]+)\/events/.exec(req.url);
+  return match ? match[1] : null;
+}
+
+function isSupportSessionEventsRequest(url: string): boolean {
+  return /\/support\/sessions\/[^/]+\/events/.test(url);
+}
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const toast = inject(ToastService);
   const auth = inject(AuthService);
+  const supportSessions = inject(SupportSessionService);
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -41,6 +66,20 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
               toast.error(errorMessage, 'Read-only');
             } else {
               errorMessage = error.error?.message || 'Forbidden. You do not have permission.';
+              if (isSupportSessionAuthFailure(errorMessage)) {
+                const invalidated = supportSessions.invalidateIfMatchesCurrent(
+                  requestSupportSessionId(req)
+                );
+                if (invalidated && !isSupportSessionEventsRequest(req.url)) {
+                  toast.error(
+                    'Your support session is no longer valid. Start a new session from Support Center.',
+                    'Support session ended'
+                  );
+                  if (!req.url.includes('/support-center')) {
+                    void router.navigate(['/support-center']);
+                  }
+                }
+              }
             }
             break;
           case 404:

@@ -1,0 +1,133 @@
+@use '../../../../styles/church-financial-os-mixins' as *;
+
+:host {
+  display: block;
+}
+
+.cf-image-viewer__stage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: min(72vh, 42rem);
+  max-height: min(72vh, 42rem);
+  overflow: hidden;
+  touch-action: none;
+  background: var(--cf-slate-950, #0f172a);
+  cursor: default;
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.cf-image-viewer__loading,
+.cf-image-viewer__error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: var(--cf-slate-100, #f8fafc);
+  z-index: 1;
+}
+
+.cf-image-viewer__error p {
+  margin: 0;
+  font-size: var(--cf-text-sm);
+}
+
+.cf-image-viewer__canvas {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center center;
+  will-change: transform;
+
+  &--hidden {
+    visibility: hidden;
+  }
+}
+
+.cf-image-viewer__image {
+  display: block;
+  max-width: none;
+  max-height: none;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.cf-image-viewer__toolbar {
+  position: absolute;
+  left: 50%;
+  bottom: var(--cf-space-4);
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  z-index: 2;
+}
+
+.cf-image-viewer__tool-btn {
+  min-width: 2rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 999px;
+  color: var(--cf-slate-50, #f8fafc);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.08);
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--reset {
+    min-width: auto;
+    padding-inline: 0.75rem;
+    font-size: var(--cf-text-sm);
+  }
+}
+
+.cf-image-viewer__zoom-label {
+  min-width: 3.25rem;
+  text-align: center;
+  font-size: var(--cf-text-sm);
+  font-weight: 600;
+  color: var(--cf-slate-50, #f8fafc);
+}
+
+@media (max-width: $cf-bp-md) {
+  .cf-image-viewer__stage {
+    min-height: min(68vh, 36rem);
+    max-height: min(68vh, 36rem);
+  }
+
+  .cf-image-viewer__toolbar {
+    bottom: var(--cf-space-3);
+    max-width: calc(100% - 1.5rem);
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cf-image-viewer__canvas {
+    will-change: auto;
+  }
+}

@@ -46,17 +46,20 @@
           </div>
 
           <div class="clg__card-main">
-            <div
-              class="clg__avatar"
-              [class.clg__avatar--filled]="leaderPhotoUrl(assignment)"
+            <button
+              *ngIf="leaderPhotoUrl(assignment) as photoUrl; else leaderInitialsFallback"
+              type="button"
+              class="clg__avatar clg__avatar--filled clg__avatar-trigger"
+              [attr.aria-label]="leaderPhotoAriaLabel(assignment)"
+              (click)="openPhotoViewer(assignment, photoUrl)"
             >
-              <img
-                *ngIf="leaderPhotoUrl(assignment) as photoUrl"
-                [src]="photoUrl"
-                [alt]="assignment.person?.full_name || assignment.role?.title || 'Leader photo'"
-              />
-              <span *ngIf="!leaderPhotoUrl(assignment)" aria-hidden="true">{{ leaderInitials(assignment) }}</span>
-            </div>
+              <img [src]="photoUrl" alt="" loading="lazy" />
+            </button>
+            <ng-template #leaderInitialsFallback>
+              <div class="clg__avatar">
+                <span aria-hidden="true">{{ leaderInitials(assignment) }}</span>
+              </div>
+            </ng-template>
 
             <div class="clg__card-body">
               <p class="clg__person">{{ assignment.person?.full_name }}</p>
@@ -68,19 +71,19 @@
                   [tone]="statusTone(assignment.status)"
                 ></app-status-badge>
               </div>
-            </div>
-          </div>
 
-          <div class="clg__card-footer">
-            <span class="clg__meta">Since {{ formatDate(assignment.start_date) }}</span>
-            <a
-              *ngIf="canEdit && assignment.status === 'active'"
-              href="#"
-              class="cf-btn-link clg__end-term-link"
-              (click)="openTerminateModal(assignment); $event.preventDefault()"
-            >
-              End Term
-            </a>
+              <div class="clg__card-footer">
+                <span class="clg__meta">Since {{ formatDate(assignment.start_date) }}</span>
+                <a
+                  *ngIf="canEdit && assignment.status === 'active'"
+                  href="#"
+                  class="cf-btn-link clg__end-term-link"
+                  (click)="openTerminateModal(assignment); $event.preventDefault()"
+                >
+                  End Term
+                </a>
+              </div>
+            </div>
           </div>
         </article>
       </div>
@@ -617,3 +620,12 @@
     </div>
   </form>
 </app-modal-shell>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>

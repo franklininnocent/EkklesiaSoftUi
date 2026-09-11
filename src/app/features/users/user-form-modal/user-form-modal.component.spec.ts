@@ -5,6 +5,8 @@ import { UserFormModalComponent } from './user-form-modal.component';
 import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 
 describe('UserFormModalComponent', () => {
   let component: UserFormModalComponent;
@@ -16,8 +18,10 @@ describe('UserFormModalComponent', () => {
   ];
 
   const usersServiceStub = {
-    createUser: jasmine.createSpy('createUser').and.returnValue(of({ success: true, data: {} })),
-    updateUser: jasmine.createSpy('updateUser').and.returnValue(of({ success: true, data: {} })),
+    createUser: jasmine.createSpy('createUser').and.returnValue(of({ success: true, data: { id: 99, name: 'New', email: 'new@test.com', roles: [] } })),
+    updateUser: jasmine.createSpy('updateUser').and.returnValue(of({ success: true, data: { id: 10, name: 'Edit User', email: 'edit@example.com', roles: [] } })),
+    uploadProfileImage: jasmine.createSpy('uploadProfileImage').and.returnValue(of({ success: true, data: { id: 99, profile_image_full_url: 'https://example.test/u.jpg', roles: [] } })),
+    deleteProfileImage: jasmine.createSpy('deleteProfileImage').and.returnValue(of({ success: true, data: { id: 10, profile_image_full_url: null, roles: [] } })),
     getLinkableClergy: jasmine.createSpy('getLinkableClergy').and.returnValue(of({ success: true, data: [] }))
   } as unknown as UsersService;
 
@@ -27,8 +31,19 @@ describe('UserFormModalComponent', () => {
 
   const toastStub = {
     success: jasmine.createSpy('success'),
-    error: jasmine.createSpy('error')
+    error: jasmine.createSpy('error'),
+    warning: jasmine.createSpy('warning')
   } as unknown as ToastService;
+
+  const authStub = {
+    currentUserValue: { id: 1, tenant_id: 1 },
+    isSuperAdmin: () => false,
+    isEkklesiaAdmin: () => false
+  } as unknown as AuthService;
+
+  const subscriptionStub = {
+    isReadOnly: () => false
+  } as unknown as SubscriptionAccessService;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -36,7 +51,9 @@ describe('UserFormModalComponent', () => {
       providers: [
         { provide: UsersService, useValue: usersServiceStub },
         { provide: RolesService, useValue: rolesServiceStub },
-        { provide: ToastService, useValue: toastStub }
+        { provide: ToastService, useValue: toastStub },
+        { provide: AuthService, useValue: authStub },
+        { provide: SubscriptionAccessService, useValue: subscriptionStub }
       ],
       schemas: [NO_ERRORS_SCHEMA]
     }).compileComponents();
@@ -118,6 +135,34 @@ describe('UserFormModalComponent', () => {
     component.toggleRole(roles[0].id);
     component.validateField('role_ids');
     expect(component.validationErrors['role_ids']).toBeUndefined();
+  });
+
+  it('should render profile image upload control', () => {
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#profile_image')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('Profile image');
+  });
+
+  it('should upload profile image after user creation when file selected', () => {
+    component.isEditMode = false;
+    component.formData = {
+      name: 'Photo User',
+      email: 'photo@example.com',
+      password: 'Strong1!',
+      password_confirmation: 'Strong1!',
+      contact_number: '',
+      user_type: 1,
+      role_ids: [1],
+      active: 1,
+      person_id: null
+    };
+    component.selectedRoleIds = new Set([1]);
+    component.selectedProfileImage = new File(['x'], 'photo.jpg', { type: 'image/jpeg' });
+
+    component.onSubmit();
+
+    expect(usersServiceStub.createUser).toHaveBeenCalled();
+    expect(usersServiceStub.uploadProfileImage).toHaveBeenCalledWith(99, component.selectedProfileImage);
   });
 });
 

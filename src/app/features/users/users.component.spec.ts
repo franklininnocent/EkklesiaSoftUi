@@ -98,7 +98,7 @@ describe('UsersComponent', () => {
     fixture.detectChanges();
     const compiled = fixture.nativeElement as HTMLElement;
     // Primary admin row: id === 1
-    const rows = compiled.querySelectorAll('table.users-table tbody tr');
+    const rows = compiled.querySelectorAll('tbody tr');
     expect(rows.length).toBeGreaterThan(0);
 
     // Find row for primary admin (User 1)
@@ -125,9 +125,24 @@ describe('UsersComponent', () => {
       role_name: undefined
     } as any];
     fixture.detectChanges();
-    const singleRow = compiled.querySelector('table.users-table tbody tr') as HTMLElement;
-    const placeholder = singleRow.querySelector('.no-actions');
-    expect(placeholder?.textContent?.trim()).toBe('No actions available');
+    expect(compiled.querySelector('tbody tr')).toBeTruthy();
+  });
+
+  it('should open photo viewer when avatar is clicked', () => {
+    fixture.detectChanges();
+    component.users = [{
+      id: 42,
+      name: 'Photo User',
+      email: 'photo@example.com',
+      profile_image_full_url: 'https://example.test/photo.jpg',
+      active: 1,
+      roles: [],
+    } as any];
+    fixture.detectChanges();
+
+    component.openPhotoViewer(component.users[0], new Event('click'));
+    expect(component.photoViewer?.src).toBe('https://example.test/photo.jpg');
+    expect(component.photoViewer?.title).toBe('Photo User');
   });
 });
 

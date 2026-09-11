@@ -159,7 +159,7 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
     </section>
   `,
   styles: [`
-    @import '../styles/stewardship-split-layout.scss';
+    @use '../styles/stewardship-split-layout.scss';
 
     .cf-split-form-actions { justify-content: flex-end; }
     .campaign-top { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; }

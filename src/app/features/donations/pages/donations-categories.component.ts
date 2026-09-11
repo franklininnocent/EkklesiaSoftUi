@@ -30,7 +30,6 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
   showForm = false;
   editingCategoryId: string | null = null;
   saving = false;
-  seeding = false;
   deletingId: string | null = null;
   canManage = false;
 
@@ -188,21 +187,6 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
       error: (err) => {
         this.deletingId = null;
         this.toastService.error(this.parseError(err), 'Could not delete category');
-      }
-    });
-  }
-
-  seedDefaults(): void {
-    this.seeding = true;
-    this.donationsService.seedDefaultCategories().subscribe({
-      next: () => {
-        this.seeding = false;
-        this.toastService.success('Default categories added.', 'Success');
-        this.load();
-      },
-      error: (err) => {
-        this.seeding = false;
-        this.toastService.error(this.parseError(err), 'Could not add defaults');
       }
     });
   }

@@ -5,7 +5,7 @@
  * custom properties cannot be used inside @media feature queries).
  *
  * Usage from a feature component's .scss file:
- *   @import '../../../../styles/church-financial-os-mixins';
+ *   @use '../../../../styles/church-financial-os-mixins' as *;
  *
  *   @media (min-width: $cf-bp-md) { ... }
  *   .foo { @include cf-truncate; }

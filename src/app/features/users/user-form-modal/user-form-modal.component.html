@@ -20,6 +20,7 @@
     <div *ngIf="isEditingSelf" class="cf-split-form-alert user-form-modal__alert--warning" role="status">
       <strong>Viewing your own account.</strong>
       You cannot edit your own account details. Contact an administrator if you need changes to name, email, contact number, roles, or account status.
+      <span *ngIf="isTenantAdminSelf"> You can update your profile photo from <strong>Profile</strong>.</span>
     </div>
 
     <p *ngIf="errorMessage" class="cf-split-form-alert cf-split-form-alert--error" role="alert">
@@ -94,6 +95,25 @@
     <!-- Account information -->
     <section class="cf-split-section" aria-labelledby="user-section-account">
       <h3 id="user-section-account" class="cf-split-section__title">Account information</h3>
+
+      <div class="user-form-modal__profile-image" *ngIf="canEditProfileImage || displayProfileImageUrl">
+        <app-cf-media-upload
+          #profileMediaUpload
+          label="Profile image"
+          hint="JPG, PNG, or WebP up to 3 MB."
+          inputId="profile_image"
+          [accept]="profileImageAccept"
+          [canManage]="canEditProfileImage"
+          [previewUrl]="existingProfileImagePreviewUrl"
+          [previewClickable]="!!existingProfileImagePreviewUrl && !selectedProfileImage"
+          (previewClick)="openSavedProfilePhotoViewer()"
+          (fileSelected)="onCfProfileImageSelected($event)"
+          (removeRequested)="removeSelectedProfileImage()"
+          (validationError)="onProfileImageValidationError($event)"
+        ></app-cf-media-upload>
+        <p class="cf-split-field__error" *ngIf="profileImageError" role="alert">{{ profileImageError }}</p>
+      </div>
+
       <div class="cf-split-grid">
         <div class="cf-split-field">
           <label for="name">
@@ -332,3 +352,13 @@
     </div>
   </form>
 </app-modal-shell>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  [nested]="true"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>

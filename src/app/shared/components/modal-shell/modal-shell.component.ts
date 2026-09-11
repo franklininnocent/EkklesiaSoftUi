@@ -18,6 +18,7 @@ import {
 } from '@shared/utils/focus-trap.util';
 
 export type ModalShellSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
+export type ModalShellLayout = 'dialog' | 'media';
 
 /**
  * ModalShell
@@ -43,6 +44,7 @@ export type ModalShellSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   private static idCounter = 0;
   private static openCount = 0;
+  private static readonly openStack: ModalShellComponent[] = [];
 
   /** Dialog title, rendered as the modal's accessible `<h2>` heading. */
   @Input() title = '';
@@ -78,6 +80,11 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
    * own its own padding instead of double-padding inside the shell body.
    */
   @Input() bodyPadding: 'default' | 'none' = 'default';
+  /**
+   * Layout variant. 'media' centers the overlay on all viewports, uses a
+   * darker backdrop, and keeps the body from scrolling — for image viewers.
+   */
+  @Input() layout: ModalShellLayout = 'dialog';
 
   /** Emitted on Escape, backdrop click, or close-button click. */
   @Output() closeRequested = new EventEmitter<void>();
@@ -101,6 +108,7 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.previousActiveElement = saveActiveElement();
     document.addEventListener('keydown', this.handleKeyDown);
+    ModalShellComponent.openStack.push(this);
     ModalShellComponent.openCount += 1;
     if (ModalShellComponent.openCount === 1) {
       this.previousBodyOverflow = document.body.style.overflow;
@@ -116,6 +124,10 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnDestroy(): void {
     document.removeEventListener('keydown', this.handleKeyDown);
+    const stackIndex = ModalShellComponent.openStack.indexOf(this);
+    if (stackIndex >= 0) {
+      ModalShellComponent.openStack.splice(stackIndex, 1);
+    }
     this.focusTrapCleanup?.();
     this.focusTrapCleanup = null;
     restoreActiveElement(this.previousActiveElement);
@@ -138,9 +150,17 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   private handleKeyDown = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && !this.isSubmitting) {
-      event.preventDefault();
-      this.closeRequested.emit();
+    if (event.key !== 'Escape' || this.isSubmitting) {
+      return;
     }
+
+    const top = ModalShellComponent.openStack[ModalShellComponent.openStack.length - 1];
+    if (top !== this) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.closeRequested.emit();
   };
 }

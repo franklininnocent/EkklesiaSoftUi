@@ -37,6 +37,7 @@ import {
   SearchField,
 } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 import { ParishPerson, ParishPersonService } from '@features/settings/sacraments/services/person.service';
 
 type HistoryView = 'table' | 'timeline';
@@ -57,6 +58,7 @@ type HistoryView = 'table' | 'timeline';
     ListToolbarComponent,
     AdvancedSearchPanelComponent,
     EditIconButtonComponent,
+    ImageViewerComponent,
   ],
   templateUrl: './church-leadership-governance.component.html',
   styleUrl: './church-leadership-governance.component.scss',
@@ -113,6 +115,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
   assignPhotoPreview: string | null = null;
   editPhotoFile: File | null = null;
   editPhotoPreview: string | null = null;
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
 
   readonly assignForm = this.fb.nonNullable.group({
     person_id: [''],
@@ -1016,6 +1019,26 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     }
 
     return this.leadershipService.resolveLeaderPhotoUrl(assignment.person?.photo_url);
+  }
+
+  leaderPhotoAriaLabel(assignment: LeadershipAssignment): string {
+    const name = assignment.person?.full_name || assignment.role?.title || 'leader';
+    return `View photo of ${name}`;
+  }
+
+  openPhotoViewer(assignment: LeadershipAssignment, photoUrl: string): void {
+    this.photoViewer = {
+      src: photoUrl,
+      alt: assignment.person?.full_name || assignment.role?.title || 'Leader photo',
+      title: assignment.person?.full_name || '',
+      subtitle: assignment.role?.title || '',
+    };
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 
   leaderInitials(assignment: LeadershipAssignment): string {

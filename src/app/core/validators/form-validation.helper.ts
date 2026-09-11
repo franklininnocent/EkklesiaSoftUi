@@ -319,10 +319,15 @@ export function markFormGroupTouched(form: FormGroup, fieldSelectorPrefix: strin
 
   if (firstInvalidField) {
     setTimeout(() => {
-      const selector = fieldSelectorPrefix
+      const baseSelector = fieldSelectorPrefix
         ? `${fieldSelectorPrefix}[formControlName="${firstInvalidField}"]`
         : `[formControlName="${firstInvalidField}"]`;
-      const element = document.querySelector(selector) as HTMLElement;
+      const datetimeDate = document.querySelector(
+        `${baseSelector} input[type="date"]`
+      ) as HTMLElement | null;
+      const element =
+        datetimeDate ||
+        (document.querySelector(baseSelector) as HTMLElement | null);
       if (element) {
         element.focus();
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });

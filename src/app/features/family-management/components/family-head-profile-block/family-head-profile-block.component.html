@@ -7,7 +7,7 @@
             #profileImageInput
             type="file"
             class="head-profile__file-input"
-            accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
+            accept="image/jpeg,image/jpg,image/png,image/webp"
             tabindex="-1"
             aria-hidden="true"
             (change)="headProfileImageSelected.emit($event)"
@@ -16,8 +16,15 @@
             type="button"
             class="head-profile__avatar"
             [class.is-editing]="editingHeadImage"
-            [attr.aria-label]="editingHeadImage ? 'Upload profile photo' : 'Change profile photo'"
-            (click)="editingHeadImage ? profileImageInput.click() : toggleHeadImageEdit.emit()"
+            [class.head-profile__avatar--previewable]="avatarImageUrl && !editingHeadImage"
+            [attr.aria-label]="
+              editingHeadImage
+                ? 'Upload profile photo'
+                : avatarImageUrl
+                  ? 'View photo of ' + getDisplayName(member)
+                  : 'Change profile photo'
+            "
+            (click)="onHeadAvatarClick()"
           >
             <img
               *ngIf="avatarImageUrl"
@@ -54,12 +61,17 @@
           </div>
         </ng-container>
         <ng-template #memberAvatar>
-          <div class="head-profile__avatar head-profile__avatar--static" aria-hidden="true">
+          <div
+            class="head-profile__avatar head-profile__avatar--static"
+            [class.head-profile__avatar--previewable]="avatarImageUrl"
+            aria-hidden="true"
+          >
             <img
               *ngIf="avatarImageUrl"
               [src]="avatarImageUrl"
               alt=""
-              class="head-profile__avatar-img"
+              class="head-profile__avatar-img head-profile__avatar-img--previewable"
+              (click)="onMemberAvatarClick($event)"
             />
             <span
               *ngIf="!avatarImageUrl"
@@ -176,3 +188,12 @@
     </section>
   </div>
 </section>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>

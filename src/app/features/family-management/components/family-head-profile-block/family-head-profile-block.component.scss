@@ -59,6 +59,14 @@
 
     &--static {
       cursor: default;
+
+      &.head-profile__avatar--previewable {
+        cursor: zoom-in;
+      }
+    }
+
+    &--previewable:not(.is-editing) {
+      cursor: zoom-in;
     }
   }
 
@@ -67,6 +75,10 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
+
+    &--previewable {
+      cursor: zoom-in;
+    }
   }
 
   &__avatar-initials {

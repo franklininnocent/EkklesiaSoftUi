@@ -1,3 +1,5 @@
+@use '../../../donations/styles/stewardship-split-layout.scss';
+
 .members-list__chips {
   display: flex;
   flex-wrap: wrap;
@@ -30,7 +32,57 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--cf-space-2);
+  min-width: 0;
 }
+
+.members-list__avatar {
+  width: 2rem;
+  height: 2rem;
+  border-radius: var(--cf-radius-pill);
+  flex-shrink: 0;
+  object-fit: cover;
+}
+
+.members-list__avatar-trigger {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: transparent;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-brand, #175cd3);
+    outline-offset: 2px;
+  }
+}
+
+.members-list__avatar--initials {
+  display: grid;
+  place-items: center;
+  font-size: var(--cf-text-xs);
+  font-weight: 700;
+  color: #fff;
+  background: var(--cf-primary);
+}
+
+.members-list__avatar--initials.avatar-color-1 { background: #2563eb; }
+.members-list__avatar--initials.avatar-color-2 { background: #059669; }
+.members-list__avatar--initials.avatar-color-3 { background: #d97706; }
+.members-list__avatar--initials.avatar-color-4 { background: #7c3aed; }
+.members-list__avatar--initials.avatar-color-5 { background: #db2777; }
+.members-list__avatar--initials.avatar-color-6 { background: #0891b2; }
+.members-list__avatar--initials.avatar-color-7 { background: #ea580c; }
+.members-list__avatar--initials.avatar-color-8 { background: #4f46e5; }
 
 .members-list__name {
   color: var(--cf-primary);
@@ -50,12 +102,37 @@
 
 /* Member detail modal — large sectioned Category-style modal (style guide §14) */
 
-@import '../../../donations/styles/stewardship-split-layout.scss';
-
 .cf-split-form-actions {
   justify-content: flex-end; // bottom-right — see style guide §9
 }
 
 .member-detail-modal dl {
   margin: 0;
+}
+
+.member-detail-modal__photo-trigger {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  cursor: zoom-in;
+  border-radius: inherit;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  background: transparent;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-brand, #175cd3);
+    outline-offset: 2px;
+  }
 }

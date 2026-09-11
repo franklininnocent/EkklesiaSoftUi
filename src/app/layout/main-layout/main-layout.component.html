@@ -27,7 +27,7 @@
        
        <!-- Church Profile - For tenant users to manage their church -->
        <a 
-         *ngIf="(currentUser$ | async)?.tenant_id" 
+         *ngIf="hasParishContext((currentUser$ | async))" 
          routerLink="church-profile" 
          routerLinkActive="active" 
          class="nav-item"
@@ -43,7 +43,7 @@
        
        <!-- Family Management - For tenant users -->
        <a 
-         *ngIf="(currentUser$ | async)?.tenant_id" 
+         *ngIf="hasParishContext((currentUser$ | async))" 
          routerLink="families" 
          routerLinkActive="active" 
          class="nav-item"
@@ -77,7 +77,7 @@
        
        <!-- Members - For tenant users -->
        <a 
-         *ngIf="(currentUser$ | async)?.tenant_id" 
+         *ngIf="hasParishContext((currentUser$ | async))" 
          routerLink="members" 
          routerLinkActive="active" 
          class="nav-item"
@@ -145,22 +145,6 @@
 
        <a
          *ngIf="canManageTenants((currentUser$ | async))"
-         routerLink="support-center"
-         routerLinkActive="active"
-         class="nav-item"
-         aria-label="Support Center">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <circle cx="12" cy="12" r="10"></circle>
-             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-             <line x1="12" y1="17" x2="12.01" y2="17"></line>
-           </svg>
-         </span>
-         <span class="nav-text">Support Center</span>
-       </a>
-
-       <a
-         *ngIf="canManageTenants((currentUser$ | async))"
          routerLink="platform/ministries"
          routerLinkActive="active"
          class="nav-item"
@@ -172,18 +156,6 @@
            </svg>
          </span>
          <span class="nav-text">Ministries Insights</span>
-       </a>
-       
-       <a routerLink="users" routerLinkActive="active" class="nav-item" aria-label="Users">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-             <circle cx="9" cy="7" r="4"></circle>
-             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Users</span>
        </a>
 
       <a
@@ -208,6 +180,65 @@
         </span>
         <span class="nav-text">Sacraments</span>
       </a>
+
+       <a routerLink="users" routerLinkActive="active" class="nav-item" aria-label="Users">
+         <span class="nav-icon">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+             <circle cx="9" cy="7" r="4"></circle>
+             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+           </svg>
+         </span>
+         <span class="nav-text">Users</span>
+       </a>
+
+       <a
+               *ngIf="canAccessSupport((currentUser$ | async))"
+               routerLink="support"
+               routerLinkActive="active"
+               class="nav-item"
+               aria-label="Support System">
+         <span class="nav-icon">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+             <circle cx="12" cy="12" r="10"></circle>
+             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+             <line x1="12" y1="17" x2="12.01" y2="17"></line>
+           </svg>
+         </span>
+         <span class="nav-text">Support</span>
+       </a>
+
+       <a
+               *ngIf="canAccessSupportCenter((currentUser$ | async))"
+               routerLink="support-center"
+               routerLinkActive="active"
+               class="nav-item"
+               aria-label="Support Center">
+         <span class="nav-icon">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+             <circle cx="12" cy="12" r="10"></circle>
+             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+             <line x1="12" y1="17" x2="12.01" y2="17"></line>
+           </svg>
+         </span>
+         <span class="nav-text">Support Center</span>
+       </a>
+
+       <a
+               *ngIf="canAccessApplicationAccess((currentUser$ | async))"
+               routerLink="application-access"
+               routerLinkActive="active"
+               class="nav-item"
+               aria-label="Application Access">
+         <span class="nav-icon">
+           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
+             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+             <path d="M9 12l2 2 4-4"></path>
+           </svg>
+         </span>
+         <span class="nav-text">Application Access</span>
+       </a>
       
       <a routerLink="settings" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-item" aria-label="Settings">
          <span class="nav-icon">
@@ -247,7 +278,7 @@
         </div>
       </div>
 
-      <div class="topbar-center" *ngIf="(currentUser$ | async)?.tenant_id">
+      <div class="topbar-center" *ngIf="hasParishContext((currentUser$ | async))">
         <app-global-family-search></app-global-family-search>
       </div>
       
@@ -266,9 +297,12 @@
         <div class="user-menu" *ngIf="currentUser$ | async as user">
           <div class="user-dropdown" [class.open]="isUserMenuOpen && !isUserMenuClosing">
             <button class="user-trigger" (click)="toggleUserMenu($event)">
-              <div class="user-avatar">
-                <span class="avatar-text">{{ getInitials(user.name) }}</span>
-              </div>
+              <app-user-avatar
+                class="user-trigger-avatar"
+                [name]="user.name"
+                [imageUrl]="getUserPhotoUrl(user)"
+                [clickable]="false"
+              ></app-user-avatar>
               <span class="user-name">{{ user.name }}</span>
               <span class="dropdown-arrow">▾</span>
             </button>
@@ -279,9 +313,12 @@
                  (click)="$event.stopPropagation()">
               <div class="dropdown-header">
                 <div class="user-info">
-                  <div class="user-avatar-large">
-                    <span class="avatar-text">{{ getInitials(user.name) }}</span>
-                  </div>
+                  <app-user-avatar
+                    [name]="user.name"
+                    [imageUrl]="getUserPhotoUrl(user)"
+                    size="lg"
+                    (photoClick)="openPhotoViewer(user, $event)"
+                  ></app-user-avatar>
                   <div class="user-details">
                     <div class="user-name-large">{{ user.name }}</div>
                     <div class="user-email">{{ user.email }}</div>
@@ -338,65 +375,18 @@
         <p class="footer-text">All rights reserved © EkklesiaSoft {{ currentYear }}</p>
       </div>
     </footer>
-
-    <!-- Theme Settings Button (Floating) -->
-    <div class="theme-settings-fab">
-      <button class="theme-fab-button" (click)="toggleThemePanel()" aria-label="Theme settings">
-        <svg class="theme-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-          <circle cx="12" cy="12" r="3"></circle>
-          <path d="M12 1v6m0 6v6m0-13a2 2 0 0 1 2 2m0 0a2 2 0 0 1-2 2m0-4a2 2 0 0 0-2 2m0 0a2 2 0 0 0 2 2m-5.5 5.5l5.5-5.5m0 0l5.5 5.5M1 12h6m6 0h6"></path>
-        </svg>
-      </button>
-
-      <!-- Theme Settings Panel -->
-      <div class="theme-panel" 
-           *ngIf="isThemePanelOpen"
-           [@slideIn]>
-        <div class="theme-panel-header">
-          <div class="header-content">
-            <div class="header-text">
-              <h3 class="theme-panel-title">Display Settings</h3>
-              <p class="theme-panel-subtitle">Customize your viewing experience</p>
-            </div>
-            <button class="close-button" (click)="closeThemePanel()" aria-label="Close">
-              <span class="close-icon">×</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="theme-panel-divider"></div>
-
-        <div class="theme-panel-content">
-          <div class="theme-section">
-            <label class="theme-section-label">Font Size</label>
-            <p class="theme-section-description">Adjust text size across the application</p>
-            
-                <div class="font-size-options">
-                  <button 
-                    *ngFor="let option of fontSizeOptions"
-                    class="font-size-option"
-                    [class.active]="isCurrentFontSize(option.value)"
-                    (click)="selectFontSize(option.value)">
-                    <div class="option-icon">
-                      <span class="icon-text" [style.font-size]="option.value === 'small' ? '10px' : option.value === 'standard' ? '14px' : '18px'">
-                        A
-                      </span>
-                    </div>
-                    <div class="option-details">
-                      <span class="option-name">{{ option.name }}</span>
-                    </div>
-                    <div class="option-check" *ngIf="isCurrentFontSize(option.value)">
-                      <span>✓</span>
-                    </div>
-                  </button>
-                </div>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <app-quick-collect-drawer></app-quick-collect-drawer>
   <app-command-palette></app-command-palette>
+
+  <app-image-viewer
+    *ngIf="photoViewer as viewer"
+    [src]="viewer.src"
+    [alt]="viewer.alt"
+    [title]="viewer.title"
+    [subtitle]="viewer.subtitle"
+    (closeRequested)="closePhotoViewer()"
+  ></app-image-viewer>
 </div>
 

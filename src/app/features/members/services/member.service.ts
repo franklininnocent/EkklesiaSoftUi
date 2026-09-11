@@ -56,8 +56,8 @@ export class MemberService {
       params = params.set('is_head', isHeadValue);
     }
     if (filters.progression) params = params.set('progression', filters.progression);
-    if (filters.sort_by) params = params.set('sort_by', filters.sort_by);
-    if (filters.sort_order) params = params.set('sort_order', filters.sort_order);
+    params = params.set('sort_by', filters.sort_by || 'name');
+    params = params.set('sort_order', filters.sort_order || 'asc');
     // Always set per_page and page to ensure pagination works
     params = params.set('per_page', (filters.per_page || 20).toString());
     params = params.set('page', (filters.page || 1).toString());

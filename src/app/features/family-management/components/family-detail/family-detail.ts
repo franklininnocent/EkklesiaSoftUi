@@ -1783,9 +1783,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
       const file = input.files[0];
       
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        this.toastService.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'Error', 5000);
+        this.toastService.error('Please select a valid image file (JPEG, PNG, or WebP)', 'Error', 5000);
         input.value = '';
         return;
       }
@@ -1908,9 +1908,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
       const file = input.files[0];
       
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        this.toastService.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'Error', 5000);
+        this.toastService.error('Please select a valid image file (JPEG, PNG, or WebP)', 'Error', 5000);
         input.value = '';
         return;
       }

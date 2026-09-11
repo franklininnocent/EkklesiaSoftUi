@@ -70,7 +70,7 @@
 .coc-command__subtitle {
   margin: 0.35rem 0 0;
   color: var(--coc-muted);
-  font-size: 0.92rem;
+  font-size: var(--cf-text-meta, 0.8rem);
   max-width: 42rem;
 }
 
@@ -361,7 +361,7 @@
 
 .coc-panel__header h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
   font-weight: 700;
 }
 
@@ -509,7 +509,7 @@
 
 .coc-empty h2 {
   margin: 0;
-  font-size: 1.1rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
   max-width: 28rem;
   margin-inline: auto;
 }
@@ -1036,7 +1036,7 @@
 
 .coc-shortcuts h2 {
   margin: 0;
-  font-size: 1.05rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
 }
 
 .coc-shortcuts ul {

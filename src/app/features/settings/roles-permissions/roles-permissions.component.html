@@ -1,6 +1,7 @@
 <div class="roles-permissions-container cf-page">
   <app-page-header
     title="Roles & Permissions"
+    [titleLevel]="3"
     subtitle="Manage roles and permissions for your organization">
   </app-page-header>
 
@@ -49,7 +50,7 @@
 
   <!-- Roles Tab -->
   <div class="tab-content" *ngIf="activeTab === 'roles'">
-    <app-card [padding]="'lg'">
+    <app-card [padding]="'md'">
       <!-- Inline Header with All Controls -->
       <div class="roles-header-wrapper">
         <div class="roles-title-section">
@@ -93,70 +94,53 @@
           <span class="stat-value">{{ totalRoles }}</span>
         </div>
 
-        <!-- Action Buttons (inline) -->
+        <!-- Search + Filters toolbar -->
         <div class="header-actions">
-          <button 
-            class="btn-filter-inline" 
-            (click)="openRolesFilterPanel()"
-            type="button"
-            [class.active]="hasActiveRolesFilters()"
-            title="Filter roles">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-            </svg>
-            <span>Filters</span>
-            <span class="filter-badge" *ngIf="hasActiveRolesFilters()">●</span>
-          </button>
-          <button 
-            *ngIf="canCreateRole()"
-            class="btn-create-inline" 
-            (click)="openCreateRoleModal()"
-            type="button"
-            title="Create new role">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="16"></line>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>
-            <span>Create Role</span>
-          </button>
+          <app-list-toolbar
+            searchPlaceholder="Search roles by name or description…"
+            [searchValue]="rolesSearchTerm"
+            [filterCount]="getRolesActiveFilterCount()"
+            (searchChange)="onRolesListSearchChange($event)"
+            (filtersOpened)="showRolesAdvancedSearch = true"
+          >
+            <button
+              *ngIf="canCreateRole()"
+              type="button"
+              class="btn-create-inline"
+              (click)="openCreateRoleModal()"
+              title="Create new role">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              <span>Create Role</span>
+            </button>
+          </app-list-toolbar>
         </div>
       </div>
 
-      <!-- Active Filter Chips -->
-      <div class="filter-chips-row" *ngIf="getActiveFilterChips('roles').length > 0">
-        <div 
-          *ngFor="let chip of getVisibleFilterChips('roles')" 
-          class="filter-chip"
-          [title]="chip.label + ': ' + chip.value">
-          <span class="chip-label">{{ chip.label }}:</span>
-          <span class="chip-value">{{ chip.value }}</span>
-          <button 
-            class="chip-remove" 
-            (click)="removeFilter(chip.type)"
-            type="button"
-            [title]="'Remove ' + chip.label + ' filter'">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        <button 
-          *ngIf="getHiddenChipsCount('roles') > 0"
-          class="filter-chip filter-chip-more"
-          (click)="openFilterPanelWithCurrentFilters()"
-          type="button"
-          [title]="getHiddenChipsTooltip('roles')">
-          <span class="chip-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="1"></circle>
-              <circle cx="12" cy="5" r="1"></circle>
-              <circle cx="12" cy="19" r="1"></circle>
-            </svg>
+      <div
+        class="roles-permissions__active-filters"
+        *ngIf="getRolesActiveFilters().length > 0"
+        role="region"
+        aria-label="Active filters"
+      >
+        <span class="cf-meta">Active filters</span>
+        <div class="roles-permissions__chip-list">
+          <span class="cf-badge cf-badge--info" *ngFor="let filter of getRolesActiveFilters()">
+            {{ filter.label }}: {{ filter.displayValue }}
+            <button
+              type="button"
+              class="roles-permissions__chip-remove"
+              (click)="removeRolesFilter(filter)"
+              [attr.aria-label]="'Remove filter: ' + filter.label"
+            >
+              ×
+            </button>
           </span>
-          <span class="chip-value">{{ getHiddenChipsCount('roles') }} more</span>
-        </button>
+        </div>
+        <button type="button" class="cf-btn cf-btn--sm" (click)="onClearRolesAdvancedSearch()">Clear all</button>
       </div>
 
       <!-- Loading State -->
@@ -293,7 +277,7 @@
 
   <!-- Permissions Tab -->
   <div class="tab-content" *ngIf="activeTab === 'permissions'">
-    <app-card [padding]="'lg'">
+    <app-card [padding]="'md'">
       <!-- Inline Header with All Controls -->
       <div class="permissions-header-wrapper">
         <div class="permissions-title-section">
@@ -341,92 +325,75 @@
           <span class="stat-value">{{ totalPermissions }}</span>
         </div>
 
-        <!-- Action Buttons (inline) -->
+        <!-- Search + Filters toolbar -->
         <div class="header-actions">
-          <button 
-            class="btn-filter-inline" 
-            (click)="openPermissionsFilterPanel()"
-            type="button"
-            [class.active]="hasActivePermissionsFilters()"
-            title="Filter permissions">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-            </svg>
-            <span>Filters</span>
-            <span class="filter-badge" *ngIf="hasActivePermissionsFilters()">●</span>
-          </button>
-          <button 
-            class="btn-action-inline" 
-            (click)="expandAllModules()"
-            *ngIf="permissions.length > 0 && getModuleNames().length > 1"
-            type="button"
-            title="Expand all module groups">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="18 15 12 9 6 15"></polyline>
-            </svg>
-            <span>Expand All</span>
-          </button>
-          <button 
-            class="btn-action-inline" 
-            (click)="collapseAllModules()"
-            *ngIf="permissions.length > 0 && getModuleNames().length > 1"
-            type="button"
-            title="Collapse all module groups">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="6 9 12 15 18 9"></polyline>
-            </svg>
-            <span>Collapse All</span>
-          </button>
-          <button 
-            *ngIf="canCreatePermission()"
-            class="btn-create-inline" 
-            (click)="openCreatePermissionModal()"
-            type="button"
-            title="Create new permission">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="10"></circle>
-              <line x1="12" y1="8" x2="12" y2="16"></line>
-              <line x1="8" y1="12" x2="16" y2="12"></line>
-            </svg>
-            <span>Create Permission</span>
-          </button>
+          <app-list-toolbar
+            searchPlaceholder="Search permissions by name, module…"
+            [searchValue]="permissionsSearchTerm"
+            [filterCount]="getPermissionsActiveFilterCount()"
+            (searchChange)="onPermissionsListSearchChange($event)"
+            (filtersOpened)="showPermissionsAdvancedSearch = true"
+          >
+            <button
+              class="btn-action-inline"
+              (click)="expandAllModules()"
+              *ngIf="permissions.length > 0 && getModuleNames().length > 1"
+              type="button"
+              title="Expand all module groups">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="18 15 12 9 6 15"></polyline>
+              </svg>
+              <span>Expand All</span>
+            </button>
+            <button
+              class="btn-action-inline"
+              (click)="collapseAllModules()"
+              *ngIf="permissions.length > 0 && getModuleNames().length > 1"
+              type="button"
+              title="Collapse all module groups">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+              <span>Collapse All</span>
+            </button>
+            <button
+              *ngIf="canCreatePermission()"
+              class="btn-create-inline"
+              (click)="openCreatePermissionModal()"
+              type="button"
+              title="Create new permission">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+              </svg>
+              <span>Create Permission</span>
+            </button>
+          </app-list-toolbar>
         </div>
       </div>
 
-      <!-- Active Filter Chips -->
-      <div class="filter-chips-row" *ngIf="getActiveFilterChips('permissions').length > 0">
-        <div 
-          *ngFor="let chip of getVisibleFilterChips('permissions')" 
-          class="filter-chip"
-          [title]="chip.label + ': ' + chip.value">
-          <span class="chip-label">{{ chip.label }}:</span>
-          <span class="chip-value">{{ chip.value }}</span>
-          <button 
-            class="chip-remove" 
-            (click)="removeFilter(chip.type)"
-            type="button"
-            [title]="'Remove ' + chip.label + ' filter'">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="18" y1="6" x2="6" y2="18"></line>
-              <line x1="6" y1="6" x2="18" y2="18"></line>
-            </svg>
-          </button>
-        </div>
-        <button 
-          *ngIf="getHiddenChipsCount('permissions') > 0"
-          class="filter-chip filter-chip-more"
-          (click)="openFilterPanelWithCurrentFilters()"
-          type="button"
-          [title]="getHiddenChipsTooltip('permissions')">
-          <span class="chip-icon">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="1"></circle>
-              <circle cx="12" cy="5" r="1"></circle>
-              <circle cx="12" cy="19" r="1"></circle>
-            </svg>
+      <div
+        class="roles-permissions__active-filters"
+        *ngIf="getPermissionsActiveFilters().length > 0"
+        role="region"
+        aria-label="Active filters"
+      >
+        <span class="cf-meta">Active filters</span>
+        <div class="roles-permissions__chip-list">
+          <span class="cf-badge cf-badge--info" *ngFor="let filter of getPermissionsActiveFilters()">
+            {{ filter.label }}: {{ filter.displayValue }}
+            <button
+              type="button"
+              class="roles-permissions__chip-remove"
+              (click)="removePermissionsFilter(filter)"
+              [attr.aria-label]="'Remove filter: ' + filter.label"
+            >
+              ×
+            </button>
           </span>
-          <span class="chip-value">{{ getHiddenChipsCount('permissions') }} more</span>
-        </button>
+        </div>
+        <button type="button" class="cf-btn cf-btn--sm" (click)="onClearPermissionsAdvancedSearch()">Clear all</button>
       </div>
 
       <!-- Loading State -->
@@ -566,43 +533,113 @@
 
   <!-- Assign Permissions Tab -->
   <div class="tab-content" *ngIf="activeTab === 'assign'">
-    <app-card [padding]="'lg'">
+    <app-card [padding]="'md'">
       <div class="assign-tab-container">
         <!-- Role Selection Section -->
         <div class="role-selection-section" *ngIf="!selectedRoleForAssignment">
           <div class="selection-header">
-            <div class="header-icon">🔗</div>
-            <div class="header-content">
-              <h2>Assign Permissions to Roles</h2>
-              <p>Select a role to manage its permissions</p>
+            <div class="selection-header__main">
+              <div class="header-icon">🔗</div>
+              <div class="header-content">
+                <h2>Assign Permissions to Roles</h2>
+                <p>Select a role to manage its permissions</p>
+              </div>
+            </div>
+            <div class="selection-header__toolbar" *ngIf="allRoles.length > 0">
+              <app-list-toolbar
+                searchPlaceholder="Search roles by name or description…"
+                [searchValue]="assignRoleSearchTerm"
+                [filterCount]="getAssignRoleActiveFilterCount()"
+                (searchChange)="onAssignRoleSearchChange($event)"
+                (filtersOpened)="showAssignRoleAdvancedSearch = true"
+              ></app-list-toolbar>
             </div>
           </div>
 
-          <!-- Roles Grid -->
-          <div class="roles-grid" *ngIf="allRoles.length > 0">
-            <div 
-              *ngFor="let role of allRoles; trackBy: trackByRoleId" 
-              class="role-card"
-              (click)="selectRoleForAssignment(role)"
-              [class.disabled]="!role.active">
-              <div class="role-card-header">
-                <div class="role-icon">👤</div>
-                <div class="role-info">
-                  <h3 class="role-name">{{ role.name }}</h3>
-                  <p class="role-description">{{ role.description || 'No description' }}</p>
+          <div
+            class="assign-role-filters"
+            *ngIf="getAssignRoleActiveFilters().length > 0"
+            role="region"
+            aria-label="Active role filters"
+          >
+            <span class="cf-meta">Active filters</span>
+            <div class="assign-role-filters__chips">
+              <span class="cf-badge cf-badge--info" *ngFor="let filter of getAssignRoleActiveFilters()">
+                {{ filter.label }}: {{ filter.displayValue }}
+                <button
+                  type="button"
+                  class="assign-role-filters__chip-remove"
+                  (click)="removeAssignRoleFilter(filter)"
+                  [attr.aria-label]="'Remove filter: ' + filter.label"
+                >
+                  ×
+                </button>
+              </span>
+            </div>
+            <button type="button" class="cf-btn cf-btn--sm" (click)="onClearAssignRoleAdvancedSearch()">Clear all</button>
+          </div>
+
+          <p class="assign-role-results" *ngIf="allRoles.length > 0" aria-live="polite">
+            {{ filteredRolesForAssignment.length }} {{ filteredRolesForAssignment.length === 1 ? 'role' : 'roles' }}
+          </p>
+
+          <!-- Roles grouped by tenant -->
+          <div class="assign-role-tenant-groups" *ngIf="groupedRolesForAssignment.length > 0">
+            <section
+              class="assign-role-tenant-group"
+              *ngFor="let group of groupedRolesForAssignment; trackBy: trackByTenantGroupKey"
+              [attr.aria-label]="group.tenantLabel + ' roles'"
+            >
+              <div class="assign-role-tenant-header">
+                <span class="assign-role-tenant-name">{{ group.tenantLabel }}</span>
+                <span class="assign-role-tenant-count">
+                  {{ group.roles.length }} {{ group.roles.length === 1 ? 'role' : 'roles' }}
+                </span>
+              </div>
+              <div class="roles-grid">
+                <div
+                  *ngFor="let role of group.roles; trackBy: trackByRoleId"
+                  class="role-card"
+                  (click)="selectRoleForAssignment(role)"
+                  [class.disabled]="!role.active">
+                  <div class="role-card-header">
+                    <div class="role-icon">👤</div>
+                    <div class="role-info">
+                      <h3 class="role-name">{{ role.name }}</h3>
+                      <p class="role-description">{{ role.description || 'No description' }}</p>
+                    </div>
+                  </div>
+                  <div class="role-card-footer">
+                    <span
+                      class="role-users-count"
+                      [attr.title]="getRoleUsersCountTitle(role)"
+                      [attr.aria-label]="getRoleUsersCountTitle(role)"
+                    >
+                      {{ getRoleUsersCountLabel(role) }}
+                    </span>
+                    <span class="role-level">Level {{ role.level }}</span>
+                    <span class="role-type" [ngClass]="getRoleBadgeClass(role)">
+                      {{ getRoleBadgeLabel(role) }}
+                    </span>
+                    <span class="role-status" [ngClass]="getStatusBadgeClass(role.active)">
+                      {{ getStatusText(role.active) }}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div class="role-card-footer">
-                <span class="role-level">Level {{ role.level }}</span>
-                <span class="role-type" [ngClass]="getRoleBadgeClass(role)">
-                  {{ getRoleBadgeLabel(role) }}
-                </span>
-                <span class="role-status" [ngClass]="getStatusBadgeClass(role.active)">
-                  {{ getStatusText(role.active) }}
-                </span>
-              </div>
-            </div>
+            </section>
           </div>
+
+          <app-cf-empty-state
+            *ngIf="allRoles.length > 0 && filteredRolesForAssignment.length === 0 && !loadingRoles"
+            title="No roles match your search and filters"
+            description="Try clearing search or filters to see more roles."
+            icon="◇"
+          >
+            <button *ngIf="assignRoleSearchTerm.trim()" type="button" class="cf-btn" (click)="onAssignRoleSearchChange('')">Clear search</button>
+            <button *ngIf="getAssignRoleActiveFilterCount() > 0" type="button" class="cf-btn" (click)="onClearAssignRoleAdvancedSearch()">Clear filters</button>
+            <button type="button" class="cf-btn cf-btn-primary" (click)="clearAssignRoleSearchAndFilters()">Clear all</button>
+          </app-cf-empty-state>
 
           <!-- Empty State -->
           <div class="empty-state" *ngIf="allRoles.length === 0 && !loadingRoles">
@@ -620,94 +657,6 @@
 
         <!-- Permissions Assignment Section -->
         <div class="assignment-section" *ngIf="selectedRoleForAssignment">
-          <div class="assignment-header-wrapper">
-            <button class="btn-back" (click)="clearRoleSelection()" type="button" title="Back to Roles">
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12"></line>
-                <polyline points="12 19 5 12 12 5"></polyline>
-              </svg>
-              <span>Back to Roles</span>
-            </button>
-            <div class="selected-role-info">
-              <div class="role-badge">
-                <span class="role-icon">👤</span>
-                <span class="role-name">{{ selectedRoleForAssignment.name }}</span>
-              </div>
-            </div>
-            
-            <!-- Statistics (inline) -->
-            <div class="header-stats" *ngIf="assignModalRef">
-              <span class="stat-label">Total:</span>
-              <span class="stat-value">{{ assignModalRef.totalPermissions }}</span>
-              <span class="stat-separator">|</span>
-              <span class="stat-label">Selected:</span>
-              <span class="stat-value stat-selected">{{ assignModalRef.selectedPermissionsCount }}</span>
-            </div>
-
-            <!-- Action Buttons (inline) -->
-            <div class="header-actions" *ngIf="assignModalRef">
-              <button 
-                class="btn-filter-inline" 
-                (click)="assignModalRef.openFilterPanel()"
-                type="button"
-                [class.active]="assignModalRef.hasActiveFilters()"
-                title="Filter permissions">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
-                </svg>
-                <span>Filters</span>
-              </button>
-              <button 
-                class="btn-action-inline" 
-                (click)="assignModalRef.selectAll()"
-                [disabled]="assignModalRef.isSaving"
-                type="button"
-                title="Select all permissions">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                </svg>
-                <span>Select All</span>
-              </button>
-              <button 
-                class="btn-action-inline" 
-                (click)="assignModalRef.deselectAll()"
-                [disabled]="assignModalRef.isSaving"
-                type="button"
-                title="Deselect all permissions">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="15" y1="9" x2="9" y2="15"></line>
-                  <line x1="9" y1="9" x2="15" y2="15"></line>
-                </svg>
-                <span>Deselect All</span>
-              </button>
-              <button 
-                class="btn-action-inline" 
-                (click)="assignModalRef.expandAll()"
-                [disabled]="assignModalRef.isSaving"
-                type="button"
-                title="Expand all module groups">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="18 15 12 9 6 15"></polyline>
-                </svg>
-                <span>Expand All</span>
-              </button>
-              <button 
-                class="btn-action-inline" 
-                (click)="assignModalRef.collapseAll()"
-                [disabled]="assignModalRef.isSaving"
-                type="button"
-                title="Collapse all module groups">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="6 9 12 15 18 9"></polyline>
-                </svg>
-                <span>Collapse All</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Inline Assignment Component (reuse modal component) -->
           <app-assign-permissions-modal
             #assignModal
             [show]="true"
@@ -723,47 +672,19 @@
   </div>
 
   <!-- User Role Assignments Tab -->
-  <div class="tab-content" *ngIf="activeTab === 'users' && isTenantMode">
-    <app-card [padding]="'lg'">
-      <div class="selection-header">
-        <div class="header-icon">🧑‍💼</div>
-        <div class="header-content">
-          <h2>User Role Assignments</h2>
-          <p>Assign tenant roles to active users with immediate safeguards from backend policy rules.</p>
-        </div>
-      </div>
+  <div class="tab-content users-tab" *ngIf="activeTab === 'users' && isTenantMode">
+    <app-card [padding]="'md'">
+      <header class="users-tab__header">
+        <h2 class="cf-section-title">User Role Assignments</h2>
+        <p class="cf-meta">Assign tenant roles to active users. Administrator protections are enforced by backend policy.</p>
+      </header>
 
-      <div class="roles-grid">
-        <div class="role-card">
-          <div class="role-info">
-            <h3 class="role-name">{{ tenantUserTotal }}</h3>
-            <p class="role-description">Active tenant users</p>
-          </div>
-        </div>
-        <div class="role-card">
-          <div class="role-info">
-            <h3 class="role-name">{{ tenantAssignedUsersCount }}</h3>
-            <p class="role-description">Users with assigned roles</p>
-          </div>
-        </div>
-        <div class="role-card">
-          <div class="role-info">
-            <h3 class="role-name">{{ tenantUnassignedUsersCount }}</h3>
-            <p class="role-description">Users pending role assignment</p>
-          </div>
-        </div>
-        <div class="role-card">
-          <div class="role-info">
-            <h3 class="role-name">{{ tenantAdminUsersCount }}</h3>
-            <p class="role-description">Users with admin roles</p>
-          </div>
-        </div>
-      </div>
-
-      <div class="safeguards-panel mt-lg">
-        <h3>Safeguards</h3>
-        <p>Administrator role protections and last-admin checks are enforced by backend policy and service guardrails.</p>
-      </div>
+      <section class="cf-kpi-grid users-tab__kpis" aria-label="User assignment summary">
+        <article class="cf-kpi"><span>Active tenant users</span><strong>{{ tenantUserTotal }}</strong></article>
+        <article class="cf-kpi"><span>Users with assigned roles</span><strong>{{ tenantAssignedUsersCount }}</strong></article>
+        <article class="cf-kpi"><span>Users pending role assignment</span><strong>{{ tenantUnassignedUsersCount }}</strong></article>
+        <article class="cf-kpi"><span>Users with admin roles</span><strong>{{ tenantAdminUsersCount }}</strong></article>
+      </section>
 
       <div *ngIf="loadingTenantUsers" class="loading-container">
         <div class="loading-spinner"></div>
@@ -792,7 +713,16 @@
           </thead>
           <tbody>
             <tr *ngFor="let user of tenantUsers; trackBy: trackByUserId">
-              <td>{{ user.name }}</td>
+              <td>
+                <div class="roles-users__name-cell">
+                  <app-user-avatar
+                    [name]="user.name"
+                    [imageUrl]="getUserPhotoUrl(user)"
+                    (photoClick)="openPhotoViewer(user, $event)"
+                  ></app-user-avatar>
+                  <span>{{ user.name }}</span>
+                </div>
+              </td>
               <td>{{ user.email }}</td>
               <td>{{ getUserRolesDisplay(user) }}</td>
               <td class="actions-cell">
@@ -811,16 +741,22 @@
         </div>
       </div>
 
-      <div *ngIf="selectedUserForRoles" class="mt-lg">
-        <app-card [padding]="'lg'">
-          <div class="selection-header">
-            <div class="header-content">
-              <h2>Assign Roles: {{ selectedUserForRoles.name }}</h2>
-              <p>{{ selectedUserForRoles.email }}</p>
+      <div *ngIf="selectedUserForRoles" class="users-tab__assign-panel">
+        <app-card [padding]="'md'">
+          <header class="users-tab__assign-header roles-users__selection-header">
+            <app-user-avatar
+              [name]="selectedUserForRoles.name"
+              [imageUrl]="getUserPhotoUrl(selectedUserForRoles)"
+              size="md"
+              (photoClick)="openPhotoViewer(selectedUserForRoles, $event)"
+            ></app-user-avatar>
+            <div>
+              <h2 class="cf-section-title">Assign Roles: {{ selectedUserForRoles.name }}</h2>
+              <p class="cf-meta">{{ selectedUserForRoles.email }}</p>
             </div>
-          </div>
+          </header>
 
-          <div class="roles-grid" *ngIf="assignableRoles.length > 0">
+          <div class="users-tab__role-picker roles-grid" *ngIf="assignableRoles.length > 0">
             <label *ngFor="let role of assignableRoles; trackBy: trackByRoleId" class="role-card">
               <div class="role-card-header">
                 <div class="role-info">
@@ -849,7 +785,7 @@
             </label>
           </div>
 
-          <div class="header-actions mt-lg">
+          <div class="users-tab__assign-actions">
             <button class="btn-secondary" type="button" (click)="selectedUserForRoles = null" [disabled]="savingUserRoles">
               Cancel
             </button>
@@ -865,7 +801,9 @@
   <!-- Pope Details Tab -->
   <!-- CRITICAL SECURITY: Pope Details tab is SuperAdmin only -->
   <div class="tab-content" *ngIf="activeTab === 'pope' && hasSuperAdminAccess">
-    <app-pope-details-management></app-pope-details-management>
+    <app-card [padding]="'md'">
+      <app-pope-details-management [embedded]="true"></app-pope-details-management>
+    </app-card>
   </div>
 </div>
 
@@ -896,25 +834,35 @@
   (saved)="onPermissionsAssigned()">
 </app-assign-permissions-modal>
 
-<!-- Roles Filter Panel -->
-<app-filter-panel
-  [isOpen]="showRolesFilterPanel"
-  [config]="rolesFilterConfig"
-  [initialValues]="getRolesFilterValues()"
-  (close)="closeRolesFilterPanel()"
-  (apply)="applyRolesFilters($event)"
-  (reset)="resetRolesFilters()">
-</app-filter-panel>
+<!-- Roles Filter Drawer -->
+<app-advanced-search-panel
+  mode="sidepanel"
+  [fields]="rolesSearchFields"
+  [isExpanded]="showRolesAdvancedSearch"
+  (search)="onRolesAdvancedSearch($event)"
+  (clear)="onClearRolesAdvancedSearch()"
+  (close)="showRolesAdvancedSearch = false"
+></app-advanced-search-panel>
 
-<!-- Permissions Filter Panel -->
-<app-filter-panel
-  [isOpen]="showPermissionsFilterPanel"
-  [config]="permissionsFilterConfig"
-  [initialValues]="getPermissionsFilterValues()"
-  (close)="closePermissionsFilterPanel()"
-  (apply)="applyPermissionsFilters($event)"
-  (reset)="resetPermissionsFilters()">
-</app-filter-panel>
+<!-- Permissions Filter Drawer -->
+<app-advanced-search-panel
+  mode="sidepanel"
+  [fields]="permissionsSearchFields"
+  [isExpanded]="showPermissionsAdvancedSearch"
+  (search)="onPermissionsAdvancedSearch($event)"
+  (clear)="onClearPermissionsAdvancedSearch()"
+  (close)="showPermissionsAdvancedSearch = false"
+></app-advanced-search-panel>
+
+<!-- Assign Tab Role Filter Panel -->
+<app-advanced-search-panel
+  mode="sidepanel"
+  [fields]="assignRoleSearchFields"
+  [isExpanded]="showAssignRoleAdvancedSearch"
+  (search)="onAssignRoleAdvancedSearch($event)"
+  (clear)="onClearAssignRoleAdvancedSearch()"
+  (close)="showAssignRoleAdvancedSearch = false"
+></app-advanced-search-panel>
 
 <!-- Role Delete Confirmation Modal -->
 <app-confirmation-modal
@@ -939,4 +887,13 @@
   (confirmed)="confirmToggleRoleStatus()"
   (cancelled)="cancelToggleRoleStatus()">
 </app-confirmation-modal>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>
 

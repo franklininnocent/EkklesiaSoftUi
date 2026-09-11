@@ -208,11 +208,7 @@ describe('RoleFormModalComponent safeguards', () => {
       createPermission(1, 'Users', 'users.view', 'View Users')
     ];
     (component as any).rebuildPermissionsIndex();
-    fixture.detectChanges();
-    component.permissions = [
-      createPermission(1, 'Users', 'users.view', 'View Users')
-    ];
-    (component as any).rebuildPermissionsIndex();
+    component.showPermissions = false;
     fixture.detectChanges();
 
     const header = (fixture.nativeElement as HTMLElement).querySelector('.permissions-header') as HTMLElement;

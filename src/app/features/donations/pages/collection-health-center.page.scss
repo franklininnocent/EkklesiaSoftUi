@@ -20,11 +20,11 @@
   color: var(--cf-primary);
 }
 
-.chc-hero h1 {
+.chc-hero h3 {
   margin: 0;
-  font-size: var(--cf-text-page-title);
-  font-weight: var(--cf-font-weight-page-title, 700);
-  line-height: var(--cf-leading-page-title, 1.25);
+  font-size: var(--cf-text-section-title);
+  font-weight: 600;
+  line-height: 1.3;
   font-family: var(--cf-font-sans);
   color: var(--cf-color-text-primary, var(--cf-slate-900));
 }

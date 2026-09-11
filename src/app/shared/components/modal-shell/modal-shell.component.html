@@ -1,6 +1,7 @@
 <div
   class="cf-modal-shell__overlay"
   [class.cf-modal-shell__overlay--nested]="nested"
+  [class.cf-modal-shell__overlay--media]="layout === 'media'"
   (click)="onBackdropClick()"
 >
   <div
@@ -12,6 +13,7 @@
     [class.cf-modal-shell__dialog--lg]="size === 'lg'"
     [class.cf-modal-shell__dialog--xl]="size === 'xl'"
     [class.cf-modal-shell__dialog--full]="size === 'full'"
+    [class.cf-modal-shell__dialog--media]="layout === 'media'"
     role="dialog"
     aria-modal="true"
     [attr.aria-labelledby]="title ? resolvedTitleId : null"
@@ -50,6 +52,7 @@
     <div
       class="cf-modal-shell__body"
       [class.cf-modal-shell__body--flush]="bodyPadding === 'none'"
+      [class.cf-modal-shell__body--media]="layout === 'media'"
     >
       <ng-content></ng-content>
     </div>

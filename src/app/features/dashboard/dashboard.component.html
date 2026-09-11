@@ -116,7 +116,7 @@
       <article class="cd-panel cd-overview__chart">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Giving Trend</h2>
+            <h3>Giving Trend</h3>
             <p class="cd-panel__desc">Last 6 months — monthly tithes (in $1k)</p>
           </div>
         </header>
@@ -142,7 +142,7 @@
       <article class="cd-panel cd-overview__health">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Stewardship Hub</h2>
+            <h3>Stewardship Hub</h3>
             <p class="cd-panel__desc" *ngIf="operationsSummary?.financial?.health as health">
               Health score {{ health.score }} · {{ health.label }}
             </p>
@@ -192,7 +192,7 @@
     <section class="cd-analytics cd-overview__insights" aria-label="Community and engagement analytics">
       <article class="cd-panel">
         <header class="cd-panel__head">
-          <h2>Growth Vectors</h2>
+          <h3>Growth Vectors</h3>
           <span class="cd-panel__badge">This Month</span>
         </header>
         <dl class="cd-stat-row">
@@ -213,7 +213,7 @@
 
       <article class="cd-panel">
         <header class="cd-panel__head">
-          <h2>Life Groups</h2>
+          <h3>Life Groups</h3>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">View groups</button>
         </header>
         <div class="cd-groups-grid">
@@ -234,7 +234,7 @@
       <article class="cd-panel cd-ministries__panel">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Ministries &amp; Associations</h2>
+            <h3>Ministries &amp; Associations</h3>
             <p class="cd-panel__desc">Organization health, membership, and leadership readiness</p>
           </div>
           <button type="button" class="cd-panel__link cd-panel__link--inline" (click)="openMinistries()">
@@ -381,7 +381,7 @@
       <article class="cd-panel cd-ops__schedule">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Sunday Service Readiness</h2>
+            <h3>Sunday Service Readiness</h3>
             <p class="cd-panel__desc">Today's schedule, volunteer check-ins, and venue flow</p>
           </div>
           <span class="cd-panel__live">Live operations</span>
@@ -412,7 +412,7 @@
       <article class="cd-panel cd-ops__volunteers">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Volunteer Coordination</h2>
+            <h3>Volunteer Coordination</h3>
             <p class="cd-panel__desc">Sunday 9:00 AM service shift fulfillment</p>
           </div>
         </header>
@@ -451,7 +451,7 @@
       <article class="cd-panel" *ngIf="canViewPastoral">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Pastoral Care Alerts</h2>
+            <h3>Pastoral Care Alerts</h3>
             <p class="cd-panel__desc">Open visit requests by type</p>
           </div>
         </header>
@@ -470,7 +470,7 @@
       <article class="cd-panel" *ngIf="canViewPastoral">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Pastoral Workflow</h2>
+            <h3>Pastoral Workflow</h3>
             <p class="cd-panel__desc">Assign follow-ups to pastoral staff</p>
           </div>
         </header>
@@ -514,7 +514,7 @@
       <article class="cd-panel cd-ops__stewardship" *ngIf="operationsSummary?.families_requiring_attention?.length">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Families Needing Care</h2>
+            <h3>Families Needing Care</h3>
             <p class="cd-panel__desc">Outstanding balances requiring follow-up</p>
           </div>
           <button type="button" class="cd-panel__link" *ngIf="canViewFinancial" (click)="openFinancialDashboard()">Open Financial Dashboard</button>
@@ -538,7 +538,7 @@
       <article class="cd-panel cd-panel--birthdays">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Birthdays This Week</h2>
+            <h3>Birthdays This Week</h3>
             <p class="cd-panel__desc">{{ weekRangeLabel }}</p>
           </div>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/members')">Member directory</button>
@@ -566,7 +566,7 @@
       <article class="cd-panel cd-panel--anniversaries">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Wedding Anniversaries</h2>
+            <h3>Wedding Anniversaries</h3>
             <p class="cd-panel__desc">Celebrations this week · {{ weekRangeLabel }}</p>
           </div>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/families')">Family records</button>
@@ -600,7 +600,7 @@
       <article class="cd-panel cd-panel--bcc">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>BCC Overview</h2>
+            <h3>BCC Overview</h3>
             <p class="cd-panel__desc">Basic Christian Communities — groups, capacity, and meeting rhythm</p>
           </div>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">View all BCCs</button>
@@ -648,7 +648,7 @@
       <article class="cd-panel cd-panel--sacraments">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Sacramental Records</h2>
+            <h3>Sacramental Records</h3>
             <p class="cd-panel__desc">{{ sacramentsThisMonth }} sacraments recorded this month</p>
           </div>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/sacraments')">View analytics</button>
@@ -687,7 +687,7 @@
       <article class="cd-panel cd-ministries__panel">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h2>Ministries Actions</h2>
+            <h3>Ministries Actions</h3>
             <p class="cd-panel__desc">Organization ranks, recent activity, and quick actions</p>
           </div>
           <button type="button" class="cd-panel__link cd-panel__link--inline" (click)="openMinistries()">

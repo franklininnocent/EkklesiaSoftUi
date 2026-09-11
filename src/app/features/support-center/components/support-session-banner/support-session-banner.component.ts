@@ -12,6 +12,7 @@ import {
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
 import { fieldErrorText, markFormGroupTouched } from '@core/validators/form-validation.helper';
+import { ToastService } from '@core/services/toast.service';
 
 @Component({
   selector: 'app-support-session-banner',
@@ -31,6 +32,7 @@ import { fieldErrorText, markFormGroupTouched } from '@core/validators/form-vali
 export class SupportSessionBannerComponent implements OnInit, OnDestroy {
   private readonly sessions = inject(SupportSessionService);
   private readonly router = inject(Router);
+  private readonly toast = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly fb = inject(FormBuilder);
   private readonly destroy$ = new Subject<void>();
@@ -78,12 +80,20 @@ export class SupportSessionBannerComponent implements OnInit, OnDestroy {
   }
 
   onExitConfirmed(result: ConfirmationResult): void {
-    this.showExitConfirm = false;
     if (!result.confirmed) {
+      this.showExitConfirm = false;
       this.cdr.markForCheck();
       return;
     }
     this.exit();
+  }
+
+  closeExitConfirm(): void {
+    if (this.ending) {
+      return;
+    }
+    this.showExitConfirm = false;
+    this.cdr.markForCheck();
   }
 
   requestRenew(): void {
@@ -135,7 +145,7 @@ export class SupportSessionBannerComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           this.renewing = false;
-          this.error = err?.error?.message || 'Could not renew support session.';
+          this.error = this.apiErrorMessage(err, 'Could not renew support session.');
           this.cdr.markForCheck();
         },
       });
@@ -158,15 +168,22 @@ export class SupportSessionBannerComponent implements OnInit, OnDestroy {
       .subscribe({
         next: () => {
           this.ending = false;
+          this.showExitConfirm = false;
           this.cdr.markForCheck();
           void this.router.navigate(['/support-center']);
         },
         error: (err) => {
           this.ending = false;
-          this.error = err?.error?.message || 'Could not end support session.';
+          const message = this.apiErrorMessage(err, 'Could not end support session.');
+          this.error = message;
+          this.toast.error(message, 'Could not exit session');
           this.cdr.markForCheck();
         },
       });
+  }
+
+  private apiErrorMessage(err: { message?: string; error?: { message?: string } }, fallback: string): string {
+    return err?.message || err?.error?.message || fallback;
   }
 
   private updateRemaining(): void {
@@ -177,7 +194,7 @@ export class SupportSessionBannerComponent implements OnInit, OnDestroy {
     const ms = new Date(this.session.expires_at).getTime() - Date.now();
     if (ms <= 0) {
       this.remainingLabel = 'Expired';
-      this.sessions.clearSession();
+      this.sessions.expireLocalIfNeeded();
       return;
     }
     const mins = Math.floor(ms / 60000);

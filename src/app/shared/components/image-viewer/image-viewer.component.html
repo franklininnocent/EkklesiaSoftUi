@@ -1,0 +1,91 @@
+<app-modal-shell
+  layout="media"
+  size="full"
+  bodyPadding="none"
+  headerVariant="compact"
+  [nested]="nested"
+  [title]="title"
+  [description]="subtitle"
+  closeAriaLabel="Close image viewer"
+  (closeRequested)="closeRequested.emit()"
+>
+  <div
+    #stageRef
+    class="cf-image-viewer__stage"
+    tabindex="-1"
+    role="region"
+    aria-label="Image preview"
+    (keydown)="onStageKeyDown($event)"
+    (pointerdown)="onPointerDown($event)"
+    (pointermove)="onPointerMove($event)"
+    (pointerup)="onPointerUp($event)"
+    (pointercancel)="onPointerUp($event)"
+    (touchstart)="onTouchStart($event)"
+    (touchmove)="onTouchMove($event)"
+    (touchend)="onTouchEnd()"
+    (touchcancel)="onTouchEnd()"
+  >
+    <div *ngIf="loading" class="cf-image-viewer__loading">
+      <app-loading-spinner size="medium" color="primary" [centered]="true"></app-loading-spinner>
+    </div>
+
+    <div *ngIf="loadError" class="cf-image-viewer__error">
+      <p>Photo unavailable</p>
+    </div>
+
+    <div
+      *ngIf="!loadError"
+      class="cf-image-viewer__canvas"
+      [class.cf-image-viewer__canvas--hidden]="loading"
+      [style.transform]="canvasTransform"
+    >
+      <img
+        #imageRef
+        class="cf-image-viewer__image"
+        [src]="src"
+        [alt]="alt"
+        [attr.width]="naturalWidth || null"
+        [attr.height]="naturalHeight || null"
+        draggable="false"
+        (load)="onImageLoad()"
+        (error)="onImageError()"
+      />
+    </div>
+
+    <div
+      class="cf-image-viewer__toolbar"
+      role="toolbar"
+      aria-label="Image zoom controls"
+      (pointerdown)="$event.stopPropagation()"
+    >
+      <button
+        type="button"
+        class="cf-btn cf-image-viewer__tool-btn"
+        aria-label="Zoom out"
+        [disabled]="loading || loadError || !canZoomOut"
+        (click)="zoomOut()"
+      >
+        −
+      </button>
+      <span class="cf-image-viewer__zoom-label" aria-live="polite">{{ zoomLabel }}</span>
+      <button
+        type="button"
+        class="cf-btn cf-image-viewer__tool-btn"
+        aria-label="Zoom in"
+        [disabled]="loading || loadError || !canZoomIn"
+        (click)="zoomIn()"
+      >
+        +
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-image-viewer__tool-btn cf-image-viewer__tool-btn--reset"
+        aria-label="Reset zoom to fit"
+        [disabled]="loading || loadError || !canZoomOut"
+        (click)="resetZoom()"
+      >
+        Reset
+      </button>
+    </div>
+  </div>
+</app-modal-shell>

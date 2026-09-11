@@ -1,6 +1,6 @@
 /* List chrome: match Ministries organization-list / Family list (thin feature SCSS).
    Detail modal styles retained — modal markup lives in this template. */
-@import '../../../../donations/styles/stewardship-split-layout.scss';
+@use '../../../../donations/styles/stewardship-split-layout.scss';
 
 .sacrament-list__chips {
   display: flex;

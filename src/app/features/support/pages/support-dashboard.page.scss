@@ -1,0 +1,28 @@
+.support-dashboard__metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+  gap: var(--cf-space-3, 0.75rem);
+  margin-bottom: var(--cf-space-4, 1rem);
+}
+
+.support-dashboard__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: var(--cf-space-3, 0.75rem);
+  text-align: center;
+}
+
+.support-dashboard__metric-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.support-dashboard__metric-label {
+  font-size: 0.8125rem;
+  color: var(--cf-text-muted, #64748b);
+}
+
+.support-dashboard__metric--risk .support-dashboard__metric-value {
+  color: var(--cf-color-warning, #b45309);
+}

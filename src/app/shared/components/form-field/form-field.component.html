@@ -1,5 +1,9 @@
 <div class="cf-form-field" [class.cf-form-field--wide]="wide">
-  <label class="cf-form-field__label" [attr.for]="fieldId">
+  <label
+    class="cf-form-field__label"
+    [attr.for]="useLabelFor ? fieldId : null"
+    [attr.id]="fieldId ? fieldId + '-label' : null"
+  >
     <span>{{ label }}</span>
     <span *ngIf="required" class="cf-form-field__required" aria-hidden="true">*</span>
     <span *ngIf="optionalLabel && !required" class="cf-form-field__optional">Optional</span>

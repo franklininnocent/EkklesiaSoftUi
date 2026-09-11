@@ -1,0 +1,49 @@
+<div class="cf-media-upload">
+  <label class="cf-media-upload__label" [attr.for]="inputId">{{ label }}</label>
+  <p class="cf-media-upload__hint">{{ hint }}</p>
+
+  @if (displayUrl) {
+    <div class="cf-media-upload__preview">
+      @if (previewClickable) {
+        <button
+          type="button"
+          class="cf-media-upload__preview-button"
+          [attr.aria-label]="'View ' + label"
+          (click)="previewClick.emit()"
+        >
+          <img [src]="displayUrl" [alt]="label" />
+        </button>
+      } @else {
+        <img [src]="displayUrl" [alt]="label" />
+      }
+    </div>
+  }
+
+  @if (validationMessage) {
+    <p class="cf-media-upload__error" role="alert">{{ validationMessage }}</p>
+  }
+
+  <div class="cf-media-upload__actions">
+    <label class="cf-media-upload__button" [class.is-disabled]="!canManage || disabled || uploading">
+      <input
+        [id]="inputId"
+        type="file"
+        [accept]="accept"
+        [disabled]="!canManage || disabled || uploading"
+        (change)="onFileSelected($event)"
+      />
+      {{ uploading ? 'Uploading…' : 'Choose image' }}
+    </label>
+
+    @if (displayUrl && canManage) {
+      <button
+        type="button"
+        class="cf-media-upload__remove"
+        [disabled]="disabled || uploading"
+        (click)="onRemove()"
+      >
+        Remove
+      </button>
+    }
+  </div>
+</div>

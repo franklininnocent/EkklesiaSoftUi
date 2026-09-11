@@ -498,10 +498,6 @@ export class DonationsService {
     return this.http.delete<{ success: boolean; message: string }>(`${this.baseUrl}/categories/${categoryId}`);
   }
 
-  seedDefaultCategories(): Observable<{ success: boolean; message: string; data: DonationCategory[] }> {
-    return this.http.post<{ success: boolean; message: string; data: DonationCategory[] }>(`${this.baseUrl}/categories/seed-defaults`, {});
-  }
-
   getDonors(search = ''): Observable<{ success: boolean; data: PaginatedResponse<Donor> }> {
     let params = new HttpParams().set('per_page', '100');
     if (search) {

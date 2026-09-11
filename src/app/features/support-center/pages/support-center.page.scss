@@ -1,4 +1,4 @@
-@import '../../../../styles/church-financial-os-mixins';
+@use '../../../../styles/church-financial-os-mixins' as *;
 
 .support-center__grid {
   display: grid;

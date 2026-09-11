@@ -16,8 +16,8 @@ import {
   ActionBarComponent,
   ActionBarItem,
 } from '@shared/components/action-bar/action-bar.component';
+import { RouterLink } from '@angular/router';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
-import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
@@ -42,9 +42,9 @@ type TaxonomyItem = OrganizationCategory | OrganizationType | Position;
     CommonModule,
     FormsModule,
     ReactiveFormsModule,
+    RouterLink,
     ActionBarComponent,
     CfEmptyStateComponent,
-    ConfirmationModalComponent,
     DataTableComponent,
     FormFieldComponent,
     ListToolbarComponent,
@@ -72,8 +72,6 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
     types: 'Types',
     positions: 'Positions',
   };
-  readonly seedConfirmMessage =
-    'This adds parish defaults without overwriting existing records';
 
   items: TaxonomyItem[] = [];
   loaded = false;
@@ -82,8 +80,6 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
   showForm = false;
   editingId: string | null = null;
   saving = false;
-  seeding = false;
-  showSeedConfirm = false;
   statusUpdatingId: string | null = null;
   statusError: string | null = null;
   submitted = false;
@@ -117,7 +113,6 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['kind'] && !changes['kind'].firstChange) {
       this.tableSearch = '';
-      this.showSeedConfirm = false;
       this.statusError = null;
       this.closeForm();
       this.load();
@@ -457,54 +452,6 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
           message,
           `Could not ${nextActive ? 'activate' : 'deactivate'} ${this.singularLabel}`,
         );
-        this.cdr.markForCheck();
-      },
-    });
-  }
-
-  seedDefaults(): void {
-    if (this.seeding) {
-      return;
-    }
-
-    this.showSeedConfirm = true;
-    this.cdr.markForCheck();
-  }
-
-  cancelSeedDefaults(): void {
-    this.showSeedConfirm = false;
-    this.cdr.markForCheck();
-  }
-
-  confirmSeedDefaults(): void {
-    if (this.seeding) {
-      return;
-    }
-
-    this.showSeedConfirm = false;
-    this.seeding = true;
-    this.cdr.markForCheck();
-
-    const request$ =
-      this.kind === 'categories'
-        ? this.api.seedCategories()
-        : this.kind === 'types'
-          ? this.api.seedTypes()
-          : this.api.seedPositions();
-
-    request$.subscribe({
-      next: (response) => {
-        this.seeding = false;
-        this.toastService.success(
-          response.message || `Default ${this.listTitle.toLowerCase()} added.`,
-          'Success',
-        );
-        this.load();
-        this.cdr.markForCheck();
-      },
-      error: (err) => {
-        this.seeding = false;
-        this.toastService.error(this.parseError(err), 'Could not add defaults');
         this.cdr.markForCheck();
       },
     });

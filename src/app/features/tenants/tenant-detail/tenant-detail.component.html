@@ -171,7 +171,7 @@
             <h3>Logo</h3>
             <div class="tenant-detail__logo-upload">
               <img *ngIf="getLogoUrl()" [src]="getLogoUrl()" alt="Tenant logo" class="tenant-detail__logo-preview" />
-              <input type="file" accept="image/*" (change)="onLogoSelected($event)" />
+              <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" (change)="onLogoSelected($event)" />
               <div class="tenant-detail__logo-actions">
                 <button type="button" class="cf-btn cf-btn--sm cf-btn-primary" (click)="uploadLogo()" [disabled]="!logoFile || loading">Upload</button>
                 <button type="button" class="cf-btn cf-btn--sm" (click)="deleteLogo()" [disabled]="!getLogoUrl() || loading">Remove</button>
@@ -306,7 +306,16 @@
             </thead>
             <tbody>
               <tr *ngFor="let user of details.users_preview">
-                <td>{{ user.name }}</td>
+                <td>
+                  <div class="tenant-detail__user-name">
+                    <app-user-avatar
+                      [name]="user.name"
+                      [imageUrl]="getUserPreviewPhotoUrl(user)"
+                      (photoClick)="openPhotoViewer(user, $event)"
+                    ></app-user-avatar>
+                    <span>{{ user.name }}</span>
+                  </div>
+                </td>
                 <td>{{ user.email }}</td>
                 <td>{{ user.role || '—' }}</td>
                 <td>{{ user.status }}</td>
@@ -533,3 +542,12 @@
     </button>
   </ng-container>
 </app-modal-shell>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>

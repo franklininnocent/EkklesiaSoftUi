@@ -1,0 +1,228 @@
+<section class="application-access cf-page">
+  <app-page-header
+    title="Application Access"
+    subtitle="Monitor sign-ins, sessions, and security activity across the platform."
+  ></app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!canView" role="alert">
+    <p>You do not have permission to view Application Access.</p>
+  </div>
+
+  <ng-container *ngIf="canView">
+    <div *ngIf="dashboardLoading()">
+      <app-loading-skeleton type="card" [rows]="2"></app-loading-skeleton>
+    </div>
+
+    <div class="cf-inline-alert cf-panel" *ngIf="!dashboardLoading() && dashboardError()" role="alert">
+      <p>{{ dashboardError() }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryDashboard()">Try again</button>
+    </div>
+
+    <ng-container *ngIf="!dashboardLoading() && !dashboardError() && dashboard() as dash">
+      <app-section-card title="Right now">
+        <p class="application-access__section-hint">Last 15 minutes</p>
+        <div class="cf-kpi-grid application-access__kpis" aria-label="Application access metrics">
+          <article
+            class="cf-kpi application-access__kpi"
+            *ngFor="let tile of kpiTiles"
+            [class.application-access__kpi--attention]="tile.key === 'needs_attention_15m' && dash.kpis[tile.key] > 0"
+          >
+            <strong>{{ metricValue(dash.kpis, tile.key) }}</strong>
+            <span>{{ tile.label }}</span>
+          </article>
+        </div>
+      </app-section-card>
+
+      <div
+        class="cf-attention-callout application-access__attention"
+        *ngIf="needsAttention(dash.kpis) > 0"
+        role="status"
+      >
+        <p>
+          <strong>{{ needsAttention(dash.kpis) }}</strong>
+          security event{{ needsAttention(dash.kpis) === 1 ? '' : 's' }} need attention in the last 15 minutes.
+        </p>
+        <button type="button" class="cf-btn cf-btn-sm cf-btn-primary" (click)="reviewAttentionEvents()">
+          Review blocked activity
+        </button>
+      </div>
+    </ng-container>
+
+    <app-application-access-live-feed></app-application-access-live-feed>
+
+    <app-section-card [title]="activeTab() === 'sessions' ? 'Sessions' : 'Activity'">
+      <app-tab-strip
+        [tabs]="tabs"
+        [activeId]="activeTab()"
+        ariaLabel="Application access views"
+        (tabChange)="onTabChange($event)"
+      ></app-tab-strip>
+
+      <div class="application-access__toolbar">
+        <app-list-toolbar
+          [showSearch]="activeTab() === 'sessions'"
+          searchPlaceholder="Search sessions"
+          [searchValue]="searchTerm()"
+          [filterCount]="filterCount()"
+          (searchChange)="onSearchChange($event)"
+          (filtersOpened)="openFilters()"
+        ></app-list-toolbar>
+        <button
+          *ngIf="canExport && activeTab() === 'sessions'"
+          type="button"
+          class="cf-btn cf-btn-sm cf-btn-secondary application-access__export"
+          [disabled]="exporting()"
+          (click)="exportSessions()"
+        >
+          {{ exporting() ? 'Exporting…' : 'Export CSV' }}
+        </button>
+      </div>
+
+      <div class="cf-inline-alert cf-panel" *ngIf="gridError() && !gridLoading()" role="alert">
+        <p>{{ gridError() }}</p>
+        <button type="button" class="cf-btn cf-btn-primary" (click)="retryGrid()">Try again</button>
+      </div>
+
+      <div *ngIf="gridLoading() && !gridLoaded()">
+        <app-loading-skeleton type="table" [rows]="8" [columns]="6"></app-loading-skeleton>
+      </div>
+
+      <ng-container *ngIf="!gridError()">
+        <p class="application-access__meta" *ngIf="total() > 0">
+          {{ total() }} record{{ total() === 1 ? '' : 's' }}
+        </p>
+
+        <app-cf-empty-state
+          *ngIf="gridLoaded() && !gridLoading() && activeTab() === 'sessions' && !sessions().length"
+          title="No sessions match"
+          description="Try clearing filters or widening the date range."
+          [hasActions]="false"
+        ></app-cf-empty-state>
+
+        <app-cf-empty-state
+          *ngIf="gridLoaded() && !gridLoading() && activeTab() === 'events' && !events().length"
+          title="No activity matches"
+          description="Try clearing filters or widening the date range."
+          [hasActions]="false"
+        ></app-cf-empty-state>
+
+        <app-data-table
+          *ngIf="activeTab() === 'sessions' && sessions().length"
+          class="application-access__table"
+          [clickableRows]="true"
+          [ariaBusy]="gridLoading()"
+        >
+          <thead>
+            <tr>
+              <th scope="col">Identity</th>
+              <th scope="col">Tenant</th>
+              <th scope="col" class="application-access__col-desktop">Area</th>
+              <th scope="col" class="application-access__col-desktop">IP</th>
+              <th scope="col" class="application-access__col-desktop">Location</th>
+              <th scope="col">Risk</th>
+              <th scope="col">Status</th>
+              <th scope="col">Time</th>
+              <th scope="col" class="cf-table__actions-col application-access__col-actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of sessions()" tabindex="0" (click)="openInvestigation(row)">
+              <td>
+                <strong>{{ sessionIdentity(row) }}</strong>
+                <div class="application-access__subtle">{{ identityLabel(row.identity_type) }}</div>
+              </td>
+              <td>{{ sessionTenant(row) }}</td>
+              <td class="application-access__col-desktop">{{ contextLabel(row.access_context) }}</td>
+              <td class="application-access__col-desktop">{{ row.ip_address || '—' }}</td>
+              <td class="application-access__col-desktop">{{ sessionLocation(row) }}</td>
+              <td>
+                <app-status-badge [label]="row.risk_level" [tone]="riskTone(row.risk_level)"></app-status-badge>
+              </td>
+              <td>
+                <app-status-badge
+                  [label]="sessionStatusLabel(row.status)"
+                  [tone]="sessionStatusTone(row.status)"
+                ></app-status-badge>
+              </td>
+              <td>{{ row.last_activity_at | date: 'short' }}</td>
+              <td class="cf-table__actions-cell application-access__col-actions">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-sm cf-btn-secondary"
+                  (click)="$event.stopPropagation(); openInvestigation(row)"
+                >
+                  Investigate
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+
+        <app-data-table
+          *ngIf="activeTab() === 'events' && events().length"
+          class="application-access__table"
+          [ariaBusy]="gridLoading()"
+        >
+          <thead>
+            <tr>
+              <th scope="col">Activity</th>
+              <th scope="col" class="application-access__col-desktop">IP</th>
+              <th scope="col">Result</th>
+              <th scope="col">Risk</th>
+              <th scope="col">Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let row of events()"
+              [class.application-access__row-clickable]="row.access_session_id"
+              tabindex="0"
+              (click)="openInvestigationFromEvent(row)"
+            >
+              <td>
+                <strong>{{ eventSummary(row) }}</strong>
+                <div class="application-access__subtle">{{ row.http_method || '—' }} {{ row.http_status || '' }}</div>
+              </td>
+              <td class="application-access__col-desktop">{{ row.ip_address || '—' }}</td>
+              <td>
+                <app-status-badge
+                  [label]="authorizationResultLabel(row.authorization_result)"
+                  [tone]="authorizationResultTone(row.authorization_result)"
+                ></app-status-badge>
+              </td>
+              <td>
+                <app-status-badge [label]="row.risk_level || 'LOW'" [tone]="riskTone(row.risk_level)"></app-status-badge>
+              </td>
+              <td>{{ row.occurred_at | date: 'short' }}</td>
+            </tr>
+          </tbody>
+        </app-data-table>
+
+        <app-pagination
+          *ngIf="total() > 0"
+          [currentPage]="page()"
+          [pageSize]="perPage()"
+          [totalItems]="total()"
+          (pageChange)="onPageChange($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        ></app-pagination>
+      </ng-container>
+    </app-section-card>
+  </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters()"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters.set(false)"
+  ></app-advanced-search-panel>
+
+  <app-application-access-investigation-modal
+    *ngIf="investigationSessionId() as sessionId"
+    [sessionId]="sessionId"
+    (closed)="closeInvestigation()"
+    (sessionUpdated)="onInvestigationSessionUpdated($event)"
+  ></app-application-access-investigation-modal>
+</section>

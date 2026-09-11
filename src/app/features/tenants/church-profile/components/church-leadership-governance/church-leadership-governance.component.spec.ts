@@ -235,3 +235,103 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
     expect(component.showAssignModal).toBe(false);
   });
 });
+
+describe('ChurchLeadershipGovernanceComponent photo viewer', () => {
+  let component: ChurchLeadershipGovernanceComponent;
+  let fixture: ComponentFixture<ChurchLeadershipGovernanceComponent>;
+  let governanceService: GovernanceServiceMock;
+
+  const photoAssignment = {
+    id: 'assignment-photo-1',
+    tenant_id: 1,
+    church_profile_id: 1,
+    person_id: 'person-uuid',
+    person: {
+      id: 'person-uuid',
+      full_name: 'Rev. Fr. John Doe',
+      first_name: 'John',
+      last_name: 'Doe',
+      photo_full_url: 'https://example.com/pastor.jpg',
+    },
+    role_id: 'role-pastor-uuid',
+    role: {
+      id: 'role-pastor-uuid',
+      title: 'Parish Priest',
+      category: 'PARISH_CLERGY',
+      category_label: 'Parish Clergy',
+      hierarchical_level: 1,
+      allows_concurrent: false,
+    },
+    start_date: '2025-01-01',
+    status: 'active',
+  };
+
+  const initialsAssignment = {
+    ...photoAssignment,
+    id: 'assignment-no-photo-1',
+    person: {
+      id: 'person-no-photo',
+      full_name: 'Rev. Fr. Jane Roe',
+      first_name: 'Jane',
+      last_name: 'Roe',
+      photo_full_url: null,
+      photo_url: null,
+    },
+  };
+
+  beforeEach(async () => {
+    governanceService = new GovernanceServiceMock();
+    (governanceService.getCurrent as jest.Mock).mockReturnValue(
+      of({
+        success: true,
+        data: {
+          active_count: 2,
+          groups: [
+            {
+              category: 'PARISH_CLERGY',
+              category_label: 'Parish Clergy',
+              assignments: [photoAssignment, initialsAssignment],
+            },
+          ],
+          assignments: [photoAssignment, initialsAssignment],
+        },
+      }),
+    );
+
+    await TestBed.configureTestingModule({
+      imports: [ChurchLeadershipGovernanceComponent],
+      providers: [
+        { provide: ChurchLeadershipGovernanceService, useValue: governanceService },
+        { provide: ChurchLeadershipService, useValue: { resolveLeaderPhotoUrl: jest.fn(() => null) } },
+        { provide: ParishPersonService, useValue: { search: jest.fn(() => of({ success: true, data: [] })) } },
+        { provide: AuthService, useValue: {} },
+        { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } },
+      ],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(ChurchLeadershipGovernanceComponent);
+    component = fixture.componentInstance;
+    component.ngOnInit();
+    fixture.detectChanges();
+  });
+
+  it('shows a photo trigger only for assignments with photos', () => {
+    const buttons = fixture.nativeElement.querySelectorAll('.clg__avatar-trigger');
+    expect(buttons.length).toBe(1);
+    expect(buttons[0].getAttribute('aria-label')).toBe('View photo of Rev. Fr. John Doe');
+  });
+
+  it('opens and closes the image viewer', () => {
+    const trigger: HTMLButtonElement = fixture.nativeElement.querySelector('.clg__avatar-trigger');
+    trigger.click();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-image-viewer')).toBeTruthy();
+    expect(component.photoViewer?.src).toBe('https://example.com/pastor.jpg');
+
+    component.closePhotoViewer();
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('app-image-viewer')).toBeFalsy();
+  });
+});

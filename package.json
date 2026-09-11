@@ -23,7 +23,8 @@
     "e2e:bishop-create": "playwright test e2e/bishop-management/bishop-create-modal.spec.ts",
     "e2e:bishop-list-edit": "playwright test e2e/bishop-management/bishop-list-edit.spec.ts",
     "e2e:bishop-succession": "playwright test e2e/bishop-management/bishop-succession-lifecycle.spec.ts",
-    "e2e:subscription-expired": "playwright test e2e/subscription"
+    "e2e:subscription-expired": "playwright test e2e/subscription",
+    "e2e:application-access": "playwright test e2e/application-access.spec.ts"
   },
   "private": true,
   "overrides": {

@@ -1,4 +1,4 @@
-import { Directive, EventEmitter, Input, Output, HostListener, HostBinding, ElementRef, Renderer2, inject } from '@angular/core';
+import { Directive, EventEmitter, Input, Output, HostListener, HostBinding, ElementRef, Renderer2, inject, OnChanges, SimpleChanges } from '@angular/core';
 
 export type SortDirection = 'asc' | 'desc' | null;
 
@@ -11,7 +11,7 @@ export interface SortEvent {
   selector: '[appSortable]',
   standalone: true
 })
-export class SortableDirective {
+export class SortableDirective implements OnChanges {
   @Input('appSortable') column = '';
   @Input() direction: SortDirection = null;
   @Output() sort = new EventEmitter<SortEvent>();
@@ -38,10 +38,17 @@ export class SortableDirective {
     this.addSortIcon();
   }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['direction'] && !changes['direction'].firstChange) {
+      this.updateSortIcon();
+    }
+  }
+
   @HostListener('click')
   rotate() {
-    this.direction = this.direction === 'asc' ? 'desc' : 'asc';
-    this.sort.emit({ column: this.column, direction: this.direction });
+    const nextDirection: SortDirection =
+      this.direction === 'asc' ? 'desc' : this.direction === 'desc' ? 'asc' : 'asc';
+    this.sort.emit({ column: this.column, direction: nextDirection });
     this.updateSortIcon();
   }
 

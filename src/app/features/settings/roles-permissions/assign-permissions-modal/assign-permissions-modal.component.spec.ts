@@ -6,9 +6,40 @@ import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { SimpleChange } from '@angular/core';
 
-describe('AssignPermissionsModalComponent safeguards', () => {
+describe('AssignPermissionsModalComponent', () => {
   let component: AssignPermissionsModalComponent;
   let fixture: ComponentFixture<AssignPermissionsModalComponent>;
+
+  const createPermission = (
+    id: number,
+    module: string,
+    name: string,
+    displayName: string,
+    overrides: Partial<any> = {}
+  ): any => ({
+    id,
+    name,
+    display_name: displayName,
+    module,
+    category: 'general',
+    description: `${displayName} description`,
+    is_custom: false,
+    active: 1,
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
+    ...overrides
+  });
+
+  const seedPermissions = (): void => {
+    component.allPermissions = [
+      createPermission(1, 'Families', 'families.view', 'Family View'),
+      createPermission(2, 'Families', 'families.create', 'Family Create'),
+      createPermission(3, 'Donations', 'donations.view', 'Donation View', { category: 'donations' }),
+      createPermission(4, 'Donations', 'donations.manage', 'Donation Manage', { category: 'donations' })
+    ];
+    (component as any).groupPermissionsByModule();
+    component.applyFilters();
+  };
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -42,19 +73,6 @@ describe('AssignPermissionsModalComponent safeguards', () => {
 
     fixture = TestBed.createComponent(AssignPermissionsModalComponent);
     component = fixture.componentInstance;
-  });
-
-  const createPermission = (id: number, module: string, name: string, displayName: string): any => ({
-    id,
-    name,
-    display_name: displayName,
-    module,
-    category: 'general',
-    description: `${displayName} description`,
-    is_custom: false,
-    active: 1,
-    created_at: '2026-01-01T00:00:00Z',
-    updated_at: '2026-01-01T00:00:00Z'
   });
 
   it('detects missing required admin permissions for protected tenant role', () => {
@@ -180,5 +198,93 @@ describe('AssignPermissionsModalComponent safeguards', () => {
     expect(usersGroup).toBeTruthy();
     expect(usersGroup?.permissions.length).toBe(2);
   });
-});
 
+  describe('search and filters', () => {
+    beforeEach(() => {
+      seedPermissions();
+    });
+
+    it('searches permissions by name case-insensitively', () => {
+      component.onSearchChange('FAMILY');
+      expect(component.filteredPermissionCount).toBe(2);
+      expect(component.filteredGroups[0].module).toBe('Families');
+    });
+
+    it('searches permissions by description', () => {
+      component.onSearchChange('donation view description');
+      expect(component.filteredPermissionCount).toBe(1);
+      expect(component.filteredGroups[0].permissions[0].name).toBe('donations.view');
+    });
+
+    it('searches permissions by module metadata', () => {
+      component.onSearchChange('donations');
+      expect(component.filteredPermissionCount).toBe(2);
+    });
+
+    it('clears search and restores full result set', () => {
+      component.onSearchChange('family');
+      expect(component.filteredPermissionCount).toBe(2);
+      component.clearSearch();
+      expect(component.filteredPermissionCount).toBe(4);
+    });
+
+    it('filters by module', () => {
+      component.onAdvancedSearch({ module: 'Families' });
+      expect(component.filteredPermissionCount).toBe(2);
+      expect(component.getActiveFilterCount()).toBe(1);
+    });
+
+    it('filters by action type', () => {
+      component.onAdvancedSearch({ action: 'view' });
+      expect(component.filteredPermissionCount).toBe(2);
+    });
+
+    it('filters by assignment state', () => {
+      component.selectedPermissionIds = new Set([1, 3]);
+      component.onAdvancedSearch({ assignment: 'assigned' });
+      expect(component.filteredPermissionCount).toBe(2);
+    });
+
+    it('combines search and drawer filters', () => {
+      component.onSearchChange('family');
+      component.onAdvancedSearch({ action: 'create' });
+      expect(component.filteredPermissionCount).toBe(1);
+      expect(component.filteredGroups[0].permissions[0].name).toBe('families.create');
+    });
+
+    it('shows empty filtered groups when no permissions match', () => {
+      component.onSearchChange('nonexistent-permission');
+      expect(component.filteredGroups.length).toBe(0);
+      expect(component.filteredPermissionCount).toBe(0);
+    });
+
+    it('clears all filters and search together', () => {
+      component.onSearchChange('family');
+      component.onAdvancedSearch({ module: 'Families', action: 'view' });
+      component.clearAllFilters();
+      expect(component.searchQuery).toBe('');
+      expect(component.getActiveFilterCount()).toBe(0);
+      expect(component.filteredPermissionCount).toBe(4);
+    });
+
+    it('preserves search and filters after assignment toggle', () => {
+      component.onSearchChange('family');
+      component.onAdvancedSearch({ action: 'view' });
+      const permission = component.allPermissions.find((item) => item.id === 1)!;
+
+      component.togglePermission(permission);
+
+      expect(component.searchQuery).toBe('family');
+      expect(component.actionFilter).toBe('view');
+      expect(component.filteredPermissionCount).toBe(1);
+      expect(component.selectedPermissionIds.has(1)).toBe(true);
+    });
+
+    it('removes a single active filter chip', () => {
+      component.onAdvancedSearch({ module: 'Families', action: 'view' });
+      component.removeFilter(component.getActiveFilters()[0]);
+      expect(component.moduleFilter).toBe('');
+      expect(component.filteredPermissionCount).toBe(2);
+    });
+  });
+});

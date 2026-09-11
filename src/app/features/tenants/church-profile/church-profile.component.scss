@@ -5,7 +5,7 @@
 
 @use '../../../../styles/button-system' as *;
 @use '../../../shared/styles/standardized-list' as *;
-@import '../../donations/styles/stewardship-split-layout.scss';
+@use '../../donations/styles/stewardship-split-layout.scss';
 
 // ============================================================================
 // CONTAINER & LAYOUT
@@ -167,7 +167,7 @@
     
     p {
       color: var(--text-secondary);
-      font-size: 1.125rem;
+      font-size: var(--cf-text-body, 0.8rem);
       font-weight: 500;
     }
   }
@@ -189,13 +189,13 @@
     h3 {
       color: var(--danger-color);
       margin: 0 0 0.75rem 0;
-      font-size: 1.5rem;
+      font-size: var(--cf-text-subsection, 0.9rem);
       font-weight: 700;
     }
     
     p {
       color: var(--text-secondary);
-      font-size: 1.063rem;
+      font-size: var(--cf-text-body, 0.8rem);
       line-height: 1.6;
     }
   }
@@ -5499,7 +5499,7 @@
 }
 
 .cp-hero__name {
-  font-size: 1.5rem !important;
+  font-size: var(--cf-text-page-title, 1.5rem) !important;
   font-weight: 600 !important;
   line-height: 1.25 !important;
   color: var(--text-primary) !important;

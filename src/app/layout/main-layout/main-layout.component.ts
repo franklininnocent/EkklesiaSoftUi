@@ -4,7 +4,6 @@ import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable, Subject } from 'rxjs';
 import { filter, takeUntil } from 'rxjs/operators';
-import { trigger, transition, style, animate } from '@angular/animations';
 
 import { AppState } from '@core/store';
 import { User, Tenant } from '@core/models';
@@ -12,7 +11,6 @@ import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import { AuthService } from '@core/services/auth.service';
-import { ThemeService, FontSize, FontSizeConfig } from '@core/services/theme.service';
 import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb';
 import { QuickCollectDrawerComponent } from '@features/donations/components/quick-collect-drawer/quick-collect-drawer.component';
 import { QuickCollectService } from '@features/donations/services/quick-collect.service';
@@ -22,7 +20,8 @@ import { SupportSessionBannerComponent } from '@features/support-center/componen
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { SubscriptionStatusBannerComponent } from '@shared/components/subscription-status-banner/subscription-status-banner.component';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
-
+import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
+import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 @Component({
   selector: 'app-main-layout',
   standalone: true,
@@ -35,30 +34,12 @@ import { SubscriptionAccessService } from '@core/services/subscription-access.se
     GlobalFamilySearchComponent,
     SupportSessionBannerComponent,
     SubscriptionStatusBannerComponent,
+    UserAvatarComponent,
+    ImageViewerComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    trigger('slideIn', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'scale(0.9) translateY(10px)' }),
-        animate('300ms cubic-bezier(0.16, 1, 0.3, 1)', style({ opacity: 1, transform: 'scale(1) translateY(0)' }))
-      ]),
-      transition(':leave', [
-        animate('200ms cubic-bezier(0.4, 0, 1, 1)', style({ opacity: 0, transform: 'scale(0.9) translateY(10px)' }))
-      ])
-    ]),
-    trigger('slideDown', [
-      transition(':enter', [
-        style({ height: 0, opacity: 0, overflow: 'hidden' }),
-        animate('300ms cubic-bezier(0.16, 1, 0.3, 1)', style({ height: '*', opacity: 1 }))
-      ]),
-      transition(':leave', [
-        animate('200ms cubic-bezier(0.4, 0, 1, 1)', style({ height: 0, opacity: 0, overflow: 'hidden' }))
-      ])
-    ])
-  ]
 })
 export class MainLayoutComponent implements OnInit, OnDestroy {
   private store = inject(Store<AppState>);
@@ -66,7 +47,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private elementRef = inject(ElementRef);
   private cdr = inject(ChangeDetectorRef);
-  public themeService = inject(ThemeService);
   private destroy$ = new Subject<void>();
   private quickCollectService = inject(QuickCollectService);
   private supportSessions = inject(SupportSessionService);
@@ -78,17 +58,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   isUserMenuOpen = false;
   isUserMenuClosing = false;
   currentYear = new Date().getFullYear();
-  
-  // Theme settings panel
-  isThemePanelOpen = false;
-  currentFontSize$: Observable<FontSize>;
-  fontSizeOptions: FontSizeConfig[];
 
   constructor() {
     this.currentUser$ = this.store.select(selectCurrentUser);
     this.currentTenant$ = this.store.select(selectCurrentTenant);
-    this.currentFontSize$ = this.themeService.fontSize$;
-    this.fontSizeOptions = this.themeService.fontSizeOptions;
   }
 
   ngOnInit(): void {
@@ -109,6 +82,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
+    if (this.authService.canAccessSupportCenter()) {
+      this.supportSessions.syncWithServer().pipe(takeUntil(this.destroy$)).subscribe();
+    }
+
     // Breadcrumb audit: when a support session is active, log navigations.
     this.router.events
       .pipe(
@@ -116,7 +93,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe((event) => {
-        if (!this.supportSessions.sessionId) {
+        if (!this.supportSessions.isSessionLive) {
           return;
         }
         const url = event.urlAfterRedirects || event.url;
@@ -128,7 +105,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
             page: url,
             action: 'navigate',
           })
-          .subscribe({ error: () => undefined });
+          .subscribe();
       });
   }
 
@@ -144,15 +121,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       const clickedInside = this.elementRef.nativeElement.querySelector('.user-dropdown')?.contains(event.target);
       if (!clickedInside) {
         this.closeUserMenu();
-      }
-    }
-
-    // Close theme panel when clicking outside
-    if (this.isThemePanelOpen) {
-      const themeFab = this.elementRef.nativeElement.querySelector('.theme-settings-fab');
-      const clickedInsideThemeFab = themeFab?.contains(event.target);
-      if (!clickedInsideThemeFab) {
-        this.isThemePanelOpen = false;
       }
     }
   }
@@ -186,6 +154,33 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }, 300); // Match animation duration
   }
 
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+
+  getUserPhotoUrl(user: User): string | null {
+    return resolveUserProfileImageUrl(user);
+  }
+
+  openPhotoViewer(user: User, event: Event): void {
+    event.stopPropagation();
+    const url = this.getUserPhotoUrl(user);
+    if (!url) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: url,
+      alt: user.name,
+      title: user.name,
+      subtitle: user.email,
+    };
+    this.cdr.markForCheck();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.markForCheck();
+  }
+
   getInitials(name: string): string {
     if (!name) return '?';
     
@@ -209,25 +204,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     setTimeout(() => {
       this.store.dispatch(AuthActions.logout());
     }, 100);
-  }
-
-  // Theme Panel Methods
-  toggleThemePanel(): void {
-    this.isThemePanelOpen = !this.isThemePanelOpen;
-  }
-
-  closeThemePanel(): void {
-    this.isThemePanelOpen = false;
-  }
-
-  selectFontSize(size: FontSize): void {
-    this.themeService.setFontSize(size);
-    // Optionally close the panel after selection
-    // this.isThemePanelOpen = false;
-  }
-
-  isCurrentFontSize(size: FontSize): boolean {
-    return this.themeService.getCurrentFontSize() === size;
   }
 
   /**
@@ -260,8 +236,21 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     return this.authService.canAccessRbac(user);
   }
 
+  canAccessSupport(user: User | null): boolean {
+    return this.authService.canAccessSupport(user);
+  }
+
+  canAccessSupportCenter(user: User | null): boolean {
+    return this.authService.canAccessSupportCenter(user);
+  }
+
+  canAccessApplicationAccess(user: User | null): boolean {
+    return this.authService.canAccessApplicationAccess(user);
+  }
+
   canViewDonations(user: User | null): boolean {
-    if (!this.authService.canAccessDonations(user)) {
+    const hasActiveSupportSession = !!this.supportSessions.sessionId;
+    if (!this.authService.canAccessDonations(user, { hasActiveSupportSession })) {
       return false;
     }
     // Soft-gate: hide when tenant subscription is expired/suspended.
@@ -289,6 +278,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       return this.subscriptionAccess.canViewGatedModules();
     }
     return true;
+  }
+
+  hasParishContext(user: User | null): boolean {
+    return this.authService.hasParishContext(user);
   }
 
   openQuickCollect(): void {

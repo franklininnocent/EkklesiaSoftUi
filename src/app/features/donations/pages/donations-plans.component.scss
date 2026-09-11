@@ -78,7 +78,7 @@
 
 .plans-card__header-copy h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
   font-weight: 600;
   color: var(--cf-slate-900);
 }

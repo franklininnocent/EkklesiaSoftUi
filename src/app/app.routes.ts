@@ -2,6 +2,8 @@ import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth.guard';
 import { tenantGuard } from '@core/guards/tenant.guard';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
+import { supportCenterGuard } from '@core/guards/support-center.guard';
+import { applicationAccessGuard } from '@core/guards/application-access.guard';
 import { donationsGuard } from '@core/guards/donations.guard';
 import { ministriesGuard } from '@core/guards/ministries.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
@@ -9,6 +11,7 @@ import { FamilyListComponent } from './features/family-management/components/fam
 import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
 import { FamilyBreadcrumbResolver } from './features/family-management/resolvers/family-breadcrumb.resolver';
 import { bccGuard } from './core/guards/bcc.guard';
+import { supportGuard } from './core/guards/support.guard';
 
 export const routes: Routes = [
   {
@@ -60,9 +63,17 @@ export const routes: Routes = [
       },
       {
         path: 'support-center',
-        canActivate: [tenantAdminGuard],
+        canActivate: [supportCenterGuard],
         loadChildren: () =>
           import('./features/support-center/support-center.routes').then((m) => m.SUPPORT_CENTER_ROUTES),
+      },
+      {
+        path: 'application-access',
+        canActivate: [applicationAccessGuard],
+        loadChildren: () =>
+          import('./features/application-access/application-access.routes').then(
+            (m) => m.APPLICATION_ACCESS_ROUTES
+          ),
       },
       {
         path: 'platform/ministries',
@@ -104,6 +115,11 @@ export const routes: Routes = [
         canActivate: [ministriesGuard],
         loadChildren: () =>
           import('./features/ministries-associations/ministries.routes').then(m => m.MINISTRIES_ROUTES)
+      },
+      {
+        path: 'support',
+        canActivate: [supportGuard],
+        loadChildren: () => import('./features/support/support.routes').then((m) => m.SUPPORT_ROUTES),
       }
     ]
   },

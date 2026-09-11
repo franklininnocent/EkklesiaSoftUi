@@ -1,0 +1,31 @@
+<app-section-card title="Live activity">
+  <div class="aa-live__status">
+    <span class="aa-live__badge" [class.aa-live__badge--live]="stream.connectionState() === 'live'">
+      {{ connectionLabel() }}
+    </span>
+    <span
+      class="aa-live__paused"
+      *ngIf="stream.connectionState() === 'reconnecting'"
+      role="status"
+    >
+      Live updates paused — reconnecting
+    </span>
+  </div>
+
+  <p class="cf-sr-only" aria-live="polite">{{ stream.politeAnnouncement() }}</p>
+  <p class="cf-sr-only" role="alert">{{ stream.alertAnnouncement() }}</p>
+
+  <app-cf-empty-state
+    *ngIf="!stream.liveEvents().length"
+    title="Waiting for live activity"
+    description="New sign-ins and security events will appear here as they happen."
+    [hasActions]="false"
+  ></app-cf-empty-state>
+
+  <ol class="aa-live__list" *ngIf="stream.liveEvents().length">
+    <li *ngFor="let event of stream.liveEvents()">
+      <strong>{{ liveTelemetryLabel(event) }}</strong>
+      <span class="aa-live__time">{{ event.occurred_at | date: 'short' }}</span>
+    </li>
+  </ol>
+</app-section-card>

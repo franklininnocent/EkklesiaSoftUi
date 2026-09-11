@@ -1,4 +1,4 @@
-@import '../../donations/styles/stewardship-split-layout.scss';
+@use '../../donations/styles/stewardship-split-layout.scss';
 
 // Right-align footer actions (§9 / §12.5). Shared rule defaults to start.
 .cf-split-form-actions {
@@ -60,6 +60,60 @@
 .user-form-modal__leader-role {
   font-size: 0.75rem;
   color: var(--cf-muted);
+}
+
+.user-form-modal__profile-image {
+  margin-bottom: 1rem;
+}
+
+.user-form-modal__profile-image-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.35rem;
+}
+
+.user-form-modal__profile-preview {
+  width: 4rem;
+  height: 4rem;
+  border-radius: var(--cf-radius-pill);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--cf-slate-100, #f1f5f9);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+.user-form-modal__profile-preview--clickable {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-brand, #175cd3);
+    outline-offset: 2px;
+  }
+}
+
+.user-form-modal__profile-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.user-form-modal__file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
 }
 
 // Role assignment — enterprise selectable list (multi-select, not cards)

@@ -1,4 +1,4 @@
-@import '../../../../styles/church-financial-os-mixins';
+@use '../../../../styles/church-financial-os-mixins' as *;
 
 :host {
   display: block;
@@ -13,8 +13,8 @@
   }
 }
 
-/* Clickable rows — chrome only; density comes from global `.cf-table`. */
-.cf-table--clickable tbody tr {
+/* Clickable rows — projected tbody lives in parent templates; ::ng-deep required. */
+:host ::ng-deep .cf-table--clickable tbody tr {
   cursor: pointer;
 
   &:hover {

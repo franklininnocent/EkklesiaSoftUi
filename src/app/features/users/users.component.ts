@@ -7,7 +7,9 @@ import { DataTableComponent } from '@shared/components/data-table/data-table.com
 import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { ImageViewerComponent, UserAvatarComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
+import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
@@ -33,6 +35,8 @@ import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-re
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
     DisableWhenReadOnlyDirective,
+    ImageViewerComponent,
+    UserAvatarComponent,
   ],
   templateUrl: './users.component.html',
   styleUrl: './users.component.scss',
@@ -61,6 +65,8 @@ export class UsersComponent implements OnInit, OnDestroy {
   // Sorting state
   sortColumn: string = '';
   sortDirection: 'asc' | 'desc' | null = null;
+
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
 
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
@@ -311,6 +317,33 @@ export class UsersComponent implements OnInit, OnDestroy {
       return 'neutral';
     }
     return index === 0 ? 'info' : 'neutral';
+  }
+
+  getUserPhotoUrl(user: User): string | null {
+    return resolveUserProfileImageUrl(user);
+  }
+
+  openPhotoViewer(user: User, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const photoUrl = this.getUserPhotoUrl(user);
+    if (!photoUrl) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: photoUrl,
+      alt: user.name,
+      title: user.name,
+      subtitle: user.email,
+    };
+    this.cdr.markForCheck();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.markForCheck();
   }
 
   openCreateUserModal(): void {

@@ -1,4 +1,4 @@
-@import '../styles/stewardship-split-layout.scss';
+@use '../styles/stewardship-split-layout.scss';
 
 // Scoped override per the enterprise modal style guide §9/§12(5): the shared
 // .cf-split-form-actions rule has no justify-content (defaults to left), so a

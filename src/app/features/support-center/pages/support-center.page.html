@@ -9,7 +9,7 @@
   </div>
 
   <ng-container *ngIf="canAccess">
-    <div class="support-center__metrics" *ngIf="metrics as m" aria-label="Support ops summary">
+    <div class="support-center__metrics" *ngIf="canViewSessions && metrics as m" aria-label="Support ops summary">
       <div class="support-center__metric">
         <span class="support-center__metric-value">{{ m.active_count }}</span>
         <span class="support-center__metric-label">Active</span>
@@ -24,7 +24,7 @@
       </div>
     </div>
 
-    <div class="cf-attention-callout" *ngIf="myActive as a" role="status">
+    <div class="cf-attention-callout" *ngIf="canViewSessions && myActive as a" role="status">
       <p>
         Your active session:
         <strong>{{ a.tenant?.name || ('#' + a.tenant_id) }}</strong>
@@ -47,6 +47,8 @@
       [activeId]="activeTab"
       (tabChange)="onTabChange($event)"
     ></app-tab-strip>
+
+    <app-support-tickets-ops-panel *ngIf="activeTab === 'tickets'"></app-support-tickets-ops-panel>
 
     <div class="support-center__grid" *ngIf="activeTab === 'start'">
       <section class="cf-panel support-center__panel">
@@ -604,18 +606,35 @@
               label="Starts"
               fieldId="grant-starts"
               [required]="true"
+              [useLabelFor]="false"
               [errorText]="grantFieldError('starts_at')"
             >
-              <input id="grant-starts" type="datetime-local" formControlName="starts_at" />
+              <app-cf-datetime-field
+                formControlName="starts_at"
+                dateInputId="grant-starts"
+                labelledById="grant-starts-label"
+                dateAriaLabel="Start date"
+                timeAriaLabel="Start time"
+                [invalid]="!!grantFieldError('starts_at')"
+              ></app-cf-datetime-field>
             </app-form-field>
 
             <app-form-field
               label="Ends"
               fieldId="grant-ends"
               [required]="true"
+              [useLabelFor]="false"
               [errorText]="grantEndsError()"
             >
-              <input id="grant-ends" type="datetime-local" formControlName="ends_at" />
+              <app-cf-datetime-field
+                formControlName="ends_at"
+                dateInputId="grant-ends"
+                labelledById="grant-ends-label"
+                dateAriaLabel="End date"
+                timeAriaLabel="End time"
+                [minDateTime]="grantForm.controls.starts_at.value"
+                [invalid]="!!grantEndsError()"
+              ></app-cf-datetime-field>
             </app-form-field>
 
             <app-form-field
@@ -1287,6 +1306,8 @@
           </button>
         </div>
       </form>
+
+      <app-support-ticket-catalog-panel *ngIf="canManageSettings"></app-support-ticket-catalog-panel>
     </section>
   </ng-container>
 
@@ -1297,9 +1318,10 @@
     [confirmText]="confirmText"
     [confirmButtonClass]="confirmButtonClass"
     [showDescriptionInput]="showDecisionNote"
+    [externalSubmitting]="endingSession"
     descriptionLabel="Decision note (optional)"
     (confirmed)="onConfirm($event)"
-    (cancelled)="confirmOpen = false"
-    (closed)="confirmOpen = false"
+    (cancelled)="closeConfirm()"
+    (closed)="closeConfirm()"
   ></app-confirmation-modal>
 </section>

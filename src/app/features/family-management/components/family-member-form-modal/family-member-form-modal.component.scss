@@ -1,4 +1,4 @@
-@import '../../../donations/styles/stewardship-split-layout.scss';
+@use '../../../donations/styles/stewardship-split-layout.scss';
 
 // Field-level invalid state for .cf-split-* forms — not yet part of the
 // shared stewardship layout (Add Category has no client-side field errors

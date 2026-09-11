@@ -36,7 +36,6 @@ import { DiocesanBishopPanelComponent } from './components/diocesan-bishop-panel
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
-import { environment } from '@environments/environment';
 import { Subject } from 'rxjs';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 
@@ -1094,59 +1093,10 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get backend storage base URL
-   * Constructs the correct backend URL for storage files
+   * Signed display URL for pope image (private storage).
    */
-  private getStorageBaseUrl(): string {
-    // Get backend base URL from environment (remove /api suffix if present)
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    // Ensure it ends with /storage/
-    return baseUrl.endsWith('/') ? `${baseUrl}storage/` : `${baseUrl}/storage/`;
-  }
-
-  /**
-   * Get pope image URL (with thumbnail fallback)
-   */
-  getPopeImageUrl(size: '128x128' | '300x300' | 'original' = '300x300'): string | null {
-    if (!this.popeDetails) {
-      return null;
-    }
-
-    // Priority 1: Use direct URL if available (for original size)
-    if (size === 'original' && this.popeDetails.pope_image_url) {
-      return this.popeDetails.pope_image_url;
-    }
-
-    // Priority 2: Construct thumbnail URL from image path
-    const imagePath = this.popeDetails.pope_image_path;
-    if (imagePath) {
-      if (size !== 'original') {
-        // Construct thumbnail path
-        const pathInfo = imagePath.split('.');
-        const extension = pathInfo.pop();
-        const basePath = pathInfo.join('.');
-        const thumbnailPath = `${basePath}_${size}.${extension}`;
-        
-        // Construct full URL from storage path
-        const baseUrl = this.getStorageBaseUrl();
-        const thumbnailUrl = baseUrl + thumbnailPath;
-        
-        // Return thumbnail URL if available, otherwise fall back to original
-        return thumbnailUrl;
-      } else {
-        // For original, construct URL from path
-        const baseUrl = this.getStorageBaseUrl();
-        return baseUrl + imagePath;
-      }
-    }
-
-    // Priority 3: Fallback to direct URL (even if not original size)
-    if (this.popeDetails.pope_image_url) {
-      return this.popeDetails.pope_image_url;
-    }
-
-    // No image available
-    return null;
+  getPopeImageUrl(_size: '128x128' | '300x300' | 'original' = '300x300'): string | null {
+    return this.popeDetails?.pope_image_url ?? null;
   }
 
   /**
@@ -1162,21 +1112,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   getPopeImageUrlWithFallback(): string {
-    const thumbnailUrl = this.getPopeImageUrl('300x300');
-    if (thumbnailUrl) {
-      return thumbnailUrl;
-    }
-
-    const originalUrl = this.getPopeImageUrl('original');
-    if (originalUrl) {
-      return originalUrl;
-    }
-
-    if (this.popeDetails?.pope_image_url) {
-      return this.popeDetails.pope_image_url;
-    }
-
-    return '';
+    return this.getPopeImageUrl() ?? '';
   }
 
   /**
@@ -1199,64 +1135,10 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get patron image URL (with thumbnail fallback)
+   * Signed display URL for patron image (private storage).
    */
-  getPatronImageUrl(size: '128x128' | '300x300' | 'original' = '300x300'): string | null {
-    if (!this.extendedProfile) {
-      return null;
-    }
-
-    const imagePath = this.extendedProfile.patron_image_path;
-    const imageUrl = this.extendedProfile.patron_image_url;
-
-    // If no path or URL, return null
-    if (!imagePath && !imageUrl) {
-      return null;
-    }
-
-    // For original size, prefer URL, then path
-    if (size === 'original') {
-      if (imageUrl) {
-        return imageUrl;
-      }
-      if (imagePath) {
-        const baseUrl = this.getStorageBaseUrl();
-        return baseUrl + imagePath;
-      }
-      return null;
-    }
-
-    // For thumbnails, try to construct from path first
-    if (imagePath) {
-      try {
-        const pathParts = imagePath.split('.');
-        if (pathParts.length >= 2) {
-          const extension = pathParts.pop();
-          const basePath = pathParts.join('.');
-          const thumbnailPath = `${basePath}_${size}.${extension}`;
-          const baseUrl = this.getStorageBaseUrl();
-          return baseUrl + thumbnailPath;
-        } else {
-          // Path doesn't have extension, use as-is
-          const baseUrl = this.getStorageBaseUrl();
-          return baseUrl + imagePath;
-        }
-      } catch (e) {
-        console.warn('Error constructing thumbnail URL:', e);
-        // Fallback to original path
-        if (imagePath) {
-          const baseUrl = this.getStorageBaseUrl();
-          return baseUrl + imagePath;
-        }
-      }
-    }
-
-    // Fallback to original URL if path construction failed
-    if (imageUrl) {
-      return imageUrl;
-    }
-
-    return null;
+  getPatronImageUrl(_size: '128x128' | '300x300' | 'original' = '300x300'): string | null {
+    return this.extendedProfile?.patron_image_url ?? null;
   }
 
   /**
@@ -1338,72 +1220,18 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Get patron image URL with comprehensive fallback
    */
   getPatronImageUrlWithFallback(): string {
-    if (!this.extendedProfile) {
-      return '';
-    }
-
-    // Try thumbnail first
-    const thumbnailUrl = this.getPatronImageUrl('300x300');
-    if (thumbnailUrl) {
-      return thumbnailUrl;
-    }
-
-    // Try original size
-    const originalUrl = this.getPatronImageUrl('original');
-    if (originalUrl) {
-      return originalUrl;
-    }
-
-    // Try direct URL
-    if (this.extendedProfile.patron_image_url) {
-      return this.extendedProfile.patron_image_url;
-    }
-
-    // Construct from path
-    return this.getPatronImagePathUrl();
-  }
-
-  /**
-   * Get patron image URL directly from path
-   */
-  getPatronImagePathUrl(): string {
-    if (!this.extendedProfile?.patron_image_path) {
-      return '';
-    }
-    const baseUrl = this.getStorageBaseUrl();
-    return baseUrl + this.extendedProfile.patron_image_path;
+    return this.getPatronImageUrl() ?? '';
   }
 
   /**
    * Handle patron image error - try fallback
    */
-  handlePatronImageError(event: any): void {
-    const img = event.target;
-    
-    // Try original size as fallback
-    if (this.extendedProfile?.patron_image_url) {
-      if (img.src !== this.extendedProfile.patron_image_url) {
-        img.src = this.extendedProfile.patron_image_url;
-        return;
-      }
-    }
-    
-    // Try original path URL
-    if (this.extendedProfile?.patron_image_path) {
-      const baseUrl = this.getStorageBaseUrl();
-      const originalUrl = baseUrl + this.extendedProfile.patron_image_path;
-      if (img.src !== originalUrl) {
-        img.src = originalUrl;
-        return;
-      }
-    }
-    
-    // If still failing, hide the image
+  handlePatronImageError(event: Event): void {
+    const img = event.target as HTMLImageElement;
     img.style.display = 'none';
     console.warn('Failed to load patron image:', {
       attemptedUrl: img.src,
       patron_image_url: this.extendedProfile?.patron_image_url,
-      patron_image_path: this.extendedProfile?.patron_image_path
     });
   }
 

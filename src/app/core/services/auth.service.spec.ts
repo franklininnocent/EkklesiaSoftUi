@@ -141,6 +141,25 @@ describe('AuthService RBAC access helpers', () => {
     expect(service.canAccessMinistries(user)).toBe(true);
   });
 
+  it('denies Donations for SuperAdmin without tenant_id or support session', () => {
+    const user = { role_name: 'SuperAdmin', tenant_id: null, permissions: [] } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessDonations(user)).toBe(false);
+    expect(service.canAccessDonations(user, { hasActiveSupportSession: false })).toBe(false);
+  });
+
+  it('allows Donations for SuperAdmin with active support session', () => {
+    const user = { role_name: 'SuperAdmin', tenant_id: null, permissions: [] } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessDonations(user, { hasActiveSupportSession: true })).toBe(true);
+  });
+
+  it('allows Donations for SuperAdmin with home tenant_id', () => {
+    const user = { role_name: 'SuperAdmin', tenant_id: 7, permissions: [] } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessDonations(user)).toBe(true);
+  });
+
   it('allows pastoral care for Parish Priest', () => {
     const user = { role_name: 'Parish Priest', tenant_id: 42, permissions: [] } as any;
     expect(service.canAccessPastoral(user)).toBe(true);
@@ -149,6 +168,36 @@ describe('AuthService RBAC access helpers', () => {
   it('denies pastoral care for a member without permissions', () => {
     const user = { role_name: 'Member', tenant_id: 42, permissions: [] } as any;
     expect(service.canAccessPastoral(user)).toBe(false);
+  });
+
+  it('allows Application Access for SuperAdmin with Ekklesia role', () => {
+    const user = {
+      role_name: 'SuperAdmin',
+      has_ekklesia_role: true,
+      permissions: [],
+    } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessApplicationAccess(user)).toBe(true);
+  });
+
+  it('allows Application Access for Ekklesia user with view permission', () => {
+    const user = {
+      role_name: 'EkklesiaUser',
+      has_ekklesia_role: true,
+      permissions: [{ name: 'application_access.view' }],
+    } as any;
+    (service as any).currentUserSubject.next(user);
+    expect(service.canAccessApplicationAccess(user)).toBe(true);
+  });
+
+  it('denies Application Access for tenant users', () => {
+    const user = {
+      role_name: 'Administrator',
+      tenant_id: 42,
+      has_ekklesia_role: false,
+      permissions: [{ name: 'application_access.view' }],
+    } as any;
+    expect(service.canAccessApplicationAccess(user)).toBe(false);
   });
 
   it('allows pastoral care when the user has pastoral.care.view', () => {

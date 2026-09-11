@@ -103,14 +103,14 @@
 
 .cf-split-card__header-copy h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
   font-weight: 600;
   color: var(--cf-slate-900);
 }
 
 .cf-split-card__header-copy p {
   margin: 0.2rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--cf-text-meta, 0.8rem);
   color: var(--cf-muted);
 }
 
@@ -144,7 +144,7 @@
 
 .cf-split-form-cta__title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--cf-text-subsection, 0.9rem);
   font-weight: 600;
   color: var(--cf-slate-900);
 }

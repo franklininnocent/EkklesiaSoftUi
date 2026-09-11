@@ -3,7 +3,7 @@
   [title]="title"
   size="xs"
   [nested]="nested"
-  [isSubmitting]="isSubmitting"
+  [isSubmitting]="isBusy"
   closeAriaLabel="Close confirmation"
   (closeRequested)="onCloseRequested()"
 >
@@ -20,7 +20,7 @@
       [(ngModel)]="description"
       [placeholder]="descriptionPlaceholder"
       [maxlength]="descriptionMaxLength"
-      [disabled]="isSubmitting"
+      [disabled]="isBusy"
       rows="4"
       aria-describedby="cf-confirm-char-count"
     ></textarea>
@@ -39,7 +39,7 @@
       type="button"
       class="cf-btn"
       (click)="onCancel()"
-      [disabled]="isSubmitting"
+      [disabled]="isBusy"
     >
       {{ cancelText }}
     </button>
@@ -47,11 +47,11 @@
       type="button"
       [class]="confirmBtnClass"
       (click)="onConfirm()"
-      [disabled]="isSubmitting || isDescriptionTooLong"
+      [disabled]="isBusy || isDescriptionTooLong || isDescriptionMissing"
     >
-      <span *ngIf="!isSubmitting">{{ confirmText }}</span>
-      <span *ngIf="isSubmitting" class="cf-confirm__spinner" aria-hidden="true"></span>
-      <span *ngIf="isSubmitting" class="cf-sr-only">Working…</span>
+      <span *ngIf="!isBusy">{{ confirmText }}</span>
+      <span *ngIf="isBusy" class="cf-confirm__spinner" aria-hidden="true"></span>
+      <span *ngIf="isBusy" class="cf-sr-only">Working…</span>
     </button>
   </div>
 </app-modal-shell>

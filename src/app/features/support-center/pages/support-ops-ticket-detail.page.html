@@ -1,0 +1,301 @@
+<section class="support-detail cf-page" *ngIf="!loading && ticket as t">
+  <app-page-header [title]="t.ticket_number" [subtitle]="t.subject">
+    <a routerLink="/support-center" [queryParams]="{ tab: 'tickets' }" class="cf-btn">Back to tickets</a>
+    <button
+      *ngIf="canStartDiagnosis(t)"
+      type="button"
+      class="cf-btn"
+      (click)="startDiagnosisSession(t)"
+    >
+      Start diagnosis session
+    </button>
+    <button
+      *ngIf="canAssign(t)"
+      type="button"
+      class="cf-btn cf-btn-primary"
+      [disabled]="acting"
+      (click)="assignToMe()"
+    >
+      Start working
+    </button>
+    <button
+      *ngIf="canSetAwaitingYou(t)"
+      type="button"
+      class="cf-btn"
+      [disabled]="acting"
+      (click)="setAwaitingYou()"
+    >
+      Awaiting parish
+    </button>
+    <button
+      *ngIf="canSetAwaitingEkklesia(t)"
+      type="button"
+      class="cf-btn"
+      [disabled]="acting"
+      (click)="setAwaitingEkklesia()"
+    >
+      Awaiting Ekklesia
+    </button>
+    <button
+      *ngIf="canResolve(t)"
+      type="button"
+      class="cf-btn cf-btn-primary"
+      [disabled]="acting"
+      (click)="openLifecycle('resolve')"
+    >
+      Mark as resolved
+    </button>
+    <button
+      *ngIf="canClose(t)"
+      type="button"
+      class="cf-btn cf-btn-primary"
+      [disabled]="acting"
+      (click)="openLifecycle('close')"
+    >
+      Close ticket
+    </button>
+    <button
+      *ngIf="canReopen(t)"
+      type="button"
+      class="cf-btn"
+      [disabled]="acting"
+      (click)="openLifecycle('reopen')"
+    >
+      Reopen ticket
+    </button>
+  </app-page-header>
+
+  <div class="cf-inline-alert" *ngIf="actionError" role="alert">
+    <p>{{ actionError }}</p>
+  </div>
+
+  <div class="cf-panel support-detail__hero">
+    <div class="support-detail__hero-top">
+      <div class="support-detail__badges">
+        <app-status-badge [label]="statusLabel(t.status)" [tone]="statusTone(t.status)"></app-status-badge>
+        <app-status-badge [label]="priorityLabel(t.priority)" [tone]="priorityTone(t.priority)"></app-status-badge>
+        <span class="cf-caption support-detail__sla-risk" *ngIf="t.sla?.at_risk">SLA at risk</span>
+      </div>
+      <p class="cf-caption support-detail__updated" *ngIf="t.updated_at">
+        Updated {{ t.updated_at | date: 'medium' }}
+      </p>
+    </div>
+    <dl class="support-detail__meta-grid cf-meta">
+      <div *ngIf="t.tenant">
+        <dt>Parish</dt>
+        <dd>{{ t.tenant.name }}</dd>
+      </div>
+      <div *ngIf="t.request_type">
+        <dt>Type</dt>
+        <dd>{{ t.request_type.name }}</dd>
+      </div>
+      <div *ngIf="t.category">
+        <dt>Category</dt>
+        <dd>{{ t.category.name }}</dd>
+      </div>
+      <div *ngIf="t.requester">
+        <dt>Requester</dt>
+        <dd>{{ t.requester.name }}</dd>
+      </div>
+      <div *ngIf="t.assigned_agent">
+        <dt>Assigned to</dt>
+        <dd>{{ t.assigned_agent.name }}</dd>
+      </div>
+      <div *ngIf="t.queue">
+        <dt>Queue</dt>
+        <dd>{{ t.queue.name }}</dd>
+      </div>
+      <div *ngIf="t.created_at">
+        <dt>Opened</dt>
+        <dd>{{ t.created_at | date: 'medium' }}</dd>
+      </div>
+    </dl>
+    <p class="cf-caption support-detail__sla" *ngIf="slaCaption(t) as slaText">{{ slaText }}</p>
+  </div>
+
+  <div class="support-detail__grid">
+    <div class="support-detail__main">
+      <section class="cf-panel support-detail__section">
+        <h2 class="cf-section-title">Conversation</h2>
+        <p class="cf-meta" *ngIf="!t.comments?.length">No public messages yet.</p>
+        <article *ngFor="let c of t.comments" class="support-detail__comment">
+          <p class="support-detail__comment-meta cf-meta">
+            <strong>{{ c.author?.name || 'Unknown' }}</strong>
+            · {{ c.created_at | date: 'short' }}
+          </p>
+          <p class="cf-body support-detail__comment-body">{{ c.body }}</p>
+        </article>
+        <form
+          *ngIf="canAddPublicComment(t)"
+          [formGroup]="commentForm"
+          (ngSubmit)="postComment()"
+          class="support-detail__comment-form"
+        >
+          <label class="cf-field">
+            <span class="cf-label">Add a public reply</span>
+            <textarea class="cf-input" rows="3" formControlName="body"></textarea>
+          </label>
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="posting || commentForm.invalid">
+            Send reply
+          </button>
+        </form>
+      </section>
+
+      <section class="cf-panel support-detail__section" *ngIf="canInternalNote()">
+        <h2 class="cf-section-title">Internal notes</h2>
+        <p class="cf-meta" *ngIf="!t.internal_comments?.length">No internal notes yet.</p>
+        <article *ngFor="let c of t.internal_comments" class="support-detail__comment">
+          <p class="support-detail__comment-meta cf-meta">
+            <strong>{{ c.author?.name || 'Unknown' }}</strong>
+            · {{ c.created_at | date: 'short' }}
+          </p>
+          <p class="cf-body support-detail__comment-body">{{ c.body }}</p>
+        </article>
+        <form
+          [formGroup]="internalNoteForm"
+          (ngSubmit)="postInternalNote()"
+          class="support-detail__comment-form"
+        >
+          <label class="cf-field">
+            <span class="cf-label">Add internal note</span>
+            <textarea class="cf-input" rows="3" formControlName="body"></textarea>
+          </label>
+          <button type="submit" class="cf-btn" [disabled]="postingInternal || internalNoteForm.invalid">
+            Save note
+          </button>
+        </form>
+      </section>
+
+      <section class="cf-panel support-detail__section" *ngIf="t.activity?.length">
+        <h2 class="cf-section-title">Activity</h2>
+        <ul class="support-detail__activity">
+          <li *ngFor="let e of t.activity" class="cf-meta">
+            <span class="support-detail__activity-label">{{ eventLabel(e.event_type) }}</span>
+            <span *ngIf="e.old_value && e.new_value">
+              — {{ statusLabel(e.old_value) }} → {{ statusLabel(e.new_value) }}
+            </span>
+            <span class="support-detail__activity-time">· {{ e.created_at | date: 'short' }}</span>
+            <span *ngIf="e.actor?.name as actorName"> · {{ actorName }}</span>
+            <span *ngIf="e.reason" class="support-detail__activity-reason"> — {{ e.reason }}</span>
+          </li>
+        </ul>
+      </section>
+    </div>
+
+    <aside class="support-detail__rail" *ngIf="hasRailContent(t)">
+      <section class="cf-panel support-detail__section" *ngIf="t.description">
+        <h2 class="cf-section-title">Description</h2>
+        <p class="cf-body support-detail__prewrap">{{ t.description }}</p>
+      </section>
+
+      <section class="cf-panel support-detail__section" *ngIf="hasBugDetails(t)">
+        <h2 class="cf-section-title">Bug details</h2>
+        <dl class="support-detail__detail-list cf-meta">
+          <div *ngIf="t.steps_to_reproduce">
+            <dt>Steps to reproduce</dt>
+            <dd class="cf-body support-detail__prewrap">{{ t.steps_to_reproduce }}</dd>
+          </div>
+          <div *ngIf="t.expected_result">
+            <dt>Expected result</dt>
+            <dd class="cf-body support-detail__prewrap">{{ t.expected_result }}</dd>
+          </div>
+          <div *ngIf="t.actual_result">
+            <dt>Actual result</dt>
+            <dd class="cf-body support-detail__prewrap">{{ t.actual_result }}</dd>
+          </div>
+          <div *ngIf="t.error_message">
+            <dt>Error message</dt>
+            <dd class="cf-body support-detail__prewrap">{{ t.error_message }}</dd>
+          </div>
+          <div *ngIf="bugDetail(t, 'frequency') as frequency">
+            <dt>Frequency</dt>
+            <dd>{{ frequency }}</dd>
+          </div>
+          <div *ngIf="bugDetail(t, 'browser') as browser">
+            <dt>Browser</dt>
+            <dd>{{ browser }}</dd>
+          </div>
+          <div *ngIf="bugDetail(t, 'device') as device">
+            <dt>Device</dt>
+            <dd>{{ device }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section class="cf-panel support-detail__section" *ngIf="t.affected_module || t.business_impact">
+        <h2 class="cf-section-title">Context</h2>
+        <dl class="support-detail__detail-list cf-meta">
+          <div *ngIf="t.affected_module">
+            <dt>Affected area</dt>
+            <dd>{{ t.affected_module }}</dd>
+          </div>
+          <div *ngIf="t.business_impact">
+            <dt>Business impact</dt>
+            <dd class="cf-body support-detail__prewrap">{{ t.business_impact }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        class="cf-panel support-detail__section"
+        *ngIf="t.status === 'resolved' || t.status === 'closed'"
+      >
+        <h2 class="cf-section-title">Resolution</h2>
+        <dl class="support-detail__detail-list cf-meta">
+          <div>
+            <dt>Resolved by</dt>
+            <dd>{{ resolvedByLabel(t) }}</dd>
+          </div>
+          <div *ngIf="t.sla?.resolved_at as resolvedAt">
+            <dt>Resolved at</dt>
+            <dd>{{ resolvedAt | date: 'medium' }}</dd>
+          </div>
+        </dl>
+        <p class="cf-body support-detail__prewrap" *ngIf="t.resolution_summary">
+          {{ t.resolution_summary }}
+        </p>
+      </section>
+
+      <section class="cf-panel support-detail__section" *ngIf="t.attachments?.length">
+        <h2 class="cf-section-title">Attachments</h2>
+        <ul class="support-detail__attachments">
+          <li *ngFor="let a of t.attachments">
+            <button
+              type="button"
+              class="support-detail__attachment-btn"
+              [disabled]="downloadingId === a.id"
+              (click)="downloadAttachment(a.id, a.original_name)"
+            >
+              <span class="cf-body">{{ a.original_name }}</span>
+              <span class="cf-caption">{{ formatFileSize(a.size_bytes) }}</span>
+            </button>
+          </li>
+        </ul>
+      </section>
+    </aside>
+  </div>
+</section>
+
+<div class="cf-loading-block cf-panel" *ngIf="loading">
+  <app-loading-skeleton type="card"></app-loading-skeleton>
+</div>
+
+<div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+  <p>{{ error }}</p>
+  <a routerLink="/support-center" [queryParams]="{ tab: 'tickets' }" class="cf-btn">Back to tickets</a>
+</div>
+
+<app-confirmation-modal
+  [show]="lifecycleConfirmOpen"
+  [title]="lifecycleTitle"
+  [message]="lifecycleMessage"
+  [confirmText]="lifecycleConfirmText"
+  [confirmButtonClass]="lifecycleConfirmClass"
+  [showDescriptionInput]="lifecycleNeedsReason || lifecycleAction === 'close'"
+  [descriptionLabel]="lifecycleDescriptionLabel"
+  [descriptionRequired]="lifecycleDescriptionRequired"
+  descriptionPlaceholder="Briefly explain what changed…"
+  (confirmed)="onLifecycleConfirmed($event)"
+  (cancelled)="closeLifecycle()"
+  (closed)="closeLifecycle()"
+></app-confirmation-modal>

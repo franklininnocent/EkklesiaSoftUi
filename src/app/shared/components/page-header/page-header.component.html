@@ -3,7 +3,8 @@
     <a *ngIf="backLink" [routerLink]="backLink" class="cf-page-header__back">← {{ backLabel }}</a>
 
     <div class="cf-page-header__title-row">
-      <h1 *ngIf="variant === 'page'">{{ title }}</h1>
+      <h1 *ngIf="variant === 'page' && titleLevel === 1">{{ title }}</h1>
+      <h3 *ngIf="variant === 'page' && titleLevel === 3">{{ title }}</h3>
       <h2 *ngIf="variant === 'panel'">{{ title }}</h2>
       <app-status-badge *ngIf="statusLabel" [label]="statusLabel" [tone]="statusTone"></app-status-badge>
     </div>

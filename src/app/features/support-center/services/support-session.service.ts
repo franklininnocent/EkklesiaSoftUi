@@ -1,6 +1,6 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
-import { BehaviorSubject, Observable, map, tap } from 'rxjs';
+import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
 import { environment } from '@environments/environment';
 import {
   ApiEnvelope,
@@ -30,12 +30,42 @@ export class SupportSessionService {
   private readonly sessionSubject = new BehaviorSubject<SupportSession | null>(this.readStored());
   readonly session$ = this.sessionSubject.asObservable();
 
+  /** Bumped when session apply/clear generation changes; stale sync responses are ignored. */
+  private applyEpoch = 0;
+
   get currentSession(): SupportSession | null {
     return this.sessionSubject.value;
   }
 
   get sessionId(): string | null {
-    return this.sessionSubject.value?.id ?? null;
+    return this.readCurrentSessionId();
+  }
+
+  /** True when local state represents an active, unexpired support session. */
+  get isSessionLive(): boolean {
+    return this.readCurrentSessionId() !== null;
+  }
+
+  /**
+   * Clear local session only when the failed request targeted the current session id.
+   * Returns true when the current session was invalidated.
+   */
+  invalidateIfMatchesCurrent(failedSessionId: string | null): boolean {
+    const currentId = this.readCurrentSessionId();
+    if (!failedSessionId || !currentId || failedSessionId !== currentId) {
+      return false;
+    }
+
+    this.clearSession();
+    return true;
+  }
+
+  /** Drop a locally expired session without side effects in getters. */
+  expireLocalIfNeeded(): void {
+    const session = this.currentSession;
+    if (session && this.isLocallyExpired(session)) {
+      this.clearSession();
+    }
   }
 
   searchTenants(q: string, perPage = 20): Observable<{ data: SupportTenantSummary[]; total: number }> {
@@ -163,13 +193,28 @@ export class SupportSessionService {
   }
 
   getActive(): Observable<SupportSession | null> {
+    const capturedEpoch = this.applyEpoch;
+
     return this.http.get<ApiEnvelope<SupportSession | null>>(`${this.base}/sessions/active`).pipe(
       map((res) => res.data ?? null),
-      tap((session) => this.setSession(session))
+      tap((session) => {
+        if (capturedEpoch !== this.applyEpoch) {
+          return;
+        }
+        this.applyServerActiveSession(session);
+      }),
+      catchError(() => of(null))
     );
   }
 
+  /** Reconcile localStorage with the server-side active session (no elevation header). */
+  syncWithServer(): Observable<SupportSession | null> {
+    return this.getActive();
+  }
+
   start(payload: StartSupportSessionPayload): Observable<SupportSession> {
+    this.bumpApplyEpoch();
+
     return this.http.post<ApiEnvelope<SupportSession>>(`${this.base}/sessions`, payload).pipe(
       map((res) => res.data),
       tap((session) => this.setSession(session))
@@ -177,10 +222,12 @@ export class SupportSessionService {
   }
 
   end(sessionId: string): Observable<SupportSession> {
+    this.bumpApplyEpoch();
+
     return this.http.post<ApiEnvelope<SupportSession>>(`${this.base}/sessions/${sessionId}/end`, {}).pipe(
       map((res) => res.data),
-      tap((session) => {
-        if (this.sessionId === sessionId) {
+      tap(() => {
+        if (this.readCurrentSessionId() === sessionId) {
           this.clearSession();
         }
       })
@@ -188,12 +235,14 @@ export class SupportSessionService {
   }
 
   forceEnd(sessionId: string): Observable<SupportSession> {
+    this.bumpApplyEpoch();
+
     return this.http
       .post<ApiEnvelope<SupportSession>>(`${this.base}/sessions/${sessionId}/force-end`, {})
       .pipe(
         map((res) => res.data),
         tap(() => {
-          if (this.sessionId === sessionId) {
+          if (this.readCurrentSessionId() === sessionId) {
             this.clearSession();
           }
         })
@@ -206,7 +255,7 @@ export class SupportSessionService {
       .pipe(
         map((res) => res.data),
         tap((session) => {
-          if (this.sessionId === sessionId) {
+          if (this.readCurrentSessionId() === sessionId) {
             this.setSession(session);
           }
         })
@@ -220,17 +269,23 @@ export class SupportSessionService {
   }
 
   recordEvent(payload: RecordSupportEventPayload): Observable<SupportSessionEvent | null> {
-    const sessionId = this.sessionId;
-    if (!sessionId) {
-      return new Observable((subscriber) => {
-        subscriber.next(null);
-        subscriber.complete();
-      });
+    const sessionIdUsed = this.readCurrentSessionId();
+    if (!sessionIdUsed) {
+      return of(null);
     }
 
     return this.http
-      .post<ApiEnvelope<SupportSessionEvent>>(`${this.base}/sessions/${sessionId}/events`, payload)
-      .pipe(map((res) => res.data));
+      .post<ApiEnvelope<SupportSessionEvent>>(`${this.base}/sessions/${sessionIdUsed}/events`, payload)
+      .pipe(
+        map((res) => res.data),
+        catchError((err: { message?: string; error?: { message?: string }; status?: number }) => {
+          const message = err?.error?.message ?? err?.message ?? '';
+          if (err?.status === 403 && this.isSupportSessionFailureMessage(message)) {
+            this.invalidateIfMatchesCurrent(sessionIdUsed);
+          }
+          return of(null);
+        })
+      );
   }
 
   searchEvents(filters: SupportEventFilters): Observable<PaginatedPayload<SupportSessionEvent>> {
@@ -373,6 +428,40 @@ export class SupportSessionService {
   clearSession(): void {
     localStorage.removeItem(STORAGE_KEY);
     this.sessionSubject.next(null);
+    this.bumpApplyEpoch();
+  }
+
+  private readCurrentSessionId(): string | null {
+    const session = this.currentSession;
+    if (!session || this.isLocallyExpired(session)) {
+      return null;
+    }
+
+    return session.id;
+  }
+
+  private bumpApplyEpoch(): void {
+    this.applyEpoch += 1;
+  }
+
+  private applyServerActiveSession(session: SupportSession | null): void {
+    if (!session || session.status !== 'active' || this.isLocallyExpired(session)) {
+      this.clearSession();
+      return;
+    }
+
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+    this.sessionSubject.next(session);
+    this.bumpApplyEpoch();
+  }
+
+  private isLocallyExpired(session: SupportSession): boolean {
+    return !!(session.expires_at && new Date(session.expires_at).getTime() <= Date.now());
+  }
+
+  private isSupportSessionFailureMessage(message: string): boolean {
+    const normalized = message.toLowerCase();
+    return normalized.includes('support session');
   }
 
   private normalizePage<T>(payload: any): PaginatedPayload<T> {
@@ -389,12 +478,14 @@ export class SupportSessionService {
   }
 
   private setSession(session: SupportSession | null): void {
-    if (!session || session.status !== 'active') {
+    if (!session || session.status !== 'active' || this.isLocallyExpired(session)) {
       this.clearSession();
       return;
     }
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     this.sessionSubject.next(session);
+    this.bumpApplyEpoch();
   }
 
   private readStored(): SupportSession | null {

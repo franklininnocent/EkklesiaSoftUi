@@ -107,12 +107,20 @@
             <td>
               <div class="family-list__head" *ngIf="family.head_of_family; else noHead">
                 <ng-container *ngIf="getHeadImageUrl(family) && !isAvatarBroken(family); else initialsAvatar">
-                  <img
-                    class="family-list__avatar family-list__avatar--photo"
-                    [src]="getHeadImageUrl(family)"
-                    [alt]="family.head_of_family + ' avatar'"
-                    (error)="onAvatarError(family)"
-                  />
+                  <button
+                    type="button"
+                    class="family-list__avatar family-list__avatar--photo family-list__avatar-trigger"
+                    [attr.aria-label]="'View photo of ' + family.head_of_family"
+                    (click)="openPhotoViewer(family, $event)"
+                    (keydown.enter)="$event.stopPropagation()"
+                  >
+                    <img
+                      [src]="getHeadImageUrl(family)"
+                      alt=""
+                      loading="lazy"
+                      (error)="onAvatarError(family)"
+                    />
+                  </button>
                 </ng-container>
                 <ng-template #initialsAvatar>
                   <div
@@ -227,4 +235,13 @@
     (clear)="onClearAdvancedSearch()"
     (close)="showAdvancedSearch = false"
   ></app-advanced-search-panel>
+
+  <app-image-viewer
+    *ngIf="photoViewer as viewer"
+    [src]="viewer.src"
+    [alt]="viewer.alt"
+    [title]="viewer.title"
+    [subtitle]="viewer.subtitle"
+    (closeRequested)="closePhotoViewer()"
+  ></app-image-viewer>
 </section>

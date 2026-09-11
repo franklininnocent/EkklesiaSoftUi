@@ -5,13 +5,13 @@
 
 // ============ CSS VARIABLES (Design Tokens) ============
 :host {
-  // Typography
-  --font-size-xxl: 1.75rem;
-  --font-size-xl: 1.5rem;
-  --font-size-lg: 1.125rem;
-  --font-size-md: 1rem;
-  --font-size-sm: 0.875rem;
-  --font-size-xs: 0.75rem;
+  // Typography — aligned to CF enterprise scale (see docs/frontend/enterprise-typography-style-guide.md)
+  --font-size-xxl: var(--cf-text-page-title, 1.5rem);
+  --font-size-xl: var(--cf-text-section-title, 1.05rem);
+  --font-size-lg: var(--cf-text-subsection, 0.9rem);
+  --font-size-md: var(--cf-text-base, 0.85rem);
+  --font-size-sm: var(--cf-text-body, 0.8rem);
+  --font-size-xs: var(--cf-text-caption, 0.72rem);
   --font-size-xxs: 0.6875rem;
 
   // Spacing
@@ -57,7 +57,7 @@
 
 // ============ TABS SYSTEM ============
 .tabs-container {
-  margin-bottom: var(--spacing-md);
+  margin-bottom: var(--spacing-sm);
 }
 
 .tabs {
@@ -474,7 +474,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-xxl);
+  padding: var(--spacing-lg);
   text-align: center;
 
   p {
@@ -505,7 +505,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: var(--spacing-xxl);
+  padding: var(--spacing-lg);
   text-align: center;
 
   .error-icon {
@@ -965,6 +965,85 @@
   padding: var(--spacing-md);
 }
 
+.assign-tab-container .role-selection-section {
+  padding: 0.5rem 0.65rem;
+}
+
+.assign-role-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+
+.assign-role-filters__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.assign-role-filters__chip-remove {
+  margin-left: 0.25rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
+}
+
+.assign-role-results {
+  margin: 0 0 0.75rem;
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+}
+
+.assign-role-tenant-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.assign-role-tenant-group {
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: #fff;
+}
+
+.assign-role-tenant-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  background: var(--gray-50);
+  border-bottom: 1px solid var(--gray-200);
+}
+
+.assign-role-tenant-name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.assign-role-tenant-count {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.assign-tab-container .assign-role-tenant-group .roles-grid {
+  margin-top: 0;
+  padding: 0.5rem;
+}
+
 .selection-header {
   display: flex;
   align-items: center;
@@ -972,6 +1051,62 @@
   margin-bottom: var(--spacing-xl);
   padding-bottom: var(--spacing-md);
   border-bottom: 2px solid var(--gray-200);
+}
+
+.assign-tab-container .selection-header {
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.5rem;
+  border-bottom-width: 1px;
+}
+
+.assign-tab-container .selection-header__main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.assign-tab-container .selection-header__toolbar {
+  flex: 0 1 420px;
+  min-width: min(100%, 260px);
+  margin-left: auto;
+}
+
+.assign-tab-container .selection-header__toolbar .cf-list-toolbar {
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.assign-tab-container .selection-header__toolbar .cf-list-toolbar__search {
+  flex: 1 1 180px;
+  min-width: 140px;
+  max-width: 260px;
+}
+
+.assign-tab-container .selection-header .header-icon {
+  font-size: 1.25rem;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  box-shadow: none;
+}
+
+.assign-tab-container .selection-header .header-content {
+  h2 {
+    font-size: var(--font-size-md);
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  p {
+    font-size: 0.72rem;
+    line-height: 1.3;
+    margin-top: 0.1rem;
+  }
 }
 
 .header-icon {
@@ -1012,6 +1147,12 @@
   margin-top: var(--spacing-lg);
 }
 
+.assign-tab-container .roles-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
 .role-card {
   background: white;
   border: 2px solid var(--gray-200);
@@ -1035,10 +1176,27 @@
   }
 }
 
+.assign-tab-container .role-card {
+  border-width: 1px;
+  border-radius: var(--radius-md);
+  padding: 0.55rem 0.65rem;
+  gap: 0.4rem;
+
+  &:hover:not(.disabled) {
+    box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+    transform: none;
+  }
+}
+
 .role-card-header {
   display: flex;
   align-items: flex-start;
   gap: var(--spacing-md);
+}
+
+.assign-tab-container .role-card-header {
+  gap: 0.45rem;
+  align-items: center;
 }
 
 .role-icon {
@@ -1051,6 +1209,13 @@
   background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
   border-radius: var(--radius-md);
   flex-shrink: 0;
+}
+
+.assign-tab-container .role-icon {
+  font-size: 1.1rem;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
 }
 
 .role-info {
@@ -1066,6 +1231,12 @@
   line-height: 1.3;
 }
 
+.assign-tab-container .role-name {
+  font-size: var(--font-size-sm);
+  margin: 0;
+  line-height: 1.25;
+}
+
 .role-description {
   font-size: var(--font-size-sm);
   color: var(--text-secondary);
@@ -1077,6 +1248,12 @@
   overflow: hidden;
 }
 
+.assign-tab-container .role-description {
+  font-size: 0.72rem;
+  line-height: 1.3;
+  -webkit-line-clamp: 1;
+}
+
 .role-card-footer {
   display: flex;
   align-items: center;
@@ -1084,6 +1261,29 @@
   flex-wrap: wrap;
   padding-top: var(--spacing-sm);
   border-top: 1px solid var(--gray-200);
+}
+
+.assign-tab-container .role-card-footer {
+  gap: 0.3rem;
+  padding-top: 0.35rem;
+
+  .role-users-count {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.1rem 0.35rem;
+    border-radius: var(--radius-full);
+    background: #eef2ff;
+    color: #4338ca;
+    border: 1px solid #c7d2fe;
+    white-space: nowrap;
+  }
+
+  .role-level,
+  .role-type,
+  .role-status {
+    font-size: 0.65rem;
+    padding: 0.1rem 0.35rem;
+  }
 }
 
 .role-level {
@@ -1155,17 +1355,49 @@
 
 // Assignment Section
 .assignment-section {
-  padding: var(--spacing-md);
+  padding: 0;
 }
 
-.assignment-header-wrapper {
+.assignment-context-bar {
   display: flex;
   align-items: center;
   gap: var(--spacing-md);
   flex-wrap: wrap;
-  padding-bottom: var(--spacing-md);
-  border-bottom: 2px solid var(--gray-200);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  padding: 0.65rem 0.75rem;
   margin-bottom: var(--spacing-md);
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.assignment-context-bar__role {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.assignment-context-bar__label {
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.assignment-context-bar .role-badge {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.assignment-context-bar .role-name {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 // Header Stats (inline in header)
@@ -1201,11 +1433,53 @@
   align-items: center;
   gap: var(--spacing-sm);
   flex-wrap: wrap;
-  margin-left: auto; // Push to right
+  margin-left: auto;
+  flex: 0 1 420px;
+  min-width: min(100%, 260px);
+
+  .cf-list-toolbar {
+    justify-content: flex-end;
+    gap: 0.4rem;
+    width: 100%;
+  }
+
+  .cf-list-toolbar__search {
+    flex: 1 1 180px;
+    min-width: 140px;
+    max-width: 260px;
+  }
+}
+
+.roles-permissions__active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-md);
+  background: var(--gray-50);
+}
+
+.roles-permissions__chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.roles-permissions__chip-remove {
+  margin-left: 0.25rem;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  color: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0;
 }
 
 // Base button styling with 3D depth effect
-.btn-filter-inline,
 .btn-action-inline {
   position: relative;
   display: inline-flex;
@@ -1239,7 +1513,7 @@
   }
 
   // Hide text labels, show only on hover (via title attribute tooltip)
-  span:not(.filter-badge) {
+  span {
     display: none;
   }
 
@@ -1283,74 +1557,6 @@
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
   }
 
-  .filter-badge {
-    display: block;
-    position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 8px;
-    height: 8px;
-    background: linear-gradient(135deg, #f43f5e 0%, #dc2626 100%);
-    border-radius: 50%;
-    border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(244, 63, 94, 0.5);
-    z-index: 2;
-    animation: pulse 2s ease-in-out infinite;
-  }
-
-  @keyframes pulse {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.15); }
-  }
-}
-
-// Unique colors for each action button
-
-// Filters Button - Blue with Distinct Yellow-Orange Icon
-.btn-filter-inline {
-  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
-  color: white;
-
-  // Distinct color for filter icon - Yellow-Orange for high visibility
-  svg {
-    color: #fbbf24; // Amber-400 - Highly visible against blue
-    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2)) drop-shadow(0 0 8px rgba(251, 191, 36, 0.4));
-    transition: all 0.3s ease;
-  }
-
-  &:hover {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    
-    svg {
-      color: #fde047; // Brighter yellow on hover
-      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25)) drop-shadow(0 0 12px rgba(253, 224, 71, 0.6));
-      transform: scale(1.15) rotate(5deg);
-    }
-  }
-
-  &.active {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
-    box-shadow: 
-      0 2px 4px rgba(37, 99, 235, 0.3),
-      0 8px 16px rgba(37, 99, 235, 0.2),
-      inset 0 1px 0 rgba(255, 255, 255, 0.4);
-
-    svg {
-      color: #fde047; // Bright yellow when active
-      filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 16px rgba(253, 224, 71, 0.8));
-      animation: filterIconPulse 1.5s ease-in-out infinite;
-    }
-  }
-}
-
-// Pulsing animation for active filter icon
-@keyframes filterIconPulse {
-  0%, 100% {
-    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.3)) drop-shadow(0 0 16px rgba(253, 224, 71, 0.8));
-  }
-  50% {
-    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35)) drop-shadow(0 0 24px rgba(253, 224, 71, 1));
-  }
 }
 
 // Select All Button - Green (Success/Positive)
@@ -1505,11 +1711,11 @@
 .roles-header-wrapper {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
-  padding-bottom: var(--spacing-md);
-  border-bottom: 2px solid var(--gray-200);
-  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--gray-200);
+  margin-bottom: var(--spacing-sm);
 }
 
 .roles-title-section {
@@ -1544,11 +1750,11 @@
 .permissions-header-wrapper {
   display: flex;
   align-items: center;
-  gap: var(--spacing-md);
+  gap: var(--spacing-sm);
   flex-wrap: wrap;
-  padding-bottom: var(--spacing-md);
-  border-bottom: 2px solid var(--gray-200);
-  margin-bottom: var(--spacing-md);
+  padding-bottom: var(--spacing-sm);
+  border-bottom: 1px solid var(--gray-200);
+  margin-bottom: var(--spacing-sm);
 }
 
 .permissions-title-section {
@@ -1577,16 +1783,6 @@
     transform: scale(1.05);
     filter: drop-shadow(0 3px 6px rgba(102, 126, 234, 0.3));
   }
-}
-
-// Filter Chips Row (separate row below header)
-.filter-chips-row {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  flex-wrap: wrap;
-  margin-bottom: var(--spacing-md);
-  padding: var(--spacing-sm) 0;
 }
 
 // Old assignment-header (keep for backward compatibility)
@@ -1677,11 +1873,25 @@
   }
 
   // Inline buttons responsive (already icon-only, ensure proper sizing)
-  .btn-filter-inline,
   .btn-action-inline,
   .btn-create-inline {
     min-width: 44px;
     min-height: 44px;
+  }
+
+  .header-actions {
+    flex: 1 1 100%;
+    width: 100%;
+
+    .cf-list-toolbar {
+      width: 100%;
+      justify-content: stretch;
+    }
+
+    .cf-list-toolbar__search {
+      flex: 1 1 auto;
+      max-width: none;
+    }
   }
 
   // Permissions header responsive
@@ -1709,7 +1919,7 @@
     justify-content: flex-start;
   }
 
-  .assignment-header-wrapper {
+  .assignment-context-bar {
     gap: var(--spacing-sm);
   }
 
@@ -1749,21 +1959,32 @@
 
   .roles-header-wrapper,
   .permissions-header-wrapper,
-  .assignment-header-wrapper {
+  .assignment-context-bar {
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-sm);
-  }
-
-  .header-stats,
-  .header-actions {
-    width: 100%;
   }
 
   .selection-header,
   .assignment-header {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .assign-tab-container .selection-header__toolbar {
+    flex: 1 1 100%;
+    width: 100%;
+    margin-left: 0;
+  }
+
+  .assign-tab-container .selection-header__toolbar .cf-list-toolbar {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .assign-tab-container .selection-header__toolbar .cf-list-toolbar__search {
+    flex: 1 1 auto;
+    max-width: none;
   }
 
   .header-icon {
@@ -1794,26 +2015,120 @@
   font-weight: 600;
 }
 
-.safeguards-panel {
-  padding: var(--spacing-md);
-  border: 1px solid #fde68a;
-  border-radius: var(--radius-md);
-  background: #fffbeb;
+// ============ USER ROLE ASSIGNMENTS TAB (compact CF layout) ============
+.users-tab__header {
+  margin-bottom: var(--cf-space-2, 0.5rem);
 
-  h3 {
-    margin: 0 0 var(--spacing-xs);
-    font-size: var(--font-size-md);
-    color: #92400e;
+  .cf-section-title {
+    margin-bottom: 0.15rem;
   }
 
-  p {
+  .cf-meta {
     margin: 0;
-    font-size: var(--font-size-sm);
-    color: #78350f;
+    max-width: 42rem;
   }
 }
 
+.users-tab__kpis {
+  margin-bottom: var(--cf-space-2, 0.5rem);
+}
+
+.users-tab .table-container {
+  margin-top: var(--cf-space-2, 0.5rem);
+}
+
+.users-tab .data-table {
+  thead th,
+  tbody td {
+    padding: 0.5rem 0.65rem;
+  }
+}
+
+.users-tab__assign-panel {
+  margin-top: var(--cf-space-3, 0.75rem);
+}
+
+.users-tab__assign-header {
+  margin-bottom: var(--cf-space-2, 0.5rem);
+  padding-bottom: var(--cf-space-2, 0.5rem);
+  border-bottom: 1px solid var(--gray-200);
+
+  .cf-section-title {
+    margin: 0;
+  }
+
+  .cf-meta {
+    margin: 0.1rem 0 0;
+  }
+}
+
+.users-tab__role-picker {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+
+  .role-card {
+    border-width: 1px;
+    border-radius: var(--radius-md);
+    padding: 0.55rem 0.65rem;
+    gap: 0.4rem;
+    cursor: default;
+
+    &:hover {
+      transform: none;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+    }
+  }
+
+  .role-card-header {
+    gap: 0.45rem;
+    align-items: center;
+  }
+
+  .role-name {
+    font-size: var(--font-size-sm);
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  .role-description {
+    font-size: 0.72rem;
+    line-height: 1.3;
+    -webkit-line-clamp: 1;
+  }
+
+  .role-card-footer {
+    gap: 0.3rem;
+    padding-top: 0.35rem;
+
+    .role-level,
+    .role-type,
+    .role-status {
+      font-size: 0.65rem;
+      padding: 0.1rem 0.35rem;
+    }
+  }
+}
+
+.users-tab__assign-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+  margin-top: var(--cf-space-3, 0.75rem);
+}
+
 // ============ PRINT STYLES ============
+.roles-users__name-cell,
+.roles-users__selection-header {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+}
+
+.roles-users__selection-header {
+  gap: var(--cf-space-3);
+}
+
 @media print {
   .btn-filter,
   .btn-reset,

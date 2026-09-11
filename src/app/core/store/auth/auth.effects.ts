@@ -96,6 +96,7 @@ export class AuthEffects {
         this.authService.getCurrentUser().pipe(
           tap(user => {
             console.log('👤 User loaded:', user);
+            this.authService.syncCurrentUser(user);
             // Set tenant in store if user has tenant data
             if (user.tenant) {
               console.log('🏢 Setting current tenant:', user.tenant);

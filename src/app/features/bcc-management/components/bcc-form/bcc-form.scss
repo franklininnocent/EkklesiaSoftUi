@@ -1,5 +1,5 @@
 @use '../../../../shared/styles/form-validation' as *;
-@import '../../../donations/styles/stewardship-split-layout.scss';
+@use '../../../donations/styles/stewardship-split-layout.scss';
 
 // Field-level invalid state for `.cf-split-*` forms — reused verbatim from
 // the pattern established in family-member-form-modal.component.scss (not

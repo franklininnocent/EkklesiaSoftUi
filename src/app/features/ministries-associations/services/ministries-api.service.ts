@@ -298,10 +298,6 @@ export class MinistriesApiService {
     return this.http.patch<ApiResponse<OrganizationCategory>>(`${this.baseUrl}/categories/${id}/status`, payload);
   }
 
-  seedCategories(): Observable<ApiResponse<OrganizationCategory[]>> {
-    return this.http.post<ApiResponse<OrganizationCategory[]>>(`${this.baseUrl}/categories/seed-defaults`, {});
-  }
-
   listTypes(params: TaxonomyListParams = {}): Observable<PaginatedApiResponse<OrganizationType>> {
     return this.http.get<PaginatedApiResponse<OrganizationType>>(`${this.baseUrl}/types`, {
       params: this.toHttpParams(params),
@@ -320,10 +316,6 @@ export class MinistriesApiService {
     return this.http.patch<ApiResponse<OrganizationType>>(`${this.baseUrl}/types/${id}/status`, payload);
   }
 
-  seedTypes(): Observable<ApiResponse<OrganizationType[]>> {
-    return this.http.post<ApiResponse<OrganizationType[]>>(`${this.baseUrl}/types/seed-defaults`, {});
-  }
-
   listPositions(params: TaxonomyListParams = {}): Observable<PaginatedApiResponse<Position>> {
     return this.http.get<PaginatedApiResponse<Position>>(`${this.baseUrl}/positions`, {
       params: this.toHttpParams(params),
@@ -340,10 +332,6 @@ export class MinistriesApiService {
 
   updatePositionStatus(id: string, payload: UpdateTaxonomyStatusPayload): Observable<ApiResponse<Position>> {
     return this.http.patch<ApiResponse<Position>>(`${this.baseUrl}/positions/${id}/status`, payload);
-  }
-
-  seedPositions(): Observable<ApiResponse<Position[]>> {
-    return this.http.post<ApiResponse<Position[]>>(`${this.baseUrl}/positions/seed-defaults`, {});
   }
 
   listAuditLogs(params: AuditLogListParams = {}): Observable<PaginatedApiResponse<MinistriesAuditLogEntry>> {

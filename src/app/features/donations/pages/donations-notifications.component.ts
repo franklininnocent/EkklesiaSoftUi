@@ -16,7 +16,7 @@ import { DonationNotificationLog } from '../models/donation.model';
   template: `
     <section class="notifications cf-page">
       <header class="cf-hero">
-        <h1>Outreach Log</h1>
+        <h3>Outreach Log</h3>
         <p>WhatsApp reminders, receipts, and parish messages — see what was sent.</p>
       </header>
 

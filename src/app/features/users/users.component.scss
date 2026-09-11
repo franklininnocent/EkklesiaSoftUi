@@ -3,6 +3,11 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--cf-space-2);
+
+  strong {
+    font-size: var(--cf-text-sm);
+    color: var(--cf-slate-900);
+  }
 }
 
 .users__roles {

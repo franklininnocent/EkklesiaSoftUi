@@ -35,6 +35,7 @@
         [focused]="focusedMemberIndex === vm.memberIndex"
         [optionId]="optionId(vm.memberIndex)"
         (selectMember)="selectMember.emit($event)"
+        (previewPhoto)="previewPhoto.emit($event)"
       />
     </div>
   </div>

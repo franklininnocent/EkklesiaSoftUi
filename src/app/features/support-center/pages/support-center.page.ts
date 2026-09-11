@@ -15,12 +15,14 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 import { SectionCardComponent } from '@shared/components/section-card/section-card.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
+import { CfDateTimeFieldComponent } from '@shared/components/cf-datetime-field/cf-datetime-field.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import {
   ConfirmationModalComponent,
   ConfirmationResult,
 } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { AuthService } from '@core/services/auth.service';
+import { ToastService } from '@core/services/toast.service';
 import {
   dateWindowValidator,
   fieldErrorText,
@@ -28,6 +30,8 @@ import {
   markFormGroupTouched,
 } from '@core/validators/form-validation.helper';
 import { SupportSessionService } from '../services/support-session.service';
+import { SupportTicketsOpsPanelComponent } from '../components/support-tickets-ops-panel/support-tickets-ops-panel.component';
+import { SupportTicketCatalogPanelComponent } from '../components/support-ticket-catalog-panel/support-ticket-catalog-panel.component';
 import {
   SupportAccessGrant,
   SupportAccessRequest,
@@ -41,7 +45,7 @@ import {
   SupportTenantSummary,
 } from '../models/support-access.model';
 
-type SupportCenterTab = 'start' | 'active' | 'history' | 'approvals' | 'grants' | 'audit' | 'settings';
+type SupportCenterTab = 'start' | 'active' | 'history' | 'approvals' | 'grants' | 'audit' | 'settings' | 'tickets';
 type PendingAction =
   | { type: 'exit' }
   | { type: 'force'; session: SupportSession }
@@ -65,8 +69,11 @@ type PendingAction =
     SectionCardComponent,
     DataTableComponent,
     FormFieldComponent,
+    CfDateTimeFieldComponent,
     LoadingSkeletonComponent,
     ConfirmationModalComponent,
+    SupportTicketsOpsPanelComponent,
+    SupportTicketCatalogPanelComponent,
   ],
   templateUrl: './support-center.page.html',
   styleUrl: './support-center.page.scss',
@@ -76,38 +83,47 @@ export class SupportCenterPage implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly sessions = inject(SupportSessionService);
   private readonly auth = inject(AuthService);
+  private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly destroy$ = new Subject<void>();
   private readonly search$ = new Subject<string>();
 
-  readonly canAccess =
-    this.auth.hasPermission('support.sessions.start') ||
-    this.auth.hasPermission('support.sessions.view') ||
-    this.isPlatformAdmin();
+  readonly canAccess = this.auth.canAccessSupportCenter();
+
+  readonly canStartSessions =
+    this.auth.hasPermission('support.sessions.start') || this.auth.isSuperAdmin();
+
+  readonly canViewSessions =
+    this.auth.hasPermission('support.sessions.view') || this.auth.isSuperAdmin();
+
+  readonly canViewApprovals = this.canViewSessions;
 
   readonly canManageSettings =
-    this.auth.hasPermission('support.configuration.manage') || this.isPlatformAdmin();
+    this.auth.hasPermission('support.configuration.manage') || this.auth.isSuperAdmin();
 
   readonly canForceEnd =
-    this.auth.hasPermission('support.sessions.end') || this.isPlatformAdmin();
+    this.auth.hasPermission('support.sessions.end') || this.auth.isSuperAdmin();
 
   readonly canExport =
-    this.auth.hasPermission('support.audit.view') || this.isPlatformAdmin();
+    this.auth.hasPermission('support.audit.view') || this.auth.isSuperAdmin();
 
   readonly canApprove =
-    this.auth.hasPermission('support.sessions.approve') || this.isPlatformAdmin();
+    this.auth.hasPermission('support.sessions.approve') || this.auth.isSuperAdmin();
 
   readonly canViewGrants =
     this.auth.hasPermission('support.grants.view') ||
     this.auth.hasPermission('support.grants.manage') ||
-    this.isPlatformAdmin();
+    this.auth.isSuperAdmin();
 
   readonly canManageGrants =
-    this.auth.hasPermission('support.grants.manage') || this.isPlatformAdmin();
+    this.auth.hasPermission('support.grants.manage') || this.auth.isSuperAdmin();
 
-  activeTab: SupportCenterTab = 'start';
+  readonly canViewTickets =
+    this.auth.hasPermission('support.ops.tickets.view') || this.auth.isSuperAdmin();
+
+  activeTab: SupportCenterTab = 'tickets';
   tabs: TabStripItem[] = [];
 
   tenants: SupportTenantSummary[] = [];
@@ -149,6 +165,7 @@ export class SupportCenterPage implements OnInit, OnDestroy {
   success: string | null = null;
 
   confirmOpen = false;
+  endingSession = false;
   confirmTitle = '';
   confirmMessage = '';
   confirmText = 'Confirm';
@@ -236,6 +253,15 @@ export class SupportCenterPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.tabs = this.buildTabs();
+
+    this.grantForm.controls.starts_at.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.grantForm.controls.ends_at.updateValueAndValidity({ onlySelf: true });
+        this.grantForm.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+        this.cdr.markForCheck();
+      });
+
     if (!this.canAccess) {
       return;
     }
@@ -252,53 +278,76 @@ export class SupportCenterPage implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    this.search$
-      .pipe(
-        debounceTime(250),
-        distinctUntilChanged(),
-        switchMap((q) => {
-          this.loadingSearch = true;
-          this.cdr.markForCheck();
-          return this.sessions.searchTenants(q);
-        }),
-        takeUntil(this.destroy$)
-      )
-      .subscribe({
-        next: (res) => {
-          this.tenants = res.data;
-          this.loadingSearch = false;
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.loadingSearch = false;
-          this.error = 'Could not search tenants.';
-          this.cdr.markForCheck();
-        },
-      });
+    if (this.canStartSessions) {
+      this.search$
+        .pipe(
+          debounceTime(250),
+          distinctUntilChanged(),
+          switchMap((q) => {
+            this.loadingSearch = true;
+            this.cdr.markForCheck();
+            return this.sessions.searchTenants(q);
+          }),
+          takeUntil(this.destroy$)
+        )
+        .subscribe({
+          next: (res) => {
+            this.tenants = res.data;
+            this.loadingSearch = false;
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.loadingSearch = false;
+            this.error = 'Could not search tenants.';
+            this.cdr.markForCheck();
+          },
+        });
 
-    this.searchControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((q) => this.search$.next(q));
-    this.search$.next('');
-    this.sessions.getActive().pipe(takeUntil(this.destroy$)).subscribe();
-    this.loadMetrics();
-    this.sessions
-      .getSettings()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (settings) => {
-          this.settings = settings;
-          this.syncStartConditionalValidators();
-          this.cdr.markForCheck();
-        },
-      });
+      this.searchControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((q) => this.search$.next(q));
+      this.search$.next('');
+    }
+
+    if (this.canViewSessions) {
+      this.sessions.getActive().pipe(takeUntil(this.destroy$)).subscribe();
+      this.loadMetrics();
+    }
+
+    if (this.canManageSettings) {
+      this.sessions
+        .getSettings()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (settings) => {
+            this.settings = settings;
+            this.syncStartConditionalValidators();
+            this.cdr.markForCheck();
+          },
+        });
+    }
 
     this.startForm.controls.mode.valueChanges.pipe(takeUntil(this.destroy$)).subscribe(() => {
       this.syncStartConditionalValidators();
       this.cdr.markForCheck();
     });
 
-    const initialTab = (this.route.snapshot.queryParamMap.get('tab') || 'start') as SupportCenterTab;
-    if (this.tabs.some((t) => t.id === initialTab) && initialTab !== 'start') {
-      this.onTabChange(initialTab, false);
+    this.activeTab = this.resolveInitialTab(
+      (this.route.snapshot.queryParamMap.get('tab') || this.defaultTab()) as SupportCenterTab
+    );
+    if (this.activeTab !== this.defaultTab()) {
+      this.onTabChange(this.activeTab, false);
+    }
+
+    const preselectTenantId = Number(this.route.snapshot.queryParamMap.get('tenant_id') || 0);
+    if (preselectTenantId > 0 && this.canStartSessions) {
+      this.sessions.getTenant(preselectTenantId).pipe(takeUntil(this.destroy$)).subscribe({
+        next: (tenant) => {
+          this.selectTenant(tenant);
+          if (this.activeTab !== 'start') {
+            this.onTabChange('start', true);
+          }
+          this.cdr.markForCheck();
+        },
+      });
     }
   }
 
@@ -318,12 +367,12 @@ export class SupportCenterPage implements OnInit, OnDestroy {
         queryParamsHandling: 'merge',
       });
     }
-    if (this.activeTab === 'active') {
+    if (this.activeTab === 'active' && this.canViewSessions) {
       this.loadMonitor();
       this.loadMetrics();
-    } else if (this.activeTab === 'history') {
+    } else if (this.activeTab === 'history' && this.canViewSessions) {
       this.loadHistory();
-    } else if (this.activeTab === 'approvals') {
+    } else if (this.activeTab === 'approvals' && this.canViewApprovals) {
       this.loadApprovals();
     } else if (this.activeTab === 'grants' && this.canViewGrants) {
       this.loadGrants();
@@ -603,11 +652,14 @@ export class SupportCenterPage implements OnInit, OnDestroy {
 
   grantEndsError(): string | null {
     const ends = this.grantForm.controls.ends_at;
-    if (!this.grantSubmitted && !ends.touched) {
+    const starts = this.grantForm.controls.starts_at;
+    const showErrors =
+      this.grantSubmitted || ends.touched || (starts.touched && !!ends.value);
+    if (!showErrors) {
       return null;
     }
     if (this.grantForm.hasError('startsAfterEnds')) {
-      return 'Ends must be after Starts.';
+      return 'End date and time must be after the start date and time.';
     }
     return this.grantFieldError('ends_at');
   }
@@ -728,29 +780,38 @@ export class SupportCenterPage implements OnInit, OnDestroy {
 
   onConfirm(result: ConfirmationResult): void {
     const action = this.pendingAction;
-    this.confirmOpen = false;
-    this.pendingAction = null;
     if (!result.confirmed || !action) {
-      this.cdr.markForCheck();
+      this.closeConfirm();
       return;
     }
     const note = result.description?.trim() || undefined;
 
     if (action.type === 'exit' && this.myActive) {
+      this.pendingAction = null;
+      this.endingSession = true;
+      this.cdr.markForCheck();
       this.sessions.end(this.myActive.id).pipe(takeUntil(this.destroy$)).subscribe({
         next: () => {
+          this.endingSession = false;
+          this.confirmOpen = false;
           this.success = 'Support session ended.';
           this.loadMonitor();
           this.loadMetrics();
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err?.error?.message || 'Could not end session.';
+          this.endingSession = false;
+          const message = err?.message || err?.error?.message || 'Could not end session.';
+          this.error = message;
+          this.toast.error(message, 'Could not exit session');
+          this.confirmOpen = false;
           this.cdr.markForCheck();
         },
       });
       return;
     }
+
+    this.closeConfirm();
     if (action.type === 'force') {
       this.sessions.forceEnd(action.session.id).pipe(takeUntil(this.destroy$)).subscribe({
         next: () => {
@@ -760,7 +821,7 @@ export class SupportCenterPage implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err?.error?.message || 'Could not force-end session.';
+          this.error = err?.message || err?.error?.message || 'Could not force-end session.';
           this.cdr.markForCheck();
         },
       });
@@ -1103,6 +1164,15 @@ export class SupportCenterPage implements OnInit, OnDestroy {
     return this.isEmergencyMode && (this.settings?.emergency_requires_approval ?? true);
   }
 
+  closeConfirm(): void {
+    if (this.endingSession) {
+      return;
+    }
+    this.confirmOpen = false;
+    this.pendingAction = null;
+    this.cdr.markForCheck();
+  }
+
   private openConfirm(opts: {
     type: PendingAction['type'];
     title: string;
@@ -1148,12 +1218,22 @@ export class SupportCenterPage implements OnInit, OnDestroy {
   }
 
   private buildTabs(): TabStripItem[] {
-    const tabs: TabStripItem[] = [
-      { id: 'start', label: 'Start session' },
-      { id: 'active', label: 'Active sessions' },
-      { id: 'history', label: 'History' },
-      { id: 'approvals', label: 'Approvals' },
-    ];
+    const tabs: TabStripItem[] = [];
+    if (this.canStartSessions) {
+      tabs.push({ id: 'start', label: 'Start session' });
+    }
+    if (this.canViewTickets) {
+      tabs.push({ id: 'tickets', label: 'Tickets' });
+    }
+    if (this.canViewSessions) {
+      tabs.push(
+        { id: 'active', label: 'Active sessions' },
+        { id: 'history', label: 'History' }
+      );
+    }
+    if (this.canViewApprovals) {
+      tabs.push({ id: 'approvals', label: 'Approvals' });
+    }
     if (this.canViewGrants) {
       tabs.push({ id: 'grants', label: 'Grants' });
     }
@@ -1166,6 +1246,23 @@ export class SupportCenterPage implements OnInit, OnDestroy {
     return tabs;
   }
 
+  private defaultTab(): SupportCenterTab {
+    if (this.canStartSessions) {
+      return 'start';
+    }
+    if (this.canViewTickets) {
+      return 'tickets';
+    }
+    return (this.tabs[0]?.id as SupportCenterTab) ?? 'tickets';
+  }
+
+  private resolveInitialTab(requested: SupportCenterTab): SupportCenterTab {
+    if (this.tabs.some((tab) => tab.id === requested)) {
+      return requested;
+    }
+    return this.defaultTab();
+  }
+
   private saveBlob(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1175,9 +1272,4 @@ export class SupportCenterPage implements OnInit, OnDestroy {
     URL.revokeObjectURL(url);
   }
 
-  private isPlatformAdmin(): boolean {
-    const user = this.auth.currentUserValue;
-    const name = user?.role_name || user?.role?.name;
-    return name === 'SuperAdmin' || name === 'EkklesiaAdmin';
-  }
 }

@@ -9,7 +9,7 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable, Subject, of } from 'rxjs';
-import { catchError, take, takeUntil } from 'rxjs/operators';
+import { catchError, distinctUntilChanged, filter, map, take, takeUntil } from 'rxjs/operators';
 
 import { AppState } from '@core/store';
 import { User } from '@core/models';
@@ -357,24 +357,47 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.weekRangeLabel = this.formatWeekRangeLabel();
-    this.loadFamilyStatistics();
-    this.loadBccStatistics();
-    this.store.select(selectCurrentUser).pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
+
+    this.supportSessions.session$
+      .pipe(
+        map((session) => session?.id ?? null),
+        distinctUntilChanged(),
+        filter((id) => id !== null),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.store.select(selectCurrentUser).pipe(take(1)).subscribe((user) => {
+          this.refreshDashboardAccess(user);
+        });
+      });
+
+    this.store.select(selectCurrentUser).pipe(take(1), takeUntil(this.destroy$)).subscribe((user) => {
       if (user?.tenant_id) {
         this.tenantId = Number(user.tenant_id);
       }
-      this.canViewFinancial = this.authService.canAccessDonations(user);
-      if (this.canViewFinancial) {
-        this.loadOperationsDashboard();
-      }
-      this.canViewPastoral = this.authService.canAccessPastoral(user);
-      this.canAssignPastoral = this.authService.hasPermission('pastoral.care.assign');
-      this.resolveMinistriesAccess(user);
-      if (this.operationsVisited) {
-        this.loadOperationsScopedData();
-      }
+      this.refreshDashboardAccess(user);
       this.cdr.markForCheck();
     });
+  }
+
+  private refreshDashboardAccess(user: User | null): void {
+    if (this.authService.hasParishContext(user)) {
+      this.loadFamilyStatistics();
+      this.loadBccStatistics();
+    }
+
+    const hasActiveSupportSession = !!this.supportSessions.sessionId;
+    this.canViewFinancial = this.authService.canAccessDonations(user, { hasActiveSupportSession });
+    if (this.canViewFinancial) {
+      this.loadOperationsDashboard();
+    }
+    this.canViewPastoral = this.authService.canAccessPastoral(user, { hasActiveSupportSession });
+    this.canAssignPastoral = this.authService.hasPermission('pastoral.care.assign');
+    this.resolveMinistriesAccess(user);
+    if (this.operationsVisited) {
+      this.loadOperationsScopedData();
+    }
+    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void {

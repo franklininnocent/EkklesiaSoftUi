@@ -80,7 +80,7 @@
   </table>
 
   <aside class="migration-queue__drawer" *ngIf="selected" aria-label="Resolve participant">
-    <h2>Resolve {{ selected.participant_role }}</h2>
+    <h3 class="cf-subsection-title">Resolve {{ selected.participant_role }}</h3>
     <p>Legacy: {{ selected.legacy_name }} <span *ngIf="selected.legacy_dob">({{ selected.legacy_dob }})</span></p>
     <app-participant-source-control
       [label]="selected.participant_role"

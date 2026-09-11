@@ -67,7 +67,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   loadingPermissions = false;
   permissionsError: string | null = null;
   permissionCatalogAccessDenied = false;
-  showPermissions = false; // Toggle for permissions section
+  showPermissions = true;
 
 
   ngOnInit(): void {
@@ -99,9 +99,10 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         this.selectedPermissionIds.clear();
       }
       
-      // Clear any previous errors
+      // Clear any previous errors and keep permissions visible in edit/create.
       this.errorMessage = null;
       this.permissionCatalogAccessDenied = false;
+      this.showPermissions = true;
     }
     
     // Handle role changes (when switching between edit modals)

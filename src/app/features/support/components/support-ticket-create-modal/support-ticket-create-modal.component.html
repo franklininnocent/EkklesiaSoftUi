@@ -1,0 +1,188 @@
+<app-modal-shell
+  title="New Support Ticket"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close new support ticket"
+  [isSubmitting]="saving"
+  (closeRequested)="onClose()"
+>
+  <form
+    class="cf-split-form-body st-support-create-modal"
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+    novalidate
+  >
+    <p class="cf-meta">
+      Describe your issue so the EkklesiaSoft team can help. Do not include passwords, OTPs, API
+      secrets, private keys, or payment-card information.
+    </p>
+
+    <p *ngIf="!loadingLookups && !hasRequestTypes" class="cf-split-form-alert cf-split-form-alert--error" role="alert">
+      No request types are available yet. The EkklesiaSoft team needs to add them in Support Center
+      settings.
+    </p>
+
+    <section class="cf-split-section" aria-labelledby="support-create-section-request">
+      <h3 id="support-create-section-request" class="cf-split-section__title">Request</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="support_create_request_type">
+            Request type <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="support_create_request_type"
+            formControlName="request_type_id"
+            [items]="requestTypes"
+            bindLabel="name"
+            bindValue="id"
+            placeholder="Select request type"
+            [searchable]="true"
+            [clearable]="true"
+            [loading]="loadingLookups"
+            class="cf-split-select"
+            aria-required="true"
+          ></ng-select>
+        </div>
+
+        <div class="cf-split-field" *ngIf="selectedType?.categories?.length">
+          <label for="support_create_category">
+            Category <span class="cf-split-optional">optional</span>
+          </label>
+          <ng-select
+            id="support_create_category"
+            formControlName="category_id"
+            [items]="selectedType?.categories || []"
+            bindLabel="name"
+            bindValue="id"
+            placeholder="Select category"
+            [searchable]="true"
+            [clearable]="true"
+            class="cf-split-select"
+          ></ng-select>
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="support_create_subject">
+            Subject <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="support_create_subject"
+            type="text"
+            formControlName="subject"
+            maxlength="255"
+            aria-required="true"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="support-create-section-problem">
+      <h3 id="support-create-section-problem" class="cf-split-section__title">Problem</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="support_create_description">
+            Description <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <textarea
+            id="support_create_description"
+            rows="5"
+            formControlName="description"
+            aria-required="true"
+          ></textarea>
+        </div>
+
+        <ng-container *ngIf="isBugReport">
+          <div class="cf-split-field cf-split-field--full">
+            <label for="support_create_steps">
+              Steps to reproduce <span class="cf-split-optional">optional</span>
+            </label>
+            <textarea id="support_create_steps" rows="4" formControlName="steps_to_reproduce"></textarea>
+          </div>
+
+          <div class="cf-split-field">
+            <label for="support_create_expected">
+              Expected result <span class="cf-split-optional">optional</span>
+            </label>
+            <textarea id="support_create_expected" rows="2" formControlName="expected_result"></textarea>
+          </div>
+
+          <div class="cf-split-field">
+            <label for="support_create_actual">
+              Actual result <span class="cf-split-optional">optional</span>
+            </label>
+            <textarea id="support_create_actual" rows="2" formControlName="actual_result"></textarea>
+          </div>
+
+          <div class="cf-split-field">
+            <label for="support_create_frequency">
+              Frequency <span class="cf-split-optional">optional</span>
+            </label>
+            <select id="support_create_frequency" formControlName="bug_frequency">
+              <option value="">Select…</option>
+              <option value="always">Always</option>
+              <option value="often">Often</option>
+              <option value="sometimes">Sometimes</option>
+              <option value="once">Once</option>
+            </select>
+          </div>
+
+          <div class="cf-split-field">
+            <label for="support_create_browser">
+              Browser <span class="cf-split-optional">optional</span>
+            </label>
+            <input id="support_create_browser" type="text" formControlName="bug_browser" />
+          </div>
+
+          <div class="cf-split-field">
+            <label for="support_create_device">
+              Device <span class="cf-split-optional">optional</span>
+            </label>
+            <input id="support_create_device" type="text" formControlName="bug_device" />
+          </div>
+        </ng-container>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="support_create_error">
+            Error message <span class="cf-split-optional">optional</span>
+          </label>
+          <textarea id="support_create_error" rows="2" formControlName="error_message"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="support-create-section-impact">
+      <h3 id="support-create-section-impact" class="cf-split-section__title">Impact</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="support_create_priority">Priority</label>
+          <select id="support_create_priority" formControlName="priority">
+            <option value="low">Low</option>
+            <option value="normal">Normal</option>
+            <option value="high">High</option>
+            <option value="urgent">Urgent</option>
+            <option value="critical">Critical</option>
+          </select>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="support_create_module">
+            Affected module <span class="cf-split-optional">optional</span>
+          </label>
+          <input id="support_create_module" type="text" formControlName="affected_module" />
+        </div>
+      </div>
+    </section>
+
+    <p *ngIf="error" class="cf-split-form-alert cf-split-form-alert--error" role="alert">
+      {{ error }}
+    </p>
+
+    <div class="cf-split-form-actions">
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving || !hasRequestTypes">
+        {{ saving ? 'Submitting…' : 'Submit ticket' }}
+      </button>
+      <button type="button" class="cf-btn" (click)="onClose()" [disabled]="saving">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>

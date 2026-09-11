@@ -8,7 +8,9 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
-import { Tenant, TenantDetailsSnapshot } from '@core/models/tenant.model';
+import { Tenant, TenantDetailsSnapshot, TenantDetailsUserPreview } from '@core/models/tenant.model';
+import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
+import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
@@ -44,6 +46,8 @@ type TenantDetailTab =
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
     DataTableComponent,
+    UserAvatarComponent,
+    ImageViewerComponent,
   ],
   templateUrl: './tenant-detail.component.html',
   styleUrls: ['./tenant-detail.component.scss'],
@@ -58,6 +62,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
 
   details: TenantDetailsSnapshot | null = null;
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
   /** Minimal tenant shim for subscription modals and legacy edit flows. */
   tenant: Tenant | null = null;
   loading = false;
@@ -860,5 +865,30 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     if (!err || typeof err !== 'object') return fallback;
     const e = err as { message?: string; error?: { message?: string } };
     return e.message || e.error?.message || fallback;
+  }
+
+  getUserPreviewPhotoUrl(user: TenantDetailsUserPreview): string | null {
+    return resolveUserProfileImageUrl(user);
+  }
+
+  openPhotoViewer(user: TenantDetailsUserPreview, event: Event): void {
+    event.stopPropagation();
+    const url = this.getUserPreviewPhotoUrl(user);
+    if (!url) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: url,
+      alt: user.name,
+      title: user.name,
+      subtitle: user.email,
+    };
+    this.cdr.markForCheck();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.markForCheck();
   }
 }

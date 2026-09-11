@@ -23,6 +23,7 @@ export class MemberNavRowComponent {
   @Input() optionId = '';
 
   @Output() selectMember = new EventEmitter<number>();
+  @Output() previewPhoto = new EventEmitter<{ src: string; alt: string; title: string; subtitle: string }>();
 
   onSelect(): void {
     this.selectMember.emit(this.vm.memberIndex);
@@ -33,5 +34,20 @@ export class MemberNavRowComponent {
       event.preventDefault();
       this.onSelect();
     }
+  }
+
+  onPhotoClick(event: MouseEvent): void {
+    if (!this.vm.avatarUrl) {
+      return;
+    }
+
+    event.stopPropagation();
+    event.preventDefault();
+    this.previewPhoto.emit({
+      src: this.vm.avatarUrl,
+      alt: this.vm.displayName,
+      title: this.vm.displayName,
+      subtitle: this.vm.relationshipLabel,
+    });
   }
 }

@@ -9,8 +9,10 @@ import {
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, ParamMap, Router, RouterModule } from '@angular/router';
-import { catchError, of, skip } from 'rxjs';
+import { catchError, distinctUntilChanged, filter, map, of, skip } from 'rxjs';
 import { BCCService } from '@core/services/bcc.service';
+import { AuthService } from '@core/services/auth.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { BCC } from '@core/models/family.model';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
@@ -62,6 +64,8 @@ type PeriodPreset = 'ytd' | 'month' | 'last12' | 'all';
 export class SacramentsDashboardComponent implements OnInit {
   private readonly sacramentService = inject(SacramentService);
   private readonly bccService = inject(BCCService);
+  private readonly authService = inject(AuthService);
+  private readonly supportSessions = inject(SupportSessionService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -78,14 +82,38 @@ export class SacramentsDashboardComponent implements OnInit {
   private urlStateInitialized = false;
 
   ngOnInit(): void {
-    this.loadBccs();
+    this.tryLoadParishDashboard();
+    this.supportSessions.session$
+      .pipe(
+        map((session) => session?.id ?? null),
+        distinctUntilChanged(),
+        filter((id) => id !== null),
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe(() => this.tryLoadParishDashboard());
+
     this.applyUrlState(this.route.snapshot.queryParamMap);
     this.route.queryParamMap
       .pipe(skip(1), takeUntilDestroyed(this.destroyRef))
       .subscribe((params) => this.applyUrlState(params));
   }
 
+  private tryLoadParishDashboard(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
+    this.loadBccs();
+    if (this.urlStateInitialized) {
+      this.reload();
+    }
+  }
+
   loadBccs(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.loadingBccs = true;
     this.bccService
       .getBCCs({ status: 'active', per_page: 500, sort_by: 'name', sort_order: 'asc' })
@@ -101,6 +129,10 @@ export class SacramentsDashboardComponent implements OnInit {
   }
 
   reload(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.loading = true;
     this.error = null;
 

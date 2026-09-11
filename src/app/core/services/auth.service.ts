@@ -71,6 +71,25 @@ export class AuthService {
     });
   }
 
+  /** Persist the current user into localStorage and the auth BehaviorSubject. */
+  syncCurrentUser(user: User): void {
+    this.setUser(user);
+  }
+
+  uploadMyProfileImage(file: File): Observable<{ success: boolean; data: User; message: string }> {
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    return this.postWithFallback<{ success: boolean; data: User; message: string }>(
+      '/profile-image',
+      formData
+    );
+  }
+
+  deleteMyProfileImage(): Observable<{ success: boolean; data: User; message: string }> {
+    return this.deleteWithFallback<{ success: boolean; data: User; message: string }>('/profile-image');
+  }
+
   getToken(): string | null {
     return localStorage.getItem(environment.tokenKey);
   }
@@ -137,6 +156,21 @@ export class AuthService {
         }
 
         return this.http.get<T>(fallbackUrl);
+      })
+    );
+  }
+
+  private deleteWithFallback<T>(path: string): Observable<T> {
+    const primaryUrl = this.buildPrimaryAuthUrl(path);
+    const fallbackUrl = this.buildFallbackAuthUrl(path);
+
+    return this.http.delete<T>(primaryUrl).pipe(
+      catchError((error) => {
+        if (!this.shouldRetryOnFallback(error, primaryUrl, fallbackUrl)) {
+          return throwError(() => error);
+        }
+
+        return this.http.delete<T>(fallbackUrl);
       })
     );
   }
@@ -266,6 +300,15 @@ export class AuthService {
     return user.permissions.some(p => p.name === permission);
   }
 
+  /** Parish context from home tenant or an active Support Center session. */
+  hasParishContext(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    return !!user.tenant_id || this.supportSessions.isSessionLive;
+  }
+
   /**
    * Tenant-scoped permission check.
    * Mirrors backend AuthorizesTenantPermission::allows().
@@ -274,6 +317,10 @@ export class AuthService {
     const user = this.currentUserValue;
     if (!user) {
       return false;
+    }
+
+    if (this.supportSessions.isSessionLive) {
+      return true;
     }
 
     if (this.isSuperAdmin() || user.is_super_admin) {
@@ -416,8 +463,7 @@ export class AuthService {
    * 
    * @returns True if user is a Tenant Administrator, false otherwise
    */
-  isTenantAdmin(): boolean {
-    const user = this.currentUserValue;
+  isTenantAdmin(user: User | null = this.currentUserValue): boolean {
     if (!user) {
       return false;
     }
@@ -425,8 +471,22 @@ export class AuthService {
     const tenantAdminRoleNames = ['Administrator', 'Church Administrator'];
 
     return tenantAdminRoleNames.some((roleName) =>
-      this.hasRole(roleName) || user.role_name === roleName || user.role?.name === roleName
+      user.roles?.some((role) => role.name === roleName) ||
+      user.role_name === roleName ||
+      user.role?.name === roleName
     );
+  }
+
+  canManageOwnProfileImage(user: User | null = this.currentUserValue): boolean {
+    if (!user?.tenant_id) {
+      return false;
+    }
+
+    if (user.is_primary_admin) {
+      return true;
+    }
+
+    return this.isTenantAdmin(user);
   }
 
   canAccessRbac(user: User | null = this.currentUserValue): boolean {
@@ -497,18 +557,21 @@ export class AuthService {
     return canViewMySubscriptionAccess(user);
   }
 
-  canAccessDonations(user: User | null = this.currentUserValue): boolean {
+  canAccessDonations(
+    user: User | null = this.currentUserValue,
+    options: { hasActiveSupportSession?: boolean } = {}
+  ): boolean {
     if (!user) {
       return false;
     }
 
-    // Platform admins should always be able to access/manage tenant financial modules.
+    // Platform admins need parish context (home tenant or active Support session).
     if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
-      return true;
+      return !!user.tenant_id || !!options.hasActiveSupportSession;
     }
 
     if (!user.tenant_id) {
-      return false;
+      return this.canAccessSupportCenter(user) && !!options.hasActiveSupportSession;
     }
 
     const tenantAdminRoleNames = ['Administrator', 'Church Administrator'];
@@ -545,6 +608,56 @@ export class AuthService {
     return permissionNames.some((permissionName) =>
       (user.permissions || []).some((permission) => permission?.name === permissionName)
     );
+  }
+
+  canAccessSupport(user: User | null = this.currentUserValue): boolean {
+    if (!user?.tenant_id) {
+      return false;
+    }
+
+    if (this.isTenantAdmin(user) || user.is_primary_admin) {
+      return true;
+    }
+
+    return (user.permissions || []).some((permission) => permission?.name === 'support.tickets.view');
+  }
+
+  /** Platform Support Center (/support-center) — sessions, ops tickets, grants, audit. */
+  canAccessSupportCenter(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return true;
+    }
+
+    return this.hasAnyPermission([
+      'support.sessions.start',
+      'support.sessions.view',
+      'support.ops.tickets.view',
+      'support.configuration.manage',
+      'support.audit.view',
+      'support.grants.view',
+      'support.grants.manage',
+    ]);
+  }
+
+  /** Platform Application Access (/application-access) — security monitoring. */
+  canAccessApplicationAccess(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (!user.has_ekklesia_role) {
+      return false;
+    }
+
+    if (this.isSuperAdmin()) {
+      return true;
+    }
+
+    return this.hasPermission('application_access.view');
   }
 
   /**

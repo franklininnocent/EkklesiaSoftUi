@@ -1,4 +1,4 @@
-@import '../styles/stewardship-split-layout.scss';
+@use '../styles/stewardship-split-layout.scss';
 
 /* .cf-split-form-body is `display: grid` with implicit auto rows. When this
  * form is short (few fields) inside the taller split-panel column, the

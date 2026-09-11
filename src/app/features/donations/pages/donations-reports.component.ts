@@ -15,7 +15,7 @@ import { DonationReportExport, ExecutiveReportSummary, ParishComparisonReport } 
   template: `
     <section class="reports cf-page">
       <header class="cf-hero">
-        <h1>Leadership Reports</h1>
+        <h3>Leadership Reports</h3>
         <p>Executive summaries, parish comparisons, and exportable records for decision-making.</p>
       </header>
 

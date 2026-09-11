@@ -28,9 +28,10 @@
   confirmText="Exit session"
   cancelText="Stay"
   confirmButtonClass="btn-danger"
+  [externalSubmitting]="ending"
   (confirmed)="onExitConfirmed($event)"
-  (cancelled)="showExitConfirm = false"
-  (closed)="showExitConfirm = false"
+  (cancelled)="closeExitConfirm()"
+  (closed)="closeExitConfirm()"
 ></app-confirmation-modal>
 
 <app-modal-shell

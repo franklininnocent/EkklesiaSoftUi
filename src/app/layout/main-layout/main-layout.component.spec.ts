@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { TestBed, ComponentFixture } from '@angular/core/testing';
 import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
 import { provideRouter } from '@angular/router';
@@ -6,10 +6,11 @@ import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { MainLayoutComponent } from './main-layout.component';
 import { AuthService } from '@core/services/auth.service';
-import { ThemeService } from '@core/services/theme.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 
 describe('MainLayoutComponent (RBAC visibility)', () => {
   let component: MainLayoutComponent;
+  let fixture: ComponentFixture<MainLayoutComponent>;
   let authServiceMock: any;
 
   beforeEach(async () => {
@@ -19,7 +20,13 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
       isEkklesiaAdmin: jest.fn().mockReturnValue(false),
       isTenantAdmin: jest.fn().mockReturnValue(false),
       hasAnyPermission: jest.fn().mockReturnValue(false),
-      canAccessRbac: jest.fn().mockReturnValue(false)
+      canAccessRbac: jest.fn().mockReturnValue(false),
+      canAccessBcc: jest.fn().mockReturnValue(false),
+      canAccessSupport: jest.fn().mockReturnValue(false),
+      canAccessDonations: jest.fn().mockReturnValue(false),
+      canAccessMinistries: jest.fn().mockReturnValue(false),
+      currentUser$: of(null),
+      canViewMySubscription: jest.fn().mockReturnValue(false),
     };
 
     await TestBed.configureTestingModule({
@@ -36,20 +43,25 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
         provideRouter([]),
         { provide: AuthService, useValue: authServiceMock },
         {
-          provide: ThemeService,
+          provide: SubscriptionAccessService,
           useValue: {
-            fontSize$: of('medium'),
-            fontSizeOptions: [],
-            setFontSize: jest.fn(),
-            getCurrentFontSize: jest.fn().mockReturnValue('medium')
-          }
-        }
+            snapshot$: of(null),
+            ensureLoaded: jest.fn(),
+            clear: jest.fn(),
+          },
+        },
       ]
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(MainLayoutComponent);
+    fixture = TestBed.createComponent(MainLayoutComponent);
     component = fixture.componentInstance;
+  });
+
+  it('does not render Display Settings FAB', () => {
     fixture.detectChanges();
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('.theme-settings-fab')).toBeNull();
+    expect(compiled.textContent).not.toContain('Display Settings');
   });
 
   it('shows tenant management only for platform admins', () => {

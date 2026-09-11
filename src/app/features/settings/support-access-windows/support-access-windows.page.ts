@@ -1,4 +1,11 @@
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import {
+  ChangeDetectionStrategy,
+  ChangeDetectorRef,
+  Component,
+  OnDestroy,
+  OnInit,
+  inject,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
@@ -12,6 +19,7 @@ import {
   ConfirmationResult,
 } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
+import { CfDateTimeFieldComponent } from '@shared/components/cf-datetime-field/cf-datetime-field.component';
 import { AuthService } from '@core/services/auth.service';
 import {
   dateWindowValidator,
@@ -34,6 +42,7 @@ import { ParishSupportGrantService } from './parish-support-grant.service';
     LoadingSkeletonComponent,
     ConfirmationModalComponent,
     StatusBadgeComponent,
+    CfDateTimeFieldComponent,
   ],
   templateUrl: './support-access-windows.page.html',
   styleUrl: './support-access-windows.page.scss',
@@ -82,6 +91,14 @@ export class SupportAccessWindowsPage implements OnInit, OnDestroy {
   );
 
   ngOnInit(): void {
+    this.form.controls.starts_at.valueChanges
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        this.form.controls.ends_at.updateValueAndValidity({ onlySelf: true });
+        this.form.updateValueAndValidity({ onlySelf: false, emitEvent: false });
+        this.cdr.markForCheck();
+      });
+
     if (this.canView) {
       this.reload();
     }
@@ -171,11 +188,14 @@ export class SupportAccessWindowsPage implements OnInit, OnDestroy {
 
   endsError(): string | null {
     const ends = this.form.controls.ends_at;
-    if (!this.submitted && !ends.touched) {
+    const starts = this.form.controls.starts_at;
+    const showErrors =
+      this.submitted || ends.touched || (starts.touched && !!ends.value);
+    if (!showErrors) {
       return null;
     }
     if (this.form.hasError('startsAfterEnds')) {
-      return 'Ends must be after Starts.';
+      return 'End date and time must be after the start date and time.';
     }
     return this.fieldError('ends_at');
   }

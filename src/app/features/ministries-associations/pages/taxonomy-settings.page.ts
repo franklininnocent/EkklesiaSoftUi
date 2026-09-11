@@ -1,5 +1,7 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectionStrategy, Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
@@ -23,8 +25,11 @@ import { MinistriesSubNavComponent } from '../components/ministries-sub-nav/mini
   styleUrl: './taxonomy-settings.page.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TaxonomySettingsPageComponent implements OnInit {
+export class TaxonomySettingsPageComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
+  private readonly route = inject(ActivatedRoute);
+  private readonly cdr = inject(ChangeDetectorRef);
+  private readonly destroy$ = new Subject<void>();
 
   readonly tabs: TaxonomyKind[] = ['categories', 'types', 'positions'];
   readonly tabLabels: Record<TaxonomyKind, string> = {
@@ -38,6 +43,12 @@ export class TaxonomySettingsPageComponent implements OnInit {
 
   ngOnInit(): void {
     this.canConfigure = this.authService.hasPermission('ministries.configure');
+    this.initializeTabFromQuery();
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   get tabStripItems(): TabStripItem[] {
@@ -67,5 +78,21 @@ export class TaxonomySettingsPageComponent implements OnInit {
     }
 
     this.activeTab = tab;
+    this.cdr.markForCheck();
+  }
+
+  private initializeTabFromQuery(): void {
+    this.applyTabFromQuery(this.route.snapshot.queryParamMap.get('tab'));
+
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      this.applyTabFromQuery(params.get('tab'));
+    });
+  }
+
+  private applyTabFromQuery(tab: string | null): void {
+    const next: TaxonomyKind =
+      tab && this.tabs.includes(tab as TaxonomyKind) ? (tab as TaxonomyKind) : 'categories';
+
+    this.setActiveTab(next);
   }
 }

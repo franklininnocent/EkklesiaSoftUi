@@ -42,18 +42,35 @@
           label="Starts"
           fieldId="parish-starts"
           [required]="true"
+          [useLabelFor]="false"
           [errorText]="fieldError('starts_at')"
         >
-          <input id="parish-starts" type="datetime-local" formControlName="starts_at" />
+          <app-cf-datetime-field
+            formControlName="starts_at"
+            dateInputId="parish-starts"
+            labelledById="parish-starts-label"
+            dateAriaLabel="Start date"
+            timeAriaLabel="Start time"
+            [invalid]="!!fieldError('starts_at')"
+          ></app-cf-datetime-field>
         </app-form-field>
 
         <app-form-field
           label="Ends"
           fieldId="parish-ends"
           [required]="true"
+          [useLabelFor]="false"
           [errorText]="endsError()"
         >
-          <input id="parish-ends" type="datetime-local" formControlName="ends_at" />
+          <app-cf-datetime-field
+            formControlName="ends_at"
+            dateInputId="parish-ends"
+            labelledById="parish-ends-label"
+            dateAriaLabel="End date"
+            timeAriaLabel="End time"
+            [minDateTime]="form.controls.starts_at.value"
+            [invalid]="!!endsError()"
+          ></app-cf-datetime-field>
         </app-form-field>
 
         <app-form-field

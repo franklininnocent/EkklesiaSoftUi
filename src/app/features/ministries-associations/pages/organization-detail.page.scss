@@ -1,4 +1,4 @@
-@import '../../../../styles/church-financial-os-mixins';
+@use '../../../../styles/church-financial-os-mixins' as *;
 
 .organization-detail__error-actions {
   display: flex;

@@ -62,7 +62,7 @@
               <div class="clw-photo__actions">
                 <label class="clw__btn clw__btn--secondary">
                   Upload Photo
-                  <input type="file" accept="image/*" hidden (change)="onPhotoSelected($event)" />
+                  <input type="file" accept="image/jpeg,image/jpg,image/png,image/webp" hidden (change)="onPhotoSelected($event)" />
                 </label>
                 <button type="button" class="clw__btn clw__btn--ghost" *ngIf="photoPreview" (click)="removePhoto()">Remove</button>
               </div>

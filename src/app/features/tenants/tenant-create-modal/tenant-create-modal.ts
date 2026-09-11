@@ -531,9 +531,9 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy {
       const file = input.files[0];
       
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        this.formErrors['tenant_logo'] = 'Please select a valid image file (JPEG, PNG, GIF, or WebP)';
+        this.formErrors['tenant_logo'] = 'Please select a valid image file (JPEG, PNG, or WebP)';
         input.value = '';
         return;
       }

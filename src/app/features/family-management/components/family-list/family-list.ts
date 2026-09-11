@@ -2,9 +2,10 @@ import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRe
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
-import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
+import { Subject, debounceTime, takeUntil, distinctUntilChanged, filter, map } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { FamilyService } from '../../../../core/services/family.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { Family, BCC, FamilyStatistics, FamilyMember } from '../../../../core/models/family.model';
@@ -19,6 +20,7 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 
 @Component({
   selector: 'app-family-list',
@@ -37,6 +39,7 @@ import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-re
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
     DisableWhenReadOnlyDirective,
+    ImageViewerComponent,
   ],
   templateUrl: './family-list.html',
   styleUrls: ['./family-list.scss'],
@@ -46,6 +49,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly supportSessions = inject(SupportSessionService);
 
   families: Family[] = [];
   bccs: BCC[] = [];
@@ -63,6 +67,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
   showAdvancedSearch = false;
   showForm = false;
   selectedFamily: Family | null = null;
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
 
   filterForm: FormGroup;
   searchFields: SearchField[] = [];
@@ -138,8 +143,15 @@ export class FamilyListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.initializeSearchFields();
-    this.loadReferenceData();
-    this.loadStatistics();
+    this.tryLoadParishData();
+    this.supportSessions.session$
+      .pipe(
+        map((session) => session?.id ?? null),
+        distinctUntilChanged(),
+        filter((id) => id !== null),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => this.tryLoadParishData());
     this.applyQueryParams(this.route.snapshot.queryParamMap);
     this.route.queryParamMap
       .pipe(takeUntil(this.destroy$))
@@ -236,7 +248,23 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       });
   }
 
+  private tryLoadParishData(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
+    this.loadReferenceData();
+    this.loadStatistics();
+    if (!this.loaded) {
+      this.loadFamilies();
+    }
+  }
+
   private loadReferenceData(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.bccService.getBCCs({ status: 'active' })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -259,6 +287,10 @@ export class FamilyListComponent implements OnInit, OnDestroy {
   }
 
   private loadStatistics(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.familyService.getStatistics()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -276,6 +308,10 @@ export class FamilyListComponent implements OnInit, OnDestroy {
   }
 
   loadFamilies(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.loading = true;
     this.error = null;
     this.cdr.markForCheck();
@@ -662,5 +698,28 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     };
 
     return labels[key] ?? key;
+  }
+
+  openPhotoViewer(family: Family, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const photoUrl = this.getHeadImageUrl(family);
+    if (!photoUrl || this.isAvatarBroken(family) || !family.head_of_family) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: photoUrl,
+      alt: family.head_of_family,
+      title: family.head_of_family,
+      subtitle: family.family_name || 'Head of Family',
+    };
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 }

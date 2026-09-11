@@ -251,6 +251,7 @@ export interface TenantDetailsUserPreview {
   id: number;
   name: string;
   email: string;
+  profile_image_full_url?: string | null;
   role: string | null;
   status: 'active' | 'inactive' | string;
   is_primary_admin: boolean;

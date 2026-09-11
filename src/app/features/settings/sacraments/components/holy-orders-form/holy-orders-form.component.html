@@ -26,7 +26,7 @@
   </nav>
 
   <div class="ho-panel" *ngIf="step === 1">
-    <h2>Ordination details</h2>
+    <h3 class="cf-subsection-title">Ordination details</h3>
     <p class="hint">Choose the order being conferred and the date of the ordination.</p>
     <label>
       Ordination type
@@ -43,7 +43,7 @@
   </div>
 
   <div class="ho-panel" *ngIf="step === 2">
-    <h2>Candidate</h2>
+    <h3 class="cf-subsection-title">Candidate</h3>
     <p class="hint">Who is being ordained? Link a parish member or enter an external name.</p>
     <app-participant-source-control
       [allowedSources]="['member', 'external']"
@@ -53,7 +53,7 @@
   </div>
 
   <div class="ho-panel" *ngIf="step === 3">
-    <h2>Ordaining bishop</h2>
+    <h3 class="cf-subsection-title">Ordaining bishop</h3>
     <p class="hint">The bishop (or archbishop) who conferred the order.</p>
     <app-minister-picker
       controlId="ordaining_bishop"
@@ -65,7 +65,7 @@
   </div>
 
   <div class="ho-panel" *ngIf="step === 4">
-    <h2>Additional ministers</h2>
+    <h3 class="cf-subsection-title">Additional ministers</h3>
     <p class="hint">Optional co-consecrators, from parish leadership or entered as external names.</p>
     <div *ngFor="let draft of coConsecratorDrafts; let i = index" class="co-row">
       <app-minister-picker
@@ -81,7 +81,7 @@
   </div>
 
   <div class="ho-panel" *ngIf="step === 5">
-    <h2>Diocese and place</h2>
+    <h3 class="cf-subsection-title">Diocese and place</h3>
     <p class="hint">Where the ordination took place.</p>
     <label>
       Diocese
@@ -103,7 +103,7 @@
   </div>
 
   <div class="ho-panel" *ngIf="step === 6">
-    <h2>Registry</h2>
+    <h3 class="cf-subsection-title">Registry</h3>
     <p class="hint">Book, page, and entry numbers from the parish Holy Orders register.</p>
     <label>
       Book
@@ -124,7 +124,7 @@
   </div>
 
   <div class="ho-panel" *ngIf="step === 7">
-    <h2>Review</h2>
+    <h3 class="cf-subsection-title">Review</h3>
     <p class="hint">Confirm the details below before saving to the parish register.</p>
     <dl class="ho-summary">
       <div>
@@ -160,7 +160,7 @@
   </div>
 
   <div class="ho-panel" *ngIf="step === 8">
-    <h2>Confirm and save</h2>
+    <h3 class="cf-subsection-title">Confirm and save</h3>
     <p>Everything looks ready. Save to add this Holy Orders record to the parish register.</p>
     <app-button variant="save" [loading]="saving" (clicked)="save()">Save Holy Orders</app-button>
   </div>

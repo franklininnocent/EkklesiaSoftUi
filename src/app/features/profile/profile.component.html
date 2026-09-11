@@ -7,11 +7,58 @@
   <div class="profile-content">
     <div class="profile-card">
       <div class="profile-avatar-section">
-        <div class="profile-avatar">
-          <span class="avatar-text">{{ getInitials(user.name) }}</span>
-        </div>
+        <app-user-avatar
+          class="profile-avatar-wrap"
+          [name]="user.name"
+          [imageUrl]="getUserPhotoUrl(user)"
+          size="lg"
+          (photoClick)="openPhotoViewer(user)"
+        ></app-user-avatar>
         <h2 class="profile-name">{{ user.name }}</h2>
         <p class="profile-email">{{ user.email }}</p>
+
+        <div
+          class="profile-photo-controls"
+          *ngIf="canManageOwnProfileImage(user)"
+          aria-labelledby="profile-photo-heading"
+        >
+          <app-cf-media-upload
+            #profileMediaUpload
+            label="Profile photo"
+            hint="JPG, PNG, or WebP up to 3 MB."
+            inputId="profile_photo"
+            [accept]="profileImageAccept"
+            [disabled]="isSavingProfileImage"
+            [uploading]="isSavingProfileImage"
+            [previewUrl]="savedProfileImagePreviewUrl"
+            [previewClickable]="!!savedProfileImagePreviewUrl && !selectedProfileImage"
+            (previewClick)="openPhotoViewer(user)"
+            (fileSelected)="onCfProfileImageSelected($event)"
+            (removeRequested)="markProfileImageForRemoval()"
+            (validationError)="onProfileImageValidationError($event)"
+          ></app-cf-media-upload>
+
+          <p class="profile-photo-error" *ngIf="profileImageError" role="alert">{{ profileImageError }}</p>
+
+          <div class="profile-photo-save-row" *ngIf="hasPendingProfileImageChange">
+            <button
+              type="button"
+              class="cf-btn cf-btn--primary cf-btn--sm"
+              [disabled]="isSavingProfileImage"
+              (click)="saveProfileImageChanges(user)"
+            >
+              {{ isSavingProfileImage ? 'Saving…' : 'Save photo' }}
+            </button>
+            <button
+              type="button"
+              class="cf-btn cf-btn--sm"
+              [disabled]="isSavingProfileImage"
+              (click)="cancelProfileImageChanges()"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
       </div>
 
       <div class="profile-divider"></div>
@@ -65,3 +112,12 @@
     </div>
   </div>
 </div>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>

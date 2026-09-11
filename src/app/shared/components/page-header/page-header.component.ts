@@ -24,6 +24,8 @@ export class PageHeaderComponent {
   @Input({ required: true }) title!: string;
   @Input() subtitle?: string;
   @Input() variant: 'page' | 'panel' = 'page';
+  /** Top-level page title heading level. Default `1`; use `3` for compact sub-pages. */
+  @Input() titleLevel: 1 | 3 = 1;
   /** Router link for an optional "← Back" link above the title. */
   @Input() backLink?: string | any[];
   @Input() backLabel = 'Back';

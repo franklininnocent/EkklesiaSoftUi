@@ -138,18 +138,16 @@ export class ChurchLeadershipService {
    * Resolve a stored leader photo path to a browser-loadable URL.
    */
   resolveLeaderPhotoUrl(photoUrl?: string | null): string | null {
-    if (!photoUrl) {
+    if (!photoUrl?.trim()) {
       return null;
     }
 
-    if (photoUrl.startsWith('http://') || photoUrl.startsWith('https://') || photoUrl.startsWith('data:')) {
-      return photoUrl;
+    const trimmed = photoUrl.trim();
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+      return trimmed;
     }
 
-    const baseUrl = environment.apiUrl.replace('/api', '');
-    return baseUrl.endsWith('/')
-      ? `${baseUrl}storage/${photoUrl}`
-      : `${baseUrl}/storage/${photoUrl}`;
+    return null;
   }
 
   /**

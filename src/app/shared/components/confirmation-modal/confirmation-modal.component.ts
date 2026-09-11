@@ -41,6 +41,10 @@ export class ConfirmationModalComponent implements OnChanges {
   @Input() descriptionLabel = 'Description (Optional)';
   @Input() descriptionPlaceholder = 'Enter a reason or note...';
   @Input() descriptionMaxLength = 500;
+  /** When true, the description field must be non-empty before confirm is enabled. */
+  @Input() descriptionRequired = false;
+  /** Parent-controlled busy state for async confirm handlers (keeps modal open). */
+  @Input() externalSubmitting = false;
   /** When true, stacks above an already-open modal. */
   @Input() nested = true;
 
@@ -76,26 +80,42 @@ export class ConfirmationModalComponent implements OnChanges {
     return this.description.length > this.descriptionMaxLength;
   }
 
+  get isDescriptionMissing(): boolean {
+    return this.descriptionRequired && this.showDescriptionInput && !this.description.trim();
+  }
+
+  get isBusy(): boolean {
+    return this.isSubmitting || this.externalSubmitting;
+  }
+
   onCloseRequested(): void {
     this.onCancel();
   }
 
   onConfirm(): void {
-    if (this.isSubmitting || this.isDescriptionTooLong) return;
-
-    this.isSubmitting = true;
+    if (this.isBusy || this.isDescriptionTooLong || this.isDescriptionMissing) {
+      return;
+    }
 
     const result: ConfirmationResult = {
       confirmed: true,
       description: this.description.trim() || undefined,
     };
 
+    if (this.externalSubmitting) {
+      this.confirmed.emit(result);
+      return;
+    }
+
+    this.isSubmitting = true;
     this.confirmed.emit(result);
     this.reset();
   }
 
   onCancel(): void {
-    if (this.isSubmitting) return;
+    if (this.isBusy) {
+      return;
+    }
 
     this.cancelled.emit();
     this.closed.emit();
