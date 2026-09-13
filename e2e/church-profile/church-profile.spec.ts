@@ -22,6 +22,30 @@ test.describe('Church profile navigation', () => {
     await context.close();
   });
 
+  test('social tab deep link highlights sidebar child', async ({ browser }) => {
+    const context = await createTenantAdminContext(browser);
+    const page = await context.newPage();
+
+    await page.goto('/church-profile?tab=social');
+    await expect(page).toHaveURL(/\/church-profile\?tab=social/);
+    await expect(page.locator('[data-nav="church-profile-social"][aria-current="page"]')).toBeVisible();
+    await expect(page.locator('#sidebar-nav-church-profile')).toBeVisible();
+
+    await context.close();
+  });
+
+  test('edit profile action deep link highlights overview child', async ({ browser }) => {
+    const context = await createTenantAdminContext(browser);
+    const page = await context.newPage();
+
+    await page.goto('/church-profile?tab=profile&action=edit');
+    await expect(page).toHaveURL(/\/church-profile\?tab=profile&action=edit/);
+    await expect(page.locator('[data-nav="church-profile-edit"][aria-current="page"]')).toBeVisible();
+    await expect(page.locator('#sidebar-nav-church-profile-profile')).toBeVisible();
+
+    await context.close();
+  });
+
   test('settings priests card deep-links to leadership tab', async ({ browser }) => {
     const context = await createTenantAdminContext(browser);
     const page = await context.newPage();

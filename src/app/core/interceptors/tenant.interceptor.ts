@@ -1,5 +1,6 @@
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
+import { isParishProductApiPath } from '@core/interceptors/parish-product-api-paths';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 /**
@@ -59,21 +60,6 @@ function shouldAttachForSupportPath(path: string): boolean {
   }
 
   return false;
-}
-
-function isParishProductApiPath(path: string): boolean {
-  const prefixes = [
-    '/api/tenant/',
-    '/api/families',
-    '/api/members',
-    '/api/persons',
-    '/api/sacraments',
-    '/api/bcc',
-    '/api/ministries',
-    '/api/pastoral',
-  ];
-
-  return prefixes.some((prefix) => path === prefix || path.startsWith(prefix));
 }
 
 function extractApiPath(url: string): string {

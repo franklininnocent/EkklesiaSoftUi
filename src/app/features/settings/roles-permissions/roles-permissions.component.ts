@@ -1,6 +1,7 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Role, Permission } from '@core/models';
 import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
@@ -23,6 +24,7 @@ import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { take, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
+import { parseRolesTabFromUrl } from '../config/roles-nav.config';
 
 interface AssignRoleTenantGroup {
   tenantKey: string;
@@ -209,11 +211,16 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     private usersService: UsersService,
     private toastService: ToastService,
     public authService: AuthService,  // Made public for template access
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.checkEkklesiaRole();
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.syncTabFromRoute();
+    });
     this.loadRoles();
     this.loadPermissions();
     this.loadTenantUsers();
@@ -291,11 +298,41 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   // Tab Management
   selectTab(tab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope'): void {
-    this.activeTab = tab;
+    if (tab === 'pope') {
+      this.activeTab = tab;
+      return;
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   isActiveTab(tab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope'): boolean {
     return this.activeTab === tab;
+  }
+
+  private syncTabFromRoute(): void {
+    const tab = parseRolesTabFromUrl(this.router.url);
+    const resolved = tab ?? 'roles';
+
+    if (resolved === 'users' && !this.isTenantMode) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: 'roles' },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+      return;
+    }
+
+    if (resolved === 'users' || resolved === 'roles' || resolved === 'permissions' || resolved === 'assign') {
+      this.activeTab = resolved;
+      this.cdr.markForCheck();
+    }
   }
 
   // Roles Management

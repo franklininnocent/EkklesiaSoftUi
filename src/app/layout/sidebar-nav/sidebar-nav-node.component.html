@@ -1,0 +1,151 @@
+@if (node) {
+  @if (collapsed && depth === 0 && hasChildren) {
+    <div
+      class="nav-flyout-host"
+      (mouseenter)="openFlyout()"
+      (mouseleave)="closeFlyout()"
+      (focusin)="openFlyout()"
+      (focusout)="closeFlyout()"
+    >
+      @if (node.route) {
+        <a
+          [routerLink]="node.route"
+          [queryParams]="node.query"
+          class="nav-item nav-item--root"
+          [class.nav-item--active]="isActive()"
+          [class.nav-item--ancestor]="isAncestor()"
+          [attr.data-nav]="node.id"
+          [attr.aria-label]="node.label"
+          [attr.title]="node.label"
+          [attr.aria-current]="isActive() ? 'page' : null"
+        >
+          @if (showIcon()) {
+            <span class="nav-icon"><app-sidebar-nav-icon [icon]="node.icon!" /></span>
+          }
+        </a>
+      } @else {
+        <button
+          type="button"
+          class="nav-item nav-item--root nav-item--button"
+          [class.nav-item--active]="isActive()"
+          [class.nav-item--ancestor]="isAncestor()"
+          [attr.data-nav]="node.id"
+          [attr.aria-label]="node.label"
+          [attr.title]="node.label"
+          [attr.aria-expanded]="flyoutOpen"
+          (click)="flyoutOpen = !flyoutOpen"
+        >
+          @if (showIcon()) {
+            <span class="nav-icon"><app-sidebar-nav-icon [icon]="node.icon!" /></span>
+          }
+        </button>
+      }
+      @if (flyoutOpen) {
+        <div class="nav-flyout" role="group" [attr.aria-label]="node.label + ' menu'">
+          @for (child of node.children; track child.id) {
+            <app-sidebar-nav-node [node]="child" [depth]="depth + 1" [collapsed]="false" />
+          }
+        </div>
+      }
+    </div>
+  } @else if (collapsed && depth === 0 && node.route && !hasChildren) {
+    <a
+      [routerLink]="node.route"
+      [queryParams]="node.query"
+      class="nav-item nav-item--root"
+      [class.nav-item--active]="isActive()"
+      [attr.data-nav]="node.id"
+      [attr.aria-label]="node.label"
+      [attr.title]="node.label"
+      [attr.aria-current]="isActive() ? 'page' : null"
+    >
+      @if (showIcon()) {
+        <span class="nav-icon"><app-sidebar-nav-icon [icon]="node.icon!" /></span>
+      }
+    </a>
+  } @else if (hasChildren) {
+    <div class="nav-item-group" [ngStyle]="navDepthStyle" [class]="depthClass">
+      <div
+        class="nav-item-parent"
+        [class.nav-item-parent--expanded]="isExpanded()"
+        [class.nav-item-parent--ancestor]="isAncestor()"
+        [class.nav-item-parent--active]="isActive()"
+      >
+        @if (node.route) {
+          <a
+            class="nav-item-parent__link"
+            [routerLink]="node.route"
+            [queryParams]="node.query"
+            [class.nav-item-parent__link--active]="isActive()"
+            [class.nav-item-parent__link--ancestor]="isAncestor()"
+            [attr.data-nav]="depth === 0 ? node.id : null"
+            [attr.aria-label]="node.label"
+            [attr.aria-current]="isActive() ? 'page' : null"
+          >
+            @if (showIcon()) {
+              <span class="nav-icon"><app-sidebar-nav-icon [icon]="node.icon!" /></span>
+            }
+            @if (showMarker()) {
+              <span class="nav-marker" aria-hidden="true"></span>
+            }
+            <span class="nav-text">{{ node.label }}</span>
+          </a>
+        } @else {
+          <button
+            type="button"
+            class="nav-item-parent__link nav-item-parent__link--button"
+            [class.nav-item-parent__link--ancestor]="isAncestor()"
+            (click)="onParentRowClick($event)"
+            [attr.aria-expanded]="isExpanded()"
+            [attr.aria-controls]="submenuId"
+            [attr.aria-label]="node.label"
+          >
+            @if (showMarker()) {
+              <span class="nav-marker" aria-hidden="true"></span>
+            }
+            <span class="nav-text">{{ node.label }}</span>
+          </button>
+        }
+        <button
+          type="button"
+          class="nav-arrow-btn"
+          [attr.aria-expanded]="isExpanded()"
+          [attr.aria-controls]="submenuId"
+          [attr.aria-label]="(isExpanded() ? 'Collapse' : 'Expand') + ' ' + node.label"
+          (click)="toggleExpand($event)"
+        >
+          <span class="nav-arrow" [class.rotated]="isExpanded()">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </span>
+        </button>
+      </div>
+      @if (isExpanded()) {
+        <div class="nav-submenu" [id]="submenuId" role="group" [attr.aria-label]="node.label + ' submenu'">
+          @for (child of node.children; track child.id) {
+            <app-sidebar-nav-node [node]="child" [depth]="depth + 1" [collapsed]="collapsed" />
+          }
+        </div>
+      }
+    </div>
+  } @else if (node.route) {
+    <a
+      [routerLink]="node.route"
+      [queryParams]="node.query"
+      [ngClass]="leafClassMap"
+      [ngStyle]="depth > 0 ? navDepthStyle : null"
+      [attr.data-nav]="node.id"
+      [attr.aria-label]="node.label"
+      [attr.aria-current]="isActive() ? 'page' : null"
+    >
+      @if (showIcon()) {
+        <span class="nav-icon"><app-sidebar-nav-icon [icon]="node.icon!" /></span>
+      }
+      @if (showMarker()) {
+        <span class="nav-marker" aria-hidden="true"></span>
+      }
+      <span class="nav-text">{{ node.label }}</span>
+    </a>
+  }
+}

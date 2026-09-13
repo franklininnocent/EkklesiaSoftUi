@@ -2,13 +2,17 @@ import { TestBed } from '@angular/core/testing';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { of, firstValueFrom } from 'rxjs';
+import { AuthService } from '@core/services/auth.service';
 import { tenantAdminGuard } from './tenant-admin.guard';
 
 describe('tenantAdminGuard', () => {
   let routerNavigateSpy: jest.SpyInstance;
   let storeSelectSpy: jest.SpyInstance;
+  let canManageTenants: jest.Mock;
 
   beforeEach(() => {
+    canManageTenants = jest.fn().mockReturnValue(false);
+
     const routerSpy = {
       navigate: jest.fn()
     } as unknown as Router;
@@ -20,7 +24,11 @@ describe('tenantAdminGuard', () => {
     TestBed.configureTestingModule({
       providers: [
         { provide: Router, useValue: routerSpy },
-        { provide: Store, useValue: storeSpy }
+        { provide: Store, useValue: storeSpy },
+        {
+          provide: AuthService,
+          useValue: { canManageTenants },
+        },
       ]
     });
 
@@ -32,6 +40,7 @@ describe('tenantAdminGuard', () => {
   });
 
   it('allows SuperAdmin via role_name', async () => {
+    canManageTenants.mockReturnValue(true);
     storeSelectSpy.mockReturnValue(of({ id: 1, role_name: 'SuperAdmin' } as any));
     const result$ = TestBed.runInInjectionContext(() => tenantAdminGuard()) as any;
     await expect(firstValueFrom(result$)).resolves.toBe(true);
@@ -39,6 +48,7 @@ describe('tenantAdminGuard', () => {
   });
 
   it('allows EkklesiaAdmin via nested role.name', async () => {
+    canManageTenants.mockReturnValue(true);
     storeSelectSpy.mockReturnValue(of({ id: 2, role: { name: 'EkklesiaAdmin' } } as any));
     const result$ = TestBed.runInInjectionContext(() => tenantAdminGuard()) as any;
     await expect(firstValueFrom(result$)).resolves.toBe(true);
@@ -58,6 +68,12 @@ describe('tenantAdminGuard', () => {
     await expect(firstValueFrom(result$)).resolves.toBe(false);
     expect(routerNavigateSpy).toHaveBeenCalledWith(['/auth/login']);
   });
+
+  it('allows platform admin during active support session', async () => {
+    canManageTenants.mockReturnValue(true);
+    storeSelectSpy.mockReturnValue(of({ id: 4, role_name: 'EkklesiaAdmin', tenant_id: null } as any));
+    const result$ = TestBed.runInInjectionContext(() => tenantAdminGuard()) as any;
+    await expect(firstValueFrom(result$)).resolves.toBe(true);
+    expect(routerNavigateSpy).not.toHaveBeenCalled();
+  });
 });
-
-

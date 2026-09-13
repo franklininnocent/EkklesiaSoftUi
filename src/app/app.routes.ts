@@ -12,6 +12,7 @@ import { FamilyDetail } from './features/family-management/components/family-det
 import { FamilyBreadcrumbResolver } from './features/family-management/resolvers/family-breadcrumb.resolver';
 import { bccGuard } from './core/guards/bcc.guard';
 import { supportGuard } from './core/guards/support.guard';
+import { parishResourceGuard } from './core/guards/parish-resource.guard';
 
 export const routes: Routes = [
   {
@@ -50,10 +51,12 @@ export const routes: Routes = [
       },
       {
         path: 'sacraments',
+        canActivate: [parishResourceGuard],
         loadChildren: () => import('./features/settings/sacraments/sacraments.routes').then(m => m.SACRAMENTS_ROUTES)
       },
       {
         path: 'users',
+        canActivate: [parishResourceGuard],
         loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
       },
       {
@@ -85,14 +88,17 @@ export const routes: Routes = [
       },
       {
         path: 'church-profile',
+        canActivate: [parishResourceGuard],
         loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
       },
       {
         path: 'families',
+        canActivate: [parishResourceGuard],
         component: FamilyListComponent
       },
       {
         path: 'families/:id',
+        canActivate: [parishResourceGuard],
         component: FamilyDetail,
         resolve: { breadcrumbLabel: FamilyBreadcrumbResolver }
       },
@@ -103,6 +109,7 @@ export const routes: Routes = [
       },
       {
         path: 'members',
+        canActivate: [parishResourceGuard],
         loadChildren: () => import('./features/members/members.routes').then(m => m.MEMBERS_ROUTES)
       },
       {

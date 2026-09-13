@@ -110,6 +110,9 @@ export class AuthService {
   }
 
   private handleAuthSuccess(response: AuthResponse): void {
+    // Prevent a prior platform Support session from leaking into a new login identity.
+    this.supportSessions.clearSession();
+
     // Store tokens
     localStorage.setItem(environment.tokenKey, response.access_token);
     localStorage.setItem(environment.refreshTokenKey, response.refresh_token);
@@ -300,13 +303,99 @@ export class AuthService {
     return user.permissions.some(p => p.name === permission);
   }
 
-  /** Parish context from home tenant or an active Support Center session. */
+  /** Parish context from home tenant or platform Support overlay. */
   hasParishContext(user: User | null = this.currentUserValue): boolean {
     if (!user) {
       return false;
     }
 
-    return !!user.tenant_id || this.supportSessions.isSessionLive;
+    if (user.tenant_id) {
+      return true;
+    }
+
+    return this.isPlatformActor(user) && this.supportSessions.isSessionLive;
+  }
+
+  /**
+   * Platform operator: Ekklesia roles or SupportAdmin.
+   * Never derived from Support session or tenant context alone.
+   */
+  isPlatformActor(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.hasEkklesiaRole(user)) {
+      return true;
+    }
+
+    const roleName = user.role_name || user.role?.name;
+    if (roleName === 'SupportAdmin') {
+      return true;
+    }
+
+    return !!user.roles?.some((role) => role.name === 'SupportAdmin');
+  }
+
+  isTenantActor(user: User | null = this.currentUserValue): boolean {
+    return !!user && !this.isPlatformActor(user);
+  }
+
+  /**
+   * Ekklesia roles only (SuperAdmin, EkklesiaAdmin, EkklesiaManager, EkklesiaUser).
+   * Does not include SupportAdmin.
+   */
+  hasEkklesiaRole(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (user.has_ekklesia_role === true) {
+      return true;
+    }
+
+    if (user.has_ekklesia_role === false) {
+      return false;
+    }
+
+    const ekklesiaRoles = ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'];
+    if (user.role_name && ekklesiaRoles.includes(user.role_name)) {
+      return true;
+    }
+
+    if (user.role?.name && ekklesiaRoles.includes(user.role.name)) {
+      return true;
+    }
+
+    return (
+      user.is_super_admin === true ||
+      user.role_name === 'SuperAdmin' ||
+      user.role?.name === 'SuperAdmin' ||
+      user.role_name === 'EkklesiaAdmin' ||
+      user.role?.name === 'EkklesiaAdmin'
+    );
+  }
+
+  /** SuperAdmin and EkklesiaAdmin only — platform tenant administration. */
+  canManageTenants(user: User | null = this.currentUserValue): boolean {
+    if (!user || !this.isPlatformActor(user)) {
+      return false;
+    }
+
+    if (user.is_super_admin === true) {
+      return true;
+    }
+
+    const adminRoles = ['SuperAdmin', 'Super Admin', 'EkklesiaAdmin', 'Ekklesia Admin'];
+    if (user.role_name && adminRoles.includes(user.role_name)) {
+      return true;
+    }
+
+    if (user.role?.name && adminRoles.includes(user.role.name)) {
+      return true;
+    }
+
+    return !!user.roles?.some((role) => adminRoles.includes(role.name));
   }
 
   /**
@@ -319,7 +408,7 @@ export class AuthService {
       return false;
     }
 
-    if (this.supportSessions.isSessionLive) {
+    if (this.isPlatformActor(user) && this.supportSessions.isSessionLive) {
       return true;
     }
 
@@ -571,7 +660,7 @@ export class AuthService {
     }
 
     if (!user.tenant_id) {
-      return this.canAccessSupportCenter(user) && !!options.hasActiveSupportSession;
+      return this.isPlatformActor(user) && this.canAccessSupportCenter(user) && !!options.hasActiveSupportSession;
     }
 
     const tenantAdminRoleNames = ['Administrator', 'Church Administrator'];
@@ -624,7 +713,7 @@ export class AuthService {
 
   /** Platform Support Center (/support-center) — sessions, ops tickets, grants, audit. */
   canAccessSupportCenter(user: User | null = this.currentUserValue): boolean {
-    if (!user) {
+    if (!user || !this.isPlatformActor(user)) {
       return false;
     }
 
@@ -645,11 +734,7 @@ export class AuthService {
 
   /** Platform Application Access (/application-access) — security monitoring. */
   canAccessApplicationAccess(user: User | null = this.currentUserValue): boolean {
-    if (!user) {
-      return false;
-    }
-
-    if (!user.has_ekklesia_role) {
+    if (!user || !this.hasEkklesiaRole(user)) {
       return false;
     }
 

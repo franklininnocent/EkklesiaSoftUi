@@ -4,10 +4,15 @@ import { Router } from '@angular/router';
 import { AuthService } from './auth.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
+
 describe('AuthService RBAC access helpers', () => {
   let service: AuthService;
+  let supportSessionsMock: { isSessionLive: boolean };
 
   beforeEach(() => {
+    supportSessionsMock = { isSessionLive: false };
+
     TestBed.configureTestingModule({
       imports: [HttpClientTestingModule],
       providers: [
@@ -16,7 +21,8 @@ describe('AuthService RBAC access helpers', () => {
         {
           provide: PhoneCodeService,
           useValue: { setPhoneCode: jest.fn() }
-        }
+        },
+        { provide: SupportSessionService, useValue: supportSessionsMock },
       ]
     });
 
@@ -251,5 +257,33 @@ describe('AuthService RBAC access helpers', () => {
     (service as any).currentUserSubject.next(user);
 
     expect(service.hasEcclesiasticalPermission('bishops.view')).toBe(true);
+  });
+
+  it('isPlatformActor is true for SupportAdmin and Ekklesia roles', () => {
+    expect(service.isPlatformActor({ has_ekklesia_role: true, role_name: 'EkklesiaUser' } as any)).toBe(true);
+    expect(service.isPlatformActor({ role_name: 'SupportAdmin', roles: [{ name: 'SupportAdmin' }] } as any)).toBe(true);
+    expect(service.isPlatformActor({ tenant_id: 42, role_name: 'Administrator' } as any)).toBe(false);
+  });
+
+  it('canManageTenants requires platform actor and SuperAdmin or EkklesiaAdmin', () => {
+    expect(service.canManageTenants({ role_name: 'Administrator', tenant_id: 42 } as any)).toBe(false);
+    expect(service.canManageTenants({ role_name: 'EkklesiaAdmin', has_ekklesia_role: true } as any)).toBe(true);
+    expect(service.canManageTenants({ role_name: 'SupportAdmin', roles: [{ name: 'SupportAdmin' }] } as any)).toBe(false);
+  });
+
+  it('canAccessSupportCenter denies tenant users even with support permissions', () => {
+    const tenantUser = {
+      tenant_id: 42,
+      role_name: 'Administrator',
+      permissions: [{ name: 'support.sessions.start' }],
+    } as any;
+    expect(service.canAccessSupportCenter(tenantUser)).toBe(false);
+  });
+
+  it('hasTenantPermission ignores support session for tenant actors', () => {
+    supportSessionsMock.isSessionLive = true;
+    const tenantUser = { tenant_id: 42, role_name: 'Member', permissions: [] } as any;
+    (service as any).currentUserSubject.next(tenantUser);
+    expect(service.hasTenantPermission('church.settings.edit')).toBe(false);
   });
 });

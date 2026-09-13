@@ -381,17 +381,18 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private refreshDashboardAccess(user: User | null): void {
-    if (this.authService.hasParishContext(user)) {
+    const isTenantActor = !!user?.tenant_id && !this.authService.isPlatformActor(user);
+
+    if (isTenantActor) {
       this.loadFamilyStatistics();
       this.loadBccStatistics();
     }
 
-    const hasActiveSupportSession = !!this.supportSessions.sessionId;
-    this.canViewFinancial = this.authService.canAccessDonations(user, { hasActiveSupportSession });
+    this.canViewFinancial = isTenantActor && this.authService.canAccessDonations(user);
     if (this.canViewFinancial) {
       this.loadOperationsDashboard();
     }
-    this.canViewPastoral = this.authService.canAccessPastoral(user, { hasActiveSupportSession });
+    this.canViewPastoral = isTenantActor && this.authService.canAccessPastoral(user);
     this.canAssignPastoral = this.authService.hasPermission('pastoral.care.assign');
     this.resolveMinistriesAccess(user);
     if (this.operationsVisited) {
@@ -645,8 +646,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private resolveMinistriesAccess(user: User | null): void {
-    const hasActiveSupportSession = !!this.supportSessions.sessionId;
-    if (!this.authService.canAccessMinistries(user, { hasActiveSupportSession })) {
+    const isTenantActor = !!user?.tenant_id && !this.authService.isPlatformActor(user);
+    if (!isTenantActor || !this.authService.canAccessMinistries(user)) {
       this.showMinistriesSection = false;
       this.ministriesSummary = null;
       this.ministriesActivity = [];

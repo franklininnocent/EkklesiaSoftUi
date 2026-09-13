@@ -10,6 +10,11 @@
   border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
+.support-session-banner__header {
+  display: grid;
+  gap: var(--cf-space-2);
+}
+
 .support-session-banner__copy {
   display: grid;
   gap: var(--cf-space-1);
@@ -45,6 +50,41 @@
   border-color: transparent;
 }
 
+.support-session-banner__parish {
+  display: grid;
+  gap: var(--cf-space-2);
+  padding-top: var(--cf-space-1);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.support-session-banner__parish-label {
+  font-size: var(--cf-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.support-session-banner__parish-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-2);
+  align-items: center;
+}
+
+.support-session-banner__parish-link.cf-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.25);
+  font-size: var(--cf-text-sm);
+  padding: 0.35rem 0.65rem;
+}
+
+.support-session-banner__parish-link.is-active {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.55);
+}
+
 .support-session-banner__renew-copy {
   margin: 0 0 var(--cf-space-3);
   font-size: var(--cf-text-sm);
@@ -64,13 +104,8 @@
 }
 
 @media (min-width: 768px) {
-  .support-session-banner {
+  .support-session-banner__header {
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
-  }
-
-  .support-session-banner__error,
-  .support-session-banner__success {
-    grid-column: 1 / -1;
   }
 }

@@ -11,6 +11,8 @@ import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import { AuthService } from '@core/services/auth.service';
+import { ApplicationContextService } from '@core/services/application-context.service';
+import { NavMenuService, NavMenuId } from '@core/services/nav-menu.service';
 import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb';
 import { QuickCollectDrawerComponent } from '@features/donations/components/quick-collect-drawer/quick-collect-drawer.component';
 import { QuickCollectService } from '@features/donations/services/quick-collect.service';
@@ -22,6 +24,12 @@ import { SubscriptionStatusBannerComponent } from '@shared/components/subscripti
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
+import { SidebarNavForestComponent } from '../sidebar-nav/sidebar-nav-forest.component';
+import {
+  buildAppSidebarSections,
+  filterSidebarSections,
+} from '../sidebar-nav/app-sidebar.config';
+import { SidebarNavSection } from '../sidebar-nav/sidebar-nav.model';
 @Component({
   selector: 'app-main-layout',
   standalone: true,
@@ -36,6 +44,7 @@ import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util'
     SubscriptionStatusBannerComponent,
     UserAvatarComponent,
     ImageViewerComponent,
+    SidebarNavForestComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -45,6 +54,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private store = inject(Store<AppState>);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private appContext = inject(ApplicationContextService);
+  private navMenu = inject(NavMenuService);
   private elementRef = inject(ElementRef);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
@@ -55,9 +66,14 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   currentUser$: Observable<User | null>;
   currentTenant$: Observable<Tenant | null>;
   isSidebarCollapsed = false;
+  isMobileNavOpen = false;
+  isMobileViewport = false;
   isUserMenuOpen = false;
   isUserMenuClosing = false;
   currentYear = new Date().getFullYear();
+  currentUser: User | null = null;
+  visibleSidebarSections: SidebarNavSection[] = [];
+  private readonly sidebarSections = buildAppSidebarSections();
 
   constructor() {
     this.currentUser$ = this.store.select(selectCurrentUser);
@@ -67,10 +83,15 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Load user data if authenticated but user is not in store (e.g., after page refresh)
     this.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      this.currentUser = user;
+      this.visibleSidebarSections = filterSidebarSections(
+        this.sidebarSections,
+        (menuId) => this.navMenu.isVisible(menuId as NavMenuId, user)
+      );
       if (!user && this.authService.isAuthenticated()) {
         this.store.dispatch(AuthActions.loadUser());
       }
-      if (user?.tenant_id) {
+      if (this.appContext.hasParishResourceContext(user)) {
         this.subscriptionAccess.ensureLoaded();
       } else {
         this.subscriptionAccess.clear();
@@ -82,7 +103,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
       this.cdr.markForCheck();
     });
 
-    if (this.authService.canAccessSupportCenter()) {
+    this.supportSessions.session$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
+    if (!this.authService.isPlatformActor()) {
+      this.supportSessions.clearSession();
+    } else if (this.authService.canAccessSupportCenter()) {
       this.supportSessions.syncWithServer().pipe(takeUntil(this.destroy$)).subscribe();
     }
 
@@ -93,6 +120,10 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe((event) => {
+        if (this.isMobileNavOpen) {
+          this.closeMobileNav();
+        }
+
         if (!this.supportSessions.isSessionLive) {
           return;
         }
@@ -107,6 +138,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
           })
           .subscribe();
       });
+
+    this.updateViewportState();
   }
 
   ngOnDestroy(): void {
@@ -125,8 +158,40 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
   }
 
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportState();
+  }
+
   toggleSidebar(): void {
+    if (this.isMobileViewport) {
+      this.toggleMobileNav();
+      return;
+    }
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    this.cdr.markForCheck();
+  }
+
+  toggleMobileNav(): void {
+    this.isMobileNavOpen = !this.isMobileNavOpen;
+    this.cdr.markForCheck();
+  }
+
+  closeMobileNav(): void {
+    if (!this.isMobileNavOpen) {
+      return;
+    }
+    this.isMobileNavOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  private updateViewportState(): void {
+    const wasMobile = this.isMobileViewport;
+    this.isMobileViewport = window.innerWidth <= 768;
+    if (wasMobile && !this.isMobileViewport) {
+      this.isMobileNavOpen = false;
+    }
+    this.cdr.markForCheck();
   }
 
   toggleUserMenu(event?: MouseEvent): void {
@@ -206,82 +271,48 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  /**
-   * Check if the current user can manage tenants.
-   * Only SuperAdmin and EkklesiaAdmin can see the Tenants menu.
-   */
-  canManageTenants(user: User | null): boolean {
-    if (!user) return false;
-    
-    // Check by role name (primary method)
-    if (user.role_name === 'SuperAdmin' || user.role_name === 'EkklesiaAdmin') {
-      return true;
-    }
-    
-    // Fallback: Check by role object
-    if (user.role?.name === 'SuperAdmin' || user.role?.name === 'EkklesiaAdmin') {
-      return true;
-    }
-    
-    // Tenant users (with tenant_id) cannot manage tenants
-    return false;
+  isVisible(id: NavMenuId, user: User | null): boolean {
+    return this.navMenu.isVisible(id, user);
   }
 
-  /**
-   * Check if the current user can manage roles and permissions.
-   * SuperAdmin, EkklesiaAdmin, and tenant Administrators can manage roles.
-   */
+  canManageTenants(user: User | null): boolean {
+    return this.isVisible('tenants', user);
+  }
+
   canManageRoles(user: User | null): boolean {
-    if (!user) return false;
-    return this.authService.canAccessRbac(user);
+    return this.isVisible('roles-permissions', user);
   }
 
   canAccessSupport(user: User | null): boolean {
-    return this.authService.canAccessSupport(user);
+    return this.isVisible('support', user);
   }
 
   canAccessSupportCenter(user: User | null): boolean {
-    return this.authService.canAccessSupportCenter(user);
+    return this.isVisible('support-center', user);
   }
 
   canAccessApplicationAccess(user: User | null): boolean {
-    return this.authService.canAccessApplicationAccess(user);
+    return this.isVisible('application-access', user);
   }
 
   canViewDonations(user: User | null): boolean {
-    const hasActiveSupportSession = !!this.supportSessions.sessionId;
-    if (!this.authService.canAccessDonations(user, { hasActiveSupportSession })) {
-      return false;
-    }
-    // Soft-gate: hide when tenant subscription is expired/suspended.
-    if (user?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin()) {
-      return this.subscriptionAccess.canViewGatedModules();
-    }
-    return true;
+    return this.isVisible('donations', user);
+  }
+
+  canAccessBcc(user: User | null): boolean {
+    return this.isVisible('bccs', user);
+  }
+
+  canAccessMinistries(user: User | null): boolean {
+    return this.isVisible('ministries', user);
+  }
+
+  hasParishContext(user: User | null): boolean {
+    return !!user?.tenant_id && !this.authService.isPlatformActor(user);
   }
 
   isSubscriptionReadOnly(): boolean {
     return this.subscriptionAccess.isReadOnly();
-  }
-
-  canAccessBcc(user: User | null): boolean {
-    const hasActiveSupportSession = !!this.supportSessions.sessionId;
-    return this.authService.canAccessBcc(user, { hasActiveSupportSession });
-  }
-
-  canAccessMinistries(user: User | null): boolean {
-    const hasActiveSupportSession = !!this.supportSessions.sessionId;
-    if (!this.authService.canAccessMinistries(user, { hasActiveSupportSession })) {
-      return false;
-    }
-    if (user?.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin()) {
-      return this.subscriptionAccess.canViewGatedModules();
-    }
-    return true;
-  }
-
-  hasParishContext(user: User | null): boolean {
-    return this.authService.hasParishContext(user);
   }
 
   openQuickCollect(): void {

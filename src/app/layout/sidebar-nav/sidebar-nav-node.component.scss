@@ -1,0 +1,22 @@
+@use './sidebar-nav.styles' as sidebarNav;
+
+:host {
+  display: block;
+  width: 100%;
+  min-width: 0;
+}
+
+@include sidebarNav.sidebar-nav-chrome;
+
+:host-context(.sidebar.collapsed) {
+  @include sidebarNav.sidebar-nav-collapsed;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-item,
+  .nav-subitem,
+  .nav-item-parent__link,
+  .nav-arrow {
+    transition: none;
+  }
+}

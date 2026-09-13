@@ -30,16 +30,15 @@ export const donationsGuard: CanActivateFn = (_route, state) => {
     filter((user): user is User => !!user),
     take(1),
     switchMap((user) => {
-      const hasActiveSupportSession = !!supportSessions.sessionId;
-      const isPlatformAdmin = authService.isSuperAdmin() || authService.isEkklesiaAdmin();
+      const hasActiveSupportSession = authService.isPlatformActor(user) && !!supportSessions.sessionId;
       const hasTenantContext = !!user.tenant_id || hasActiveSupportSession;
 
-      if (!hasTenantContext && (isPlatformAdmin || authService.canAccessSupportCenter(user))) {
-        void router.navigate(['/support-center'], {
+      if (!hasTenantContext && authService.isPlatformActor(user)) {
+        void router.navigate(['/dashboard'], {
           queryParams: {
             notice: 'support_session_required',
             message:
-              'Donations needs an active Support Center session. Start a read-only diagnosis session for the parish you are helping.',
+              'Donations needs an active Support Center session. Start a diagnosis session for the parish you are helping.',
             returnUrl: state.url,
           },
         });
@@ -57,7 +56,7 @@ export const donationsGuard: CanActivateFn = (_route, state) => {
       }
 
       // Platform / support-elevated actors: feature entitlement is enforced by tenant APIs.
-      if (!user.tenant_id || isPlatformAdmin) {
+      if (!user.tenant_id || authService.isSuperAdmin() || authService.isEkklesiaAdmin()) {
         return of(true);
       }
 

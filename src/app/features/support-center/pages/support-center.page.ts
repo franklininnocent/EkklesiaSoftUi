@@ -22,6 +22,7 @@ import {
   ConfirmationResult,
 } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { AuthService } from '@core/services/auth.service';
+import { SupportContextService } from '@core/services/support-context.service';
 import { ToastService } from '@core/services/toast.service';
 import {
   dateWindowValidator,
@@ -82,6 +83,7 @@ type PendingAction =
 export class SupportCenterPage implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly sessions = inject(SupportSessionService);
+  private readonly supportContext = inject(SupportContextService);
   private readonly auth = inject(AuthService);
   private readonly toast = inject(ToastService);
   private readonly router = inject(Router);
@@ -338,6 +340,10 @@ export class SupportCenterPage implements OnInit, OnDestroy {
     }
 
     const preselectTenantId = Number(this.route.snapshot.queryParamMap.get('tenant_id') || 0);
+    const preselectTicketRef = (this.route.snapshot.queryParamMap.get('ticket_ref') || '').trim();
+    if (preselectTicketRef) {
+      this.startForm.patchValue({ ticket_ref: preselectTicketRef });
+    }
     if (preselectTenantId > 0 && this.canStartSessions) {
       this.sessions.getTenant(preselectTenantId).pipe(takeUntil(this.destroy$)).subscribe({
         next: (tenant) => {
@@ -425,8 +431,8 @@ export class SupportCenterPage implements OnInit, OnDestroy {
     const value = this.startForm.getRawValue();
     this.starting = true;
 
-    this.sessions
-      .start({
+    this.supportContext
+      .enterSupportContext({
         tenant_id: this.selected.id,
         mode: value.mode,
         reason_code: value.reason_code,
@@ -790,7 +796,7 @@ export class SupportCenterPage implements OnInit, OnDestroy {
       this.pendingAction = null;
       this.endingSession = true;
       this.cdr.markForCheck();
-      this.sessions.end(this.myActive.id).pipe(takeUntil(this.destroy$)).subscribe({
+      this.supportContext.exitSupportContext().pipe(takeUntil(this.destroy$)).subscribe({
         next: () => {
           this.endingSession = false;
           this.confirmOpen = false;

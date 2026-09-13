@@ -30,16 +30,17 @@ export const ministriesGuard: CanActivateFn = (_route, state) => {
     filter((user): user is User => !!user),
     take(1),
     switchMap((user) => {
-      const hasActiveSupportSession = !!supportSessions.sessionId;
+      const hasActiveSupportSession = authService.isPlatformActor(user) && !!supportSessions.sessionId;
       const isPlatformAdmin = authService.isSuperAdmin() || authService.isEkklesiaAdmin();
       const hasTenantContext = !!user.tenant_id || hasActiveSupportSession;
 
-      if (isPlatformAdmin && !hasTenantContext) {
-        void router.navigate(['/platform/ministries'], {
+      if (authService.isPlatformActor(user) && !hasTenantContext) {
+        void router.navigate(['/dashboard'], {
           queryParams: {
-            notice: 'tenant_context_required',
+            notice: 'support_session_required',
             message:
-              'Parish Ministries needs a parish context. Use Ministries Insights for platform analytics, or start a Support Center session to work in a parish.',
+              'Parish Ministries needs a Support Center session. Start a session for the parish you are helping, or use Ministries Insights for platform analytics.',
+            returnUrl: state.url,
           },
         });
         return of(false);

@@ -1,6 +1,9 @@
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
+import { ChurchProfileService } from '@core/services/church/church-profile.service';
+import { PhoneCodeService } from '@core/services/phone-code.service';
+import { FamilyAffiliationsPanelComponent } from '@features/family-management/components/family-affiliations-panel/family-affiliations-panel.component';
 import { environment } from '@environments/environment';
 import {
   ApiEnvelope,
@@ -25,6 +28,8 @@ const STORAGE_KEY = 'ekklesia.support_session';
 @Injectable({ providedIn: 'root' })
 export class SupportSessionService {
   private readonly http = inject(HttpClient);
+  private readonly churchProfile = inject(ChurchProfileService);
+  private readonly phoneCode = inject(PhoneCodeService);
   private readonly base = `${environment.apiUrl}/support`;
 
   private readonly sessionSubject = new BehaviorSubject<SupportSession | null>(this.readStored());
@@ -429,6 +434,7 @@ export class SupportSessionService {
     localStorage.removeItem(STORAGE_KEY);
     this.sessionSubject.next(null);
     this.bumpApplyEpoch();
+    this.resetParishScopedCaches();
   }
 
   private readCurrentSessionId(): string | null {
@@ -450,9 +456,16 @@ export class SupportSessionService {
       return;
     }
 
+    const previousTenantId = this.currentSession?.tenant_id ?? null;
+    const tenantChanged = previousTenantId === null || previousTenantId !== session.tenant_id;
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     this.sessionSubject.next(session);
     this.bumpApplyEpoch();
+
+    if (tenantChanged) {
+      this.resetParishScopedCaches();
+    }
   }
 
   private isLocallyExpired(session: SupportSession): boolean {
@@ -483,9 +496,22 @@ export class SupportSessionService {
       return;
     }
 
+    const previousTenantId = this.currentSession?.tenant_id ?? null;
+    const tenantChanged = previousTenantId === null || previousTenantId !== session.tenant_id;
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     this.sessionSubject.next(session);
     this.bumpApplyEpoch();
+
+    if (tenantChanged) {
+      this.resetParishScopedCaches();
+    }
+  }
+
+  private resetParishScopedCaches(): void {
+    this.churchProfile.clearProfile();
+    this.phoneCode.resetForSupportContextSwitch();
+    FamilyAffiliationsPanelComponent.clearModuleEnabledCache();
   }
 
   private readStored(): SupportSession | null {

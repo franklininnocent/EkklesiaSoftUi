@@ -1,4 +1,5 @@
 import { ChangeDetectorRef } from '@angular/core';
+import { convertToParamMap } from '@angular/router';
 import { of } from 'rxjs';
 import { RolesPermissionsComponent } from './roles-permissions.component';
 
@@ -37,13 +38,23 @@ describe('RolesPermissionsComponent', () => {
       markForCheck: jest.fn()
     } as unknown as ChangeDetectorRef;
 
+    const routeMock = {
+      queryParamMap: of(convertToParamMap({})),
+    };
+    const routerMock = {
+      url: '/settings/roles-permissions',
+      navigate: jest.fn().mockResolvedValue(true),
+    };
+
     return new RolesPermissionsComponent(
       rolesServiceMock as any,
       permissionsServiceMock as any,
       usersServiceMock as any,
       toastServiceMock as any,
       authServiceMock as any,
-      cdrMock
+      cdrMock,
+      routeMock as any,
+      routerMock as any
     );
   };
 

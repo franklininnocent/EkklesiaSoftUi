@@ -9,7 +9,6 @@ import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { AuthService } from '@core/services';
-import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
@@ -22,7 +21,6 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
-  private supportSessions = inject(SupportSessionService);
   private cdr = inject(ChangeDetectorRef);
   private sanitizer = inject(DomSanitizer);
   private destroy$ = new Subject<void>();
@@ -206,43 +204,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Check if the current user has an Ekklesia role.
-   * Only Ekklesia users (SuperAdmin, EkklesiaAdmin, EkklesiaManager, EkklesiaUser) can access Ecclesiastical Data.
-   * 
-   * IMPORTANT: Users with tenant_id are TENANT users and should NEVER have access to Ekklesia features.
+   * Ekklesia roles only — delegates to AuthService (not tenant_id veto).
    */
   hasEkklesiaRole(user: User | null): boolean {
-    if (!user) return false;
-    
-    // CRITICAL CHECK: If user has a tenant_id, they are a TENANT user, NOT an Ekklesia user
-    // Tenant users should NEVER have access to Ecclesiastical Data or Sacrament Types
-    if (user.tenant_id !== null && user.tenant_id !== undefined) {
-      return false;
-    }
-    
-    // Primary check: Use the backend-provided flag (this is the most reliable)
-    if (user.has_ekklesia_role === true) {
-      return true;
-    }
-    
-    // If has_ekklesia_role is explicitly false, return false immediately
-    if (user.has_ekklesia_role === false) {
-      return false;
-    }
-    
-    // Fallback: Check by role name (only if has_ekklesia_role is undefined)
-    const ekklesiaRoles = ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'];
-    if (user.role_name && ekklesiaRoles.includes(user.role_name)) {
-      return true;
-    }
-    
-    // Fallback: Check by role object
-    if (user.role?.name && ekklesiaRoles.includes(user.role.name)) {
-      return true;
-    }
-    
-    // Default to false for safety - tenant users should NOT have access
-    return false;
+    return this.authService.hasEkklesiaRole(user);
   }
 
   /**
@@ -262,9 +227,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
       return false;
     }
     if (section.requiresTenantAccess) {
-      const parishHome = user !== null && user.tenant_id !== null && !this.hasEkklesiaRole(user);
-      const supportElevated = this.supportSessions.isSessionLive && this.authService.canAccessSupportCenter(user);
-      if (!parishHome && !supportElevated) {
+      const parishHome = user !== null && user.tenant_id !== null && !this.authService.isPlatformActor(user);
+      if (!parishHome) {
         return false;
       }
     }

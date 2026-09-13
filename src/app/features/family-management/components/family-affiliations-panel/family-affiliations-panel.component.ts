@@ -44,6 +44,11 @@ import { EnrollFromFamilyModalComponent } from '../enroll-from-family-modal/enro
 export class FamilyAffiliationsPanelComponent implements OnInit, OnChanges, OnDestroy {
   private static moduleEnabledCache: boolean | null = null;
 
+  /** Cleared when support session tenant context changes. */
+  static clearModuleEnabledCache(): void {
+    FamilyAffiliationsPanelComponent.moduleEnabledCache = null;
+  }
+
   private readonly destroy$ = new Subject<void>();
   private readonly api = inject(MinistriesApiService);
   private readonly authService = inject(AuthService);
@@ -178,6 +183,11 @@ export class FamilyAffiliationsPanelComponent implements OnInit, OnChanges, OnDe
   }
 
   private resolveAccess(): void {
+    if (!this.authService.hasParishContext()) {
+      this.hidePanel();
+      return;
+    }
+
     // Backend FamilyMinistriesPolicy::viewAffiliations + route middleware require ministries.view
     // (super/platform admins bypass). Broader canAccessMinistries alone is too permissive.
     if (!this.canViewAffiliations()) {

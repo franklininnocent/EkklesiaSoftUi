@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed, fakeAsync, tick } from '@angular/core/testing';
-import { of } from 'rxjs';
+import { BehaviorSubject, of } from 'rxjs';
 import { provideRouter, ActivatedRoute } from '@angular/router';
 import { provideStore } from '@ngrx/store';
 import { ChurchProfileComponent } from './church-profile.component';
@@ -107,7 +107,10 @@ describe('ChurchProfileComponent', () => {
     currentUserValue: Record<string, unknown> | null;
     hasPermission: jest.Mock;
     isTenantAdmin: jest.Mock;
+    hasParishContext: jest.Mock;
+    hasTenantPermission: jest.Mock;
   };
+  let queryParams$: BehaviorSubject<Record<string, string>>;
 
   function setup(canEdit = true): void {
     toastService = {
@@ -116,10 +119,13 @@ describe('ChurchProfileComponent', () => {
       warning: jest.fn(),
       info: jest.fn(),
     };
+    queryParams$ = new BehaviorSubject<Record<string, string>>({ tab: 'profile' });
     authService = {
       currentUserValue: { tenant_id: 1, is_primary_admin: canEdit },
       hasPermission: jest.fn(() => canEdit),
       isTenantAdmin: jest.fn(() => canEdit),
+      hasParishContext: jest.fn(() => true),
+      hasTenantPermission: jest.fn(() => false),
     };
 
     TestBed.configureTestingModule({
@@ -130,7 +136,8 @@ describe('ChurchProfileComponent', () => {
         {
           provide: ActivatedRoute,
           useValue: {
-            queryParams: of({ tab: 'profile' }),
+            queryParams: queryParams$.asObservable(),
+            snapshot: { queryParamMap: { get: (key: string) => queryParams$.value[key] ?? null } },
           },
         },
         {
@@ -233,6 +240,26 @@ describe('ChurchProfileComponent', () => {
       expect(component.activeTab).toBe('leadership');
       component.setActiveTab('statistics');
       expect(component.activeTab).toBe('statistics');
+    });
+
+    it('handles action=edit from the URL', () => {
+      setup(true);
+      const openSpy = jest.spyOn(component, 'openGeneralModal');
+
+      queryParams$.next({ tab: 'profile', action: 'edit' });
+
+      expect(openSpy).toHaveBeenCalled();
+    });
+
+    it('shows Coming Soon toast when action=report is present in the URL', () => {
+      setup(true);
+
+      queryParams$.next({ tab: 'profile', action: 'report' });
+
+      expect(toastService.info).toHaveBeenCalledWith(
+        'Report generation will be available in a future release.',
+        'Coming Soon',
+      );
     });
   });
 });

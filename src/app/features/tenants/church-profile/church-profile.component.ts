@@ -38,6 +38,7 @@ import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
 import { Subject } from 'rxjs';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 // Import all church management services
 import {
@@ -94,6 +95,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private leadersLoadTrigger$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly supportSessions = inject(SupportSessionService);
 
   private guardWrite(action: string): boolean {
     if (!this.subscriptionAccess.isReadOnly()) {
@@ -207,6 +209,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   canEdit = false;
   canViewDiocesanBishop = false;
   canSubmitBishopUpdate = false;
+  private lastHandledOverviewAction: string | null = null;
   designVariant: 'summary' | 'tiles' | 'definition' = 'summary';
   aboutExpanded = false;
 
@@ -406,6 +409,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       this.cancelEditSection('general');
       this.cancelEditSection('contact');
     }
+    this.clearOverviewAction();
   }
 
   /**
@@ -665,15 +669,61 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     this.setupLeadersLoading();
     this.loadAllData();
     
-    // Check for tab query parameter
     this.route.queryParams
       .pipe(takeUntil(this.destroy$))
-      .subscribe(params => {
-        if (params['tab'] && ['profile', 'leadership', 'statistics', 'social', 'diocesan-bishop'].includes(params['tab'])) {
-          this.setActiveTab(params['tab'] as ChurchProfileTab);
+      .subscribe((params) => {
+        const tab = params['tab'];
+        if (
+          tab &&
+          ['profile', 'leadership', 'statistics', 'social', 'diocesan-bishop'].includes(tab)
+        ) {
+          const nextTab = tab as ChurchProfileTab;
+          if (nextTab !== this.activeTab) {
+            this.activeTab = nextTab;
+            this.loadTabData();
+          }
         }
+
+        const action = typeof params['action'] === 'string' ? params['action'] : null;
+        if (action !== this.lastHandledOverviewAction) {
+          this.lastHandledOverviewAction = action;
+          this.handleOverviewAction(action);
+        }
+
         this.cdr.markForCheck();
       });
+  }
+
+  private handleOverviewAction(action: string | null): void {
+    if (!action) {
+      return;
+    }
+
+    switch (action) {
+      case 'edit':
+        this.openGeneralModal();
+        break;
+      case 'report':
+        this.onGenerateReport();
+        break;
+      case 'public':
+        this.onViewPublicProfile();
+        break;
+    }
+  }
+
+  private clearOverviewAction(): void {
+    if (!this.route.snapshot.queryParamMap.get('action')) {
+      return;
+    }
+
+    this.lastHandledOverviewAction = null;
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { action: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   /**
@@ -681,21 +731,29 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    */
   private checkPermissions(): void {
     const currentUser = this.authService.currentUserValue;
-    
-    // Align with backend guardrails: tenant admin/primary admin/church.settings.edit only.
+    const hasParishContext = this.authService.hasParishContext(currentUser);
+    const session = this.supportSessions.currentSession;
+    const supportCanMutate =
+      !!session &&
+      session.status === 'active' &&
+      (session.mode === 'standard' || session.mode === 'emergency');
+
+    // Align with backend guardrails: tenant admin/primary admin/church.settings.edit, or support standard/emergency.
     const hasChurchSettingsEdit = this.authService.hasPermission('church.settings.edit');
     const isPrimaryAdmin = currentUser?.is_primary_admin === true;
     const isTenantAdmin = this.authService.isTenantAdmin();
-    
-    const hasTenant = !!currentUser?.tenant_id;
-    
-    this.canEdit = hasTenant && (hasChurchSettingsEdit || isPrimaryAdmin || isTenantAdmin);
-    this.canSubmitBishopUpdate = hasTenant && this.authService.hasTenantPermission('bishops.submit_update_request');
-    this.canViewDiocesanBishop = hasTenant && (
-      this.authService.hasTenantPermission('bishops.view')
-      || this.canSubmitBishopUpdate
-      || this.authService.hasTenantPermission('bishops.view_own_requests')
-    );
+    const hasHomeTenant = !!currentUser?.tenant_id;
+
+    this.canEdit =
+      supportCanMutate ||
+      (hasHomeTenant && (hasChurchSettingsEdit || isPrimaryAdmin || isTenantAdmin));
+    this.canSubmitBishopUpdate =
+      hasParishContext && this.authService.hasTenantPermission('bishops.submit_update_request');
+    this.canViewDiocesanBishop =
+      hasParishContext &&
+      (this.authService.hasTenantPermission('bishops.view') ||
+        this.canSubmitBishopUpdate ||
+        this.authService.hasTenantPermission('bishops.view_own_requests'));
     
     // Comprehensive debug logging
     console.log('🔍 Church Profile Edit Permission Check:', {
@@ -703,7 +761,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       hasChurchSettingsEdit,
       isPrimaryAdmin,
       isTenantAdmin,
-      hasTenant,
+      hasParishContext,
       userType: currentUser?.user_type,
       tenantId: currentUser?.tenant_id,
       userId: currentUser?.id,
@@ -844,9 +902,10 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    */
   setActiveTab(tab: ChurchProfileTab): void {
     this.activeTab = tab;
+    this.lastHandledOverviewAction = null;
     this.router.navigate([], {
       relativeTo: this.route,
-      queryParams: { tab },
+      queryParams: { tab, action: null },
       queryParamsHandling: 'merge',
       replaceUrl: true,
     });

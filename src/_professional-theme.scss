@@ -452,22 +452,6 @@ textarea {
 .sidebar {
   background: var(--sidebar-bg);
   color: var(--text-inverse);
-  
-  .nav-item {
-    color: rgba(255, 255, 255, 0.8);
-    transition: all var(--transition-fast);
-    
-    &:hover {
-      background: var(--sidebar-hover);
-      color: var(--text-inverse);
-    }
-    
-    &.active {
-      background: var(--sidebar-active);
-      color: var(--text-inverse);
-      border-left: 3px solid var(--primary-color);
-    }
-  }
 }
 
 /* ========================================================================

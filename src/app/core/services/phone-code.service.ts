@@ -120,6 +120,17 @@ export class PhoneCodeService {
     } catch {}
   }
 
+  /** Reset cached parish country when support session tenant changes. */
+  resetForSupportContextSwitch(): void {
+    this.initializedFromApi = false;
+    this._currentCountryId.set(null);
+    this._currentPhoneCode.set(getTenantCallingCode());
+    try {
+      localStorage.removeItem('tenant_country_code');
+      localStorage.removeItem('tenant_country_id');
+    } catch {}
+  }
+
   /**
    * Initialize phone code from API if still default (+1).
    * Uses tenant church profile country_id -> countries lookup.

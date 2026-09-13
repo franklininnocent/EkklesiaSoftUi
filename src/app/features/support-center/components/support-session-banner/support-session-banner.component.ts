@@ -2,8 +2,11 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnIni
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { Subject, interval, startWith, takeUntil } from 'rxjs';
+import { Subject, combineLatest, interval, startWith, takeUntil } from 'rxjs';
+import { AuthService } from '@core/services/auth.service';
+import { NavMenuService, SupportParishWorkspaceLink } from '@core/services/nav-menu.service';
 import { SupportSessionService } from '../../services/support-session.service';
+import { SupportContextService } from '@core/services/support-context.service';
 import { SupportSession } from '../../models/support-access.model';
 import {
   ConfirmationModalComponent,
@@ -31,6 +34,9 @@ import { ToastService } from '@core/services/toast.service';
 })
 export class SupportSessionBannerComponent implements OnInit, OnDestroy {
   private readonly sessions = inject(SupportSessionService);
+  private readonly supportContext = inject(SupportContextService);
+  private readonly auth = inject(AuthService);
+  private readonly navMenu = inject(NavMenuService);
   private readonly router = inject(Router);
   private readonly toast = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -38,6 +44,7 @@ export class SupportSessionBannerComponent implements OnInit, OnDestroy {
   private readonly destroy$ = new Subject<void>();
 
   session: SupportSession | null = null;
+  parishLinks: SupportParishWorkspaceLink[] = [];
   remainingLabel = '';
   ending = false;
   renewing = false;
@@ -52,11 +59,14 @@ export class SupportSessionBannerComponent implements OnInit, OnDestroy {
   });
 
   ngOnInit(): void {
-    this.sessions.session$.pipe(takeUntil(this.destroy$)).subscribe((session) => {
-      this.session = session;
-      this.updateRemaining();
-      this.cdr.markForCheck();
-    });
+    combineLatest([this.sessions.session$, this.auth.currentUser$])
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(([session, user]) => {
+        this.session = session;
+        this.parishLinks = this.navMenu.getSupportParishWorkspaceLinks(user);
+        this.updateRemaining();
+        this.cdr.markForCheck();
+      });
 
     interval(1000)
       .pipe(startWith(0), takeUntil(this.destroy$))
@@ -162,15 +172,14 @@ export class SupportSessionBannerComponent implements OnInit, OnDestroy {
     this.ending = true;
     this.error = null;
     this.success = null;
-    this.sessions
-      .end(this.session.id)
+    this.supportContext
+      .exitSupportContext()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: () => {
           this.ending = false;
           this.showExitConfirm = false;
           this.cdr.markForCheck();
-          void this.router.navigate(['/support-center']);
         },
         error: (err) => {
           this.ending = false;

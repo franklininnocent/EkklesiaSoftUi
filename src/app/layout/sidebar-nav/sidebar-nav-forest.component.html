@@ -1,0 +1,12 @@
+@for (section of sections; track section.id) {
+  @if (section.label) {
+    <div class="nav-section-label" aria-hidden="true">{{ section.label }}</div>
+  }
+  @for (node of section.items; track node.id) {
+    <app-sidebar-nav-node
+      [node]="node"
+      [depth]="0"
+      [collapsed]="collapsed"
+    />
+  }
+}

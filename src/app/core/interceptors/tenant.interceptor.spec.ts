@@ -91,4 +91,33 @@ describe('tenantInterceptor', () => {
     expect(req.request.headers.get('X-Support-Session-Id')).toBe('sess-test-123');
     req.flush({ success: true, data: {} });
   });
+
+  it('attaches the header for church-profile parish APIs', () => {
+    http.get('/api/church-profile').subscribe();
+
+    const req = httpMock.expectOne('/api/church-profile');
+    expect(req.request.headers.get('X-Support-Session-Id')).toBe('sess-test-123');
+    req.flush({ success: true, data: {} });
+  });
+
+  it('attaches the header for church-leadership and church-statistics', () => {
+    http.get('/api/church-leadership').subscribe();
+    http.get('/api/church-statistics?limit=12').subscribe();
+
+    const leadership = httpMock.expectOne('/api/church-leadership');
+    expect(leadership.request.headers.get('X-Support-Session-Id')).toBe('sess-test-123');
+    leadership.flush({ success: true, data: [] });
+
+    const stats = httpMock.expectOne('/api/church-statistics?limit=12');
+    expect(stats.request.headers.get('X-Support-Session-Id')).toBe('sess-test-123');
+    stats.flush({ success: true, data: [] });
+  });
+
+  it('does not attach the header for tenant user management APIs', () => {
+    http.get('/api/users').subscribe();
+
+    const req = httpMock.expectOne('/api/users');
+    expect(req.request.headers.has('X-Support-Session-Id')).toBe(false);
+    req.flush({ success: true, data: [] });
+  });
 });

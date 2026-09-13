@@ -1,6 +1,18 @@
 <div class="layout">
-  <!-- Sidebar -->
-  <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
+  @if (isMobileNavOpen) {
+    <button
+      type="button"
+      class="sidebar-backdrop"
+      aria-label="Close navigation menu"
+      (click)="closeMobileNav()"
+    ></button>
+  }
+
+  <aside
+    class="sidebar"
+    [class.collapsed]="isSidebarCollapsed && !isMobileViewport"
+    [class.mobile-open]="isMobileNavOpen"
+  >
     <div class="sidebar-header">
       <h2 class="sidebar-logo">{{ (currentTenant$ | async)?.name || 'EkklesiaSoft' }}</h2>
       <button class="sidebar-toggle" (click)="toggleSidebar()" aria-label="Toggle sidebar">
@@ -12,252 +24,18 @@
       </button>
     </div>
 
-     <nav class="sidebar-nav">
-       <a routerLink="dashboard" routerLinkActive="active" class="nav-item" aria-label="Dashboard">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <rect x="3" y="3" width="7" height="7"></rect>
-             <rect x="14" y="3" width="7" height="7"></rect>
-             <rect x="14" y="14" width="7" height="7"></rect>
-             <rect x="3" y="14" width="7" height="7"></rect>
-           </svg>
-         </span>
-         <span class="nav-text">Dashboard</span>
-       </a>
-       
-       <!-- Church Profile - For tenant users to manage their church -->
-       <a 
-         *ngIf="hasParishContext((currentUser$ | async))" 
-         routerLink="church-profile" 
-         routerLinkActive="active" 
-         class="nav-item"
-         aria-label="Church Profile">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-             <polyline points="9 22 9 12 15 12 15 22"></polyline>
-           </svg>
-         </span>
-         <span class="nav-text">Church Profile</span>
-       </a>
-       
-       <!-- Family Management - For tenant users -->
-       <a 
-         *ngIf="hasParishContext((currentUser$ | async))" 
-         routerLink="families" 
-         routerLinkActive="active" 
-         class="nav-item"
-         aria-label="Families">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-             <circle cx="9" cy="7" r="4"></circle>
-             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Families</span>
-       </a>
-       
-       <!-- BCC Management - For tenant users -->
-       <a 
-         *ngIf="canAccessBcc((currentUser$ | async))" 
-         routerLink="bccs" 
-         routerLinkActive="active" 
-         class="nav-item"
-         aria-label="BCCs">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-             <polyline points="9 22 9 12 15 12 15 22"></polyline>
-           </svg>
-         </span>
-         <span class="nav-text">BCCs</span>
-       </a>
-       
-       <!-- Members - For tenant users -->
-       <a 
-         *ngIf="hasParishContext((currentUser$ | async))" 
-         routerLink="members" 
-         routerLinkActive="active" 
-         class="nav-item"
-         aria-label="Members">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-             <circle cx="9" cy="7" r="4"></circle>
-             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Members</span>
-       </a>
-
-       <a
-         *ngIf="canViewDonations((currentUser$ | async))"
-         routerLink="donations"
-         routerLinkActive="active"
-         class="nav-item"
-        aria-label="Stewardship and Donations">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-           </svg>
-         </span>
-        <span class="nav-text">Stewardship & Donations</span>
-       </a>
-
-       <a
-         *ngIf="canAccessMinistries((currentUser$ | async))"
-         routerLink="ministries"
-         routerLinkActive="active"
-         class="nav-item"
-         aria-label="Ministries and Associations">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-             <circle cx="9" cy="7" r="4"></circle>
-             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Ministries &amp; Associations</span>
-       </a>
-       
-       <!-- Tenants menu - Only visible for SuperAdmin and EkklesiaAdmin -->
-       <a 
-         *ngIf="canManageTenants((currentUser$ | async))" 
-         routerLink="tenants" 
-         routerLinkActive="active" 
-         class="nav-item"
-         aria-label="Tenants">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-             <line x1="9" y1="3" x2="9" y2="21"></line>
-             <line x1="15" y1="3" x2="15" y2="21"></line>
-             <line x1="3" y1="9" x2="21" y2="9"></line>
-             <line x1="3" y1="15" x2="21" y2="15"></line>
-           </svg>
-         </span>
-         <span class="nav-text">Tenants</span>
-       </a>
-
-       <a
-         *ngIf="canManageTenants((currentUser$ | async))"
-         routerLink="platform/ministries"
-         routerLinkActive="active"
-         class="nav-item"
-         aria-label="Ministries Insights">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M3 3v18h18"></path>
-             <path d="M7 14l4-4 4 4 5-6"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Ministries Insights</span>
-       </a>
-
-      <a
-        *ngIf="canManageRoles((currentUser$ | async))"
-        routerLink="settings/roles-permissions"
-        routerLinkActive="active"
-        class="nav-item"
-        aria-label="Roles and Permissions">
-        <span class="nav-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-          </svg>
-        </span>
-        <span class="nav-text">Roles & Permissions</span>
-      </a>
-       
-      <a routerLink="sacraments" routerLinkActive="active" class="nav-item" aria-label="Sacraments">
-        <span class="nav-icon">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-            <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
-          </svg>
-        </span>
-        <span class="nav-text">Sacraments</span>
-      </a>
-
-       <a routerLink="users" routerLinkActive="active" class="nav-item" aria-label="Users">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-             <circle cx="9" cy="7" r="4"></circle>
-             <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-             <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Users</span>
-       </a>
-
-       <a
-               *ngIf="canAccessSupport((currentUser$ | async))"
-               routerLink="support"
-               routerLinkActive="active"
-               class="nav-item"
-               aria-label="Support System">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <circle cx="12" cy="12" r="10"></circle>
-             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-             <line x1="12" y1="17" x2="12.01" y2="17"></line>
-           </svg>
-         </span>
-         <span class="nav-text">Support</span>
-       </a>
-
-       <a
-               *ngIf="canAccessSupportCenter((currentUser$ | async))"
-               routerLink="support-center"
-               routerLinkActive="active"
-               class="nav-item"
-               aria-label="Support Center">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <circle cx="12" cy="12" r="10"></circle>
-             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-             <line x1="12" y1="17" x2="12.01" y2="17"></line>
-           </svg>
-         </span>
-         <span class="nav-text">Support Center</span>
-       </a>
-
-       <a
-               *ngIf="canAccessApplicationAccess((currentUser$ | async))"
-               routerLink="application-access"
-               routerLinkActive="active"
-               class="nav-item"
-               aria-label="Application Access">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-             <path d="M9 12l2 2 4-4"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Application Access</span>
-       </a>
-      
-      <a routerLink="settings" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" class="nav-item" aria-label="Settings">
-         <span class="nav-icon">
-           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="20" height="20">
-             <circle cx="12" cy="12" r="3"></circle>
-             <path d="M12 1v6m0 6v6m0-13a2 2 0 0 1 2 2m0 0a2 2 0 0 1-2 2m0-4a2 2 0 0 0-2 2m0 0a2 2 0 0 0 2 2m-5.5 5.5l5.5-5.5m0 0l5.5 5.5M1 12h6m6 0h6"></path>
-           </svg>
-         </span>
-         <span class="nav-text">Settings</span>
-       </a>
-     </nav>
+    <nav class="sidebar-nav" aria-label="Application">
+      <app-sidebar-nav-forest
+        [sections]="visibleSidebarSections"
+        [collapsed]="isSidebarCollapsed && !isMobileNavOpen"
+      />
+    </nav>
   </aside>
 
-  <!-- Main Content -->
   <div class="main-content">
-    <!-- Top Bar -->
     <header class="topbar">
       <div class="topbar-left">
-        <button class="mobile-menu-btn" (click)="toggleSidebar()" aria-label="Toggle mobile menu">
+        <button class="mobile-menu-btn" (click)="toggleMobileNav()" aria-label="Toggle mobile menu">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="24" height="24">
             <line x1="3" y1="12" x2="21" y2="12"></line>
             <line x1="3" y1="6" x2="21" y2="6"></line>
@@ -284,7 +62,7 @@
       
       <div class="topbar-right">
         <button
-          *ngIf="canViewDonations((currentUser$ | async))"
+          *ngIf="isVisible('donations', currentUser)"
           type="button"
           class="collect-btn"
           [disabled]="isSubscriptionReadOnly()"
@@ -361,15 +139,11 @@
     <app-support-session-banner></app-support-session-banner>
     <app-subscription-status-banner></app-subscription-status-banner>
 
-    <!-- Page Content -->
     <main class="page-content">
-      <!-- Breadcrumb Navigation -->
       <app-breadcrumb></app-breadcrumb>
-      
       <router-outlet></router-outlet>
     </main>
 
-    <!-- Footer -->
     <footer class="footer">
       <div class="footer-content">
         <p class="footer-text">All rights reserved © EkklesiaSoft {{ currentYear }}</p>
@@ -389,4 +163,3 @@
     (closeRequested)="closePhotoViewer()"
   ></app-image-viewer>
 </div>
-

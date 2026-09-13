@@ -6,27 +6,40 @@ import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { MainLayoutComponent } from './main-layout.component';
 import { AuthService } from '@core/services/auth.service';
+import { NavMenuService } from '@core/services/nav-menu.service';
+import { ApplicationContextService } from '@core/services/application-context.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 describe('MainLayoutComponent (RBAC visibility)', () => {
   let component: MainLayoutComponent;
   let fixture: ComponentFixture<MainLayoutComponent>;
   let authServiceMock: any;
+  let navMenuMock: { isVisible: jest.Mock };
 
   beforeEach(async () => {
     authServiceMock = {
       isAuthenticated: jest.fn().mockReturnValue(false),
+      isPlatformActor: jest.fn().mockReturnValue(false),
       isSuperAdmin: jest.fn().mockReturnValue(false),
       isEkklesiaAdmin: jest.fn().mockReturnValue(false),
       isTenantAdmin: jest.fn().mockReturnValue(false),
+      canAccessSupportCenter: jest.fn().mockReturnValue(false),
       hasAnyPermission: jest.fn().mockReturnValue(false),
       canAccessRbac: jest.fn().mockReturnValue(false),
-      canAccessBcc: jest.fn().mockReturnValue(false),
-      canAccessSupport: jest.fn().mockReturnValue(false),
-      canAccessDonations: jest.fn().mockReturnValue(false),
-      canAccessMinistries: jest.fn().mockReturnValue(false),
       currentUser$: of(null),
       canViewMySubscription: jest.fn().mockReturnValue(false),
+    };
+    navMenuMock = {
+      isVisible: jest.fn().mockImplementation((id: string, user: any) => {
+        if (id === 'tenants') {
+          return user?.role_name === 'SuperAdmin' || user?.role_name === 'EkklesiaAdmin';
+        }
+        if (id === 'roles-permissions') {
+          return authServiceMock.canAccessRbac(user);
+        }
+        return false;
+      }),
     };
 
     await TestBed.configureTestingModule({
@@ -42,6 +55,21 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
         },
         provideRouter([]),
         { provide: AuthService, useValue: authServiceMock },
+        { provide: NavMenuService, useValue: navMenuMock },
+        {
+          provide: ApplicationContextService,
+          useValue: { hasParishResourceContext: jest.fn().mockReturnValue(false) },
+        },
+        {
+          provide: SupportSessionService,
+          useValue: {
+            syncWithServer: jest.fn().mockReturnValue(of(null)),
+            clearSession: jest.fn(),
+            sessionId: null,
+            isSessionLive: false,
+            session$: of(null),
+          },
+        },
         {
           provide: SubscriptionAccessService,
           useValue: {

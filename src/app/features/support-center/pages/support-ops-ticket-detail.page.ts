@@ -123,7 +123,11 @@ export class SupportOpsTicketDetailPage implements OnInit {
     }
 
     void this.router.navigate(['/support-center'], {
-      queryParams: { tab: 'start', tenant_id: tenantId },
+      queryParams: {
+        tab: 'start',
+        tenant_id: tenantId,
+        ticket_ref: ticket.ticket_number,
+      },
     });
   }
 
