@@ -6,8 +6,8 @@
   </app-page-header>
 
   <!-- Page Header / tabs -->
-  <div class="page-header" [class.page-header--compact]="activeTab !== 'profile'">
-    <div class="header-content" [class.header-content--tabs-only]="activeTab !== 'profile'">
+  <div class="page-header page-header--compact">
+    <div class="header-content header-content--tabs-only">
       <!-- Tab Navigation -->
       <div class="tab-navigation" *ngIf="!loading && churchProfile">
       <button 
@@ -82,8 +82,8 @@
           <div class="cp-hero__banner">
             <div class="cp-hero__col cp-hero__col--church">
               <div class="cp-hero__logo">
-                <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name" loading="lazy" />
-                <div *ngIf="!churchProfile.logo_full_url" class="cp-hero__logo-fallback" aria-hidden="true">
+                <img *ngIf="getTenantLogoUrl()" [src]="getTenantLogoUrl()" [alt]="churchProfile.name" loading="lazy" />
+                <div *ngIf="!getTenantLogoUrl()" class="cp-hero__logo-fallback" aria-hidden="true">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
                     <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
                   </svg>
@@ -215,18 +215,8 @@
                   {{ canSubmitBishopUpdate ? 'Suggest New Bishop' : 'View diocesan bishop' }}
                 </button>
               </div>
-              <div class="cp-leader-card" *ngIf="getParishPriest() as priest">
-                <span class="cp-leader-card__role">{{ priest.role }}</span>
-                <span class="cp-leader-card__name">{{ priest.full_name }}</span>
-                <span class="cp-leader-card__meta">{{ priest.title || 'Parish Administrator' }}</span>
-              </div>
-              <div class="cp-leader-card" *ngFor="let assistant of getAssistantPriests()">
-                <span class="cp-leader-card__role">{{ assistant.role }}</span>
-                <span class="cp-leader-card__name">{{ assistant.full_name }}</span>
-                <span class="cp-leader-card__meta" *ngIf="assistant.title">{{ assistant.title }}</span>
-              </div>
-              <p class="cp-empty" *ngIf="!getDiocesanBishop() && !getParishPriest() && getAssistantPriests().length === 0">
-                No leadership records configured yet.
+              <p class="cp-empty" *ngIf="!getDiocesanBishop()">
+                No diocesan bishop configured yet.
               </p>
             </div>
           </article>
@@ -271,15 +261,37 @@
             <header class="cp-card__head">
               <h3>Church Status</h3>
             </header>
-            <ul class="cp-health-list">
+            <p class="cp-health-intro" *ngIf="statusMetricsLoading">Loading parish health metrics…</p>
+            <ul class="cp-health-list" *ngIf="!statusMetricsLoading && operationalMetrics.length">
               <li class="cp-health-item" *ngFor="let metric of operationalMetrics">
                 <div class="cp-health-item__head">
-                  <span>{{ metric.label }}</span>
-                  <strong>{{ metric.percent }}%</strong>
+                  <span class="cp-health-item__label">
+                    {{ metric.label }}
+                    <button
+                      type="button"
+                      class="cp-health-help"
+                      [attr.aria-label]="metric.tooltip"
+                      [title]="metric.tooltip"
+                    >?</button>
+                  </span>
+                  <strong
+                    class="cp-health-item__value"
+                    [class.cp-health-item__value--na]="metric.status === 'unavailable'"
+                  >{{ metric.display }}</strong>
                 </div>
-                <div class="cp-health-bar"><div class="cp-health-bar__fill" [style.width.%]="metric.percent"></div></div>
+                <p class="cp-health-item__summary" *ngIf="metric.summary">{{ metric.summary }}</p>
+                <div class="cp-health-bar" *ngIf="metric.status === 'available' && metric.percent !== null">
+                  <div class="cp-health-bar__fill" [style.width.%]="metric.percent"></div>
+                </div>
+                <div class="cp-health-bar cp-health-bar--empty" *ngIf="metric.status === 'unavailable'" aria-hidden="true"></div>
               </li>
             </ul>
+            <div class="cp-health-empty" *ngIf="!statusMetricsLoading && statusMetricsEmptyCta">
+              <p>Some metrics need parish data before they can be calculated.</p>
+              <button type="button" class="cp-action-btn cp-action-btn--primary" (click)="navigateStatusMetricsCta()">
+                {{ statusMetricsEmptyCta.label }}
+              </button>
+            </div>
           </article>
         </div>
 
@@ -861,15 +873,19 @@
           </label>
           <ng-select
             id="modal_denomination_id"
-            formControlName="denomination_id"
+            name="modalDenomination"
+            [(ngModel)]="modalDenomination"
+            [ngModelOptions]="{ standalone: true }"
             [items]="denominations"
             bindLabel="name"
-            bindValue="id"
+            [compareWith]="compareSelectItems"
             placeholder="Select denomination"
             [clearable]="true"
             [searchable]="true"
+            [loading]="loadingDenominations"
+            dropdownPanelClass="church-profile-select-panel"
             class="cf-split-select"
-            (change)="onDenominationChange($event)"
+            (ngModelChange)="onModalDenominationChange($event)"
           ></ng-select>
         </div>
 
@@ -887,6 +903,7 @@
             [clearable]="true"
             [searchable]="true"
             [loading]="loadingCountries"
+            [appendTo]="appendToBody"
             class="cf-split-select"
             (change)="onCountryChange($event)"
           >
@@ -912,14 +929,19 @@
           </label>
           <ng-select
             id="modal_archdiocese_id"
-            formControlName="archdiocese_id"
+            name="modalArchdiocese"
+            [(ngModel)]="modalArchdiocese"
+            [ngModelOptions]="{ standalone: true }"
             [items]="filteredArchdioceses"
             bindLabel="name"
-            bindValue="id"
+            [compareWith]="compareSelectItems"
             placeholder="Select archdiocese"
             [clearable]="true"
             [searchable]="true"
+            [disabled]="!modalDenomination"
+            dropdownPanelClass="church-profile-select-panel"
             class="cf-split-select"
+            (ngModelChange)="onModalArchdioceseChange($event)"
           >
             <ng-template ng-label-tmp let-item="item">
               {{ item.name }}
@@ -931,7 +953,7 @@
               </div>
             </ng-template>
           </ng-select>
-          <p class="cf-split-field__hint" *ngIf="!profileForm.get('denomination_id')?.value">
+          <p class="cf-split-field__hint" *ngIf="!modalDenomination">
             Select a denomination first to filter dioceses.
           </p>
         </div>

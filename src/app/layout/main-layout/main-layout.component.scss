@@ -249,7 +249,11 @@
 .topbar-right {
   display: flex;
   align-items: center;
-  gap: var(--spacing-lg);
+  gap: var(--spacing-md);
+
+  app-notification-bell {
+    display: inline-flex;
+  }
 }
 
 .collect-btn {

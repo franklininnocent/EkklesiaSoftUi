@@ -29,6 +29,10 @@ function isSupportSessionEventsRequest(url: string): boolean {
   return /\/support\/sessions\/[^/]+\/events/.test(url);
 }
 
+function isPublicPasswordRecoveryRequest(url: string): boolean {
+  return url.includes('/auth/password/recovery/request');
+}
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const toast = inject(ToastService);
@@ -54,7 +58,11 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             break;
           case 401:
             errorMessage = 'Unauthorized. Please login again.';
-            if (!req.url.includes('/auth/logout') && !req.url.includes('/auth/login')) {
+            if (
+              !req.url.includes('/auth/logout') &&
+              !req.url.includes('/auth/login') &&
+              !isPublicPasswordRecoveryRequest(req.url)
+            ) {
               auth.clearAuthState();
             }
             break;

@@ -4,6 +4,7 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angul
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged, filter, map } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { FamilyService } from '../../../../core/services/family.service';
@@ -50,6 +51,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly supportSessions = inject(SupportSessionService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   families: Family[] = [];
   bccs: BCC[] = [];
@@ -570,10 +572,15 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       ? `Are you sure you want to delete ${familyName}? This will also delete ${memberCount} member(s) associated with this family. This action cannot be undone.`
       : `Are you sure you want to delete ${familyName}? This action cannot be undone.`;
 
-    if (!confirm(warningMessage)) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Family',
+      message: warningMessage,
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.loading = true;
     this.cdr.markForCheck();
 
@@ -597,6 +604,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
   onFormSave(_family: Family): void {

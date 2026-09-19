@@ -29,7 +29,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
   
   settingsSections = [
     { title: 'Profile Settings', description: 'Manage your personal information', icon: 'user', route: null },
-    { title: 'Notifications', description: 'Configure notification preferences', icon: 'bell', route: null },
+    { title: 'Notifications', description: 'Configure notification preferences', icon: 'bell', route: '/settings/notifications' },
     { title: 'My Subscription', description: 'View your church plan and access status', icon: 'credit-card', route: '/settings/my-subscription', requiresMySubscriptionAccess: true },
     { 
       title: 'Tenants', 
@@ -94,6 +94,13 @@ export class SettingsComponent implements OnInit, OnDestroy {
       icon: 'shield',
       route: '/settings/support-access',
       requiresAnyPermission: ['support.grants.parish.view', 'support.grants.parish.manage'],
+    },
+    {
+      title: 'Forgot Password Requests',
+      description: 'Review and approve password recovery requests',
+      icon: 'shield',
+      route: '/settings/forgot-password-requests',
+      requiresForgotPasswordRequests: true,
     },
   {
     title: 'Data Export',
@@ -240,6 +247,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
         return false;
       }
     }
+    if (section.requiresForgotPasswordRequests && !this.canViewForgotPasswordRequests(user)) {
+      return false;
+    }
     return true;
   }
 
@@ -248,6 +258,10 @@ export class SettingsComponent implements OnInit, OnDestroy {
    */
   getVisibleSections(user: User | null): any[] {
     return this.settingsSections.filter(section => this.shouldDisplaySection(section, user));
+  }
+
+  canViewForgotPasswordRequests(user: User | null): boolean {
+    return this.authService.canViewPasswordRecoveryRequests(user);
   }
 
   private hasRoleName(user: User, roleName: string): boolean {

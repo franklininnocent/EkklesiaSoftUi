@@ -5,6 +5,19 @@ export type LeadershipCategory =
   | 'MINISTRY_PIOUS'
   | 'OTHER';
 
+export interface LeadershipCategoryOption {
+  value: LeadershipCategory;
+  label: string;
+}
+
+export const LEADERSHIP_CATEGORY_OPTIONS: LeadershipCategoryOption[] = [
+  { value: 'CANONICAL_DIOCESAN', label: 'Diocesan / Canonical' },
+  { value: 'PARISH_CLERGY', label: 'Parish Clergy' },
+  { value: 'PARISH_COUNCIL', label: 'Parish Councils' },
+  { value: 'MINISTRY_PIOUS', label: 'Ministries' },
+  { value: 'OTHER', label: 'Other' },
+];
+
 export type LeadershipStatus = 'active' | 'completed' | 'vacated' | 'transferred';
 
 export type LeadershipExitReasonCode =
@@ -25,6 +38,18 @@ export interface LeadershipRoleOption {
   allows_concurrent: boolean;
   is_canonical_mandate: boolean;
   is_global: boolean;
+  is_system_defined?: boolean;
+  scope?: 'system' | 'tenant';
+  is_active?: boolean;
+}
+
+export interface CreateLeadershipRolePayload {
+  title: string;
+  category?: LeadershipCategory;
+}
+
+export interface UpdateLeadershipRolePayload {
+  category: LeadershipCategory;
 }
 
 export interface LeadershipPersonSummary {

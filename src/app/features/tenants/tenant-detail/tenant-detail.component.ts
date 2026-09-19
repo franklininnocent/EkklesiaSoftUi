@@ -6,11 +6,19 @@ import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDe
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { TenantService } from '@core/services/tenant.service';
+import { ArchdioceseService } from '@core/services/church/archdiocese.service';
+import { DenominationService } from '@core/services/church/denomination.service';
+import { Archdiocese, Denomination } from '@core/models/church';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
+import { UsersService } from '@core/services/users.service';
+import { AuthService } from '@core/services/auth.service';
 import { Tenant, TenantDetailsSnapshot, TenantDetailsUserPreview } from '@core/models/tenant.model';
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
+import { resolveMediaDisplaySrc } from '@core/utils/media-url.util';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
@@ -19,6 +27,7 @@ import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/ta
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { Subject, takeUntil } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 
 const PLAN_RANK_LADDER = ['free', 'basic', 'premium', 'enterprise'] as const;
@@ -39,6 +48,7 @@ type TenantDetailTab =
   imports: [
     CommonModule,
     FormsModule,
+    NgSelectModule,
     PageHeaderComponent,
     StatusBadgeComponent,
     TabStripComponent,
@@ -57,12 +67,18 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private tenantService = inject(TenantService);
+  private archdioceseService = inject(ArchdioceseService);
+  private denominationService = inject(DenominationService);
   private toastService = inject(ToastService);
+  private confirmationDialog = inject(ConfirmationDialogService);
+  private usersService = inject(UsersService);
+  private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
 
   details: TenantDetailsSnapshot | null = null;
   photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+  tenantAdminResetPassword: string | null = null;
   /** Minimal tenant shim for subscription modals and legacy edit flows. */
   tenant: Tenant | null = null;
   loading = false;
@@ -82,7 +98,23 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   ];
 
   isEditing = false;
+  saving = false;
   editForm: Partial<Tenant> = {};
+  editDenominationId: number | null = null;
+  editArchdioceseId: number | null = null;
+  editWebsite = '';
+  denominations: Denomination[] = [];
+  denominationOptions: Denomination[] | null = null;
+  loadingDenominations = false;
+  archdioceses: Archdiocese[] = [];
+  archdioceseOptions: Archdiocese[] | null = null;
+  loadingArchdioceses = false;
+  compareSelectIds = (left: number | string | null, right: number | string | null): boolean => {
+    if (left == null || right == null) {
+      return left === right;
+    }
+    return Number(left) === Number(right);
+  };
   logoFile: File | null = null;
   logoPreview: string | null = null;
 
@@ -123,6 +155,9 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   expandedAuditId: number | null = null;
 
   ngOnInit(): void {
+    this.loadDenominations();
+    this.loadArchdioceses();
+
     this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
       this.tenantId = +params['id'];
       if (this.tenantId) {
@@ -162,6 +197,11 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
             this.details = response.data;
             this.syncTenantShim(response.data);
             this.editForm = { ...this.tenant };
+            // #region agent log
+            if (typeof fetch === 'function') {
+              fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H4',location:'tenant-detail.component.ts:loadDetails',message:'tenant details loaded',data:{denominationId:response.data.identity?.denomination_id,denominationName:response.data.identity?.denomination_name,dioceseId:response.data.identity?.diocese_id,isEditing:this.isEditing},timestamp:Date.now()})}).catch(()=>{});
+            }
+            // #endregion
           } else {
             this.error = response.message || 'Failed to load tenant details';
           }
@@ -285,10 +325,93 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     });
   }
 
+  loadDenominations(): void {
+    this.loadingDenominations = true;
+    this.cdr.markForCheck();
+
+    this.denominationService.getDenominations()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const rows = Array.isArray(response.data) ? response.data : [];
+          this.denominationOptions = response.success ? [...rows] : [];
+          this.denominations = this.denominationOptions ?? [];
+          this.syncEditSelectValues();
+          this.loadingDenominations = false;
+          // #region agent log
+          if (typeof fetch === 'function') {
+            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadDenominations',message:'denominations loaded for tenant edit',data:{success:response.success,count:this.denominationOptions?.length??0,isEditing:this.isEditing},timestamp:Date.now()})}).catch(()=>{});
+          }
+          // #endregion
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.denominationOptions = [];
+          this.denominations = [];
+          this.loadingDenominations = false;
+          this.toastService.error('Could not load denominations for editing.', 'Error');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  loadArchdioceses(denominationId?: number | null): void {
+    this.loadingArchdioceses = true;
+    this.cdr.markForCheck();
+
+    const filterId = this.coerceOptionalId(
+      denominationId ?? (this.isEditing ? this.editDenominationId : null),
+    );
+    const filters = filterId ? { denomination_id: filterId } : undefined;
+
+    this.archdioceseService.getArchdioceses(filters)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const rows = Array.isArray(response.data) ? response.data : [];
+          this.applyArchdioceseOptions(response.success ? rows : []);
+          this.loadingArchdioceses = false;
+          // #region agent log
+          if (typeof fetch === 'function') {
+            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadArchdioceses',message:'archdioceses loaded for tenant edit',data:{success:response.success,count:this.archdioceseOptions?.length??0,filterDenominationId:filterId},timestamp:Date.now()})}).catch(()=>{});
+          }
+          // #endregion
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.archdioceseOptions = [];
+          this.archdioceses = [];
+          this.loadingArchdioceses = false;
+          // #region agent log
+          if (typeof fetch === 'function') {
+            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadArchdioceses:error',message:'archdioceses load failed',data:{error:err?.message||'unknown'},timestamp:Date.now()})}).catch(()=>{});
+          }
+          // #endregion
+          this.toastService.error('Could not load dioceses for editing.', 'Error');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  onEditDenominationChange(value: number | null): void {
+    this.editDenominationId = this.coerceOptionalId(value);
+    this.loadArchdioceses(this.editDenominationId);
+  }
+
   toggleEdit(): void {
     this.isEditing = !this.isEditing;
     if (this.isEditing && this.tenant) {
       this.editForm = { ...this.tenant };
+      this.editDenominationId = this.coerceOptionalId(this.details?.identity.denomination_id);
+      this.editArchdioceseId = this.coerceOptionalId(this.details?.identity.diocese_id);
+      this.editWebsite = this.details?.contact.website ?? '';
+      this.syncEditSelectValues();
+      this.loadArchdioceses(this.editDenominationId);
+      // #region agent log
+      if (typeof fetch === 'function') {
+        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H1-H2',location:'tenant-detail.component.ts:toggleEdit',message:'edit mode enabled',data:{isEditing:this.isEditing,editDenominationId:this.editDenominationId,editArchdioceseId:this.editArchdioceseId,denominationOptionCount:this.denominationOptions?.length??null,loadingDenominations:this.loadingDenominations},timestamp:Date.now()})}).catch(()=>{});
+      }
+      // #endregion
     }
     this.cdr.markForCheck();
   }
@@ -296,10 +419,19 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   saveTenant(): void {
     if (!this.tenantId || !this.tenant) return;
 
-    this.loading = true;
+    this.saving = true;
     this.cdr.markForCheck();
 
-    this.tenantService.updateTenant(this.tenantId, this.editForm as any)
+    const payload: Record<string, unknown> = {
+      tenant_name: this.editForm.name ?? this.tenant.name,
+      slogan: this.editForm.slogan ?? undefined,
+      domain: this.editForm.domain ?? undefined,
+      denomination_id: this.editDenominationId ?? null,
+      archdiocese_id: this.editArchdioceseId ?? null,
+      website: this.normalizeWebsite(this.editWebsite),
+    };
+
+    this.tenantService.updateTenant(this.tenantId, payload)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
@@ -310,12 +442,12 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
           } else {
             this.toastService.error(response.message || 'Failed to update tenant', 'Error');
           }
-          this.loading = false;
+          this.saving = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to update tenant', 'Error');
-          this.loading = false;
+          this.toastService.error(err.message || err.error?.message || 'Failed to update tenant', 'Error');
+          this.saving = false;
           this.cdr.markForCheck();
         },
       });
@@ -324,7 +456,45 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   cancelEdit(): void {
     this.isEditing = false;
     if (this.tenant) this.editForm = { ...this.tenant };
+    this.editDenominationId = this.coerceOptionalId(this.details?.identity.denomination_id);
+    this.editArchdioceseId = this.coerceOptionalId(this.details?.identity.diocese_id);
+    this.editWebsite = this.details?.contact.website ?? '';
     this.cdr.markForCheck();
+  }
+
+  private coerceOptionalId(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private syncEditSelectValues(): void {
+    this.editDenominationId = this.coerceOptionalId(this.editDenominationId);
+    this.editArchdioceseId = this.coerceOptionalId(this.editArchdioceseId);
+  }
+
+  private applyArchdioceseOptions(rows: Archdiocese[]): void {
+    this.archdioceseOptions = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+    this.archdioceses = this.archdioceseOptions;
+    if (
+      this.editArchdioceseId != null
+      && !this.archdioceseOptions.some(a => Number(a.id) === Number(this.editArchdioceseId))
+    ) {
+      this.editArchdioceseId = null;
+    }
+  }
+
+  private normalizeWebsite(value: string | null | undefined): string | null {
+    const website = (value ?? '').trim();
+    if (!website) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(website)) {
+      return website;
+    }
+    return `https://${website.replace(/^\/+/, '')}`;
   }
 
   toggleTenantStatus(): void {
@@ -332,31 +502,37 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
 
     const newStatus: 0 | 1 = this.details.operational.active_flag === 1 ? 0 : 1;
     const statusText = newStatus === 1 ? 'activate' : 'deactivate';
+    const dialog$ = newStatus === 1
+      ? this.confirmationDialog.confirmActivate('Tenant')
+      : this.confirmationDialog.confirmDeactivate('Tenant');
 
-    if (!confirm(`Are you sure you want to ${statusText} this tenant?`)) return;
+    dialog$.pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      this.loading = true;
+      this.cdr.markForCheck();
 
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.updateTenantStatus(this.tenantId, newStatus)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success(`Tenant ${statusText}d successfully`, 'Success');
-            this.loadDetails();
-          } else {
-            this.toastService.error(response.message || `Failed to ${statusText} tenant`, 'Error');
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(err.error?.message || `Failed to ${statusText} tenant`, 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-      });
+      this.tenantService.updateTenantStatus(this.tenantId!, newStatus)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.toastService.success(`Tenant ${statusText}d successfully`, 'Success');
+              this.loadDetails();
+            } else {
+              this.toastService.error(response.message || `Failed to ${statusText} tenant`, 'Error');
+            }
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.toastService.error(err.error?.message || `Failed to ${statusText} tenant`, 'Error');
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+        });
+    });
   }
 
   onLogoSelected(event: Event): void {
@@ -403,30 +579,39 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
 
   deleteLogo(): void {
     if (!this.tenantId) return;
-    if (!confirm('Are you sure you want to delete the tenant logo?')) return;
 
-    this.loading = true;
-    this.cdr.markForCheck();
+    this.confirmationDialog.confirm({
+      title: 'Remove Logo',
+      message: 'Are you sure you want to delete the tenant logo?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      this.loading = true;
+      this.cdr.markForCheck();
 
-    this.tenantService.deleteLogo(this.tenantId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Logo deleted successfully', 'Success');
-            this.loadDetails();
-          } else {
-            this.toastService.error(response.message || 'Failed to delete logo', 'Error');
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to delete logo', 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-      });
+      this.tenantService.deleteLogo(this.tenantId!)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.toastService.success('Logo deleted successfully', 'Success');
+              this.loadDetails();
+            } else {
+              this.toastService.error(response.message || 'Failed to delete logo', 'Error');
+            }
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.toastService.error(err.error?.message || 'Failed to delete logo', 'Error');
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+        });
+    });
   }
 
   get headerStatusLabel(): string | undefined {
@@ -445,14 +630,13 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
 
   getLogoUrl(): string {
     if (this.logoPreview) return this.logoPreview;
-    if (this.details?.identity.logo_full_url) return this.details.identity.logo_full_url;
-    if (this.details?.identity.logo_url) {
-      const url = this.details.identity.logo_url;
-      if (url.startsWith('http')) return url;
-      const baseUrl = environment.apiUrl.replace('/api', '');
-      return `${baseUrl}/${url.replace(/^\//, '')}`;
-    }
-    return '';
+    const signed = resolveMediaDisplaySrc(this.details?.identity.logo_full_url);
+    if (signed) return signed;
+    const storageKey = this.details?.identity.logo_url;
+    if (!storageKey) return '';
+    if (storageKey.startsWith('http')) return resolveMediaDisplaySrc(storageKey) ?? storageKey;
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}/${storageKey.replace(/^\//, '')}`;
   }
 
   formatDate(dateString: string | null | undefined): string {
@@ -890,5 +1074,47 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   closePhotoViewer(): void {
     this.photoViewer = null;
     this.cdr.markForCheck();
+  }
+
+  canResetTenantAdministrator(): boolean {
+    const adminId = this.details?.administration?.primary_admin?.id;
+    if (!adminId) {
+      return false;
+    }
+
+    return this.authService.hasPermission('tenant.admin_password.reset')
+      || this.authService.hasPermission('users.password.reset_subordinates')
+      || this.authService.isSuperAdmin();
+  }
+
+  resetTenantAdministratorPassword(): void {
+    const admin = this.details?.administration?.primary_admin;
+    if (!admin?.id) {
+      return;
+    }
+
+    this.confirmationDialog.confirm({
+      title: 'Reset Tenant Administrator Password',
+      message: `Generate a temporary password for ${admin.name}?`,
+      confirmText: 'Reset Password',
+      variant: 'primary',
+    }).pipe(takeUntil(this.destroy$)).subscribe((result) => {
+      if (!result.confirmed) {
+        return;
+      }
+
+      this.usersService.resetPassword(admin.id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            this.tenantAdminResetPassword = response.data.temporary_password;
+            this.toastService.success(response.message || 'Password reset successfully.', 'Security');
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.toastService.error(err.error?.message || 'Unable to reset tenant administrator password.', 'Security');
+          },
+        });
+    });
   }
 }

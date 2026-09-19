@@ -1,5 +1,7 @@
 import { Component, inject, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable, Subject, finalize } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
@@ -17,11 +19,20 @@ import {
 } from '@core/utils/user-profile-image.util';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { ChangePasswordModalComponent } from './components/change-password-modal/change-password-modal.component';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, PageHeaderComponent, UserAvatarComponent, ImageViewerComponent, CfMediaUploadComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    PageHeaderComponent,
+    UserAvatarComponent,
+    ImageViewerComponent,
+    CfMediaUploadComponent,
+    ChangePasswordModalComponent,
+  ],
   templateUrl: './profile.component.html',
   styleUrl: './profile.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -30,6 +41,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
   @ViewChild('profileMediaUpload') profileMediaUpload?: CfMediaUploadComponent;
 
   private store = inject(Store<AppState>);
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
@@ -46,6 +59,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
   profileImageError: string | null = null;
   isSavingProfileImage = false;
 
+  showChangePasswordModal = false;
+  forcePasswordChangeRequired = false;
+
   private profileImageObjectUrl: string | null = null;
   private savedProfileImageUrl: string | null = null;
 
@@ -53,6 +69,8 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.currentUser$ = this.store.select(selectCurrentUser).pipe(takeUntil(this.destroy$));
     this.currentUser$.subscribe((user) => {
       this.savedProfileImageUrl = user ? resolveUserProfileImageUrl(user) : null;
+      this.forcePasswordChangeRequired = !!user?.force_password_change;
+      this.maybeOpenForcedPasswordModal();
       this.cdr.markForCheck();
     });
   }
@@ -61,6 +79,19 @@ export class ProfileComponent implements OnInit, OnDestroy {
     if (this.authService.isAuthenticated()) {
       this.store.dispatch(AuthActions.loadUser());
     }
+
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+      if (params.get('forcePassword') === '1') {
+        this.forcePasswordChangeRequired = true;
+        this.maybeOpenForcedPasswordModal();
+        this.cdr.markForCheck();
+        return;
+      }
+
+      if (params.get('changePassword') === '1') {
+        this.openChangePasswordModal();
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -103,6 +134,32 @@ export class ProfileComponent implements OnInit, OnDestroy {
     }
 
     return resolveUserProfileImageUrl(user);
+  }
+
+  openChangePasswordModal(): void {
+    this.showChangePasswordModal = true;
+    this.cdr.markForCheck();
+  }
+
+  onChangePasswordModalClosed(): void {
+    if (this.forcePasswordChangeRequired) {
+      return;
+    }
+
+    this.showChangePasswordModal = false;
+    this.clearChangePasswordQueryParam();
+    this.cdr.markForCheck();
+  }
+
+  onChangePasswordSaved(): void {
+    const wasForced = this.forcePasswordChangeRequired;
+    this.forcePasswordChangeRequired = false;
+    this.showChangePasswordModal = false;
+    this.clearChangePasswordQueryParam();
+    if (wasForced) {
+      void this.router.navigate(['/dashboard']);
+    }
+    this.cdr.markForCheck();
   }
 
   openPhotoViewer(user: User): void {
@@ -213,6 +270,25 @@ export class ProfileComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  private maybeOpenForcedPasswordModal(): void {
+    if (this.forcePasswordChangeRequired) {
+      this.showChangePasswordModal = true;
+    }
+  }
+
+  private clearChangePasswordQueryParam(): void {
+    if (this.route.snapshot.queryParamMap.get('changePassword') !== '1') {
+      return;
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { changePassword: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   private revokeProfileImageObjectUrl(): void {

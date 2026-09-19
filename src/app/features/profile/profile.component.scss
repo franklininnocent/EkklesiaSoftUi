@@ -208,6 +208,20 @@
   flex-wrap: wrap;
 }
 
+.profile-actions--placeholder {
+  justify-content: center;
+  text-align: center;
+}
+
+.profile-security__change-link {
+  margin-top: var(--spacing-sm);
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
 .btn {
   display: inline-flex;
   align-items: center;

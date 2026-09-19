@@ -65,6 +65,14 @@
   min-width: 0;
 }
 
+.tenant-detail__diocese-select,
+.tenant-detail__denomination-select {
+  display: block;
+  width: 100%;
+  max-width: 24rem;
+  min-width: 12rem;
+}
+
 .tenant-detail__section {
   display: grid;
   gap: var(--cf-space-3);

@@ -17,6 +17,8 @@ describe('SettingsComponent (role-based visibility)', () => {
     hasEkklesiaRole: jest.Mock<boolean, [any?]>;
     isPlatformActor: jest.Mock<boolean, [any?]>;
     hasTenantPermission: jest.Mock<boolean, [string]>;
+    isSuperAdmin: jest.Mock<boolean, []>;
+    canViewPasswordRecoveryRequests: jest.Mock<boolean, [any?]>;
   };
 
   const createComponentWithUser = (user: any | null) => {
@@ -45,6 +47,8 @@ describe('SettingsComponent (role-based visibility)', () => {
         return roleName === 'SupportAdmin' || ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'].includes(roleName);
       }),
       hasTenantPermission: jest.fn().mockReturnValue(true),
+      isSuperAdmin: jest.fn().mockReturnValue(false),
+      canViewPasswordRecoveryRequests: jest.fn().mockReturnValue(false),
     };
 
     TestBed.configureTestingModule({

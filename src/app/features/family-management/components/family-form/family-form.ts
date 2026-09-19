@@ -11,7 +11,8 @@ import {
   SimpleChanges,
   ViewChild,
   ElementRef,
-  AfterViewInit
+  AfterViewInit,
+  inject
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormArray, Validators, ReactiveFormsModule, FormsModule } from '@angular/forms';
@@ -32,7 +33,9 @@ import {
   prepareFamilyMemberPayload
 } from '../../utils/prepare-family-member-payload.util';
 import { ToastService } from '../../../../core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { filter, take } from 'rxjs/operators';
 
 @Component({
   selector: 'app-family-form',
@@ -86,6 +89,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
 
   // For Math methods in template
   Math = Math;
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   constructor(
     private fb: FormBuilder,
@@ -560,10 +564,15 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
     if (currentStatus === 'inactive') {
       return;
     }
-    if (!confirm('Mark this member as inactive?')) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Mark Member Inactive',
+      message: 'Mark this member as inactive?',
+      confirmText: 'Confirm',
+      variant: 'primary',
+    }).pipe(
+      filter((result) => result.confirmed),
+      take(1),
+    ).subscribe(() => {
     const familyId = this.family?.id;
     const memberId = member.get('id')?.value;
     member.patchValue({ status: 'inactive' });
@@ -585,6 +594,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
       error: () => {
         this.toastService.error('Failed to update member status', 'Error', 4000);
       }
+    });
     });
   }
 
@@ -1127,9 +1137,17 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
    * Remove a member from the form
    */
   removeMember(index: number): void {
-    if (confirm('Are you sure you want to remove this member?')) {
+    this.confirmationDialog.confirm({
+      title: 'Remove Member',
+      message: 'Are you sure you want to remove this member?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      take(1),
+    ).subscribe(() => {
       this.members.removeAt(index);
-    }
+    });
   }
 
   private finishMemberModalSuccess(message: string, familyId: string): void {
@@ -1796,13 +1814,19 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
    * Cancel and close the form
    */
   onCancel(): void {
-    if (this.familyForm.dirty) {
-      if (confirm('You have unsaved changes. Are you sure you want to cancel?')) {
-        this.cancel.emit();
-      }
-    } else {
+    if (!this.familyForm.dirty) {
       this.cancel.emit();
+      return;
     }
+
+    this.confirmationDialog.confirmDiscardChanges('You have unsaved changes. Are you sure you want to cancel?')
+      .pipe(
+        filter((result) => result.confirmed),
+        take(1),
+      )
+      .subscribe(() => {
+        this.cancel.emit();
+      });
   }
 
   /**

@@ -1,5 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth.guard';
+import { forcePasswordChangeGuard } from '@core/guards/force-password-change.guard';
+import { platformUsersGuard } from '@core/guards/platform-users.guard';
 import { tenantGuard } from '@core/guards/tenant.guard';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
 import { supportCenterGuard } from '@core/guards/support-center.guard';
@@ -35,11 +37,16 @@ export const routes: Routes = [
   {
     path: '',
     component: MainLayoutComponent,
-    canActivate: [authGuard],
+    canActivate: [authGuard, forcePasswordChangeGuard],
     children: [
       {
         path: 'dashboard',
         loadChildren: () => import('./features/dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES)
+      },
+      {
+        path: 'notifications',
+        loadChildren: () =>
+          import('./features/notifications/notifications.routes').then((m) => m.NOTIFICATIONS_ROUTES),
       },
       {
         path: 'profile',
@@ -57,6 +64,11 @@ export const routes: Routes = [
       {
         path: 'users',
         canActivate: [parishResourceGuard],
+        loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
+      },
+      {
+        path: 'platform/users',
+        canActivate: [platformUsersGuard],
         loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
       },
       {
@@ -144,6 +156,11 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         loadChildren: () => import('./features/dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES)
+      },
+      {
+        path: 'notifications',
+        loadChildren: () =>
+          import('./features/notifications/notifications.routes').then((m) => m.NOTIFICATIONS_ROUTES),
       },
       {
         path: 'profile',

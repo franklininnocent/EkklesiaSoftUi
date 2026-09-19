@@ -7,6 +7,7 @@ import { DioceseService } from '@core/services/ecclesiastical/diocese.service';
 import { EcclesiasticalTitleService } from '@core/services/ecclesiastical/ecclesiastical-title.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
+import { PhoneCodeService } from '@core/services/phone-code.service';
 import { Bishop } from '@core/models/ecclesiastical';
 
 describe('BishopFormModalComponent', () => {
@@ -55,6 +56,11 @@ describe('BishopFormModalComponent', () => {
     hasEcclesiasticalPermission: jest.fn().mockReturnValue(true),
   } as unknown as AuthService;
 
+  const phoneCodeServiceStub = {
+    getPhoneCodeSync: jest.fn().mockReturnValue('+91'),
+    initializeFromApiOnce: jest.fn().mockReturnValue(of({ success: true, phoneCode: '+91' })),
+  } as unknown as PhoneCodeService;
+
   beforeEach(async () => {
     jest.clearAllMocks();
 
@@ -66,6 +72,7 @@ describe('BishopFormModalComponent', () => {
         { provide: EcclesiasticalTitleService, useValue: titleServiceStub },
         { provide: ToastService, useValue: toastStub },
         { provide: AuthService, useValue: authStub },
+        { provide: PhoneCodeService, useValue: phoneCodeServiceStub },
       ],
       schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
@@ -158,7 +165,6 @@ describe('BishopFormModalComponent', () => {
       appointed_date: '2006-01-01',
       email: 'bishop@example.com',
       phone: '9876543210',
-      photo_url: 'https://example.com/photo.jpg',
       education: 'STB, Rome',
       is_current: true,
     });
@@ -220,6 +226,62 @@ describe('BishopFormModalComponent', () => {
     component.onSubmit();
 
     expect(bishopServiceStub.createBishop).not.toHaveBeenCalled();
+  });
+
+  it('should sanitize formatted phone when opening edit modal', () => {
+    component.bishop = {
+      id: 12,
+      full_name: 'Albert George Alexander Anastas',
+      archdiocese_id: 10,
+      status: 'active',
+      is_current: true,
+      phone: '04651-272077',
+    } as Bishop;
+
+    component.ngOnChanges({
+      bishop: {
+        currentValue: component.bishop,
+        previousValue: null,
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+    });
+
+    expect(component.bishopForm.get('phone')?.value).toBe('04651272077');
+    expect(component.bishopForm.valid).toBe(true);
+  });
+
+  it('should repopulate edit form when modal reopens after cancel', () => {
+    component.bishop = {
+      id: 5,
+      full_name: 'Existing Bishop',
+      archdiocese_id: 10,
+      status: 'active',
+      is_current: false,
+    } as Bishop;
+
+    component.ngOnChanges({
+      bishop: {
+        currentValue: component.bishop,
+        previousValue: null,
+        firstChange: true,
+        isFirstChange: () => true,
+      },
+    });
+
+    component.onCancel();
+
+    component.ngOnChanges({
+      show: {
+        currentValue: true,
+        previousValue: false,
+        firstChange: false,
+        isFirstChange: () => false,
+      },
+    });
+
+    expect(component.bishopForm.get('full_name')?.value).toBe('Existing Bishop');
+    expect(component.bishopForm.valid).toBe(true);
   });
 
   it('should show edit modal title and call update in edit mode', () => {

@@ -43,6 +43,23 @@ class GovernanceServiceMock {
   uploadAssignmentPhoto = jest.fn(() => of({ success: true }));
   handover = jest.fn(() => of({ success: true, data: { outgoing: { id: 'out-1' }, incoming: { id: 'in-1' } } }));
   terminate = jest.fn(() => of({ success: true, data: { id: 'assignment-1', status: 'completed' } }));
+  createRole = jest.fn(() =>
+    of({
+      success: true,
+      data: {
+        id: 'role-custom-uuid',
+        title: 'Associate Parish Priest',
+        category: 'OTHER',
+        category_label: 'Other',
+        hierarchical_level: 4,
+        allows_concurrent: true,
+        is_canonical_mandate: false,
+        is_global: false,
+        is_system_defined: false,
+        scope: 'tenant',
+      },
+    }),
+  );
 }
 
 const mockPerson: ParishPerson = {
@@ -64,7 +81,14 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
         { provide: ChurchLeadershipGovernanceService, useClass: GovernanceServiceMock },
         { provide: ChurchLeadershipService, useValue: { resolveLeaderPhotoUrl: jest.fn() } },
         { provide: ParishPersonService, useValue: { search: jest.fn(() => of({ success: true, data: [mockPerson] })) } },
-        { provide: AuthService, useValue: {} },
+        {
+          provide: AuthService,
+          useValue: {
+            hasPermission: jest.fn(() => true),
+            isTenantAdmin: jest.fn(() => true),
+            currentUserValue: { is_primary_admin: false },
+          },
+        },
         { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } },
       ],
     }).compileComponents();
@@ -304,7 +328,14 @@ describe('ChurchLeadershipGovernanceComponent photo viewer', () => {
         { provide: ChurchLeadershipGovernanceService, useValue: governanceService },
         { provide: ChurchLeadershipService, useValue: { resolveLeaderPhotoUrl: jest.fn(() => null) } },
         { provide: ParishPersonService, useValue: { search: jest.fn(() => of({ success: true, data: [] })) } },
-        { provide: AuthService, useValue: {} },
+        {
+          provide: AuthService,
+          useValue: {
+            hasPermission: jest.fn(() => true),
+            isTenantAdmin: jest.fn(() => true),
+            currentUserValue: { is_primary_admin: false },
+          },
+        },
         { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } },
       ],
     }).compileComponents();

@@ -11,10 +11,12 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { PopeDetailsService } from '@core/services/church';
 import { AuthService } from '@core/services';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { PopeDetails, UpdatePopeDetailsRequest } from '@core/models/church';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { filter } from 'rxjs/operators';
 
 @Component({
   selector: 'app-pope-details-management',
@@ -38,6 +40,7 @@ export class PopeDetailsManagementComponent implements OnInit {
   private popeDetailsService = inject(PopeDetailsService);
   private authService = inject(AuthService);
   private toastService = inject(ToastService);
+  private confirmationDialog = inject(ConfirmationDialogService);
 
   loading = false;
   loaded = false;
@@ -216,10 +219,18 @@ export class PopeDetailsManagementComponent implements OnInit {
   }
 
   deleteImage(): void {
-    if (!this.canManage || !confirm('Are you sure you want to delete the pope image?')) {
+    if (!this.canManage) {
       return;
     }
 
+    this.confirmationDialog.confirm({
+      title: 'Remove Pope Image',
+      message: 'Are you sure you want to delete the pope image?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+    ).subscribe(() => {
     this.uploading = true;
     this.popeDetailsService.deletePopeImage().subscribe({
       next: (response) => {
@@ -237,6 +248,7 @@ export class PopeDetailsManagementComponent implements OnInit {
         this.toastService.error(errorMessage);
         this.uploading = false;
       }
+    });
     });
   }
 

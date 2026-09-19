@@ -10,7 +10,7 @@
  * Tenant = Church in this multi-tenant architecture
  */
 
-import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, inject, Injector, afterNextRender, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators, FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -19,9 +19,10 @@ import { TenantService } from '@core/services/tenant.service';
 import { FamilyService } from '@core/services/family.service';
 import { BCCService } from '@core/services/bcc.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { Tenant, TenantResponse } from '@core/models';
-import { finalize, takeUntil, switchMap } from 'rxjs/operators';
+import { finalize, takeUntil, switchMap, filter } from 'rxjs/operators';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 import { GeographyService, Country } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
@@ -39,6 +40,9 @@ import { HostListener } from '@angular/core';
 import { Subject } from 'rxjs';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { resolveMediaDisplaySrc } from '@core/utils/media-url.util';
+import { BishopPhotoSource } from '@core/utils/bishop-photo.util';
+import { LeadershipPersonSummary } from '@core/models/church/leadership-governance.model';
 
 // Import all church management services
 import {
@@ -65,9 +69,19 @@ import {
   ChurchSocialMedia,
   PopeDetails,
   CurrentLeadershipResponse,
+  ChurchStatusMetric,
 } from '@core/models/church';
+import { partitionParishClergyAssignments } from './utils/leadership-role-query.util';
 
 type ChurchProfileTab = 'profile' | 'leadership' | 'statistics' | 'social' | 'diocesan-bishop';
+
+type ProfileLeaderCard = {
+  full_name: string;
+  role: string;
+  title?: string;
+  id?: number;
+  photoSource?: BishopPhotoSource | null;
+};
 
 @Component({
   selector: 'app-church-profile',
@@ -94,6 +108,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private leadersLoadTrigger$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private injector = inject(Injector);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly supportSessions = inject(SupportSessionService);
 
@@ -163,6 +178,13 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   // Country list (from geography service)
   countries: Country[] = [];
   loadingCountries = false;
+  loadingDenominations = false;
+  modalDenominationId: number | null = null;
+  modalArchdioceseId: number | null = null;
+  modalDenomination: Denomination | null = null;
+  modalArchdiocese: Archdiocese | null = null;
+  private pendingGeneralModalOpen = false;
+  readonly appendToBody = 'body';
   
   // Phone code (reactive from service)
   get callingCode(): string {
@@ -183,6 +205,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   // Service Injections
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
+  private confirmationDialog = inject(ConfirmationDialogService);
   public authService = inject(AuthService); // Made public for template access
   private fb = inject(FormBuilder);
   
@@ -220,13 +243,14 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     { label: 'Volunteers', value: '—', hint: 'Loading...' }
   ];
 
-  operationalMetrics: { label: string; percent: number }[] = [];
+  operationalMetrics: ChurchStatusMetric[] = [];
+  statusMetricsLoading = true;
+  statusMetricsEmptyCta: { label: string; route: string } | null = null;
   private overviewMembers = 0;
   private overviewFamilies = 0;
   private overviewMinistries = 0;
   private overviewVolunteers = 0;
   private overviewActiveMembers = 0;
-  private overviewBccUtilization = 84;
   
   // Social Media Platform Options
   socialPlatforms = [
@@ -306,8 +330,15 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Resolve denomination name for display
    */
   getDenominationName(): string {
-    if (!this.extendedProfile?.denomination_id) return 'Not Set';
-    const denom = this.denominations.find(d => d.id === this.extendedProfile?.denomination_id);
+    const nestedName = this.extendedProfile?.denomination?.name;
+    if (nestedName) {
+      return nestedName;
+    }
+    const denominationId = this.coerceOptionalId(this.extendedProfile?.denomination_id);
+    if (denominationId == null) {
+      return 'Not Set';
+    }
+    const denom = this.denominations.find(d => Number(d.id) === denominationId);
     return denom?.name || 'Not Set';
   }
 
@@ -315,8 +346,16 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Resolve archdiocese/diocese name for display
    */
   getArchdioceseName(): string {
-    if (!this.extendedProfile?.archdiocese_id) return 'Not Set';
-    const arch = this.archdioceses.find(a => a.id === this.extendedProfile?.archdiocese_id);
+    const nestedName = this.extendedProfile?.archdiocese?.name;
+    if (nestedName) {
+      return nestedName;
+    }
+    const archdioceseId = this.coerceOptionalId(this.extendedProfile?.archdiocese_id);
+    if (archdioceseId == null) {
+      return 'Not Set';
+    }
+    const arch = this.archdioceses.find(a => Number(a.id) === archdioceseId)
+      ?? this.filteredArchdioceses.find(a => Number(a.id) === archdioceseId);
     return arch?.name || 'Not Set';
   }
 
@@ -328,6 +367,26 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * ng-select value matcher — API/form values may arrive as strings while item ids are numbers.
+   */
+  compareSelectIds = (left: number | string | null, right: number | string | null): boolean => {
+    if (left == null || right == null) {
+      return left === right;
+    }
+    return Number(left) === Number(right);
+  };
+
+  compareSelectItems = (
+    left: Denomination | Archdiocese | null,
+    right: Denomination | Archdiocese | null,
+  ): boolean => {
+    if (!left || !right) {
+      return left === right;
+    }
+    return Number(left.id) === Number(right.id);
+  };
+
+  /**
    * Open General Information modal
    */
   openGeneralModal(): void {
@@ -336,16 +395,12 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       return;
     }
     
-    // Ensure profile is loaded
     if (!this.extendedProfile) {
+      this.pendingGeneralModalOpen = true;
       this.loadExtendedProfile();
-      // Wait a bit for profile to load
-      setTimeout(() => {
-        this.setupGeneralModal();
-      }, 300);
       return;
     }
-    
+
     this.setupGeneralModal();
   }
 
@@ -353,50 +408,59 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Setup General Modal - Separate method for reusability
    */
   private setupGeneralModal(): void {
-    console.log('🔧 setupGeneralModal called');
-    console.log('Extended profile:', this.extendedProfile);
-    console.log('Profile form exists:', !!this.profileForm);
-    
     if (!this.profileForm) {
-      console.error('❌ profileForm is not initialized');
       this.toastService.error('Form is not initialized. Please refresh the page.', 'Error');
       return;
     }
-    
-    // Ensure countries are loaded
+
     if (this.countries.length === 0 && !this.loadingCountries) {
-      console.log('📥 Loading countries...');
       this.loadCountries();
     }
-    
-    // Populate form FIRST before enabling fields
-    if (this.extendedProfile) {
-      console.log('📝 Populating form with extended profile data');
-      this.populateProfileForm(this.extendedProfile);
-    }
-    
-    // Enable both general and contact fields for combined editing
-    console.log('✅ Enabling form fields...');
-    this.startEditSection('general');
-    this.editingSections.contact = true;
-    
-    // Explicitly enable contact fields
-    const phoneControl = this.profileForm.get('phone');
-    const emailControl = this.profileForm.get('email');
-    const websiteControl = this.profileForm.get('website');
-    const patronNameControl = this.profileForm.get('patron_name');
-    
-    if (phoneControl) phoneControl.enable({ emitEvent: false });
-    if (emailControl) emailControl.enable({ emitEvent: false });
-    if (websiteControl) websiteControl.enable({ emitEvent: false });
-    if (patronNameControl) patronNameControl.enable({ emitEvent: false });
-    
-    // Ensure archdioceses are loaded and filtered correctly
-    this.ensureArchdiocesesLoaded();
-    
-    console.log('✅ Form setup complete. Opening modal...');
-    this.showGeneralModal = true;
-    console.log('✅ Modal should now be visible');
+
+    this.ensureDenominationsLoaded(() => {
+      if (this.extendedProfile) {
+        this.populateProfileForm(this.extendedProfile);
+      }
+
+      this.startEditSection('general', { skipCountryFilter: true });
+      this.editingSections.contact = true;
+
+      const phoneControl = this.profileForm.get('phone');
+      const emailControl = this.profileForm.get('email');
+      const websiteControl = this.profileForm.get('website');
+      const patronNameControl = this.profileForm.get('patron_name');
+
+      if (phoneControl) phoneControl.enable({ emitEvent: false });
+      if (emailControl) emailControl.enable({ emitEvent: false });
+      if (websiteControl) websiteControl.enable({ emitEvent: false });
+      if (patronNameControl) patronNameControl.enable({ emitEvent: false });
+
+      const countryId = this.profileForm.get('country_id')?.value;
+      if (countryId) {
+        this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries)
+          .pipe(takeUntil(this.destroy$))
+          .subscribe();
+      } else {
+        this.phoneCodeService.resetToDefault();
+      }
+
+      this.ensureArchdiocesesLoaded(() => {
+        this.syncModalSelectState();
+        this.showGeneralModal = true;
+        this.cdr.detectChanges();
+        afterNextRender(() => {
+          this.syncModalSelectState();
+          this.cdr.detectChanges();
+          // #region agent log
+          if (typeof fetch === 'function') {
+            const denomLabel = document.querySelector('#modal_denomination_id .ng-value-label')?.textContent?.trim() ?? null;
+            const archLabel = document.querySelector('#modal_archdiocese_id .ng-value-label')?.textContent?.trim() ?? null;
+            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6bd099'},body:JSON.stringify({sessionId:'6bd099',runId:'post-fix-v3',location:'church-profile.component.ts:setupGeneralModal:afterNextRender',message:'Modal select DOM labels',data:{modalDenominationId:this.modalDenominationId,modalArchdioceseId:this.modalArchdioceseId,modalDenominationName:this.modalDenomination?.name??null,modalArchdioceseName:this.modalArchdiocese?.name??null,domDenominationLabel:denomLabel,domArchdioceseLabel:archLabel,denominationsCount:this.denominations.length,filteredArchdiocesesCount:this.filteredArchdioceses.length},timestamp:Date.now(),hypothesisId:'H9-H10'})}).catch(()=>{});
+          }
+          // #endregion
+        }, { injector: this.injector });
+      });
+    });
   }
 
   /**
@@ -451,8 +515,12 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
 
     this.saving = true;
     
-    // Get raw form value (includes disabled fields)
-    const formData = this.profileForm.getRawValue();
+    // Get raw form value (includes disabled fields); modal selects use standalone ngModel
+    const formData = {
+      ...this.profileForm.getRawValue(),
+      denomination_id: this.modalDenominationId,
+      archdiocese_id: this.modalArchdioceseId,
+    };
     
     // Ensure country_id is included if it was set
     if (!formData.country_id && this.profileForm.get('country_id')?.value) {
@@ -948,18 +1016,41 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Load denominations
    */
   private loadDenominations(): void {
+    this.ensureDenominationsLoaded();
+  }
+
+  private ensureDenominationsLoaded(onLoaded?: () => void): void {
+    if (this.denominations.length > 0) {
+      onLoaded?.();
+      return;
+    }
+
+    this.loadingDenominations = true;
+    this.cdr.markForCheck();
     this.denominationService.getDenominations()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.denominations = response.data;
+        next: (response) => {
+          if (response.success && response.data) {
+            this.denominations = response.data;
+            this.syncGeneralSelectValues();
+            // #region agent log
+            if (typeof fetch === 'function') {
+              fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6bd099'},body:JSON.stringify({sessionId:'6bd099',location:'church-profile.component.ts:ensureDenominationsLoaded',message:'Denominations loaded',data:{success:response.success,count:this.denominations.length,formDenominationId:this.profileForm?.get('denomination_id')?.value,firstIds:this.denominations.slice(0,3).map(d=>d.id)},timestamp:Date.now(),hypothesisId:'H1'})}).catch(()=>{});
+            }
+            // #endregion
+          }
+          this.loadingDenominations = false;
+          onLoaded?.();
+          this.cdr.markForCheck();
+        },
+        error: (err: Error) => {
+          console.error('Failed to load denominations:', err);
+          this.loadingDenominations = false;
+          onLoaded?.();
+          this.cdr.markForCheck();
         }
-      },
-      error: (err: Error) => {
-        console.error('Failed to load denominations:', err);
-      }
-    });
+      });
   }
 
   /**
@@ -982,16 +1073,19 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
             // No denomination selected, show all archdioceses
             this.filteredArchdioceses = this.archdioceses;
           }
+          this.syncGeneralSelectValues();
         } else {
           this.archdioceses = [];
           this.filteredArchdioceses = [];
         }
+        this.cdr.markForCheck();
       },
       error: (err: Error) => {
         console.error('Failed to load archdioceses:', err);
         this.archdioceses = [];
         this.filteredArchdioceses = [];
         this.toastService.error('Failed to load archdioceses. Please refresh the page.', 'Error');
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1001,26 +1095,29 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    */
   private loadCountries(): void {
     this.loadingCountries = true;
+    this.cdr.markForCheck();
     this.geographyService.getCountries()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: (response) => {
         if (response.success && response.data) {
           this.countries = response.data;
-          console.log(`✅ Loaded ${this.countries.length} countries`);
-          
-          // Initialize phone code based on current country if available
+
           const currentCountryId = this.profileForm.get('country_id')?.value;
           if (currentCountryId) {
             this.onCountryChange(currentCountryId);
           }
+        } else if (!response.success) {
+          this.toastService.error(response.message || 'Failed to load countries', 'Error');
         }
         this.loadingCountries = false;
+        this.cdr.markForCheck();
       },
       error: (err: Error) => {
         console.error('Failed to load countries:', err);
         this.toastService.error('Failed to load countries', 'Error');
         this.loadingCountries = false;
+        this.cdr.markForCheck();
       }
     });
   }
@@ -1033,9 +1130,12 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   /**
    * Handle country change - updates phone code and triggers archdiocese filtering
    */
-  onCountryChange(countryId: number | null): void {
-    // Update phone code first
-    if (!countryId || countryId === 0) {
+  onCountryChange(countryId: number | null | { id?: number }): void {
+    const resolvedId = typeof countryId === 'object' && countryId !== null
+      ? countryId.id ?? null
+      : countryId;
+
+    if (!resolvedId || resolvedId === 0) {
       // Reset to default if no country selected
       this.phoneCodeService.resetToDefault();
       // Still trigger archdiocese filtering (will show all if no filters)
@@ -1045,7 +1145,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     
     // Update phone code using the centralized service
     // This automatically updates the callingCode getter which the template uses
-    this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries)
+    this.phoneCodeService.updatePhoneCodeByCountryId(resolvedId, this.countries)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
       next: (result) => {
@@ -1076,7 +1176,12 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       next: (response) => {
         if (response.success) {
           this.extendedProfile = response.data;
-          
+          // #region agent log
+          if (typeof fetch === 'function') {
+            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6bd099'},body:JSON.stringify({sessionId:'6bd099',location:'church-profile.component.ts:loadExtendedProfile',message:'Extended profile loaded',data:{denominationId:response.data?.denomination_id,archdioceseId:response.data?.archdiocese_id,denominationName:response.data?.denomination?.name,archdioceseName:response.data?.archdiocese?.name},timestamp:Date.now(),hypothesisId:'H2'})}).catch(()=>{});
+          }
+          // #endregion
+
           // Debug: Log patron image data
           if (this.extendedProfile) {
             console.log('Patron image data loaded:', {
@@ -1089,36 +1194,17 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
           
           this.populateProfileForm(response.data);
           this.loadDiocesanLeadership();
-          this.refreshOperationalMetrics();
+          this.loadStatusMetrics();
           this.cdr.markForCheck();
-          
-          // After form is populated, if denomination is selected, filter archdioceses
-          if (response.data.denomination_id) {
-            // Use setTimeout to ensure form value is set, then check for archdioceses
-            setTimeout(() => {
-              if (this.archdioceses.length > 0) {
-                // Archdioceses already loaded, filter immediately
-                console.log('Profile loaded with denomination, filtering archdioceses');
-                this.onDenominationChange(response.data.denomination_id);
-              } else {
-                // Wait for archdioceses to load, then filter
-                console.log('Waiting for archdioceses to load before filtering...');
-                const checkLoaded = setInterval(() => {
-                  if (this.archdioceses.length > 0) {
-                    clearInterval(checkLoaded);
-                    console.log('Archdioceses loaded, now filtering for denomination:', response.data.denomination_id);
-                    this.onDenominationChange(response.data.denomination_id);
-                  }
-                }, 50);
-                // Clear after 3 seconds max to avoid infinite loop
-                setTimeout(() => {
-                  clearInterval(checkLoaded);
-                  if (this.archdioceses.length === 0) {
-                    console.error('Timeout waiting for archdioceses to load');
-                  }
-                }, 3000);
-              }
-            }, 100);
+
+          if (this.pendingGeneralModalOpen) {
+            this.pendingGeneralModalOpen = false;
+            this.setupGeneralModal();
+            return;
+          }
+
+          if (response.data.denomination_id && !this.showGeneralModal) {
+            this.scheduleArchdioceseFilterForProfile(response.data.denomination_id);
           }
         }
       },
@@ -1155,7 +1241,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Signed display URL for pope image (private storage).
    */
   getPopeImageUrl(_size: '128x128' | '300x300' | 'original' = '300x300'): string | null {
-    return this.popeDetails?.pope_image_url ?? null;
+    return resolveMediaDisplaySrc(this.popeDetails?.pope_image_url);
   }
 
   /**
@@ -1179,16 +1265,13 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    */
   handlePopeImageError(event: any): void {
     const img = event.target;
-    
-    // Try original size as fallback
-    if (this.popeDetails?.pope_image_url) {
-      if (img.src !== this.popeDetails.pope_image_url) {
-        img.src = this.popeDetails.pope_image_url;
-        return;
-      }
+    const resolved = resolveMediaDisplaySrc(this.popeDetails?.pope_image_url);
+
+    if (resolved && img.src !== resolved) {
+      img.src = resolved;
+      return;
     }
-    
-    // If still failing, hide the image
+
     img.style.display = 'none';
     console.warn('Failed to load pope image:', img.src);
   }
@@ -1196,8 +1279,13 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   /**
    * Signed display URL for patron image (private storage).
    */
+  getTenantLogoUrl(): string {
+    const raw = this.churchProfile?.logo_full_url || this.churchProfile?.logo_url || null;
+    return resolveMediaDisplaySrc(raw) ?? '';
+  }
+
   getPatronImageUrl(_size: '128x128' | '300x300' | 'original' = '300x300'): string | null {
-    return this.extendedProfile?.patron_image_url ?? null;
+    return resolveMediaDisplaySrc(this.extendedProfile?.patron_image_url);
   }
 
   /**
@@ -1360,7 +1448,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
             this.leaders = response.data;
             this.overviewMinistries = this.leaders.filter((l) => Number(l.active) === 1).length;
             this.refreshSnapshotDisplay();
-            this.refreshOperationalMetrics();
+            this.loadStatusMetrics();
             this.cdr.markForCheck();
           } else {
             console.error('Failed to load leaders:', response);
@@ -1388,7 +1476,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
         if (response.success && response.data) {
           this.governanceCurrent = response.data;
           this.overviewMinistries = response.data.active_count;
-          this.refreshOperationalMetrics();
+          this.loadStatusMetrics();
           this.cdr.markForCheck();
         }
       },
@@ -1411,7 +1499,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     }
     this.overviewMinistries = this.leaders.filter((l) => Number(l.active) === 1).length;
     this.refreshSnapshotDisplay();
-    this.refreshOperationalMetrics();
+    this.loadStatusMetrics();
     this.cdr.markForCheck();
   }
 
@@ -1423,7 +1511,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       next: (response) => {
         if (response.success) {
           this.statistics = response.data;
-          this.refreshOperationalMetrics();
+          this.loadStatusMetrics();
           this.cdr.markForCheck();
         }
       },
@@ -1457,10 +1545,17 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    * Populate profile form with data
    */
   private populateProfileForm(profile: ChurchProfile): void {
+    const denominationId = this.coerceOptionalId(profile.denomination_id);
+    const archdioceseId = this.coerceOptionalId(profile.archdiocese_id);
+    // #region agent log
+    if (typeof fetch === 'function') {
+      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6bd099'},body:JSON.stringify({sessionId:'6bd099',location:'church-profile.component.ts:populateProfileForm',message:'Form populated',data:{rawDenominationId:profile.denomination_id,rawArchdioceseId:profile.archdiocese_id,coercedDenominationId:denominationId,coercedArchdioceseId:archdioceseId,denominationsLoaded:this.denominations.length,archdiocesesLoaded:this.archdioceses.length},timestamp:Date.now(),hypothesisId:'H2-H3'})}).catch(()=>{});
+    }
+    // #endregion
     this.profileForm.patchValue({
-      denomination_id: profile.denomination_id,
-      archdiocese_id: profile.archdiocese_id,
-      bishop_id: profile.bishop_id,
+      denomination_id: denominationId,
+      archdiocese_id: archdioceseId,
+      bishop_id: this.coerceOptionalId(profile.bishop_id),
       founded_year: profile.founded_year,
       country_id: this.getCountryIdFromName(profile.country) || this.getCountryIdFromTenantAddress(),
       phone: profile.phone,
@@ -1473,6 +1568,129 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       core_values: profile.core_values,
       service_times: profile.service_times
     });
+
+    if (this.showGeneralModal) {
+      this.syncModalSelectState();
+    }
+  }
+
+  private coerceOptionalId(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private syncGeneralSelectValues(): void {
+    if (!this.profileForm) {
+      return;
+    }
+
+    const denominationControl = this.profileForm.get('denomination_id');
+    const archdioceseControl = this.profileForm.get('archdiocese_id');
+    const bishopControl = this.profileForm.get('bishop_id');
+
+    if (denominationControl) {
+      denominationControl.setValue(this.coerceOptionalId(denominationControl.value), { emitEvent: false });
+    }
+    if (archdioceseControl) {
+      archdioceseControl.setValue(this.coerceOptionalId(archdioceseControl.value), { emitEvent: false });
+    }
+    if (bishopControl) {
+      bishopControl.setValue(this.coerceOptionalId(bishopControl.value), { emitEvent: false });
+    }
+  }
+
+  private refreshGeneralSelects(): void {
+    this.syncModalSelectState();
+  }
+
+  private scheduleArchdioceseFilterForProfile(denominationId: number | string): void {
+    const applyFilter = () => this.filterArchdioceses();
+
+    if (this.archdioceses.length > 0) {
+      applyFilter();
+      return;
+    }
+
+    const checkLoaded = setInterval(() => {
+      if (this.archdioceses.length > 0) {
+        clearInterval(checkLoaded);
+        applyFilter();
+      }
+    }, 50);
+
+    setTimeout(() => clearInterval(checkLoaded), 3000);
+  }
+
+  private syncModalSelectState(): void {
+    const source = this.extendedProfile;
+    const denominationId = this.coerceOptionalId(
+      source?.denomination_id ?? this.profileForm.get('denomination_id')?.value,
+    );
+    const archdioceseId = this.coerceOptionalId(
+      source?.archdiocese_id ?? this.profileForm.get('archdiocese_id')?.value,
+    );
+
+    this.modalDenominationId = denominationId;
+    this.modalArchdioceseId = archdioceseId;
+    this.resolveModalDenominationSelection();
+    this.resolveModalArchdioceseSelection();
+
+    this.profileForm.patchValue({
+      denomination_id: denominationId,
+      archdiocese_id: archdioceseId,
+      bishop_id: this.coerceOptionalId(source?.bishop_id ?? this.profileForm.get('bishop_id')?.value),
+    }, { emitEvent: false });
+  }
+
+  private resolveModalDenominationSelection(): void {
+    if (this.modalDenominationId == null) {
+      this.modalDenomination = null;
+      return;
+    }
+
+    this.modalDenomination =
+      this.denominations.find((d) => Number(d.id) === Number(this.modalDenominationId)) ?? null;
+  }
+
+  private resolveModalArchdioceseSelection(): void {
+    if (this.modalArchdioceseId == null) {
+      this.modalArchdiocese = null;
+      return;
+    }
+
+    this.modalArchdiocese =
+      this.filteredArchdioceses.find((a) => Number(a.id) === Number(this.modalArchdioceseId))
+      ?? this.archdioceses.find((a) => Number(a.id) === Number(this.modalArchdioceseId))
+      ?? null;
+  }
+
+  onModalDenominationChange(value: Denomination | null): void {
+    this.modalDenomination = value;
+    this.modalDenominationId = this.coerceOptionalId(value?.id);
+    if (!this.modalDenominationId) {
+      this.modalArchdiocese = null;
+      this.modalArchdioceseId = null;
+    }
+
+    this.profileForm.patchValue({
+      denomination_id: this.modalDenominationId,
+      archdiocese_id: this.modalArchdioceseId,
+    }, { emitEvent: false });
+
+    this.filterArchdioceses(() => {
+      this.resolveModalArchdioceseSelection();
+      this.cdr.markForCheck();
+    });
+    this.cdr.markForCheck();
+  }
+
+  onModalArchdioceseChange(value: Archdiocese | null): void {
+    this.modalArchdiocese = value;
+    this.modalArchdioceseId = this.coerceOptionalId(value?.id);
+    this.profileForm.patchValue({ archdiocese_id: this.modalArchdioceseId }, { emitEvent: false });
   }
 
   /**
@@ -1505,8 +1723,10 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   /**
    * Unified method to filter archdioceses by denomination, country, and state
    */
-  private filterArchdioceses(): void {
-    const denominationId = this.profileForm.get('denomination_id')?.value;
+  private filterArchdioceses(onComplete?: () => void): void {
+    const denominationId = this.showGeneralModal
+      ? this.modalDenominationId
+      : this.coerceOptionalId(this.profileForm.get('denomination_id')?.value);
     const countryId = this.profileForm.get('country_id')?.value;
     const stateId = this.getTenantStateId(); // Get from tenant's official address
 
@@ -1537,6 +1757,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     if (Object.keys(filters).length === 0) {
       console.log('No filters selected, showing all archdioceses');
       this.filteredArchdioceses = this.archdioceses || [];
+      this.syncGeneralSelectValues();
+      this.cdr.markForCheck();
+      onComplete?.();
       return;
     }
 
@@ -1544,9 +1767,28 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     this.archdioceseService.getArchdioceses(filters).subscribe({
       next: (response) => {
         console.log('✅ Archdioceses API response:', response);
+        const savedArchdioceseId = this.showGeneralModal
+          ? this.modalArchdioceseId
+          : this.coerceOptionalId(this.profileForm.get('archdiocese_id')?.value);
+        // #region agent log
+        if (typeof fetch === 'function') {
+          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6bd099'},body:JSON.stringify({sessionId:'6bd099',location:'church-profile.component.ts:filterArchdioceses',message:'Archdiocese filter result',data:{filters,success:response.success,resultCount:response.data?.length??0,savedArchdioceseId,savedInResults:!!response.data?.some((a:Archdiocese)=>Number(a.id)===Number(savedArchdioceseId))},timestamp:Date.now(),hypothesisId:'H4'})}).catch(()=>{});
+        }
+        // #endregion
         if (response.success && response.data) {
           if (response.data.length > 0) {
             this.filteredArchdioceses = response.data;
+            if (
+              this.showGeneralModal
+              && this.modalArchdioceseId != null
+              && !this.filteredArchdioceses.some(a => Number(a.id) === Number(this.modalArchdioceseId))
+            ) {
+              this.modalArchdiocese = null;
+              this.modalArchdioceseId = null;
+              this.profileForm.patchValue({ archdiocese_id: null }, { emitEvent: false });
+            } else if (this.showGeneralModal) {
+              this.resolveModalArchdioceseSelection();
+            }
             console.log(`✅ Loaded ${response.data.length} filtered archdioceses`);
           } else {
             // Filter returned 0 results - show empty list
@@ -1563,12 +1805,17 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
           console.warn('⚠️ Filtering returned empty response, falling back to all archdioceses');
           this.filteredArchdioceses = this.archdioceses || [];
         }
+        this.syncGeneralSelectValues();
+        this.cdr.markForCheck();
+        onComplete?.();
       },
       error: (err) => {
         console.error('❌ Failed to filter archdioceses:', err);
         // On error, fall back to showing all archdioceses
         this.filteredArchdioceses = this.archdioceses || [];
         this.toastService.warning('Could not filter archdioceses. Showing all available options.', 'Warning');
+        this.cdr.markForCheck();
+        onComplete?.();
       }
     });
   }
@@ -1578,9 +1825,10 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
    */
   onDenominationChange(denominationId: number | null | any): void {
     // Handle ng-select change event - it can return the value directly or an object
-    const id = typeof denominationId === 'object' && denominationId !== null 
-      ? denominationId.id 
+    const raw = typeof denominationId === 'object' && denominationId !== null
+      ? denominationId.id
       : denominationId;
+    const id = this.coerceOptionalId(raw);
     
     console.log('📝 Denomination changed to:', id);
     
@@ -1596,12 +1844,13 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     }
     
     this.filterArchdioceses();
+    this.cdr.markForCheck();
   }
 
   /**
    * Ensure archdioceses are loaded and filtered based on current filters (denomination, country, state)
    */
-  private ensureArchdiocesesLoaded(): void {
+  private ensureArchdiocesesLoaded(onLoaded?: () => void): void {
     // If archdioceses haven't been loaded yet, load them first, then filter
     if (this.archdioceses.length === 0) {
       console.log('📥 Loading archdioceses...');
@@ -1614,30 +1863,37 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
             this.archdioceses = response.data;
             
             // Now apply unified filtering based on current form values
-            this.filterArchdioceses();
+            this.filterArchdioceses(onLoaded);
           } else {
             console.warn('⚠️ Failed to load archdioceses - empty response');
             this.archdioceses = [];
             this.filteredArchdioceses = [];
+            onLoaded?.();
           }
+          this.cdr.markForCheck();
         },
         error: (err) => {
           console.error('❌ Failed to load archdioceses:', err);
           this.archdioceses = [];
           this.filteredArchdioceses = [];
+          this.cdr.markForCheck();
+          onLoaded?.();
         }
       });
     } else {
       // Archdioceses already loaded, just apply unified filtering
       console.log('✅ Archdioceses already loaded, applying filters');
-      this.filterArchdioceses();
+      this.filterArchdioceses(onLoaded);
     }
   }
 
   /**
    * Start editing a specific section
    */
-  startEditSection(section: 'general' | 'contact' | 'identity'): void {
+  startEditSection(
+    section: 'general' | 'contact' | 'identity',
+    options?: { skipCountryFilter?: boolean },
+  ): void {
     if (!this.canEdit) {
       this.toastService.warning('You do not have permission to edit.', 'Permission Denied');
       return;
@@ -1672,13 +1928,15 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
         }
       }
       
-      // Update phone code based on current country selection
-      const countryId = this.profileForm.get('country_id')?.value;
-      if (countryId) {
-        this.onCountryChange(countryId);
-      } else {
-        // If no country selected, use default
-        this.phoneCodeService.resetToDefault();
+      if (!options?.skipCountryFilter) {
+        // Update phone code based on current country selection
+        const countryId = this.profileForm.get('country_id')?.value;
+        if (countryId) {
+          this.onCountryChange(countryId);
+        } else {
+          // If no country selected, use default
+          this.phoneCodeService.resetToDefault();
+        }
       }
     } else if (section === 'contact') {
       const controlsToEnable = ['phone', 'email', 'website'];
@@ -1781,6 +2039,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
             });
             
             this.toastService.success(`${this.getSectionTitle(section)} updated successfully!`, 'Success');
+            this.loadStatusMetrics();
 
             // Close modal if open for this section
             if (section === 'general' && this.showGeneralModal) {
@@ -1953,10 +2212,10 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete ${leader.full_name}?`)) {
-      return;
-    }
-
+    this.confirmationDialog.confirmDelete(leader.full_name, 'Leader').pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.leadershipService.deleteLeader(leader.id).subscribe({
       next: (response) => {
         if (response.success) {
@@ -1970,6 +2229,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       error: (err: Error) => {
         this.toastService.error(err.message, 'Error');
       }
+    });
     });
   }
 
@@ -2066,10 +2326,15 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete this statistic?`)) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Statistic',
+      message: 'Are you sure you want to delete this statistic? This action cannot be undone.',
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.statisticsService.deleteStatistic(statistic.id).subscribe({
       next: (response) => {
         if (response.success) {
@@ -2080,6 +2345,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       error: (err: Error) => {
         this.toastService.error(err.message, 'Error');
       }
+    });
     });
   }
 
@@ -2176,10 +2442,15 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete this social media account?`)) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Social Media Account',
+      message: 'Are you sure you want to delete this social media account? This action cannot be undone.',
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.socialMediaService.deleteSocialMedia(social.id).subscribe({
       next: (response) => {
         if (response.success) {
@@ -2190,6 +2461,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       error: (err: Error) => {
         this.toastService.error(err.message, 'Error');
       }
+    });
     });
   }
 
@@ -2498,12 +2770,9 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       || null;
   }
 
-  getParishPriest(): ChurchLeadership | { full_name: string; role: string; title?: string; id?: number } | null {
-    const pastorAssignment = this.governanceCurrent?.assignments.find(
-      (assignment) =>
-        assignment.status === 'active' &&
-        assignment.role?.category === 'PARISH_CLERGY' &&
-        this.isPrimaryPastorRoleTitle(assignment.role?.title || ''),
+  getParishPriest(): ChurchLeadership | ProfileLeaderCard | null {
+    const { primary: pastorAssignment } = partitionParishClergyAssignments(
+      this.governanceCurrent?.assignments ?? [],
     );
 
     if (pastorAssignment?.person) {
@@ -2512,6 +2781,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
         full_name: pastorAssignment.person.full_name,
         role: pastorAssignment.role?.title || 'Pastor',
         title: pastorAssignment.role?.title || undefined,
+        photoSource: this.mapGovernanceLeaderPhotoSource(pastorAssignment.person),
       };
     }
 
@@ -2522,89 +2792,95 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     if (this.churchProfile?.pastor_name) {
       return {
         id: 0,
-        tenant_id: this.churchProfile.id,
         full_name: this.churchProfile.pastor_name,
         role: 'Parish Priest',
         title: 'Parish Administrator',
-        is_primary: 1,
-        display_order: 0,
-        active: 1
       };
     }
     return null;
   }
 
-  getAssistantPriests(): Array<{ full_name: string; role: string; title?: string }> {
+  getAssistantPriests(): ProfileLeaderCard[] {
     const priest = this.getParishPriest();
-    const primaryPastorPersonId = this.governanceCurrent?.assignments.find(
-      (assignment) =>
-        assignment.status === 'active' &&
-        assignment.role?.category === 'PARISH_CLERGY' &&
-        this.isPrimaryPastorRoleTitle(assignment.role?.title || ''),
-    )?.person?.id;
+    const { others: fromGovernance } = partitionParishClergyAssignments(
+      this.governanceCurrent?.assignments ?? [],
+    );
 
-    const fromGovernance =
-      this.governanceCurrent?.assignments
-        .filter(
-          (assignment) =>
-            assignment.status === 'active' &&
-            assignment.role?.category === 'PARISH_CLERGY' &&
-            assignment.person?.id !== primaryPastorPersonId &&
-            this.isAssistantClergyRoleTitle(assignment.role?.title || ''),
-        )
+    if (fromGovernance.length) {
+      return fromGovernance
         .map((assignment) => ({
           full_name: assignment.person?.full_name || '',
           role: assignment.role?.title || 'Clergy',
           title: assignment.role?.title,
-        })) || [];
-
-    if (fromGovernance.length) {
-      return fromGovernance.slice(0, 3);
+          photoSource: this.mapGovernanceLeaderPhotoSource(assignment.person),
+        }))
+        .slice(0, 3);
     }
 
     return this.leaders
       .filter(l => l.active === 1 && (l.role || '').toLowerCase().includes('associate'))
       .filter(l => !priest || l.id !== priest.id)
+      .map((leader) => ({
+        full_name: leader.full_name,
+        role: leader.role,
+        title: leader.title,
+        id: leader.id,
+        photoSource: this.mapLegacyLeaderPhotoSource(leader),
+      }))
       .slice(0, 3);
+  }
+
+  getProfileLeaderPhotoSource(
+    leader: ChurchLeadership | ProfileLeaderCard | null | undefined,
+  ): BishopPhotoSource | null {
+    if (!leader) {
+      return null;
+    }
+
+    if ('photoSource' in leader && leader.photoSource) {
+      return leader.photoSource;
+    }
+
+    if ('photo_url' in leader) {
+      return this.mapLegacyLeaderPhotoSource(leader);
+    }
+
+    return null;
+  }
+
+  private mapGovernanceLeaderPhotoSource(
+    person?: LeadershipPersonSummary | null,
+  ): BishopPhotoSource | null {
+    if (!person) {
+      return null;
+    }
+
+    const publicUrl = person.photo_full_url || this.leadershipService.resolveLeaderPhotoUrl(person.photo_url);
+    if (!publicUrl) {
+      return null;
+    }
+
+    return {
+      photo_public_url: publicUrl,
+      photo_url: person.photo_url,
+      has_photo: true,
+    };
+  }
+
+  private mapLegacyLeaderPhotoSource(leader?: ChurchLeadership | null): BishopPhotoSource | null {
+    const publicUrl = this.leadershipService.resolveLeaderPhotoUrl(leader?.photo_url);
+    if (!publicUrl) {
+      return null;
+    }
+
+    return {
+      photo_url: publicUrl,
+      has_photo: true,
+    };
   }
 
   get leadershipTabBadgeCount(): number {
     return this.governanceCurrent?.active_count ?? this.leaders.length;
-  }
-
-  private isPrimaryPastorRoleTitle(title: string): boolean {
-    const normalized = title.trim().toLowerCase();
-    if (!normalized) {
-      return false;
-    }
-
-    if (normalized === 'pastor' || normalized === 'parochial administrator') {
-      return true;
-    }
-
-    if (normalized.includes('associate') || normalized.includes('assistant') || normalized.includes('vicar')) {
-      return false;
-    }
-
-    return normalized.includes('pastor') || normalized.includes('priest');
-  }
-
-  private isAssistantClergyRoleTitle(title: string): boolean {
-    const normalized = title.trim().toLowerCase();
-    if (!normalized) {
-      return false;
-    }
-
-    if (normalized === 'parochial vicar' || normalized === 'deacon') {
-      return true;
-    }
-
-    return (
-      normalized.includes('vicar') ||
-      normalized.includes('deacon') ||
-      normalized.includes('associate') ||
-      normalized.includes('assistant')
-    );
   }
 
   onGovernanceCurrentChanged(current: CurrentLeadershipResponse | null): void {
@@ -2662,6 +2938,8 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   private loadOverviewMetrics(): void {
+    this.loadStatusMetrics();
+
     this.familyService.getStatistics().pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         if (response.success && response.data) {
@@ -2669,7 +2947,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
           this.overviewFamilies = response.data.total_families || 0;
           this.overviewActiveMembers = response.data.active_members || this.overviewMembers;
           this.refreshSnapshotDisplay();
-          this.refreshOperationalMetrics();
+          this.loadStatusMetrics();
         }
         this.cdr.markForCheck();
       },
@@ -2680,17 +2958,69 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       next: (response) => {
         if (response.success && response.data) {
           this.overviewVolunteers = response.data.total_leaders || 0;
-          this.overviewBccUtilization = response.data.utilization_percentage || this.overviewBccUtilization;
           if (!this.overviewMinistries) {
             this.overviewMinistries = response.data.active_bccs || response.data.total_bccs || 0;
           }
           this.refreshSnapshotDisplay();
-          this.refreshOperationalMetrics();
+          this.loadStatusMetrics();
         }
         this.cdr.markForCheck();
       },
       error: () => this.cdr.markForCheck()
     });
+  }
+
+  private loadStatusMetrics(): void {
+    this.statusMetricsLoading = true;
+    this.churchProfileService.getStatusMetrics().pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        if (response.success && response.data) {
+          const data = response.data;
+          this.operationalMetrics = [
+            data.membership_health,
+            data.sacramental_records,
+            data.volunteer_engagement,
+            data.profile_completeness,
+          ];
+          this.statusMetricsEmptyCta = this.resolveStatusMetricsCta(this.operationalMetrics);
+        }
+        this.statusMetricsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.statusMetricsLoading = false;
+        this.operationalMetrics = [];
+        this.statusMetricsEmptyCta = null;
+        this.cdr.markForCheck();
+      }
+    });
+  }
+
+  private resolveStatusMetricsCta(metrics: ChurchStatusMetric[]): { label: string; route: string } | null {
+    const unavailable = metrics.filter((m) => m.status === 'unavailable');
+    if (unavailable.length === 0) {
+      return null;
+    }
+
+    const keys = new Set(unavailable.map((m) => m.key));
+    if (keys.has('membership_health') || keys.has('sacramental_records')) {
+      return { label: 'Add families', route: '/families' };
+    }
+    if (keys.has('volunteer_engagement')) {
+      return { label: 'Set up BCC groups', route: '/bcc' };
+    }
+    if (keys.has('profile_completeness')) {
+      return { label: 'Complete church profile', route: '/church-profile' };
+    }
+
+    return null;
+  }
+
+  navigateStatusMetricsCta(): void {
+    if (!this.statusMetricsEmptyCta) {
+      return;
+    }
+    this.router.navigateByUrl(this.statusMetricsEmptyCta.route);
   }
 
   private refreshSnapshotDisplay(): void {
@@ -2701,42 +3031,6 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       { label: 'Ministries', value: fmt(this.overviewMinistries), hint: 'Active ministry leaders' },
       { label: 'Volunteers', value: fmt(this.overviewVolunteers), hint: 'BCC and volunteer leaders' }
     ];
-  }
-
-  private refreshOperationalMetrics(): void {
-    const latest = this.statistics[0];
-    const membershipHealth = this.overviewMembers > 0
-      ? Math.min(100, Math.round((this.overviewActiveMembers / this.overviewMembers) * 100))
-      : (latest?.membership_count ? 92 : 78);
-
-    const sacramentalScore = this.statistics.length > 0
-      ? Math.min(100, 70 + Math.min(30, (latest.baptisms || 0) + (latest.confirmations || 0) + (latest.marriages || 0)))
-      : 82;
-
-    this.operationalMetrics = [
-      { label: 'Membership Health', percent: membershipHealth },
-      { label: 'Sacramental Records', percent: sacramentalScore },
-      { label: 'Volunteer Engagement', percent: this.overviewBccUtilization },
-      { label: 'Profile Completeness', percent: this.computeProfileCompleteness() }
-    ];
-  }
-
-  private computeProfileCompleteness(): number {
-    const checks = [
-      !!this.churchProfile?.name,
-      !!this.churchProfile?.logo_full_url,
-      !!this.extendedProfile?.patron_name,
-      this.getDenominationName() !== 'Not Set',
-      this.getArchdioceseName() !== 'Not Set',
-      !!this.getFoundedYear(),
-      !!this.getProfileEmail(),
-      !!this.getProfilePhone(),
-      !!this.getWebsiteUrl(),
-      !!this.getOfficialAddress(),
-      !!this.getAboutText() && !this.getAboutText().startsWith('Add a parish narrative')
-    ];
-    const filled = checks.filter(Boolean).length;
-    return Math.round((filled / checks.length) * 100);
   }
 }
 

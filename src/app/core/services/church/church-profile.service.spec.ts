@@ -74,4 +74,25 @@ describe('ChurchProfileService', () => {
     expect(req.request.method).toBe('DELETE');
     req.flush({ success: true, data: null });
   });
+
+  it('loads authoritative church status metrics', () => {
+    service.getStatusMetrics().subscribe((response) => {
+      expect(response.success).toBe(true);
+      expect(response.data?.membership_health.status).toBe('unavailable');
+      expect(response.data?.profile_completeness.percent).toBe(45);
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/status-metrics`);
+    expect(req.request.method).toBe('GET');
+    req.flush({
+      success: true,
+      data: {
+        membership_health: { key: 'membership_health', label: 'Membership Health', status: 'unavailable', percent: null, display: 'Not available', tooltip: 'Active members ratio' },
+        sacramental_records: { key: 'sacramental_records', label: 'Sacramental Records', status: 'unavailable', percent: null, display: 'Not available', tooltip: 'Sacrament coverage' },
+        volunteer_engagement: { key: 'volunteer_engagement', label: 'Volunteer Engagement', status: 'unavailable', percent: null, display: 'Not available', tooltip: 'Volunteer blend' },
+        profile_completeness: { key: 'profile_completeness', label: 'Profile Completeness', status: 'available', percent: 45, display: '45%', tooltip: 'Profile fields' },
+        generated_at: '2026-09-18T00:00:00+00:00',
+      },
+    });
+  });
 });

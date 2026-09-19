@@ -8,6 +8,7 @@ export type SettingsNavVisibilityKey =
   | 'sacrament-settings'
   | 'subscription'
   | 'support-access'
+  | 'forgot-password-requests'
   | 'data-export'
   | 'default-seeds';
 
@@ -55,6 +56,8 @@ export function isSettingsNavItemVisible(
         isParishHome(user, auth) &&
         auth.hasAnyPermission(['support.grants.parish.view', 'support.grants.parish.manage'])
       );
+    case 'forgot-password-requests':
+      return auth.canViewPasswordRecoveryRequests(user);
     default:
       return false;
   }

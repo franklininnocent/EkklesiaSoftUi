@@ -1,9 +1,10 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ChangeDetectorRef, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Role, Permission } from '@core/models';
 import { PermissionsService } from '@core/services/permissions.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 import { isHighRiskPermissionName } from '@shared/utils/rbac-permission.util';
@@ -11,6 +12,7 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { filter, take } from 'rxjs/operators';
 
 interface PermissionGroup {
   module: string;
@@ -86,6 +88,7 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
   selectedPermissionsCount = 0;
   filteredPermissionCount = 0;
   selectedInViewCount = 0;
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   constructor(
     private permissionsService: PermissionsService,
@@ -555,10 +558,15 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
     }
 
     if (this.hasChanges()) {
-      const confirmClose = confirm('You have unsaved changes. Are you sure you want to close?');
-      if (!confirmClose) {
-        return;
-      }
+      this.confirmationDialog.confirmDiscardChanges()
+        .pipe(
+          filter((result) => result.confirmed),
+          take(1),
+        )
+        .subscribe(() => {
+          this.closed.emit();
+        });
+      return;
     }
 
     this.closed.emit();
@@ -903,6 +911,14 @@ export class AssignPermissionsModalComponent implements OnInit, OnChanges {
 
   resolvePermissionModule(permission: Permission): string {
     const permissionName = (permission.name || '').toLowerCase();
+    if (
+      permissionName.startsWith('users.password.')
+      || permissionName === 'tenant.admin_password.reset'
+      || permission.module === 'Password & Account Security'
+    ) {
+      return 'Password & Account Security';
+    }
+
     const prefix = permissionName.includes('.') ? permissionName.split('.')[0] : '';
     const prefixModuleMap: Record<string, string> = {
       users: 'Users',

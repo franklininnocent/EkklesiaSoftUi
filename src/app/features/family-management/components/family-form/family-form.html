@@ -68,9 +68,7 @@
             <p class="cf-split-field__error" *ngIf="family && getActiveMemberCount() > 0">
               ⚠️ This Family has {{ getActiveMemberCount() }} active {{ getActiveMemberCount() === 1 ? 'member' : 'members' }} (including family head). Deactivate them before setting Family to inactive.
             </p>
-            <p class="cf-split-field__hint" *ngIf="!family || getActiveMemberCount() === 0">
-              Current status of the Family
-            </p>
+            
           </div>
 
           <div class="cf-split-field">

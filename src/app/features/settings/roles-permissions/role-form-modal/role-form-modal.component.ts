@@ -714,6 +714,14 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
 
   private resolvePermissionModule(permission: Permission): string {
     const permissionName = (permission.name || '').toLowerCase();
+    if (
+      permissionName.startsWith('users.password.')
+      || permissionName === 'tenant.admin_password.reset'
+      || permission.module === 'Password & Account Security'
+    ) {
+      return 'Password & Account Security';
+    }
+
     const prefix = permissionName.includes('.') ? permissionName.split('.')[0] : '';
     const prefixModuleMap: Record<string, string> = {
       users: 'Users',

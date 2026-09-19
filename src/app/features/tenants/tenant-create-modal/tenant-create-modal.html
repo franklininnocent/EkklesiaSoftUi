@@ -21,6 +21,10 @@
       {{ serverError }}
     </p>
 
+    <p *ngIf="countriesLoadError" class="cf-split-form-alert cf-split-form-alert--error" role="alert">
+      {{ countriesLoadError }}
+    </p>
+
     <section class="cf-split-section" aria-labelledby="tenant-section-info">
       <h3 id="tenant-section-info" class="cf-split-section__title">Tenant information</h3>
       <div class="cf-split-grid">
@@ -62,6 +66,63 @@
           <p class="cf-split-field__hint">A short phrase that describes your organization (max 500 characters)</p>
         </div>
 
+        <div class="cf-split-field">
+          <label for="tenantDomain">
+            Domain <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="tenantDomain"
+            name="tenantDomain"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('domain')"
+            [(ngModel)]="formData.domain"
+            (blur)="markAsTouched('domain')"
+            placeholder="e.g. sacredheart.example.org"
+            [disabled]="isSubmitting"
+            maxlength="255"
+          />
+          <p class="cf-split-field__hint">Custom domain for this parish (shown on the tenant profile)</p>
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('domain')">
+            {{ getFieldError('domain') }}
+          </p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="tenantDiocese">
+            Diocese <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            *ngIf="loadingArchdioceses"
+            type="text"
+            id="tenantDioceseLoading"
+            class="cf-split-field__control"
+            disabled
+            aria-busy="true"
+            placeholder="Loading dioceses…"
+          />
+          <ng-select
+            *ngIf="archdioceseOptions as options"
+            id="tenantDiocese"
+            name="tenantDiocese"
+            class="cf-split-select"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('archdiocese_id')"
+            [items]="options"
+            bindLabel="name"
+            bindValue="id"
+            [(ngModel)]="formData.archdiocese_id"
+            (blur)="markAsTouched('archdiocese_id')"
+            [disabled]="isSubmitting"
+            [searchable]="true"
+            [clearable]="true"
+            [placeholder]="options.length ? 'Select diocese' : 'No dioceses available'"
+          ></ng-select>
+          <p class="cf-split-field__hint">Ecclesiastical diocese this parish belongs to</p>
+          <p class="cf-split-field__error" *ngIf="archdiocesesLoadError">{{ archdiocesesLoadError }}</p>
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('archdiocese_id')">
+            {{ getFieldError('archdiocese_id') }}
+          </p>
+        </div>
+
         <div class="cf-split-field cf-split-field--full">
           <label for="tenantLogo">
             Tenant logo <span class="cf-split-optional">optional</span>
@@ -92,7 +153,7 @@
               hidden
             />
           </div>
-          <p class="cf-split-field__hint">JPG, PNG, GIF, or WebP. Max 5MB.</p>
+          <p class="cf-split-field__hint">JPG, PNG, or WebP. Max 5MB.</p>
           <p class="cf-split-field__error" *ngIf="formErrors['tenant_logo']">
             {{ formErrors['tenant_logo'] }}
           </p>
@@ -113,6 +174,7 @@
             name="tenantAddressLine1"
             [class.cf-split-field__control--invalid]="isFieldInvalid('tenant_official_address.line1')"
             [(ngModel)]="formData.tenant_official_address.line1"
+            (ngModelChange)="onTenantAddressFieldChange()"
             (blur)="markAsTouched('tenant_official_address.line1')"
             placeholder="Enter street address"
             required
@@ -142,32 +204,34 @@
           <label for="tenantCountry">
             Country <span class="cf-split-req" aria-hidden="true">*</span>
           </label>
+          <input
+            *ngIf="loadingCountries"
+            type="text"
+            id="tenantCountryLoading"
+            class="cf-split-field__control"
+            disabled
+            aria-busy="true"
+            [placeholder]="countryPlaceholder"
+          />
           <ng-select
+            *ngIf="countryOptions as options"
             id="tenantCountry"
             name="tenantCountry"
             class="cf-split-select"
             [class.cf-split-field__control--invalid]="isFieldInvalid('tenant_official_address.country_id')"
-            [items]="countries"
+            [items]="options"
             bindLabel="name"
             bindValue="id"
             [(ngModel)]="formData.tenant_official_address.country_id"
             (ngModelChange)="onTenantCountryChange($event)"
             (blur)="markAsTouched('tenant_official_address.country_id')"
-            [disabled]="isSubmitting || loadingCountries"
-            [loading]="loadingCountries"
+            [disabled]="isSubmitting"
             [searchable]="true"
             [clearable]="false"
-            placeholder="Select country"
+            [placeholder]="countryPlaceholder"
             required
             aria-required="true"
-          >
-            <ng-template ng-option-tmp let-item="item">
-              {{ item.emoji }} {{ item.name }}
-            </ng-template>
-            <ng-template ng-label-tmp let-item="item">
-              {{ item.emoji }} {{ item.name }}
-            </ng-template>
-          </ng-select>
+          ></ng-select>
           <p class="cf-split-field__error" *ngIf="isFieldInvalid('tenant_official_address.country_id')">
             {{ getFieldError('tenant_official_address.country_id') }}
           </p>
@@ -177,21 +241,31 @@
           <label for="tenantState">
             State/province <span class="cf-split-req" aria-hidden="true">*</span>
           </label>
+          <input
+            *ngIf="formData.tenant_official_address.country_id && (loadingTenantStates || tenantStateOptions === null)"
+            type="text"
+            id="tenantStateLoading"
+            class="cf-split-field__control"
+            disabled
+            aria-busy="true"
+            [placeholder]="loadingTenantStates ? 'Loading states…' : 'Select state/province'"
+          />
           <ng-select
+            *ngIf="tenantStateOptions as stateOptions"
             id="tenantState"
             name="tenantState"
             class="cf-split-select"
             [class.cf-split-field__control--invalid]="isFieldInvalid('tenant_official_address.state_id')"
-            [items]="tenantStates"
+            [items]="stateOptions"
             bindLabel="name"
             bindValue="id"
             [(ngModel)]="formData.tenant_official_address.state_id"
+            (ngModelChange)="onTenantAddressFieldChange()"
             (blur)="markAsTouched('tenant_official_address.state_id')"
-            [disabled]="isSubmitting || !formData.tenant_official_address.country_id || loadingTenantStates"
-            [loading]="loadingTenantStates"
+            [disabled]="isSubmitting"
             [searchable]="true"
             [clearable]="false"
-            [placeholder]="loadingTenantStates ? 'Loading…' : 'Select state/province'"
+            [placeholder]="stateOptions.length ? 'Select state/province' : 'No states available'"
             required
             aria-required="true"
           ></ng-select>
@@ -210,6 +284,7 @@
             name="tenantDistrict"
             [class.cf-split-field__control--invalid]="isFieldInvalid('tenant_official_address.district')"
             [(ngModel)]="formData.tenant_official_address.district"
+            (ngModelChange)="onTenantAddressFieldChange()"
             (blur)="markAsTouched('tenant_official_address.district')"
             placeholder="Enter district or city name"
             required
@@ -231,6 +306,7 @@
             name="tenantPinZipCode"
             [class.cf-split-field__control--invalid]="isFieldInvalid('tenant_official_address.pin_zip_code')"
             [(ngModel)]="formData.tenant_official_address.pin_zip_code"
+            (ngModelChange)="onTenantAddressFieldChange()"
             (blur)="markAsTouched('tenant_official_address.pin_zip_code')"
             placeholder="Enter PIN/ZIP code"
             required
@@ -289,6 +365,53 @@
           </p>
         </div>
 
+        <div class="cf-split-field">
+          <label for="primaryUserPassword">
+            Password <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="password"
+            id="primaryUserPassword"
+            name="primaryUserPassword"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('primary_user_password')"
+            [(ngModel)]="formData.primary_user_password"
+            (blur)="markAsTouched('primary_user_password')"
+            (input)="validatePasswordFields()"
+            autocomplete="new-password"
+            required
+            aria-required="true"
+            [disabled]="isSubmitting"
+          />
+          <p class="cf-split-field__hint" *ngIf="!isFieldInvalid('primary_user_password')">
+            At least 8 characters with uppercase, lowercase, number, and special character.
+          </p>
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('primary_user_password')">
+            {{ getFieldError('primary_user_password') }}
+          </p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="primaryUserPasswordConfirmation">
+            Confirm password <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="password"
+            id="primaryUserPasswordConfirmation"
+            name="primaryUserPasswordConfirmation"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('primary_user_password_confirmation')"
+            [(ngModel)]="formData.primary_user_password_confirmation"
+            (blur)="markAsTouched('primary_user_password_confirmation')"
+            (input)="validatePasswordFields()"
+            autocomplete="new-password"
+            required
+            aria-required="true"
+            [disabled]="isSubmitting"
+          />
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('primary_user_password_confirmation')">
+            {{ getFieldError('primary_user_password_confirmation') }}
+          </p>
+        </div>
+
         <div class="cf-split-field cf-split-field--full">
           <app-phone-input
             [label]="'Contact number'"
@@ -334,7 +457,7 @@
             placeholder="Street address, building, floor, etc."
             required
             aria-required="true"
-            [disabled]="isSubmitting"
+            [disabled]="isSubmitting || sameAsTenantAddress"
           />
           <p class="cf-split-field__error" *ngIf="isFieldInvalid('primary_user_address.line1')">
             {{ getFieldError('primary_user_address.line1') }}
@@ -351,7 +474,7 @@
             name="primaryAddressLine2"
             [(ngModel)]="formData.primary_user_address.line2"
             placeholder="Apartment, suite, unit, etc."
-            [disabled]="isSubmitting"
+            [disabled]="isSubmitting || sameAsTenantAddress"
           />
         </div>
 
@@ -359,32 +482,34 @@
           <label for="primaryCountry">
             Country <span class="cf-split-req" aria-hidden="true">*</span>
           </label>
+          <input
+            *ngIf="loadingCountries"
+            type="text"
+            id="primaryCountryLoading"
+            class="cf-split-field__control"
+            disabled
+            aria-busy="true"
+            [placeholder]="countryPlaceholder"
+          />
           <ng-select
+            *ngIf="countryOptions as options"
             id="primaryCountry"
             name="primaryCountry"
             class="cf-split-select"
             [class.cf-split-field__control--invalid]="isFieldInvalid('primary_user_address.country_id')"
-            [items]="countries"
+            [items]="options"
             bindLabel="name"
             bindValue="id"
             [(ngModel)]="formData.primary_user_address.country_id"
             (ngModelChange)="onPrimaryCountryChange($event)"
             (blur)="markAsTouched('primary_user_address.country_id')"
-            [disabled]="isSubmitting || loadingCountries"
-            [loading]="loadingCountries"
+            [disabled]="isSubmitting || sameAsTenantAddress"
             [searchable]="true"
             [clearable]="false"
-            placeholder="Select country"
+            [placeholder]="countryPlaceholder"
             required
             aria-required="true"
-          >
-            <ng-template ng-option-tmp let-item="item">
-              {{ item.emoji }} {{ item.name }}
-            </ng-template>
-            <ng-template ng-label-tmp let-item="item">
-              {{ item.emoji }} {{ item.name }}
-            </ng-template>
-          </ng-select>
+          ></ng-select>
           <p class="cf-split-field__error" *ngIf="isFieldInvalid('primary_user_address.country_id')">
             {{ getFieldError('primary_user_address.country_id') }}
           </p>
@@ -394,21 +519,30 @@
           <label for="primaryState">
             State/province <span class="cf-split-req" aria-hidden="true">*</span>
           </label>
+          <input
+            *ngIf="formData.primary_user_address.country_id && !sameAsTenantAddress && (loadingPrimaryStates || primaryStateOptions === null)"
+            type="text"
+            id="primaryStateLoading"
+            class="cf-split-field__control"
+            disabled
+            aria-busy="true"
+            [placeholder]="loadingPrimaryStates ? 'Loading states…' : 'Select state/province'"
+          />
           <ng-select
+            *ngIf="primaryStateOptions as stateOptions"
             id="primaryState"
             name="primaryState"
             class="cf-split-select"
             [class.cf-split-field__control--invalid]="isFieldInvalid('primary_user_address.state_id')"
-            [items]="primaryStates"
+            [items]="stateOptions"
             bindLabel="name"
             bindValue="id"
             [(ngModel)]="formData.primary_user_address.state_id"
             (blur)="markAsTouched('primary_user_address.state_id')"
-            [disabled]="isSubmitting || !formData.primary_user_address.country_id || loadingPrimaryStates"
-            [loading]="loadingPrimaryStates"
+            [disabled]="isSubmitting || sameAsTenantAddress"
             [searchable]="true"
             [clearable]="false"
-            [placeholder]="loadingPrimaryStates ? 'Loading…' : 'Select state/province'"
+            [placeholder]="stateOptions.length ? 'Select state/province' : 'No states available'"
             required
             aria-required="true"
           ></ng-select>
@@ -431,7 +565,7 @@
             placeholder="Enter district or city name"
             required
             aria-required="true"
-            [disabled]="isSubmitting"
+            [disabled]="isSubmitting || sameAsTenantAddress"
           />
           <p class="cf-split-field__error" *ngIf="isFieldInvalid('primary_user_address.district')">
             {{ getFieldError('primary_user_address.district') }}
@@ -452,7 +586,7 @@
             placeholder="Enter PIN/ZIP code"
             required
             aria-required="true"
-            [disabled]="isSubmitting"
+            [disabled]="isSubmitting || sameAsTenantAddress"
           />
           <p class="cf-split-field__error" *ngIf="isFieldInvalid('primary_user_address.pin_zip_code')">
             {{ getFieldError('primary_user_address.pin_zip_code') }}
@@ -466,6 +600,7 @@
         type="submit"
         class="cf-btn cf-btn-primary"
         [disabled]="isSubmitting"
+        (click)="onCreateButtonClick($event)"
       >
         {{ isSubmitting ? 'Saving…' : 'Create tenant' }}
       </button>

@@ -131,7 +131,12 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         }
 
         return this.usersService.getLinkableClergy(trimmed).pipe(
-          catchError(() => of({ success: false, data: [] as LinkableClergy[] }))
+          catchError((err) => {
+            // #region agent log
+            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92acf4'},body:JSON.stringify({sessionId:'92acf4',runId:'pre-fix',hypothesisId:'H1',location:'user-form-modal.component.ts:catchError',message:'linkable clergy API error',data:{status:err?.status,statusText:err?.statusText,message:err?.message,url:err?.url,query:trimmed},timestamp:Date.now()})}).catch(()=>{});
+            // #endregion
+            return of({ success: false, data: [] as LinkableClergy[] });
+          })
         );
       }),
       takeUntil(this.destroy$)
@@ -139,6 +144,9 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       this.clergyResults = Array.isArray(response.data) ? response.data : [];
       this.clergySearching = false;
       this.showClergyResults = this.clergyQuery.trim().length >= 2;
+      // #region agent log
+      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92acf4'},body:JSON.stringify({sessionId:'92acf4',runId:'pre-fix',hypothesisId:'H5',location:'user-form-modal.component.ts:subscribe',message:'linkable clergy response applied',data:{query:this.clergyQuery.trim(),success:response.success,resultCount:this.clergyResults.length,showClergyResults:this.showClergyResults,firstResultName:this.clergyResults[0]?.person_name??null},timestamp:Date.now()})}).catch(()=>{});
+      // #endregion
       this.cdr.markForCheck();
     });
   }
@@ -268,6 +276,9 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     if (this.isEditingSelf) {
       return;
     }
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'92acf4'},body:JSON.stringify({sessionId:'92acf4',runId:'pre-fix',hypothesisId:'H4',location:'user-form-modal.component.ts:onClergyQueryInput',message:'clergy search input',data:{query:this.clergyQuery,trimmedLength:this.clergyQuery.trim().length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     this.clergySearch$.next(this.clergyQuery);
   }
 

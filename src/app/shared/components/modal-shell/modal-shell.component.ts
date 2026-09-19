@@ -137,13 +137,27 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
+  onFooterClick(event: Event): void {
+    const footer = event.currentTarget as HTMLElement | null;
+    const target = event.target as HTMLElement | null;
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'D',location:'modal-shell.component.ts:onFooterClick',message:'modal footer click',data:{title:this.title,targetTag:target?.tagName||null,targetClass:target?.className||null,footerChildCount:footer?.childElementCount??null,footerTextLen:(footer?.textContent||'').trim().length},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }
+
   onBackdropClick(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'C',location:'modal-shell.component.ts:onBackdropClick',message:'backdrop click',data:{title:this.title,isSubmitting:this.isSubmitting},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!this.isSubmitting) {
       this.closeRequested.emit();
     }
   }
 
   onCloseClick(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'C',location:'modal-shell.component.ts:onCloseClick',message:'close button click',data:{title:this.title,isSubmitting:this.isSubmitting},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     if (!this.isSubmitting) {
       this.closeRequested.emit();
     }

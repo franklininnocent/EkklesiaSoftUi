@@ -72,10 +72,6 @@ export class FamilyService {
    * Update a family
    */
   updateFamily(id: string, family: Partial<Family>): Observable<ApiResponse<Family>> {
-    // #region agent log
-    const members = (family as { members?: Array<Record<string, unknown>> }).members;
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'aab4ab'},body:JSON.stringify({sessionId:'aab4ab',runId:'pre-fix',hypothesisId:'E',location:'family.service.ts:updateFamily',message:'PUT family members summary',data:{memberCount:Array.isArray(members)?members.length:0,summaries:Array.isArray(members)?members.map((m)=>({keys:Object.keys(m||{}),hasId:!!m?.['id'],hasPersonId:!!m?.['person_id']})):[]},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     return this.http.put<ApiResponse<Family>>(`${this.apiUrl}/${id}`, family, this.buildTenantCountryHeaders());
   }
 

@@ -3,23 +3,33 @@ import { TenantCreateModalComponent } from './tenant-create-modal';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { GeographyService } from '@core/services/geography.service';
+import { ArchdioceseService } from '@core/services/church/archdiocese.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { of, throwError } from 'rxjs';
 
 describe('TenantCreateModalComponent', () => {
   let component: TenantCreateModalComponent;
   let fixture: ComponentFixture<TenantCreateModalComponent>;
+  let tenantService: { createTenant: jest.Mock };
+  let toastService: { success: jest.Mock; error: jest.Mock };
+  let geographyService: { getCountries: jest.Mock; getStatesByCountry: jest.Mock };
+  let archdioceseService: { getArchdioceses: jest.Mock };
 
   beforeEach(async () => {
-    const tenantService = {
+    tenantService = {
       createTenant: jest.fn().mockReturnValue(of({ success: true, message: 'ok' })),
-      getChurchProfile: jest.fn().mockReturnValue(of({ success: true, data: { address: {} } }))
-    } as unknown as TenantService;
-    const toastService = { success: jest.fn(), error: jest.fn() } as unknown as ToastService;
-    const geographyService = {
+    };
+    toastService = { success: jest.fn(), error: jest.fn() };
+    geographyService = {
       getCountries: jest.fn().mockReturnValue(of({ success: true, data: [], count: 0 })),
       getStatesByCountry: jest.fn().mockReturnValue(of({ success: true, data: [], count: 0 }))
-    } as unknown as GeographyService;
+    };
+    archdioceseService = {
+      getArchdioceses: jest.fn().mockReturnValue(of({
+        success: true,
+        data: [{ id: 5, name: 'Archdiocese of Test', country: 'India', active: 1 }],
+      })),
+    };
     const phoneCodeService = {
       initializeFromApiOnce: jest.fn().mockReturnValue(of({ success: true, countryCode: 'IN', phoneCode: '+91' })),
       updatePhoneCodeByCountryId: jest.fn().mockReturnValue(of({ success: true, phoneCode: '+91', countryName: 'India' })),
@@ -34,6 +44,7 @@ describe('TenantCreateModalComponent', () => {
         { provide: TenantService, useValue: tenantService },
         { provide: ToastService, useValue: toastService },
         { provide: GeographyService, useValue: geographyService },
+        { provide: ArchdioceseService, useValue: archdioceseService },
         { provide: PhoneCodeService, useValue: phoneCodeService }
       ]
     }).compileComponents();
@@ -49,6 +60,39 @@ describe('TenantCreateModalComponent', () => {
     expect(component.getFieldError('tenant_name')).toBeTruthy();
     expect(component.getFieldError('tenant_official_address.country_id')).toBeTruthy();
     expect(component.getFieldError('primary_user_email')).toBeTruthy();
+    expect(component.getFieldError('primary_user_password')).toBeTruthy();
+  });
+
+  it('rejects weak or mismatched passwords', () => {
+    component.formData = {
+      tenant_name: 'Acme Church',
+      slogan: '',
+      tenant_official_address: {
+        line1: '123 Main',
+        line2: '',
+        country_id: 1,
+        state_id: 10,
+        district: 'Springfield',
+        pin_zip_code: '12345'
+      },
+      primary_user_name: 'John Doe',
+      primary_user_email: 'john@example.com',
+      primary_user_password: 'weak',
+      primary_user_password_confirmation: 'different',
+      primary_contact_number: '555123456',
+      primary_user_address: {
+        line1: '123 Main',
+        line2: '',
+        country_id: 1,
+        state_id: 10,
+        district: 'Springfield',
+        pin_zip_code: '12345'
+      }
+    } as any;
+
+    expect(component.validateForm()).toBe(false);
+    expect(component.getFieldError('primary_user_password')).toBeTruthy();
+    expect(component.getFieldError('primary_user_password_confirmation')).toBeTruthy();
   });
 
   it('valid when required fields are provided correctly', () => {
@@ -65,7 +109,9 @@ describe('TenantCreateModalComponent', () => {
       },
       primary_user_name: 'John Doe',
       primary_user_email: 'john@example.com',
-      primary_contact_number: '5551234',
+      primary_user_password: 'Strong1!',
+      primary_user_password_confirmation: 'Strong1!',
+      primary_contact_number: '555123456',
       primary_user_address: {
         line1: '123 Main',
         line2: '',
@@ -80,33 +126,53 @@ describe('TenantCreateModalComponent', () => {
     expect(valid).toBe(true);
   });
 
+  it('marks tenant official address fields touched on invalid submit', () => {
+    component.onSubmit();
+    expect(component.touched['tenant_official_address.country_id']).toBe(true);
+    expect(component.touched['tenant_official_address.line1']).toBe(true);
+    expect(component.isFieldInvalid('tenant_official_address.country_id')).toBe(true);
+  });
+
   it('onSubmit sets serverError when invalid', () => {
+    component.onSubmit();
+    expect(component.serverError).toContain('Please fix the validation errors');
+  });
+
+  it('includes domain and diocese in create payload when provided', () => {
     component.formData = {
-      tenant_name: '',
+      tenant_name: 'Acme Church',
       slogan: '',
+      domain: 'acme.example.org',
+      archdiocese_id: 5,
       tenant_official_address: {
-        line1: '',
+        line1: '123 Main',
         line2: '',
-        country_id: 0,
-        state_id: 0,
-        district: '',
-        pin_zip_code: ''
+        country_id: 1,
+        state_id: 10,
+        district: 'Springfield',
+        pin_zip_code: '12345'
       },
-      primary_user_name: '',
-      primary_user_email: 'bademail',
-      primary_contact_number: '',
+      primary_user_name: 'John Doe',
+      primary_user_email: 'john@example.com',
+      primary_user_password: 'Strong1!',
+      primary_user_password_confirmation: 'Strong1!',
+      primary_contact_number: '555123456',
       primary_user_address: {
-        line1: '',
+        line1: '123 Main',
         line2: '',
-        country_id: 0,
-        state_id: 0,
-        district: '',
-        pin_zip_code: ''
+        country_id: 1,
+        state_id: 10,
+        district: 'Springfield',
+        pin_zip_code: '12345'
       }
     } as any;
 
     component.onSubmit();
-    expect(component.serverError).toContain('Please fix the validation errors');
+
+    expect(tenantService.createTenant).toHaveBeenCalledWith(expect.objectContaining({
+      domain: 'acme.example.org',
+      archdiocese_id: 5,
+    }));
   });
 
   it('onSubmit calls service and clears serverError when valid', () => {
@@ -123,7 +189,9 @@ describe('TenantCreateModalComponent', () => {
       },
       primary_user_name: 'John Doe',
       primary_user_email: 'john@example.com',
-      primary_contact_number: '5551234',
+      primary_user_password: 'Strong1!',
+      primary_user_password_confirmation: 'Strong1!',
+      primary_contact_number: '555123456',
       primary_user_address: {
         line1: '123 Main',
         line2: '',
@@ -136,9 +204,44 @@ describe('TenantCreateModalComponent', () => {
 
     component.onSubmit();
     expect(component.serverError).toBe('');
+    expect(tenantService.createTenant).toHaveBeenCalled();
   });
 
-  it('sameAsTenantAddress copies address fields', () => {
+  it('shows toast when create returns success false', () => {
+    tenantService.createTenant.mockReturnValue(of({ success: false, message: 'Duplicate tenant' }));
+    component.formData = {
+      tenant_name: 'Acme Church',
+      slogan: '',
+      tenant_official_address: {
+        line1: '123 Main',
+        line2: '',
+        country_id: 1,
+        state_id: 10,
+        district: 'Springfield',
+        pin_zip_code: '12345'
+      },
+      primary_user_name: 'John Doe',
+      primary_user_email: 'john@example.com',
+      primary_user_password: 'Strong1!',
+      primary_user_password_confirmation: 'Strong1!',
+      primary_contact_number: '555123456',
+      primary_user_address: {
+        line1: '123 Main',
+        line2: '',
+        country_id: 1,
+        state_id: 10,
+        district: 'Springfield',
+        pin_zip_code: '12345'
+      }
+    } as any;
+
+    component.onSubmit();
+
+    expect(toastService.error).toHaveBeenCalledWith('Duplicate tenant', 'Error', 6000);
+    expect(component.serverError).toBe('Duplicate tenant');
+  });
+
+  it('sameAsTenantAddress copies address fields and keeps them in sync', () => {
     component.formData.tenant_official_address = {
       line1: 'A', line2: 'B', country_id: 1, state_id: 2, district: 'D', pin_zip_code: 'Z'
     } as any;
@@ -146,6 +249,56 @@ describe('TenantCreateModalComponent', () => {
     component.onSameAsTenantAddressChange();
     expect(component.formData.primary_user_address.line1).toBe('A');
     expect(component.formData.primary_user_address.country_id).toBe(1);
+
+    component.formData.tenant_official_address.district = 'Updated';
+    component.onTenantAddressFieldChange();
+    expect(component.formData.primary_user_address.district).toBe('Updated');
+  });
+
+  it('country ng-select uses appendTo body', () => {
+    expect(component.appendToBody).toBe('body');
+  });
+
+  it('loads states into tenant dropdown after country selection', () => {
+    geographyService.getStatesByCountry.mockReturnValue(of({
+      success: true,
+      count: 2,
+      data: [
+        { id: 10, country_id: 101, name: 'Kerala' },
+        { id: 11, country_id: 101, name: 'Tamil Nadu' },
+      ],
+    }));
+
+    component.onTenantCountryChange(101);
+    fixture.detectChanges();
+
+    expect(geographyService.getStatesByCountry).toHaveBeenCalledWith(101);
+    expect(component.tenantStateOptions).toHaveLength(2);
+    expect(component.tenantStateOptions?.[0].name).toBe('Kerala');
+    expect(fixture.nativeElement.querySelector('#tenantState')).toBeTruthy();
+  });
+
+  it('loads countries into the dropdown when geography data is available', () => {
+    geographyService.getCountries.mockReturnValue(of({
+      success: true,
+      count: 2,
+      data: [
+        { id: 101, name: 'India', iso2: 'IN', iso3: 'IND' },
+        { id: 233, name: 'United States', iso2: 'US', iso3: 'USA' },
+      ],
+    }));
+
+    component.loadCountries();
+    fixture.detectChanges();
+
+    expect(geographyService.getCountries).toHaveBeenCalledWith({ refresh: true });
+    expect(component.countries).toHaveLength(2);
+    expect(component.countryOptions).toHaveLength(2);
+    expect(component.countries[0].name).toBe('India');
+    expect(component.loadingCountries).toBe(false);
+    expect(component.countriesLoadError).toBe('');
+    expect(fixture.nativeElement.querySelector('#tenantCountry')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#tenantCountryLoading')).toBeNull();
   });
 
   it('uses enterprise modal shell chrome and in-form footer actions', () => {

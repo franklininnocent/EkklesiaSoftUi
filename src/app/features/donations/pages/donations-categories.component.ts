@@ -1,10 +1,11 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
@@ -40,6 +41,8 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
     is_tax_deductible: [false],
     active: [true]
   });
+
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   constructor(
     private fb: FormBuilder,
@@ -167,13 +170,14 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
   }
 
   deleteCategory(category: DonationCategory): void {
-    const confirmed = window.confirm(
-      `Delete "${category.name}"?\n\nThis only works if the category has never been used. Otherwise, edit it and set Active to off.`
-    );
-    if (!confirmed) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Category',
+      message: `Delete "${category.name}"?\n\nThis only works if the category has never been used. Otherwise, edit it and set Active to off.`,
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+    ).subscribe(() => {
     this.deletingId = category.id;
     this.donationsService.deleteCategory(category.id).subscribe({
       next: (res) => {
@@ -188,6 +192,7 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
         this.deletingId = null;
         this.toastService.error(this.parseError(err), 'Could not delete category');
       }
+    });
     });
   }
 

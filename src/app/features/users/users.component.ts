@@ -12,11 +12,12 @@ import { SortableDirective, SortEvent } from '@shared/directives/sortable.direct
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { User } from '@core/models';
 import { UserFormModalComponent } from './user-form-modal/user-form-modal.component';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { filter, takeUntil } from 'rxjs/operators';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
 
@@ -67,10 +68,12 @@ export class UsersComponent implements OnInit, OnDestroy {
   sortDirection: 'asc' | 'desc' | null = null;
 
   photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+  resetPasswordResult: { userName: string; temporaryPassword: string } | null = null;
 
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   constructor(
     private usersService: UsersService,
@@ -213,10 +216,10 @@ export class UsersComponent implements OnInit, OnDestroy {
     }
 
     const userName = user.name || user.email || 'this user';
-    if (!confirm(`Are you sure you want to delete ${userName}? This action cannot be undone.`)) {
-      return;
-    }
-
+    this.confirmationDialog.confirmDelete(userName, 'User').pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.loading = true;
     this.cdr.markForCheck();
 
@@ -241,6 +244,7 @@ export class UsersComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
   onPageChange(page: number): void {
@@ -378,5 +382,39 @@ export class UsersComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  resetUserPassword(user: User): void {
+    this.confirmationDialog.confirm({
+      title: 'Reset password',
+      message: `Generate a temporary password for ${user.name}? They must change it on next login.`,
+      confirmText: 'Reset Password',
+      variant: 'primary',
+    }).pipe(takeUntil(this.destroy$)).subscribe((result) => {
+      if (!result.confirmed) {
+        return;
+      }
+
+      this.usersService.resetPassword(user.id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            this.resetPasswordResult = {
+              userName: user.name,
+              temporaryPassword: response.data.temporary_password,
+            };
+            this.toastService.success(response.message || 'Password reset successfully.', 'Security');
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.toastService.error(err.error?.message || 'Unable to reset password.', 'Security');
+          },
+        });
+    });
+  }
+
+  closeResetPasswordResult(): void {
+    this.resetPasswordResult = null;
+    this.cdr.markForCheck();
   }
 }

@@ -11,6 +11,8 @@ import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { CreateTenantRequest, TenantAddress } from '@core/models/tenant.model';
 import { GeographyService, Country, State } from '@core/services/geography.service';
+import { ArchdioceseService } from '@core/services/church/archdiocese.service';
+import { Archdiocese } from '@core/models/church';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
@@ -20,6 +22,19 @@ import { takeUntil } from 'rxjs/operators';
 interface FormErrors {
   [key: string]: string;
 }
+
+const EMPTY_ADDRESS: TenantAddress = {
+  line1: '',
+  line2: '',
+  country_id: null,
+  state_id: null,
+  district: '',
+  pin_zip_code: ''
+};
+
+const PHONE_MIN_DIGITS = 6;
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
 
 @Component({
   selector: 'app-tenant-create-modal',
@@ -33,6 +48,7 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
   private geographyService = inject(GeographyService);
+  private archdioceseService = inject(ArchdioceseService);
   private phoneCodeService = inject(PhoneCodeService);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
@@ -40,316 +56,359 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy {
   @Output() close = new EventEmitter<void>();
   @Output() tenantCreated = new EventEmitter<void>();
 
-  constructor() {
-    console.log('🎉 TenantCreateModalComponent initialized!');
-  }
-
-  /**
-   * Initialize component - load countries
-   */
   ngOnInit(): void {
     this.loadCountries();
+    this.loadArchdioceses();
   }
 
-  /**
-   * Load all countries for dropdowns
-   */
+  loadArchdioceses(): void {
+    this.loadingArchdioceses = true;
+    this.archdiocesesLoadError = '';
+    this.cdr.markForCheck();
+
+    this.archdioceseService.getArchdioceses()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const rows = Array.isArray(response.data) ? response.data : [];
+          if (response.success && rows.length > 0) {
+            this.archdioceseOptions = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+            this.archdioceses = this.archdioceseOptions;
+          } else if (response.success) {
+            this.archdioceseOptions = [];
+            this.archdioceses = [];
+            this.archdiocesesLoadError = 'No dioceses are configured in the system.';
+          } else {
+            this.archdioceseOptions = null;
+            this.archdioceses = [];
+            this.archdiocesesLoadError = response.message || 'Failed to load dioceses';
+          }
+          this.loadingArchdioceses = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.archdioceseOptions = null;
+          this.archdioceses = [];
+          this.archdiocesesLoadError = 'Failed to load dioceses. Check your connection and try again.';
+          this.loadingArchdioceses = false;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
   loadCountries(): void {
     this.loadingCountries = true;
+    this.countriesLoadError = '';
     this.cdr.markForCheck();
-    this.geographyService.getCountries()
+    this.geographyService.getCountries({ refresh: true })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          if (response.success) {
-            // Sort countries: India first, then rest alphabetically
-            const sortedCountries = [...response.data].sort((a, b) => {
-              // India should be first
-              const aIsIndia = a.name.toLowerCase().includes('india') || a.iso2 === 'IN';
-              const bIsIndia = b.name.toLowerCase().includes('india') || b.iso2 === 'IN';
-              
-              if (aIsIndia && !bIsIndia) return -1;
-              if (!aIsIndia && bIsIndia) return 1;
-              
-              // If both or neither are India, sort alphabetically by name
-              return a.name.localeCompare(b.name);
-            });
-            
-            this.countries = sortedCountries;
-            console.log(`✅ Loaded ${response.count} countries (India first)`);
-            
-            // Log India details for debugging
-            const india = this.countries.find(c => c.name.toLowerCase().includes('india') || c.iso2 === 'IN');
-            if (india) {
-              console.log(`🇮🇳 India is first: ID=${india.id}, ISO2=${india.iso2}, phone_code=${india.phone_code}`);
+          const rows = Array.isArray(response.data) ? response.data : [];
+
+          if (response.success && rows.length > 0) {
+            const sorted = this.sortCountries(rows);
+            this.countryOptions = sorted;
+            this.countries = sorted;
+
+            const primaryCountryId = this.formData.primary_user_address.country_id;
+            if (primaryCountryId) {
+              this.updateCallingCodeSafely(primaryCountryId);
             }
-            
-            // Check if we need to update calling code after countries load
-            if (this.formData.primary_user_address.country_id && this.formData.primary_user_address.country_id !== 0) {
-              console.log(`🔄 Updating calling code after countries loaded for country ID: ${this.formData.primary_user_address.country_id}`);
-              this.updateCallingCodeSafely(this.formData.primary_user_address.country_id);
-            }
+          } else if (response.success && rows.length === 0) {
+            this.countryOptions = null;
+            this.countries = [];
+            this.countriesLoadError =
+              'No countries are configured in the system. Ask an administrator to seed geographic data.';
+            this.toastService.error(this.countriesLoadError, 'Countries unavailable');
+          } else {
+            this.countryOptions = null;
+            this.countries = [];
+            this.countriesLoadError = response.message || 'Failed to load countries';
+            this.toastService.error(this.countriesLoadError, 'Error');
           }
           this.loadingCountries = false;
           this.cdr.markForCheck();
         },
-        error: (error) => {
-          console.error('❌ Error loading countries:', error);
-          this.toastService.error('Failed to load countries', 'Error');
+        error: () => {
+          this.countryOptions = null;
+          this.countries = [];
+          this.countriesLoadError = 'Failed to load countries. Check your connection and try again.';
+          this.toastService.error(this.countriesLoadError, 'Error');
           this.loadingCountries = false;
           this.cdr.markForCheck();
         }
       });
   }
 
-  /**
-   * Handle tenant country change - load states for selected country
-   * Also update phone code if no primary user country is selected or if "Same as Tenant Address" is checked
-   */
   onTenantCountryChange(countryId: number | null): void {
-    this.formData.tenant_official_address.state_id = 0;
+    this.formData.tenant_official_address.state_id = null;
     this.tenantStates = [];
-    
-    if (!countryId || countryId === 0) return;
-    
-    // Update phone code if:
-    // 1. No primary user country has been selected yet, OR
-    // 2. "Same as Tenant Address" is checked (so primary user will have same country)
-    const shouldUpdatePhoneCode = !this.formData.primary_user_address.country_id || 
-                                   this.formData.primary_user_address.country_id === 0 ||
-                                   this.sameAsTenantAddress;
-    
-    if (shouldUpdatePhoneCode) {
-      console.log(`📞 Updating phone code based on tenant country selection`);
-      this.updateCallingCodeSafely(countryId);
-    }
-    
-    this.loadingTenantStates = true;
-    this.cdr.markForCheck();
-    this.geographyService.getStatesByCountry(countryId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.tenantStates = response.data;
-            console.log(`✅ Loaded ${response.count} states for tenant address`);
-          }
-          this.loadingTenantStates = false;
-          this.cdr.markForCheck();
-        },
-        error: (error) => {
-          console.error('❌ Error loading states:', error);
-          this.toastService.error('Failed to load states/provinces', 'Error');
-          this.loadingTenantStates = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
+    this.tenantStateOptions = null;
+    this.primaryStateOptions = this.sameAsTenantAddress ? null : this.primaryStateOptions;
 
-  /**
-   * Handle primary user country change - load states for selected country and update calling code
-   */
-  onPrimaryCountryChange(countryId: number | null): void {
-    console.log(`📞 onPrimaryCountryChange called with countryId: ${countryId}`);
-    console.log(`📞 Countries array length: ${this.countries.length}`);
-    
-    this.formData.primary_user_address.state_id = 0;
-    this.primaryStates = [];
-    
-      if (!countryId || countryId === 0) {
-      // Reset to default calling code if no country selected
-      this.phoneCodeService.resetToDefault();
+    if (!countryId) {
+      if (this.sameAsTenantAddress) {
+        this.syncPrimaryFromTenant();
+      }
       this.cdr.markForCheck();
-      this.cdr.detectChanges();
       return;
     }
-    
-    // Update calling code immediately - will retry if countries not loaded
+
+    const shouldUpdatePhoneCode =
+      !this.formData.primary_user_address.country_id || this.sameAsTenantAddress;
+
+    if (shouldUpdatePhoneCode) {
+      this.updateCallingCodeSafely(countryId);
+    }
+
+    if (this.sameAsTenantAddress) {
+      this.syncPrimaryFromTenant();
+    }
+
+    this.loadStatesForCountry(countryId, 'tenant');
+  }
+
+  onPrimaryCountryChange(countryId: number | null): void {
+    if (this.sameAsTenantAddress) {
+      return;
+    }
+
+    this.formData.primary_user_address.state_id = null;
+    this.primaryStates = [];
+    this.primaryStateOptions = null;
+
+    if (!countryId) {
+      this.phoneCodeService.resetToDefault();
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.updateCallingCodeSafely(countryId);
-    
-    this.loadingPrimaryStates = true;
+    this.loadStatesForCountry(countryId, 'primary');
+  }
+
+  onTenantAddressFieldChange(): void {
+    if (this.sameAsTenantAddress) {
+      this.syncPrimaryFromTenant();
+    }
+  }
+
+  private loadStatesForCountry(countryId: number, target: 'tenant' | 'primary'): void {
+    const loadingKey = target === 'tenant' ? 'loadingTenantStates' : 'loadingPrimaryStates';
+    this[loadingKey] = true;
     this.cdr.markForCheck();
+
     this.geographyService.getStatesByCountry(countryId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
+          const rows = Array.isArray(response.data) ? response.data : [];
           if (response.success) {
-            this.primaryStates = response.data;
-            console.log(`✅ Loaded ${response.count} states for primary user address`);
+            if (target === 'tenant') {
+              this.tenantStateOptions = rows;
+              this.tenantStates = rows;
+              if (this.sameAsTenantAddress) {
+                this.primaryStateOptions = [...rows];
+                this.primaryStates = [...rows];
+              }
+            } else {
+              this.primaryStateOptions = rows;
+              this.primaryStates = rows;
+            }
+          } else {
+            if (target === 'tenant') {
+              this.tenantStateOptions = [];
+              this.tenantStates = [];
+            } else {
+              this.primaryStateOptions = [];
+              this.primaryStates = [];
+            }
           }
-          this.loadingPrimaryStates = false;
+          this[loadingKey] = false;
           this.cdr.markForCheck();
         },
-        error: (error) => {
-          console.error('❌ Error loading states:', error);
+        error: () => {
+          if (target === 'tenant') {
+            this.tenantStateOptions = [];
+            this.tenantStates = [];
+          } else {
+            this.primaryStateOptions = [];
+            this.primaryStates = [];
+          }
           this.toastService.error('Failed to load states/provinces', 'Error');
-          this.loadingPrimaryStates = false;
+          this[loadingKey] = false;
           this.cdr.markForCheck();
         }
       });
   }
 
-  /**
-   * Update calling code using unified PhoneCodeService
-   * This replaces the old updateCallingCodeSafely and updateCallingCodeFromCountry methods
-   */
   private updateCallingCodeSafely(countryId: number): void {
     this.phoneCodeService.updatePhoneCodeByCountryId(countryId, this.countries)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (result) => {
-          if (result.success) {
-            console.log(`✅ Phone code updated to ${result.phoneCode} for country: ${result.countryName}`);
-            // Trigger change detection to update UI
-            this.cdr.markForCheck();
-          }
-        },
-        error: (error) => {
-          console.error('Error updating phone code:', error);
-          this.cdr.markForCheck();
-        }
+        next: () => this.cdr.markForCheck(),
+        error: () => this.cdr.markForCheck()
       });
   }
 
-  // Geographic data for dropdowns
-  countries: Country[] = [];
-  tenantStates: State[] = [];
-  primaryStates: State[] = [];
+  private sortCountries(countries: Country[]): Country[] {
+    return [...countries].sort((a, b) => {
+      const aName = a.name ?? '';
+      const bName = b.name ?? '';
+      const aIsIndia = aName.toLowerCase().includes('india') || a.iso2 === 'IN';
+      const bIsIndia = bName.toLowerCase().includes('india') || b.iso2 === 'IN';
+      if (aIsIndia && !bIsIndia) return -1;
+      if (!aIsIndia && bIsIndia) return 1;
+      return aName.localeCompare(bName);
+    });
+  }
 
-  // Loading states
+  private syncPrimaryFromTenant(): void {
+    this.formData.primary_user_address = {
+      line1: this.formData.tenant_official_address.line1,
+      line2: this.formData.tenant_official_address.line2,
+      country_id: this.formData.tenant_official_address.country_id,
+      state_id: this.formData.tenant_official_address.state_id,
+      district: this.formData.tenant_official_address.district,
+      pin_zip_code: this.formData.tenant_official_address.pin_zip_code
+    };
+    this.primaryStates = [...this.tenantStates];
+    this.primaryStateOptions = this.tenantStateOptions ? [...this.tenantStateOptions] : null;
+
+    const countryId = this.formData.tenant_official_address.country_id;
+    if (countryId) {
+      this.updateCallingCodeSafely(countryId);
+    }
+    this.cdr.markForCheck();
+  }
+
+  countries: Country[] = [];
+  /** Set only after a successful fetch so ng-select mounts with a populated items list. */
+  countryOptions: Country[] | null = null;
+  tenantStates: State[] = [];
+  /** Populated after states load for the selected tenant country (ng-select mount gate). */
+  tenantStateOptions: State[] | null = null;
+  primaryStates: State[] = [];
+  /** Populated after states load for the selected primary country (ng-select mount gate). */
+  primaryStateOptions: State[] | null = null;
+
   loadingCountries = false;
+  countriesLoadError = '';
   loadingTenantStates = false;
   loadingPrimaryStates = false;
+  archdioceses: Archdiocese[] = [];
+  archdioceseOptions: Archdiocese[] | null = null;
+  loadingArchdioceses = false;
+  archdiocesesLoadError = '';
 
-  // Form data
   formData: CreateTenantRequest = {
     tenant_name: '',
     slogan: '',
-    tenant_official_address: {
-      line1: '',
-      line2: '',
-      country_id: 0,
-      state_id: 0,
-      district: '',
-      pin_zip_code: ''
-    },
+    domain: '',
+    archdiocese_id: null,
+    tenant_official_address: { ...EMPTY_ADDRESS },
     primary_user_name: '',
     primary_user_email: '',
+    primary_user_password: '',
+    primary_user_password_confirmation: '',
     primary_contact_number: '',
-    primary_user_address: {
-      line1: '',
-      line2: '',
-      country_id: 0,
-      state_id: 0,
-      district: '',
-      pin_zip_code: ''
-    }
+    primary_user_address: { ...EMPTY_ADDRESS }
   };
 
-  // State management
   isSubmitting = false;
   sameAsTenantAddress = false;
   logoPreviewUrl: string | null = null;
-  logoFileName: string = '';
+  logoFileName = '';
   formErrors: FormErrors = {};
-  serverError: string = '';
-  successMessage: string = '';
-
-  // Validation flags
+  serverError = '';
+  successMessage = '';
   touched: { [key: string]: boolean } = {};
 
-  /**
-   * Close modal
-   */
+  readonly appendToBody = 'body';
+
   onClose(): void {
     if (!this.isSubmitting) {
       this.close.emit();
     }
   }
 
-  /**
-   * Handle "Same as Tenant Address" checkbox change
-   */
   onSameAsTenantAddressChange(): void {
     if (this.sameAsTenantAddress) {
-      // Copy tenant official address to primary user address
-      this.formData.primary_user_address = {
-        line1: this.formData.tenant_official_address.line1,
-        line2: this.formData.tenant_official_address.line2,
-        country_id: this.formData.tenant_official_address.country_id,
-        state_id: this.formData.tenant_official_address.state_id,
-        district: this.formData.tenant_official_address.district,
-        pin_zip_code: this.formData.tenant_official_address.pin_zip_code
-      };
-      // Also copy the states array
-      this.primaryStates = [...this.tenantStates];
-      // Update calling code based on the copied country
-      if (this.formData.tenant_official_address.country_id && this.formData.tenant_official_address.country_id !== 0) {
-        console.log(`📞 Updating phone code because "Same as Tenant Address" is checked`);
-        this.updateCallingCodeSafely(this.formData.tenant_official_address.country_id);
-      }
+      this.syncPrimaryFromTenant();
     } else {
-      // Clear primary user address when unchecked
-      this.formData.primary_user_address = {
-        line1: '',
-        line2: '',
-        country_id: 0,
-        state_id: 0,
-        district: '',
-        pin_zip_code: ''
-      };
-      this.primaryStates = [];
-      // Reset to default calling code
-      this.phoneCodeService.resetToDefault();
       this.cdr.markForCheck();
-      this.cdr.detectChanges();
     }
   }
 
-  /**
-   * Mark field as touched
-   */
   markAsTouched(field: string): void {
     this.touched[field] = true;
   }
 
-  /**
-   * Check if field is invalid
-   */
   isFieldInvalid(field: string): boolean {
     return this.touched[field] && !!this.getFieldError(field);
   }
 
-  /**
-   * Get field error message
-   */
   getFieldError(field: string): string {
     return this.formErrors[field] || '';
   }
 
-  /**
-   * Validate entire form
-   */
+  get countryPlaceholder(): string {
+    if (this.loadingCountries) {
+      return 'Loading countries…';
+    }
+    return this.countries.length ? 'Select country' : 'No countries available';
+  }
+
+  private markAllFieldsTouched(): void {
+    this.touched['tenant_name'] = true;
+    this.touched['primary_user_name'] = true;
+    this.touched['primary_user_email'] = true;
+    this.touched['primary_user_password'] = true;
+    this.touched['primary_user_password_confirmation'] = true;
+    this.touched['primary_contact_number'] = true;
+    this.touched['domain'] = true;
+    this.touched['archdiocese_id'] = true;
+
+    Object.keys(this.formData.tenant_official_address).forEach(key => {
+      this.touched[`tenant_official_address.${key}`] = true;
+    });
+    Object.keys(this.formData.primary_user_address).forEach(key => {
+      this.touched[`primary_user_address.${key}`] = true;
+    });
+  }
+
   validateForm(): boolean {
     this.formErrors = {};
     let isValid = true;
 
-    // Tenant name
-    if (!this.formData.tenant_name?.trim()) {
+    const name = this.formData.tenant_name?.trim() ?? '';
+    if (!name) {
       this.formErrors['tenant_name'] = 'Tenant name is required';
+      isValid = false;
+    } else if (name.length > 255) {
+      this.formErrors['tenant_name'] = 'Tenant name must not exceed 255 characters';
       isValid = false;
     }
 
-    // Tenant official address validation
+    const domain = this.formData.domain?.trim() ?? '';
+    if (domain && domain.length > 255) {
+      this.formErrors['domain'] = 'Domain must not exceed 255 characters';
+      isValid = false;
+    } else if (domain && !/^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*$/.test(domain)) {
+      this.formErrors['domain'] = 'Enter a valid domain (e.g. sacredheart.example.org)';
+      isValid = false;
+    }
+
     if (!this.formData.tenant_official_address.line1?.trim()) {
       this.formErrors['tenant_official_address.line1'] = 'Tenant address line 1 is required';
       isValid = false;
     }
-    if (!this.formData.tenant_official_address.country_id || this.formData.tenant_official_address.country_id === 0) {
+    if (!this.formData.tenant_official_address.country_id) {
       this.formErrors['tenant_official_address.country_id'] = 'Tenant country is required';
       isValid = false;
     }
-    if (!this.formData.tenant_official_address.state_id || this.formData.tenant_official_address.state_id === 0) {
+    if (!this.formData.tenant_official_address.state_id) {
       this.formErrors['tenant_official_address.state_id'] = 'Tenant state/province is required';
       isValid = false;
     }
@@ -362,13 +421,11 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy {
       isValid = false;
     }
 
-    // Primary user name
     if (!this.formData.primary_user_name?.trim()) {
       this.formErrors['primary_user_name'] = 'Primary user name is required';
       isValid = false;
     }
 
-    // Primary user email
     if (!this.formData.primary_user_email?.trim()) {
       this.formErrors['primary_user_email'] = 'Primary user email is required';
       isValid = false;
@@ -377,22 +434,46 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy {
       isValid = false;
     }
 
-    // Primary contact number
-    if (!this.formData.primary_contact_number?.trim()) {
-      this.formErrors['primary_contact_number'] = 'Primary contact number is required';
+    const password = this.formData.primary_user_password ?? '';
+    if (!password.trim()) {
+      this.formErrors['primary_user_password'] = 'Password is required';
+      isValid = false;
+    } else if (password.length < PASSWORD_MIN_LENGTH) {
+      this.formErrors['primary_user_password'] = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+      isValid = false;
+    } else if (!PASSWORD_PATTERN.test(password)) {
+      this.formErrors['primary_user_password'] =
+        'Password must contain uppercase, lowercase, number, and special character';
       isValid = false;
     }
 
-    // Primary user address validation
+    const passwordConfirmation = this.formData.primary_user_password_confirmation ?? '';
+    if (!passwordConfirmation.trim()) {
+      this.formErrors['primary_user_password_confirmation'] = 'Password confirmation is required';
+      isValid = false;
+    } else if (passwordConfirmation !== password) {
+      this.formErrors['primary_user_password_confirmation'] = 'Passwords do not match';
+      isValid = false;
+    }
+
+    const phoneDigits = (this.formData.primary_contact_number ?? '').replace(/\D/g, '');
+    if (!phoneDigits) {
+      this.formErrors['primary_contact_number'] = 'Primary contact number is required';
+      isValid = false;
+    } else if (phoneDigits.length < PHONE_MIN_DIGITS) {
+      this.formErrors['primary_contact_number'] = `Phone number must be at least ${PHONE_MIN_DIGITS} digits`;
+      isValid = false;
+    }
+
     if (!this.formData.primary_user_address.line1?.trim()) {
       this.formErrors['primary_user_address.line1'] = 'Address line 1 is required';
       isValid = false;
     }
-    if (!this.formData.primary_user_address.country_id || this.formData.primary_user_address.country_id === 0) {
+    if (!this.formData.primary_user_address.country_id) {
       this.formErrors['primary_user_address.country_id'] = 'Country is required';
       isValid = false;
     }
-    if (!this.formData.primary_user_address.state_id || this.formData.primary_user_address.state_id === 0) {
+    if (!this.formData.primary_user_address.state_id) {
       this.formErrors['primary_user_address.state_id'] = 'State/Province is required';
       isValid = false;
     }
@@ -408,214 +489,225 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy {
     return isValid;
   }
 
-  /**
-   * Check if form is valid
-   */
-  isFormValid(): boolean {
-    return this.validateForm();
-  }
-
-  /**
-   * Validate email format
-   */
   private isValidEmail(email: string): boolean {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   }
 
-  /**
-   * Submit form
-   */
-  onSubmit(): void {
-    console.log('🔵 onSubmit() called!');
-    console.log('Form data:', this.formData);
-    
-    // Mark all fields as touched
-    Object.keys(this.formData).forEach(key => {
-      this.touched[key] = true;
-    });
-    Object.keys(this.formData.primary_user_address).forEach(key => {
-      this.touched[`primary_user_address.${key}`] = true;
-    });
+  validatePasswordFields(): void {
+    const password = this.formData.primary_user_password ?? '';
+    const passwordConfirmation = this.formData.primary_user_password_confirmation ?? '';
 
-    // Validate form
-    console.log('🔍 Validating form...');
-    const isValid = this.validateForm();
-    console.log('Form validation result:', isValid);
-    console.log('Form errors:', this.formErrors);
-    
-    if (!isValid) {
-      console.log('❌ Validation failed!');
-      this.serverError = 'Please fix the validation errors before submitting';
+    if (!password.trim()) {
+      this.formErrors['primary_user_password'] = 'Password is required';
+    } else if (password.length < PASSWORD_MIN_LENGTH) {
+      this.formErrors['primary_user_password'] = `Password must be at least ${PASSWORD_MIN_LENGTH} characters`;
+    } else if (!PASSWORD_PATTERN.test(password)) {
+      this.formErrors['primary_user_password'] =
+        'Password must contain uppercase, lowercase, number, and special character';
+    } else {
+      delete this.formErrors['primary_user_password'];
+    }
+
+    if (!passwordConfirmation.trim()) {
+      this.formErrors['primary_user_password_confirmation'] = 'Password confirmation is required';
+    } else if (passwordConfirmation !== password) {
+      this.formErrors['primary_user_password_confirmation'] = 'Passwords do not match';
+    } else {
+      delete this.formErrors['primary_user_password_confirmation'];
+    }
+
+    this.cdr.markForCheck();
+  }
+
+  private mapServerValidationErrors(errors: Record<string, string[] | string> | undefined): void {
+    if (!errors) {
       return;
     }
 
-    console.log('✅ Validation passed! Preparing API call...');
-    
-    // Clear previous errors
+    const fieldMap: Record<string, string> = {
+      tenant_name: 'tenant_name',
+      'tenant_official_address.line1': 'tenant_official_address.line1',
+      'tenant_official_address.country_id': 'tenant_official_address.country_id',
+      'tenant_official_address.state_id': 'tenant_official_address.state_id',
+      'tenant_official_address.district': 'tenant_official_address.district',
+      'tenant_official_address.pin_zip_code': 'tenant_official_address.pin_zip_code',
+      primary_user_name: 'primary_user_name',
+      primary_user_email: 'primary_user_email',
+      primary_user_password: 'primary_user_password',
+      primary_user_password_confirmation: 'primary_user_password_confirmation',
+      primary_contact_number: 'primary_contact_number',
+      domain: 'domain',
+      archdiocese_id: 'archdiocese_id',
+      'primary_user_address.line1': 'primary_user_address.line1',
+      'primary_user_address.country_id': 'primary_user_address.country_id',
+      'primary_user_address.state_id': 'primary_user_address.state_id',
+      'primary_user_address.district': 'primary_user_address.district',
+      'primary_user_address.pin_zip_code': 'primary_user_address.pin_zip_code',
+      tenant_logo: 'tenant_logo'
+    };
+
+    Object.entries(errors).forEach(([key, value]) => {
+      const mapped = fieldMap[key] ?? key;
+      const message = Array.isArray(value) ? value[0] : value;
+      if (message) {
+        this.formErrors[mapped] = message;
+        this.touched[mapped] = true;
+      }
+    });
+  }
+
+  onCreateButtonClick(_event: Event): void {
+    // Intentionally empty — submit handled by form ngSubmit.
+  }
+
+  onSubmit(): void {
+    this.markAllFieldsTouched();
+
+    const isValid = this.validateForm();
+    if (!isValid) {
+      this.serverError = 'Please fix the validation errors before submitting';
+      this.cdr.markForCheck();
+      return;
+    }
+
     this.serverError = '';
     this.successMessage = '';
     this.isSubmitting = true;
+    this.cdr.markForCheck();
 
-    // Prepare request data
     const requestData: CreateTenantRequest = {
       tenant_name: this.formData.tenant_name.trim(),
-      tenant_official_address: this.formData.tenant_official_address,
+      tenant_official_address: {
+        ...this.formData.tenant_official_address,
+        country_id: this.formData.tenant_official_address.country_id!,
+        state_id: this.formData.tenant_official_address.state_id!
+      },
       primary_user_name: this.formData.primary_user_name.trim(),
       primary_user_email: this.formData.primary_user_email.trim(),
+      primary_user_password: this.formData.primary_user_password,
+      primary_user_password_confirmation: this.formData.primary_user_password_confirmation,
       primary_contact_number: this.formData.primary_contact_number.trim(),
-      primary_user_address: this.formData.primary_user_address,
+      primary_user_address: {
+        ...this.formData.primary_user_address,
+        country_id: this.formData.primary_user_address.country_id!,
+        state_id: this.formData.primary_user_address.state_id!
+      },
       tenant_logo: this.formData.tenant_logo
     };
 
-    // Add optional slogan if provided
     if (this.formData.slogan?.trim()) {
       requestData.slogan = this.formData.slogan.trim();
     }
 
-    // Call API
+    if (this.formData.domain?.trim()) {
+      requestData.domain = this.formData.domain.trim();
+    }
+
+    if (this.formData.archdiocese_id) {
+      requestData.archdiocese_id = this.formData.archdiocese_id;
+    }
+
     this.tenantService.createTenant(requestData)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          console.log('Tenant creation response:', response);
           this.isSubmitting = false;
-          
+
           if (response.success) {
-            // Show success toast
-            console.log('Showing success toast');
             this.toastService.success(
               response.message || 'Tenant created successfully!',
               'Success',
               5000
             );
-            
-            // Close modal after a brief delay to see the toast
             setTimeout(() => {
-            this.tenantCreated.emit();
-            this.resetForm();
-            this.close.emit();
-          }, 500);
+              this.tenantCreated.emit();
+              this.resetForm();
+              this.close.emit();
+            }, 500);
+          } else {
+            const message = response.message || 'Failed to create tenant. Please try again.';
+            this.serverError = message;
+            this.toastService.error(message, 'Error', 6000);
           }
           this.cdr.markForCheck();
         },
         error: (error) => {
-          console.error('Tenant creation error:', error);
           this.isSubmitting = false;
-          
-          // Show error toast
-        this.toastService.error(
-          error.message || 'Failed to create tenant. Please try again.',
-          'Error',
-          6000
-        );
-        
-        // Also set inline error for visibility in modal
-        this.serverError = error.message || 'Failed to create tenant. Please try again.';
-        
-        // Scroll to top to show error
-        const modalBody = document.querySelector('.modal-body');
-        if (modalBody) {
-          modalBody.scrollTop = 0;
+          this.mapServerValidationErrors(error.errors);
+          const message = error.message || 'Failed to create tenant. Please try again.';
+          this.serverError = message;
+          this.toastService.error(message, 'Error', 6000);
+          this.cdr.markForCheck();
         }
-      }
-    });
+      });
   }
 
-  /**
-   * Handle logo file selection
-   */
   onLogoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files.length > 0) {
-      const file = input.files[0];
-      
-      // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        this.formErrors['tenant_logo'] = 'Please select a valid image file (JPEG, PNG, or WebP)';
-        input.value = '';
-        return;
-      }
-
-      // Validate file size (max 5MB)
-      const maxSize = 5 * 1024 * 1024; // 5MB
-      if (file.size > maxSize) {
-        this.formErrors['tenant_logo'] = 'File size must be less than 5MB';
-        input.value = '';
-        return;
-      }
-
-      // Clear any previous logo errors
-      delete this.formErrors['tenant_logo'];
-
-      this.formData.tenant_logo = file;
-      this.logoFileName = file.name;
-
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e: ProgressEvent<FileReader>) => {
-        this.logoPreviewUrl = e.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+    if (!input.files?.length) {
+      return;
     }
+
+    const file = input.files[0];
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      this.formErrors['tenant_logo'] = 'Please select a valid image file (JPEG, PNG, or WebP)';
+      input.value = '';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      this.formErrors['tenant_logo'] = 'File size must be less than 5MB';
+      input.value = '';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    delete this.formErrors['tenant_logo'];
+    this.formData.tenant_logo = file;
+    this.logoFileName = file.name;
+
+    const reader = new FileReader();
+    reader.onload = (e: ProgressEvent<FileReader>) => {
+      this.logoPreviewUrl = e.target?.result as string;
+      this.cdr.markForCheck();
+    };
+    reader.readAsDataURL(file);
   }
 
-  /**
-   * Remove logo
-   */
   removeLogo(): void {
     this.formData.tenant_logo = undefined;
     this.logoPreviewUrl = null;
     this.logoFileName = '';
     delete this.formErrors['tenant_logo'];
-    
-    // Clear file input
+
     const fileInput = document.getElementById('tenantLogo') as HTMLInputElement;
     if (fileInput) {
       fileInput.value = '';
     }
+    this.cdr.markForCheck();
   }
 
-  /**
-   * Trigger file input click
-   */
-  triggerFileInput(): void {
-    if (!this.isSubmitting) {
-      const fileInput = document.getElementById('tenantLogo') as HTMLInputElement;
-      fileInput?.click();
-    }
-  }
-
-  /**
-   * Reset form to initial state
-   */
   resetForm(): void {
     this.formData = {
       tenant_name: '',
       slogan: '',
-      tenant_official_address: {
-        line1: '',
-        line2: '',
-        country_id: 0,
-        state_id: 0,
-        district: '',
-        pin_zip_code: ''
-      },
+      domain: '',
+      archdiocese_id: null,
+      tenant_official_address: { ...EMPTY_ADDRESS },
       primary_user_name: '',
       primary_user_email: '',
+      primary_user_password: '',
+      primary_user_password_confirmation: '',
       primary_contact_number: '',
-      primary_user_address: {
-        line1: '',
-        line2: '',
-        country_id: 0,
-        state_id: 0,
-        district: '',
-        pin_zip_code: ''
-      }
+      primary_user_address: { ...EMPTY_ADDRESS }
     };
     this.tenantStates = [];
+    this.tenantStateOptions = null;
     this.primaryStates = [];
+    this.primaryStateOptions = null;
     this.sameAsTenantAddress = false;
     this.logoPreviewUrl = null;
     this.logoFileName = '';
@@ -626,9 +718,6 @@ export class TenantCreateModalComponent implements OnInit, OnDestroy {
     this.isSubmitting = false;
   }
 
-  /**
-   * Lifecycle hook: On destroy
-   */
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();

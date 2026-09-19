@@ -394,7 +394,10 @@ export class TenantService {
       const value = (request as any)[key];
 
       if (value === null || value === undefined) {
-        return; // Skip null/undefined values
+        if (key === 'archdiocese_id' || key === 'website') {
+          formData.append(key, '');
+        }
+        return; // Skip other null/undefined values
       }
 
       if (key === 'tenant_logo' && value instanceof File) {

@@ -1,0 +1,87 @@
+<section class="notification-prefs cf-page">
+  <app-page-header
+    title="Notification preferences"
+    subtitle="Choose how you receive alerts. Security notifications cannot be turned off."
+  >
+    <a routerLink="/notifications" class="cf-btn cf-btn-ghost">Back to inbox</a>
+  </app-page-header>
+
+  @if (loading()) {
+    <div class="cf-loading-block cf-panel" role="status" aria-live="polite">
+      <app-loading-skeleton type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
+    </div>
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+    </div>
+  } @else {
+    @for (group of grouped(); track group.category) {
+      <section class="cf-panel notification-prefs__section" [attr.aria-labelledby]="'prefs-' + group.category">
+        <header class="notification-prefs__section-header">
+          <h2 class="notification-prefs__section-title" [id]="'prefs-' + group.category">{{ group.label }}</h2>
+          <p class="notification-prefs__section-desc">Control delivery channels for {{ group.label | lowercase }} alerts.</p>
+        </header>
+
+        <div class="cf-table-responsive">
+          <table class="cf-table notification-prefs__table">
+            <thead>
+              <tr>
+                <th scope="col">Notification</th>
+                <th scope="col" class="notification-prefs__channel-col">In-app</th>
+                <th scope="col" class="notification-prefs__channel-col">Email</th>
+                <th scope="col" class="notification-prefs__channel-col">Push</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (pref of group.items; track pref.definition_code) {
+                <tr>
+                  <td>
+                    <span class="notification-prefs__label">{{ definitionLabel(pref.definition_code) }}</span>
+                    @if (pref.mandatory) {
+                      <app-status-badge label="Required" tone="info"></app-status-badge>
+                    }
+                  </td>
+                  <td class="notification-prefs__channel-col">
+                    <label class="notification-prefs__toggle">
+                      <span class="sr-only">In-app for {{ definitionLabel(pref.definition_code) }}</span>
+                      <input
+                        type="checkbox"
+                        [checked]="pref.in_app"
+                        [disabled]="pref.mandatory"
+                        (change)="toggle(pref, 'in_app')"
+                      />
+                    </label>
+                  </td>
+                  <td class="notification-prefs__channel-col">
+                    <label class="notification-prefs__toggle">
+                      <span class="sr-only">Email for {{ definitionLabel(pref.definition_code) }}</span>
+                      <input
+                        type="checkbox"
+                        [checked]="pref.email"
+                        [disabled]="pref.mandatory"
+                        (change)="toggle(pref, 'email')"
+                      />
+                    </label>
+                  </td>
+                  <td class="notification-prefs__channel-col">
+                    <label class="notification-prefs__toggle" title="Push notifications coming soon">
+                      <span class="sr-only">Push for {{ definitionLabel(pref.definition_code) }} (coming soon)</span>
+                      <input type="checkbox" [checked]="pref.push" disabled />
+                    </label>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </section>
+    }
+
+    <div class="notification-prefs__footer">
+      <button type="button" class="cf-btn cf-btn-primary" [disabled]="saving()" (click)="save()">
+        {{ saving() ? 'Saving…' : 'Save preferences' }}
+      </button>
+    </div>
+  }
+</section>

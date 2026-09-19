@@ -118,6 +118,17 @@
                 </button>
 
                 <button
+                  *ngIf="user.can_reset_password"
+                  type="button"
+                  class="cf-btn cf-btn--sm"
+                  cfDisableWhenReadOnly
+                  (click)="resetUserPassword(user)"
+                  title="Reset password"
+                >
+                  Reset Password
+                </button>
+
+                <button
                   *ngIf="!(user.is_primary_admin && user.active === 1)"
                   type="button"
                   class="cf-btn cf-btn--sm"
@@ -186,6 +197,13 @@
     (closed)="closeUserModal()"
     (saved)="onUserSaved($event)"
   ></app-user-form-modal>
+
+  <div class="cf-panel users__reset-result" *ngIf="resetPasswordResult as result">
+    <h3>Temporary password for {{ result.userName }}</h3>
+    <p class="cf-meta">Copy this password now. It will not be shown again.</p>
+    <code>{{ result.temporaryPassword }}</code>
+    <button type="button" class="cf-btn cf-btn--sm" (click)="closeResetPasswordResult()">Close</button>
+  </div>
 
   <app-image-viewer
     *ngIf="photoViewer as viewer"

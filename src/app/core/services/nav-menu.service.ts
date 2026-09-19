@@ -28,6 +28,7 @@ export type NavMenuId =
   | 'support'
   | 'support-center'
   | 'application-access'
+  | 'notifications'
   | 'settings'
   | 'settings-my-subscription'
   | 'settings-ecclesiastical'
@@ -35,6 +36,7 @@ export type NavMenuId =
   | 'settings-sacrament-settings'
   | 'settings-subscription'
   | 'settings-support-access'
+  | 'settings-forgot-password-requests'
   | 'settings-data-export'
   | 'settings-default-seeds';
 
@@ -70,7 +72,13 @@ export class NavMenuService {
 
     const settingsKey = this.settingsVisibilityKey(id);
     if (settingsKey) {
-      if (!isSettingsNavItemVisible(settingsKey, user, this.auth)) {
+      const settingsVisible = isSettingsNavItemVisible(settingsKey, user, this.auth);
+      if (id === 'settings-forgot-password-requests') {
+        // #region agent log
+        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'nav-menu.service.ts:isVisible',message:'forgot-password settings gate',data:{id,settingsKey,settingsVisible,userId:user.id,isSuperAdmin:user.is_super_admin,roleName:user.role_name},timestamp:Date.now(),hypothesisId:'H3-H4'})}).catch(()=>{});
+        // #endregion
+      }
+      if (!settingsVisible) {
         return false;
       }
       if (
@@ -170,6 +178,7 @@ export class NavMenuService {
       'sacrament-settings',
       'subscription',
       'support-access',
+      'forgot-password-requests',
       'data-export',
       'default-seeds',
     ];
@@ -246,6 +255,7 @@ export class NavMenuService {
   private canSeeSharedItem(id: NavMenuId, user: User): boolean {
     switch (id) {
       case 'dashboard':
+      case 'notifications':
       case 'settings':
         return true;
       case 'roles-permissions':

@@ -170,6 +170,13 @@ export class UsersService {
     );
   }
 
+  resetPassword(id: number): Observable<{ success: boolean; message: string; data: { temporary_password: string; force_password_change: boolean } }> {
+    return this.http.post<{ success: boolean; message: string; data: { temporary_password: string; force_password_change: boolean } }>(
+      `${this.apiUrl}/${id}/password/reset`,
+      {}
+    );
+  }
+
   /**
    * Upload or replace a user's profile image.
    */

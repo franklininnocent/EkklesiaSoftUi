@@ -6,12 +6,14 @@ import { Family, FamilyMember } from '../../../../core/models/family.model';
 import { FamilyFormComponent } from '../family-form/family-form';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
 import { ToastService } from '../../../../core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { CountryCode, getCountryCallingCode, parsePhoneNumber } from 'libphonenumber-js';
 import { SacramentEditModalComponent, SacramentFormType } from '../sacrament-edit-modal/sacrament-edit-modal.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { Tenant, Address } from '@core/models/tenant.model';
 import { Subject, takeUntil } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { ChurchProfileService } from '@core/services/church/church-profile.service';
 import { ChurchProfile } from '@core/models/church';
 import { SacramentTypeLookupService, SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
@@ -77,6 +79,7 @@ const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
 })
 export class FamilyDetail implements OnInit, OnDestroy {
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   family: Family | null = null;
   loading = true;
@@ -1859,11 +1862,17 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete the family profile image?')) {
-      return;
-    }
-
-    this.familyService.deleteProfileImage(this.family.id)
+    this.confirmationDialog.confirm({
+      title: 'Remove Profile Image',
+      message: 'Are you sure you want to delete the family profile image?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+    const familyId = this.family!.id;
+    this.familyService.deleteProfileImage(familyId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
@@ -1885,6 +1894,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
   /**
@@ -1985,11 +1995,17 @@ export class FamilyDetail implements OnInit, OnDestroy {
       return;
     }
 
-    if (!confirm('Are you sure you want to delete the family head profile image?')) {
-      return;
-    }
-
-    this.familyService.deleteHeadProfileImage(this.family.id)
+    this.confirmationDialog.confirm({
+      title: 'Remove Head Profile Image',
+      message: 'Are you sure you want to delete the family head profile image?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+    const familyId = this.family!.id;
+    this.familyService.deleteHeadProfileImage(familyId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
@@ -2012,6 +2028,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
   /**

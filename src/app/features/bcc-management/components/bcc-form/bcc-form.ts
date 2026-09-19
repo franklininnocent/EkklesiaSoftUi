@@ -6,9 +6,10 @@ import { BCCService } from '../../../../core/services/bcc.service';
 import { BCC } from '../../../../core/models/family.model';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { filter, take, takeUntil } from 'rxjs/operators';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 
 @Component({
   selector: 'app-bcc-form',
@@ -28,6 +29,7 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly toast = inject(ToastService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   bccForm: FormGroup;
   loading = false;
   error: string | null = null;
@@ -214,13 +216,19 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onCancel(): void {
-    if (this.bccForm.dirty) {
-      if (confirm('You have unsaved changes. Are you sure you want to cancel?')) {
-        this.cancel.emit();
-      }
-    } else {
+    if (!this.bccForm.dirty) {
       this.cancel.emit();
+      return;
     }
+
+    this.confirmationDialog.confirmDiscardChanges('You have unsaved changes. Are you sure you want to cancel?')
+      .pipe(
+        filter((result) => result.confirmed),
+        take(1),
+      )
+      .subscribe(() => {
+        this.cancel.emit();
+      });
   }
 
   hasError(controlName: string): boolean {

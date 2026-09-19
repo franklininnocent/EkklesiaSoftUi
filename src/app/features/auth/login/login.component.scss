@@ -59,3 +59,74 @@
   }
 }
 
+.auth-link-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.auth-description {
+  margin-bottom: var(--spacing-lg);
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.forgot-password-row {
+  margin-bottom: var(--spacing-md);
+  text-align: right;
+}
+
+.auth-field-label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-primary, #1f2937);
+}
+
+.auth-native-input,
+.auth-otp-input {
+  width: 100%;
+  padding: var(--spacing-md);
+  border: 1px solid #d1d5db;
+  border-radius: var(--radius-md);
+  font-size: 1rem;
+  box-sizing: border-box;
+}
+
+.auth-otp-input {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  letter-spacing: 0.2em;
+  text-transform: none;
+}
+
+.auth-countdown {
+  margin-top: var(--spacing-sm);
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.auth-footer--split {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--spacing-md);
+}
+
+.password-policy-list {
+  margin: 0 0 var(--spacing-lg);
+  padding-left: 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+
+  li {
+    margin-bottom: 0.25rem;
+
+    &.met {
+      color: #047857;
+    }
+  }
+}
+

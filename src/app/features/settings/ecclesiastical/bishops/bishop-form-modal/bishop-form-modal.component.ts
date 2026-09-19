@@ -13,6 +13,7 @@ import {
 import { ToastService } from '@core/services';
 import { AuthService } from '@core/services/auth.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { PhoneCodeService } from '@core/services/phone-code.service';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '@core/validators/form-validation.helper';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import {
@@ -73,6 +74,7 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     private titleService: EcclesiasticalTitleService,
     private toastService: ToastService,
     private authService: AuthService,
+    private phoneCodeService: PhoneCodeService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -86,6 +88,10 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     if (changes['bishop'] && changes['bishop'].currentValue) {
       this.isEditMode = true;
       this.populateForm(changes['bishop'].currentValue);
+      this.bishopForm.get('archdiocese_id')?.disable({ emitEvent: false });
+    } else if (changes['show']?.currentValue && this.bishop) {
+      this.isEditMode = true;
+      this.populateForm(this.bishop);
       this.bishopForm.get('archdiocese_id')?.disable({ emitEvent: false });
     } else if (changes['show'] && changes['show'].currentValue && !this.bishop) {
       this.isEditMode = false;
@@ -163,7 +169,7 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
       ordained_bishop_date: bishop.ordained_bishop_date ? this.formatDateForInput(bishop.ordained_bishop_date) : '',
       date_of_birth: bishop.date_of_birth ? this.formatDateForInput(bishop.date_of_birth) : '',
       email: bishop.email,
-      phone: bishop.phone,
+      phone: this.sanitizePhoneForForm(bishop.phone),
       photo_url: bishop.photo_path ? '' : (bishop.photo_url || ''),
       education: bishop.education,
       status: bishop.status,
@@ -171,6 +177,11 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     });
 
     this.showExternalPhotoUrl = !!(!bishop.photo_path && bishop.photo_url);
+    this.photoState = {
+      pendingFile: null,
+      removeExisting: false,
+      previewUrl: null,
+    };
     this.photoControl?.reset();
   }
 
@@ -272,9 +283,7 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
       delete data['archdiocese_id'];
     }
 
-    if (this.photoState.pendingFile || this.photoState.removeExisting) {
-      delete data['photo_url'];
-    }
+    delete data['photo_url'];
 
     return data;
   }
@@ -287,6 +296,11 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     this.isSubmitting = false;
     this.isEditMode = false;
     this.showExternalPhotoUrl = false;
+    this.photoState = {
+      pendingFile: null,
+      removeExisting: false,
+      previewUrl: null,
+    };
     this.photoControl?.reset();
     this.cancelled.emit();
   }
@@ -295,6 +309,31 @@ export class BishopFormModalComponent implements OnInit, OnChanges {
     if (event.target === event.currentTarget && !this.isSubmitting) {
       this.onCancel();
     }
+  }
+
+  private sanitizePhoneForForm(phone: string | null | undefined): string {
+    if (!phone) {
+      return '';
+    }
+
+    const raw = String(phone).trim();
+    if (!raw) {
+      return '';
+    }
+
+    const dialCode = this.phoneCodeService.getPhoneCodeSync() || '+1';
+    const digitsOnlyDial = dialCode.replace(/\D/g, '');
+    const digitsOnlyPhone = raw.replace(/\D/g, '');
+
+    if (!digitsOnlyPhone) {
+      return '';
+    }
+
+    if (digitsOnlyDial && digitsOnlyPhone.startsWith(digitsOnlyDial)) {
+      return digitsOnlyPhone.substring(digitsOnlyDial.length).slice(0, 15);
+    }
+
+    return digitsOnlyPhone.slice(0, 15);
   }
 
   private formatDateForInput(date: string): string {

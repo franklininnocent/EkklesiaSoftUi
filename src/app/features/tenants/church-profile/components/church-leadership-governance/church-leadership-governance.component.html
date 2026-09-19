@@ -4,9 +4,19 @@
       <h2 class="clg__title">Current Governance</h2>
       <p class="clg__subtitle">Active leadership grouped by parish governance category.</p>
     </div>
-    <button *ngIf="canEdit" type="button" class="cf-btn cf-btn-primary" (click)="openAssignModal()">
-      Add Leader
-    </button>
+    <div *ngIf="canEdit" class="clg__header-actions">
+      <button
+        *ngIf="canCreateCustomRole"
+        type="button"
+        class="cf-btn"
+        (click)="openManageRolesModal()"
+      >
+        Manage custom roles
+      </button>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="openAssignModal()">
+        Add Leader
+      </button>
+    </div>
   </div>
 
   <app-loading-skeleton *ngIf="loadingCurrent" [rows]="4"></app-loading-skeleton>
@@ -309,10 +319,14 @@
           <label for="assign_role_id">
             Role <span class="cf-split-req" aria-hidden="true">*</span>
           </label>
-          <select id="assign_role_id" formControlName="role_id" aria-required="true">
-            <option value="">Select role (Pastor, Assistant Priest, …)</option>
-            <option *ngFor="let role of roles" [value]="role.id">{{ role.title }}</option>
-          </select>
+          <app-leadership-role-combobox
+            inputId="assign_role_id"
+            formControlName="role_id"
+            [roles]="roles"
+            [canCreate]="canCreateCustomRole"
+            placeholder="Select a role"
+            (rolesRefresh)="onRolesRefreshed($event)"
+          ></app-leadership-role-combobox>
           <p class="cf-split-field__hint">Choose the leadership role for this parish.</p>
         </div>
 
@@ -574,10 +588,14 @@
           <label for="edit_role_id">
             Role <span class="cf-split-req" aria-hidden="true">*</span>
           </label>
-          <select id="edit_role_id" formControlName="role_id" aria-required="true">
-            <option value="">Select role (Pastor, Assistant Priest, …)</option>
-            <option *ngFor="let role of roles" [value]="role.id">{{ role.title }}</option>
-          </select>
+          <app-leadership-role-combobox
+            inputId="edit_role_id"
+            formControlName="role_id"
+            [roles]="roles"
+            [canCreate]="canCreateCustomRole"
+            placeholder="Select a role"
+            (rolesRefresh)="onRolesRefreshed($event)"
+          ></app-leadership-role-combobox>
         </div>
 
         <div class="cf-split-field">
@@ -619,6 +637,73 @@
       <button type="button" class="cf-btn" (click)="closeEditModal()" [disabled]="saving">Cancel</button>
     </div>
   </form>
+</app-modal-shell>
+
+<app-modal-shell
+  *ngIf="showManageRolesModal"
+  title="Manage custom roles"
+  size="md"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close manage custom roles"
+  [isSubmitting]="!!savingRoleId"
+  (closeRequested)="closeManageRolesModal()"
+>
+  <div class="cf-split-form-body clg-manage-roles-modal">
+    <p class="cf-meta">
+      Set the governance category for each church-specific role. This updates how leaders appear in Current Governance and Leadership History.
+    </p>
+
+    <app-cf-empty-state
+      *ngIf="customRoles.length === 0"
+      title="No custom roles yet"
+      description="Create a custom role from the Add Leader form when a system role does not fit."
+    ></app-cf-empty-state>
+
+    <div *ngIf="customRoles.length > 0" class="clg__manage-roles-table-wrap">
+      <table class="cf-table clg__manage-roles-table">
+        <thead>
+          <tr>
+            <th>Role</th>
+            <th>Category</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let role of customRoles">
+            <td>{{ role.title }}</td>
+            <td>
+              <select
+                class="clg__manage-roles-select"
+                [(ngModel)]="roleCategoryDraft[role.id]"
+                [disabled]="savingRoleId === role.id"
+              >
+                <option *ngFor="let option of categoryOptions" [ngValue]="option.value">
+                  {{ option.label }}
+                </option>
+              </select>
+            </td>
+            <td class="clg__manage-roles-action">
+              <button
+                type="button"
+                class="cf-btn cf-btn--sm"
+                [disabled]="!hasRoleCategoryChange(role) || !!savingRoleId"
+                (click)="saveRoleCategory(role)"
+              >
+                {{ savingRoleId === role.id ? 'Saving…' : 'Save' }}
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cf-split-form-actions">
+      <button type="button" class="cf-btn" (click)="closeManageRolesModal()" [disabled]="!!savingRoleId">
+        Close
+      </button>
+    </div>
+  </div>
 </app-modal-shell>
 
 <app-image-viewer

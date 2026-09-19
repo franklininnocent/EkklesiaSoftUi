@@ -80,6 +80,13 @@ export const SETTINGS_ROUTES: Routes = [
       ),
   },
   {
+    path: 'forgot-password-requests',
+    loadComponent: () =>
+      import('./forgot-password-requests/forgot-password-requests.page').then(
+        (m) => m.ForgotPasswordRequestsPage
+      ),
+  },
+  {
     path: 'data-export',
     loadComponent: () =>
       import('./data-export/data-export.page').then((m) => m.DataExportPage),
@@ -89,5 +96,12 @@ export const SETTINGS_ROUTES: Routes = [
     data: { breadcrumbLabel: 'Default Seeds' },
     loadComponent: () =>
       import('./default-seeds/default-seeds.page').then((m) => m.DefaultSeedsPage),
+  },
+  {
+    path: 'notifications',
+    loadComponent: () =>
+      import('../notifications/pages/notification-preferences.page').then(
+        (m) => m.NotificationPreferencesPage
+      ),
   },
 ];

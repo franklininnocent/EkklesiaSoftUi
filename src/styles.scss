@@ -336,6 +336,11 @@ a {
 }
 
 .ng-dropdown-panel {
+  z-index: 1400;
+
+  &.tenant-create-country-panel {
+    z-index: 1500;
+  }
   background-color: var(--bg-primary);
   border: 1px solid var(--gray-300);
   border-radius: var(--radius-md);

@@ -57,7 +57,7 @@
       <ng-content></ng-content>
     </div>
 
-    <footer class="cf-modal-shell__footer">
+    <footer class="cf-modal-shell__footer" (click)="onFooterClick($event)">
       <ng-content select="[modalFooter]"></ng-content>
     </footer>
   </div>

@@ -66,6 +66,12 @@ export const SETTINGS_NAV_ITEMS: SettingsNavItem[] = [
     visibility: 'support-access',
   },
   {
+    id: 'settings-forgot-password-requests',
+    label: 'Forgot Password Requests',
+    route: '/settings/forgot-password-requests',
+    visibility: 'forgot-password-requests',
+  },
+  {
     id: 'settings-data-export',
     label: 'Data Export',
     route: '/settings/data-export',

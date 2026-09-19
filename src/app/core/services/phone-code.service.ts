@@ -10,13 +10,16 @@
  */
 
 import { Injectable, inject, signal, computed } from '@angular/core';
-import { Observable, BehaviorSubject, of, combineLatest } from 'rxjs';
+import { Observable, of, combineLatest } from 'rxjs';
 import { tap, catchError, map } from 'rxjs/operators';
 import { GeographyService, Country } from './geography.service';
 import { getTenantCallingCode } from '@core/validators/phone.validators';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 import { environment } from '@environments/environment';
 import { TenantService } from './tenant.service';
+import { TenantResponse } from '@core/models/tenant.model';
+
+const SUPPORT_SESSION_STORAGE_KEY = 'ekklesia.support_session';
 
 /**
  * Phone code update result
@@ -133,43 +136,110 @@ export class PhoneCodeService {
 
   /**
    * Initialize phone code from API if still default (+1).
-   * Uses tenant church profile country_id -> countries lookup.
+   * Uses tenant church profile country_id when the user has parish context.
+   * Platform operators without a tenant must not call church-profile.
    */
   initializeFromApiOnce(): Observable<PhoneCodeUpdateResult> {
     if (this.initializedFromApi) {
       return of({ success: true, phoneCode: this._currentPhoneCode(), source: 'default' });
     }
 
+    const tenantProfile$ = this.hasParishContextForPhoneInit()
+      ? this.tenantService.getChurchProfile().pipe(
+          catchError(() => of({
+            success: false,
+            data: null,
+            message: 'Church profile unavailable',
+          } as unknown as TenantResponse))
+        )
+      : of({
+          success: false,
+          data: null,
+          message: 'No parish context',
+        } as unknown as TenantResponse);
+
     return combineLatest([
       this.geographyService.getCountries(),
-      this.tenantService.getChurchProfile()
+      tenantProfile$,
     ]).pipe(
       map(([countriesRes, tenantRes]) => {
         this.initializedFromApi = true;
 
-        if (!countriesRes.success || !countriesRes.data || !tenantRes.success || !tenantRes.data) {
+        if (!countriesRes.success || !countriesRes.data?.length) {
           const fallback = getTenantCallingCode();
           this._currentPhoneCode.set(fallback);
-          return { success: false, phoneCode: fallback, source: 'default', error: 'Failed to load data' } as PhoneCodeUpdateResult;
+          return {
+            success: false,
+            phoneCode: fallback,
+            source: 'default',
+            error: 'Failed to load countries',
+          } as PhoneCodeUpdateResult;
+        }
+
+        if (!tenantRes.success || !tenantRes.data) {
+          const fallback = getTenantCallingCode();
+          this._currentPhoneCode.set(fallback);
+          return {
+            success: true,
+            phoneCode: fallback,
+            source: 'default',
+          } as PhoneCodeUpdateResult;
         }
 
         const countries = countriesRes.data as Country[];
-        const countryId: number | null = (tenantRes.data as any)?.addresses?.[0]?.country_id || (tenantRes.data as any)?.country_id || null;
+        const countryId: number | null =
+          (tenantRes.data as any)?.addresses?.[0]?.country_id
+          || (tenantRes.data as any)?.country_id
+          || null;
+
         if (!countryId) {
           const fallback = getTenantCallingCode();
           this._currentPhoneCode.set(fallback);
-          return { success: false, phoneCode: fallback, source: 'default', error: 'No country_id in tenant' } as PhoneCodeUpdateResult;
+          return {
+            success: true,
+            phoneCode: fallback,
+            source: 'default',
+          } as PhoneCodeUpdateResult;
         }
 
-        const result = this.findAndUpdatePhoneCode(countryId, countries);
-        return result;
+        return this.findAndUpdatePhoneCode(countryId, countries);
       }),
-      catchError(err => {
+      catchError(() => {
+        this.initializedFromApi = true;
         const fallback = getTenantCallingCode();
         this._currentPhoneCode.set(fallback);
-        return of({ success: false, phoneCode: fallback, source: 'default', error: 'Exception' } as PhoneCodeUpdateResult);
+        return of({
+          success: false,
+          phoneCode: fallback,
+          source: 'default',
+          error: 'Exception',
+        } as PhoneCodeUpdateResult);
       })
     );
+  }
+
+  private hasParishContextForPhoneInit(): boolean {
+    try {
+      const userStr = localStorage.getItem(environment.userKey);
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user?.tenant_id) {
+          return true;
+        }
+      }
+
+      const supportRaw = localStorage.getItem(SUPPORT_SESSION_STORAGE_KEY);
+      if (supportRaw) {
+        const supportSession = JSON.parse(supportRaw);
+        if (supportSession?.id && supportSession?.status !== 'ended') {
+          return true;
+        }
+      }
+    } catch {
+      // ignore malformed storage
+    }
+
+    return false;
   }
 
   /**

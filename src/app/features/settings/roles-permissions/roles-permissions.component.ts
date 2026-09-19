@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -7,6 +7,7 @@ import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
 import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { User } from '@core/models/user.model';
 import { CardComponent, PaginationComponent } from '@shared/components';
@@ -22,7 +23,7 @@ import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
-import { take, takeUntil } from 'rxjs/operators';
+import { filter, take, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
 import { parseRolesTabFromUrl } from '../config/roles-nav.config';
 
@@ -204,6 +205,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   selectedUserForRoles: User | null = null;
   selectedRoleIdsForUser: number[] = [];
   savingUserRoles = false;
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   constructor(
     private rolesService: RolesService,
@@ -238,10 +240,15 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     
     // Also subscribe to user changes
     this.authService.currentUser$.pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
+      const previousTenantMode = this.isTenantMode;
       this.updateEkklesiaRole(user);
       this.updateSuperAdminAccess(user);
       this.updateTenantMode(user);
       this.loadTenantUsers();
+      if (previousTenantMode !== this.isTenantMode) {
+        this.loadRoles();
+        this.loadPermissions();
+      }
       this.cdr.detectChanges();
     });
   }
@@ -289,7 +296,8 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isTenantMode = !!user.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin();
+    // Parish-homed actors (including EkklesiaAdmin) must use tenant-scoped RBAC APIs.
+    this.isTenantMode = !!user.tenant_id && !this.authService.isSuperAdmin();
     if (!this.isTenantMode) {
       this.selectedUserForRoles = null;
       this.tenantUsers = [];
@@ -803,10 +811,15 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   }
 
   deletePermission(permission: Permission): void {
-    if (!confirm(`Are you sure you want to delete the permission "${permission.display_name}"?\n\nThis action cannot be undone.`)) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Permission',
+      message: `Are you sure you want to delete the permission "${permission.display_name}"?\n\nThis action cannot be undone.`,
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.permissionsService.deletePermission(permission.id).subscribe({
       next: () => {
         console.log(`✅ Permission "${permission.display_name}" deleted successfully`);
@@ -823,6 +836,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
           'Error'
         );
       }
+    });
     });
   }
 

@@ -20,8 +20,10 @@ import { ChurchLeadershipService } from '@core/services/church/church-leadership
 import {
   CurrentLeadershipResponse,
   LeadershipAssignment,
+  LeadershipCategory,
   LeadershipExitReasonCode,
   LeadershipHistoryFilters,
+  LEADERSHIP_CATEGORY_OPTIONS,
   LeadershipRoleOption,
 } from '@core/models/church/leadership-governance.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
@@ -38,6 +40,7 @@ import {
 } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
+import { LeadershipRoleComboboxComponent } from '../leadership-role-combobox/leadership-role-combobox.component';
 import { ParishPerson, ParishPersonService } from '@features/settings/sacraments/services/person.service';
 
 type HistoryView = 'table' | 'timeline';
@@ -59,6 +62,7 @@ type HistoryView = 'table' | 'timeline';
     AdvancedSearchPanelComponent,
     EditIconButtonComponent,
     ImageViewerComponent,
+    LeadershipRoleComboboxComponent,
   ],
   templateUrl: './church-leadership-governance.component.html',
   styleUrl: './church-leadership-governance.component.scss',
@@ -91,6 +95,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
   historyPagination = { current_page: 1, last_page: 1, per_page: 15, total: 0 };
 
   roles: LeadershipRoleOption[] = [];
+  canCreateCustomRole = false;
 
   showAdvancedSearch = false;
   searchFields: SearchField[] = [];
@@ -99,7 +104,10 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
   showHandoverModal = false;
   showTerminateModal = false;
   showEditModal = false;
+  showManageRolesModal = false;
   saving = false;
+  savingRoleId: string | null = null;
+  roleCategoryDraft: Record<string, LeadershipCategory> = {};
   modalError: string | null = null;
   incumbent: LeadershipAssignment | null = null;
   terminatingAssignment: LeadershipAssignment | null = null;
@@ -153,6 +161,8 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     appointment_letter_ref: [''],
   });
 
+  readonly categoryOptions = LEADERSHIP_CATEGORY_OPTIONS;
+
   readonly exitReasons: LeadershipExitReasonCode[] = [
     'transferred',
     'retired',
@@ -164,6 +174,10 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
   ];
 
   ngOnInit(): void {
+    this.canCreateCustomRole =
+      this.authService.hasPermission('church.leadership.roles.create')
+      || this.authService.isTenantAdmin()
+      || this.authService.currentUserValue?.is_primary_admin === true;
     this.initializeSearchFields();
     this.setupModalFormChangeDetection();
     this.setupPersonSearch();
@@ -469,6 +483,9 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
       appointment_letter_ref: '',
     });
     this.showAssignModal = true;
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b51fb5'},body:JSON.stringify({sessionId:'b51fb5',location:'church-leadership-governance.component.ts:openAssignModal',message:'assign modal opened',data:{rolesCount:this.roles.length,roleTitles:this.roles.slice(0,5).map((r)=>r.title)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+    // #endregion
     this.cdr.markForCheck();
   }
 
@@ -1102,13 +1119,10 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
         key: 'category',
         label: 'Category',
         type: 'select',
-        options: [
-          { value: 'CANONICAL_DIOCESAN', label: 'Diocesan / Canonical' },
-          { value: 'PARISH_CLERGY', label: 'Parish Clergy' },
-          { value: 'PARISH_COUNCIL', label: 'Parish Councils' },
-          { value: 'MINISTRY_PIOUS', label: 'Ministries' },
-          { value: 'OTHER', label: 'Other' },
-        ],
+        options: this.categoryOptions.map((option) => ({
+          value: option.value,
+          label: option.label,
+        })),
         value: this.historyFilters.category || undefined,
       },
       {
@@ -1167,14 +1181,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
   }
 
   private categoryLabel(category: string): string {
-    const labels: Record<string, string> = {
-      CANONICAL_DIOCESAN: 'Diocesan / Canonical',
-      PARISH_CLERGY: 'Parish Clergy',
-      PARISH_COUNCIL: 'Parish Councils',
-      MINISTRY_PIOUS: 'Ministries',
-      OTHER: 'Other',
-    };
-    return labels[category] || category;
+    return this.categoryOptions.find((option) => option.value === category)?.label || category;
   }
 
   private formatFilterDate(value: string): string {
@@ -1190,15 +1197,78 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     });
   }
 
+  get customRoles(): LeadershipRoleOption[] {
+    return this.roles
+      .filter((role) => !role.is_global)
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }
+
+  openManageRolesModal(): void {
+    this.roleCategoryDraft = this.customRoles.reduce<Record<string, LeadershipCategory>>((draft, role) => {
+      draft[role.id] = role.category;
+      return draft;
+    }, {});
+    this.showManageRolesModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeManageRolesModal(): void {
+    this.showManageRolesModal = false;
+    this.savingRoleId = null;
+    this.cdr.markForCheck();
+  }
+
+  hasRoleCategoryChange(role: LeadershipRoleOption): boolean {
+    return this.roleCategoryDraft[role.id] !== role.category;
+  }
+
+  saveRoleCategory(role: LeadershipRoleOption): void {
+    const category = this.roleCategoryDraft[role.id];
+    if (!category || category === role.category || this.savingRoleId) {
+      return;
+    }
+
+    this.savingRoleId = role.id;
+    this.cdr.markForCheck();
+
+    this.api.updateRole(role.id, { category }).pipe(
+      finalize(() => {
+        this.savingRoleId = null;
+        this.cdr.markForCheck();
+      }),
+    ).subscribe({
+      next: (response) => {
+        const updated = response.data;
+        this.onRolesRefreshed(
+          this.roles.map((existing) => (existing.id === updated.id ? updated : existing)),
+        );
+        this.loadCurrent();
+        this.loadHistory(false);
+        this.toastService.success(
+          `${updated.title} is now grouped under ${updated.category_label}.`,
+          'Role category updated',
+        );
+      },
+      error: (error: unknown) => {
+        this.roleCategoryDraft[role.id] = role.category;
+        this.toastService.error(this.extractError(error, 'Could not update role category.'));
+      },
+    });
+  }
+
+  onRolesRefreshed(roles: LeadershipRoleOption[]): void {
+    this.roles = roles;
+    const roleField = this.searchFields.find((field) => field.key === 'role_id');
+    if (roleField) {
+      roleField.options = roles.map((role) => ({ value: role.id, label: role.title }));
+    }
+    this.cdr.markForCheck();
+  }
+
   private loadRoles(): void {
     this.api.listRoles().subscribe({
       next: (response) => {
-        this.roles = response.data;
-        const roleField = this.searchFields.find((field) => field.key === 'role_id');
-        if (roleField) {
-          roleField.options = this.roles.map((role) => ({ value: role.id, label: role.title }));
-        }
-        this.cdr.markForCheck();
+        this.onRolesRefreshed(response.data);
       },
     });
   }

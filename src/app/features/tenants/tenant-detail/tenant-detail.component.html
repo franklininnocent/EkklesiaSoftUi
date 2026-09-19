@@ -27,7 +27,7 @@
     <button type="button" class="cf-btn cf-btn-primary" (click)="loadDetails()">Retry</button>
   </div>
 
-  <ng-container *ngIf="details && !loading">
+  <ng-container *ngIf="details && (!loading || saving)">
     <div class="tenant-detail__warnings" *ngIf="details.warnings.length">
       <div class="cf-inline-alert" *ngFor="let w of details.warnings" [class.cf-inline-alert--critical]="w.severity === 'critical'">
         <app-status-badge [label]="w.message" [tone]="warningTone(w.severity)"></app-status-badge>
@@ -81,7 +81,7 @@
         <div class="tenant-detail__section-header">
           <h2>Overview</h2>
           <div *ngIf="isEditing" class="tenant-detail__edit-actions">
-            <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="saveTenant()" [disabled]="loading">Save</button>
+            <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="saveTenant()" [disabled]="saving">Save</button>
             <button type="button" class="cf-btn cf-btn--sm" (click)="cancelEdit()">Cancel</button>
           </div>
         </div>
@@ -107,8 +107,61 @@
                 <input *ngIf="isEditing" type="text" [(ngModel)]="editForm.domain" class="cf-input" />
                 <span *ngIf="!isEditing">{{ details.identity.domain || '—' }}</span>
               </dd>
+              <dt>Denomination</dt>
+              <dd>
+                <ng-container *ngIf="isEditing; else denominationReadOnly">
+                  <input
+                    *ngIf="loadingDenominations || denominationOptions === null"
+                    type="text"
+                    class="cf-input"
+                    disabled
+                    aria-busy="true"
+                    placeholder="Loading denominations…"
+                  />
+                  <ng-select
+                    *ngIf="denominationOptions as denomOptions"
+                    class="cf-split-select tenant-detail__denomination-select"
+                    [items]="denomOptions"
+                    bindLabel="name"
+                    bindValue="id"
+                    [(ngModel)]="editDenominationId"
+                    [compareWith]="compareSelectIds"
+                    [loading]="loadingDenominations"
+                    [searchable]="true"
+                    [clearable]="true"
+                    [placeholder]="denomOptions.length ? 'Select denomination' : 'No denominations available'"
+                    (ngModelChange)="onEditDenominationChange($event)"
+                  ></ng-select>
+                </ng-container>
+                <ng-template #denominationReadOnly>{{ details.identity.denomination_name || '—' }}</ng-template>
+              </dd>
               <dt>Diocese</dt>
-              <dd>{{ details.identity.diocese_name || '—' }}</dd>
+              <dd>
+                <ng-container *ngIf="isEditing; else dioceseReadOnly">
+                  <input
+                    *ngIf="loadingArchdioceses || archdioceseOptions === null"
+                    type="text"
+                    class="cf-input"
+                    disabled
+                    aria-busy="true"
+                    placeholder="Loading dioceses…"
+                  />
+                  <ng-select
+                    *ngIf="archdioceseOptions as options"
+                    class="cf-split-select tenant-detail__diocese-select"
+                    [items]="options"
+                    bindLabel="name"
+                    bindValue="id"
+                    [(ngModel)]="editArchdioceseId"
+                    [compareWith]="compareSelectIds"
+                    [loading]="loadingArchdioceses"
+                    [searchable]="true"
+                    [clearable]="true"
+                    [placeholder]="options.length ? 'Select diocese' : 'No dioceses available'"
+                  ></ng-select>
+                </ng-container>
+                <ng-template #dioceseReadOnly>{{ details.identity.diocese_name || '—' }}</ng-template>
+              </dd>
               <dt>Tier</dt>
               <dd>{{ details.identity.tenant_tier || '—' }}</dd>
             </dl>
@@ -124,7 +177,16 @@
               <dt>Phone</dt>
               <dd>{{ details.contact.phone || details.contact.primary_contact?.phone || '—' }}</dd>
               <dt>Website</dt>
-              <dd>{{ details.contact.website || '—' }}</dd>
+              <dd>
+                <input
+                  *ngIf="isEditing"
+                  type="url"
+                  class="cf-input"
+                  [(ngModel)]="editWebsite"
+                  placeholder="https://example.org"
+                />
+                <span *ngIf="!isEditing">{{ details.contact.website || '—' }}</span>
+              </dd>
               <dt>Address</dt>
               <dd *ngIf="details.contact.address; else noAddress">
                 {{ details.contact.address.line1 }}<br *ngIf="details.contact.address.line2" />
@@ -146,6 +208,17 @@
               <dt>Slots remaining</dt>
               <dd>{{ details.administration.remaining_user_slots }}</dd>
             </dl>
+            <button
+              *ngIf="canResetTenantAdministrator()"
+              type="button"
+              class="cf-btn cf-btn--sm"
+              (click)="resetTenantAdministratorPassword()"
+            >
+              Reset Tenant Administrator Password
+            </button>
+            <p class="cf-meta" *ngIf="tenantAdminResetPassword">
+              Temporary password (copy now): <code>{{ tenantAdminResetPassword }}</code>
+            </p>
           </div>
 
           <div class="tenant-detail__card">

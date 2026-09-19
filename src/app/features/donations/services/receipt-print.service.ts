@@ -1,10 +1,12 @@
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { Observable } from 'rxjs';
 import { DonationsService } from '@features/donations/services/donations.service';
+import { ToastService } from '@core/services/toast.service';
 
 @Injectable({ providedIn: 'root' })
 export class ReceiptPrintService {
-  constructor(private readonly donationsService: DonationsService) {}
+  private readonly donationsService = inject(DonationsService);
+  private readonly toastService = inject(ToastService);
 
   printPaymentReceipt(paymentId: string): void {
     this.loadReceiptHtmlIntoWindow(paymentId, true);
@@ -62,7 +64,7 @@ export class ReceiptPrintService {
       },
       error: () => {
         targetWindow.close();
-        window.alert(errorMessage);
+        this.toastService.error(errorMessage, 'Print Error');
       }
     });
   }
@@ -74,7 +76,7 @@ export class ReceiptPrintService {
   private openBlankTargetWindow(): Window | null {
     const targetWindow = window.open('', '_blank', 'width=760,height=900');
     if (!targetWindow) {
-      window.alert('Allow pop-ups to view or print receipts.');
+      this.toastService.warning('Allow pop-ups to view or print receipts.', 'Pop-up blocked');
       return null;
     }
 

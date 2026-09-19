@@ -184,7 +184,7 @@
     </section>
 
     <!-- Password -->
-    <section class="cf-split-section" aria-labelledby="user-section-password">
+    <section class="cf-split-section" aria-labelledby="user-section-password" *ngIf="!isEditMode">
       <h3 id="user-section-password" class="cf-split-section__title">Password</h3>
       <p class="cf-meta" *ngIf="isEditMode">Leave blank to keep the current password.</p>
       <div class="cf-split-grid">

@@ -104,9 +104,9 @@ export interface Tenant {
 export interface TenantAddress {
   line1: string;
   line2?: string;
-  country_id: number;       // Foreign key to countries table
-  state_id: number;         // Foreign key to states table
-  district: string;         // Text input (not a dropdown)
+  country_id: number | null; // Foreign key to countries table
+  state_id: number | null;   // Foreign key to states table
+  district: string;          // Text input (not a dropdown)
   pin_zip_code: string;
 }
 
@@ -140,13 +140,17 @@ export interface CreateTenantRequest {
   slogan?: string;
   slug?: string;
   domain?: string;
-  
+  archdiocese_id?: number | null;
+  website?: string | null;
+
   // Tenant official address (mandatory)
   tenant_official_address: TenantAddress;
   
   // Primary user (mandatory)
   primary_user_name: string;
   primary_user_email: string;
+  primary_user_password: string;
+  primary_user_password_confirmation: string;
   primary_contact_number: string;
   primary_user_address: TenantAddress;
   
@@ -284,6 +288,8 @@ export interface TenantDetailsSnapshot {
     hierarchy_path?: string | null;
     diocese_name?: string | null;
     diocese_id?: number | null;
+    denomination_id?: number | null;
+    denomination_name?: string | null;
     logo_url?: string | null;
     logo_full_url?: string | null;
     primary_color?: string;

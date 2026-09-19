@@ -26,6 +26,7 @@ describe('NavMenuService', () => {
       isTenantAdmin: jest.fn().mockReturnValue(false),
       isSuperAdmin: jest.fn().mockReturnValue(false),
       isEkklesiaAdmin: jest.fn().mockReturnValue(false),
+      canViewPasswordRecoveryRequests: jest.fn().mockReturnValue(false),
     };
     appContextMock = {
       resolveNavigationSnapshot: jest.fn(),
@@ -180,5 +181,21 @@ describe('NavMenuService', () => {
     (authMock.isTenantAdmin as jest.Mock).mockReturnValue(false);
 
     expect(service.isVisible('church-profile-edit', tenantUser)).toBe(false);
+  });
+
+  it('shows forgot password requests for super admin and primary parish admin', () => {
+    const superAdmin = { tenant_id: null, is_super_admin: true } as any;
+    const primaryAdmin = { tenant_id: 5, is_primary_admin: true } as any;
+    const parishUser = { tenant_id: 5, is_primary_admin: false } as any;
+
+    (authMock.canViewPasswordRecoveryRequests as jest.Mock).mockImplementation((user: any) => {
+      if (!user) return false;
+      if (user.is_super_admin) return true;
+      return !!user.is_primary_admin;
+    });
+
+    expect(service.isVisible('settings-forgot-password-requests', superAdmin)).toBe(true);
+    expect(service.isVisible('settings-forgot-password-requests', primaryAdmin)).toBe(true);
+    expect(service.isVisible('settings-forgot-password-requests', parishUser)).toBe(false);
   });
 });

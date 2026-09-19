@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged, filter, map } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { BCCService } from '../../../../core/services/bcc.service';
@@ -51,6 +52,7 @@ export class BCCListComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly supportSessions = inject(SupportSessionService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   bccs: BCC[] = [];
   statistics: BCCStatistics | null = null;
@@ -483,10 +485,15 @@ export class BCCListComponent implements OnInit, OnDestroy {
       ? `Are you sure you want to delete ${bccName}? This will unassign ${familyCount} family/families from this BCC. This action cannot be undone.`
       : `Are you sure you want to delete ${bccName}? This action cannot be undone.`;
 
-    if (!confirm(warningMessage)) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete BCC',
+      message: warningMessage,
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.loading = true;
     this.cdr.markForCheck();
 
@@ -511,6 +518,7 @@ export class BCCListComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
   onFormSave(_bcc: BCC): void {

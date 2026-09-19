@@ -150,10 +150,62 @@ describe('ChurchProfileComponent', () => {
         { provide: BCCService, useValue: { getStatistics: jest.fn(() => of({ success: true, data: {} })) } },
         { provide: ToastService, useValue: toastService },
         { provide: AuthService, useValue: authService },
-        { provide: DenominationService, useValue: { getDenominations: jest.fn(() => of({ success: true, data: [] })) } },
+        { provide: DenominationService, useValue: { getDenominations: jest.fn(() => of({ success: true, data: [{ id: 1, name: 'Catholic', code: 'catholic', active: 1, display_order: 1 }] })) } },
         { provide: ArchdioceseService, useValue: { getArchdioceses: jest.fn(() => of({ success: true, data: [] })) } },
-        { provide: ChurchProfileService, useValue: { getProfile: jest.fn(() => of({ success: true, data: { id: 1, denomination_id: null } })) } },
-        { provide: ChurchLeadershipService, useValue: { getLeaders: jest.fn(() => of({ success: true, data: [] })) } },
+        {
+          provide: ChurchProfileService,
+          useValue: {
+            getProfile: jest.fn(() => of({ success: true, data: { id: 1, denomination_id: '1', archdiocese_id: null } })),
+            getStatusMetrics: jest.fn(() => of({
+              success: true,
+              data: {
+                membership_health: {
+                  key: 'membership_health',
+                  label: 'Membership Health',
+                  status: 'unavailable',
+                  percent: null,
+                  display: 'Not available',
+                  tooltip: 'Percentage of registered members marked active.',
+                  empty_message: 'No member records yet',
+                },
+                sacramental_records: {
+                  key: 'sacramental_records',
+                  label: 'Sacramental Records',
+                  status: 'unavailable',
+                  percent: null,
+                  display: 'Not available',
+                  tooltip: 'Share of members with sacramental records.',
+                  empty_message: 'No member records yet',
+                },
+                volunteer_engagement: {
+                  key: 'volunteer_engagement',
+                  label: 'Volunteer Engagement',
+                  status: 'unavailable',
+                  percent: null,
+                  display: 'Not available',
+                  tooltip: 'Volunteer engagement blend.',
+                  empty_message: 'No volunteer structure yet',
+                },
+                profile_completeness: {
+                  key: 'profile_completeness',
+                  label: 'Profile Completeness',
+                  status: 'available',
+                  percent: 55,
+                  display: '55%',
+                  tooltip: 'Recommended profile fields completed.',
+                },
+                generated_at: '2026-09-18T00:00:00+00:00',
+              },
+            })),
+          },
+        },
+        {
+          provide: ChurchLeadershipService,
+          useValue: {
+            getLeaders: jest.fn(() => of({ success: true, data: [] })),
+            resolveLeaderPhotoUrl: jest.fn((url?: string | null) => url ?? null),
+          },
+        },
         {
           provide: ChurchLeadershipGovernanceService,
           useValue: { getCurrent: jest.fn(() => of({ success: true, data: governanceCurrent })) },
@@ -162,7 +214,7 @@ describe('ChurchProfileComponent', () => {
         { provide: ChurchSocialMediaService, useValue: { getSocialMedia: jest.fn(() => of({ success: true, data: [] })) } },
         { provide: PopeDetailsService, useValue: { getPopeDetails: jest.fn(() => of({ success: true, data: null })) } },
         { provide: GeographyService, useValue: { getCountries: jest.fn(() => of([])) } },
-        { provide: PhoneCodeService, useValue: { getPhoneCodes: jest.fn(() => of([])), getPhoneCodeSync: jest.fn(() => '+91') } },
+        { provide: PhoneCodeService, useValue: { getPhoneCodes: jest.fn(() => of([])), getPhoneCodeSync: jest.fn(() => '+91'), resetToDefault: jest.fn(), updatePhoneCodeByCountryId: jest.fn(() => of({ success: true })) } },
       ],
     });
 
@@ -184,6 +236,70 @@ describe('ChurchProfileComponent', () => {
     it('includes parochial vicar and deacon in getAssistantPriests', () => {
       const assistants = component.getAssistantPriests();
       expect(assistants.map((row) => row.full_name)).toEqual(['Fr. Paul Vicar', 'Mark Deacon']);
+    });
+
+    it('shows parish priest and joint parish priest from governance assignments', () => {
+      component.governanceCurrent = {
+        church_profile_id: 1,
+        active_count: 2,
+        groups: [],
+        assignments: [
+          {
+            id: 'joint',
+            tenant_id: 1,
+            church_profile_id: 1,
+            person_id: 'andrew',
+            person: {
+              id: 'andrew',
+              full_name: 'Rev.Fr. Andrew Kosmos',
+              photo_full_url: 'https://example.com/andrew.jpg',
+            },
+            role_id: 'joint-role',
+            role: {
+              id: 'joint-role',
+              title: 'Joint Parish Priest',
+              category: 'OTHER',
+              category_label: 'Other',
+              hierarchical_level: 4,
+              allows_concurrent: true,
+            },
+            start_date: '2026-09-18',
+            status: 'active',
+          },
+          {
+            id: 'primary',
+            tenant_id: 1,
+            church_profile_id: 1,
+            person_id: 'alex',
+            person: {
+              id: 'alex',
+              full_name: 'Rev.Fr. Alex Peter',
+              photo_full_url: 'https://example.com/alex.jpg',
+            },
+            role_id: 'priest-role',
+            role: {
+              id: 'priest-role',
+              title: 'Parish Priest',
+              category: 'OTHER',
+              category_label: 'Other',
+              hierarchical_level: 4,
+              allows_concurrent: false,
+            },
+            start_date: '2026-09-18',
+            status: 'active',
+          },
+        ],
+      };
+
+      const priest = component.getParishPriest();
+      const assistants = component.getAssistantPriests();
+
+      expect(priest?.full_name).toBe('Rev.Fr. Alex Peter');
+      expect(priest?.role).toBe('Parish Priest');
+      expect(assistants.map((row) => row.full_name)).toEqual(['Rev.Fr. Andrew Kosmos']);
+      expect(assistants[0]?.role).toBe('Joint Parish Priest');
+      expect(component.getProfileLeaderPhotoSource(priest)?.photo_public_url).toBe('https://example.com/alex.jpg');
+      expect(component.getProfileLeaderPhotoSource(assistants[0])?.photo_public_url).toBe('https://example.com/andrew.jpg');
     });
 
     it('uses governance active_count for leadership tab badge', () => {
@@ -261,5 +377,29 @@ describe('ChurchProfileComponent', () => {
         'Coming Soon',
       );
     });
+
+    it('renders unavailable church status metrics instead of fabricated percentages', fakeAsync(() => {
+      setup(true);
+      fixture.detectChanges();
+      tick();
+
+      const compiled = fixture.nativeElement as HTMLElement;
+      expect(compiled.textContent).toContain('Not available');
+      expect(compiled.textContent).not.toContain('78%');
+      expect(compiled.textContent).not.toContain('82%');
+      expect(compiled.textContent).not.toContain('84%');
+      expect(component.statusMetricsEmptyCta?.label).toBe('Add families');
+    }));
+
+    it('coerces string denomination_id when opening general modal', fakeAsync(() => {
+      setup(true);
+      component.extendedProfile = { id: 1, tenant_id: 1, denomination_id: '1' } as any;
+      component.openGeneralModal();
+      tick();
+
+      expect(component.showGeneralModal).toBe(true);
+      expect(component.profileForm.get('denomination_id')?.value).toBe(1);
+      expect(component.denominations.length).toBeGreaterThan(0);
+    }));
   });
 });

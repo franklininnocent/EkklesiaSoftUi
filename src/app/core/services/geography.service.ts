@@ -8,7 +8,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, of } from 'rxjs';
-import { tap, catchError, shareReplay } from 'rxjs/operators';
+import { tap, catchError, map, shareReplay } from 'rxjs/operators';
 import { environment } from '@environments/environment';
 
 /**
@@ -44,6 +44,11 @@ export interface GeographyResponse<T> {
   message?: string;
 }
 
+export interface GetCountriesOptions {
+  /** Bypass the in-memory session cache (use when opening forms/modals). */
+  refresh?: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -62,28 +67,36 @@ export class GeographyService {
 
   /**
    * Get all active countries.
-   * Results are cached for the session.
+   * Results are cached for the session unless the response is empty or `refresh` is set.
    */
-  getCountries(): Observable<GeographyResponse<Country>> {
-    // Return cached observable if available
+  getCountries(options?: GetCountriesOptions): Observable<GeographyResponse<Country>> {
+    if (options?.refresh) {
+      this.clearCache();
+    }
+
     if (this.countriesCache$) {
       return this.countriesCache$;
     }
 
-    // Create new observable and cache it
     this.countriesCache$ = this.http.get<GeographyResponse<Country>>(
       `${this.apiUrl}/countries`
     ).pipe(
+      map((response) => this.normalizeCountriesResponse(response)),
       tap(response => {
-        if (response.success) {
+        if (response.success && response.data.length > 0) {
           this.countriesSubject.next(response.data);
-          console.log(`✅ Loaded ${response.count} countries`);
+          return;
+        }
+
+        // Allow a later retry after seeding or auth fixes instead of pinning an empty list.
+        this.countriesCache$ = null;
+        if (response.success) {
+          this.countriesSubject.next([]);
         }
       }),
-      shareReplay(1), // Share the result with all subscribers
+      shareReplay(1),
       catchError(error => {
-        console.error('❌ Error loading countries:', error);
-        this.countriesCache$ = null; // Clear cache on error
+        this.countriesCache$ = null;
         throw error;
       })
     );
@@ -193,6 +206,34 @@ export class GeographyService {
    */
   get hasCountries(): boolean {
     return this.countriesSubject.value.length > 0;
+  }
+
+  private normalizeCountriesResponse(
+    response: GeographyResponse<Country>
+  ): GeographyResponse<Country> {
+    const data = this.normalizeCountries(response.data);
+
+    return {
+      ...response,
+      data,
+      count: response.count ?? data.length,
+    };
+  }
+
+  private normalizeCountries(data: unknown): Country[] {
+    if (!Array.isArray(data)) {
+      return [];
+    }
+
+    return data
+      .map((row) => ({
+        ...row,
+        id: Number(row.id),
+        name: String(row.name ?? '').trim(),
+        iso2: String(row.iso2 ?? ''),
+        iso3: String(row.iso3 ?? ''),
+      }))
+      .filter((row) => Number.isFinite(row.id) && row.id > 0 && row.name.length > 0);
   }
 }
 

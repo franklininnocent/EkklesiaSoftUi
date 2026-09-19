@@ -1,0 +1,88 @@
+<section class="notification-detail cf-page">
+  <app-page-header title="Notification details" subtitle="Review the full message and take action.">
+    <a routerLink="/notifications" class="cf-btn cf-btn-ghost">Back to inbox</a>
+  </app-page-header>
+
+  @if (loading()) {
+    <div class="cf-loading-block cf-panel" role="status" aria-live="polite">
+      <app-loading-skeleton type="card"></app-loading-skeleton>
+    </div>
+  } @else if (error()) {
+    <app-cf-empty-state title="Not found" [description]="error()!">
+      <a routerLink="/notifications" class="cf-btn cf-btn-primary">Back to inbox</a>
+    </app-cf-empty-state>
+  } @else if (item(); as n) {
+    <article class="cf-panel notification-detail__card">
+      <header class="notification-detail__header">
+        <div class="notification-detail__badges">
+          @if (actionRequired(n)) {
+            <app-status-badge label="Action needed" tone="warning"></app-status-badge>
+          }
+          @if (n.status === 'unread') {
+            <app-status-badge label="Unread" tone="info"></app-status-badge>
+          }
+          @if (n.priority === 'high' || n.priority === 'critical') {
+            <app-status-badge
+              [label]="n.priority === 'critical' ? 'Urgent' : 'Important'"
+              [tone]="priorityTone(n.priority)"
+            ></app-status-badge>
+          }
+        </div>
+        <h1 class="notification-detail__title">{{ n.title }}</h1>
+        <p class="notification-detail__meta">
+          <time [attr.datetime]="n.created_at">{{ relativeTime(n.created_at) }}</time>
+          @if (n.actor_display_name) {
+            <span>· From {{ n.actor_display_name }}</span>
+          }
+        </p>
+      </header>
+
+      <dl class="notification-detail__facts">
+        <div class="notification-detail__fact">
+          <dt>Category</dt>
+          <dd>{{ categoryLabel(n.category) }}</dd>
+        </div>
+        <div class="notification-detail__fact">
+          <dt>Module</dt>
+          <dd>{{ n.module }}</dd>
+        </div>
+        @if (n.definition_code) {
+          <div class="notification-detail__fact">
+            <dt>Type</dt>
+            <dd>{{ definitionLabel(n.definition_code) }}</dd>
+          </div>
+        }
+      </dl>
+
+      <div class="notification-detail__body">{{ n.body }}</div>
+
+      @if (n.subject_status === 'missing') {
+        <div class="cf-inline-alert notification-detail__alert" role="status">
+          This item is no longer available.
+        </div>
+      } @else if (n.subject_status === 'forbidden') {
+        <div class="cf-inline-alert notification-detail__alert" role="status">
+          You no longer have access to this record.
+        </div>
+      }
+
+      <div class="notification-detail__actions">
+        @if (n.subject_status === 'available' && n.deep_link) {
+          <button type="button" class="cf-btn cf-btn-primary" (click)="goToSource()">
+            Go to source record
+          </button>
+        }
+        @if (!n.archived_at) {
+          <button
+            type="button"
+            class="cf-btn cf-btn-ghost"
+            [disabled]="archiving()"
+            (click)="archive()"
+          >
+            {{ archiving() ? 'Archiving…' : 'Archive' }}
+          </button>
+        }
+      </div>
+    </article>
+  }
+</section>

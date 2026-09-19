@@ -7,7 +7,9 @@ import {
   CurrentLeadershipResponse,
   HandoverLeadershipPayload,
   LeadershipHistoryFilters,
+  CreateLeadershipRolePayload,
   LeadershipRoleOption,
+  UpdateLeadershipRolePayload,
   LeadershipAssignment,
   PaginatedLeadershipHistory,
   TerminateLeadershipPayload,
@@ -45,6 +47,14 @@ export class ChurchLeadershipGovernanceService {
       params = params.set('category', category);
     }
     return this.http.get<ApiEnvelope<LeadershipRoleOption[]>>(`${this.baseUrl}/roles`, { params });
+  }
+
+  createRole(payload: CreateLeadershipRolePayload): Observable<ApiEnvelope<LeadershipRoleOption>> {
+    return this.http.post<ApiEnvelope<LeadershipRoleOption>>(`${this.baseUrl}/roles`, payload);
+  }
+
+  updateRole(roleId: string, payload: UpdateLeadershipRolePayload): Observable<ApiEnvelope<LeadershipRoleOption>> {
+    return this.http.put<ApiEnvelope<LeadershipRoleOption>>(`${this.baseUrl}/roles/${roleId}`, payload);
   }
 
   assign(payload: AssignLeadershipPayload): Observable<ApiEnvelope<LeadershipAssignment>> {

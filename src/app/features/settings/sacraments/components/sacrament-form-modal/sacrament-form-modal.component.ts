@@ -1,4 +1,4 @@
-import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy } from '@angular/core';
+import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, ChangeDetectorRef, ChangeDetectionStrategy, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
@@ -6,11 +6,12 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { SacramentService } from '../../services/sacrament.service';
 import { Sacrament, SacramentType, SacramentCreateRequest, SacramentUpdateRequest } from '../../models/sacrament.model';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
-import { take, takeUntil } from 'rxjs';
+import { take, takeUntil, filter } from 'rxjs';
 import { Subject } from 'rxjs';
 import { Router } from '@angular/router';
 import { BCCService } from '@core/services/bcc.service';
@@ -258,6 +259,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
 
   // Form model - initialized from service
   formData: SacramentFormData = this.formService.initializeFormData();
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   constructor(
     private readonly sacramentService: SacramentService,
@@ -2647,9 +2649,14 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (!this.saving) {
       // Check if form has been modified
       if (this.hasUnsavedChanges()) {
-        if (confirm('You have unsaved changes. Are you sure you want to close? All changes will be lost.')) {
+        this.confirmationDialog.confirmDiscardChanges(
+          'You have unsaved changes. Are you sure you want to close? All changes will be lost.'
+        ).pipe(
+          filter((result) => result.confirmed),
+          take(1),
+        ).subscribe(() => {
           this.onCancel();
-        }
+        });
       } else {
         this.onCancel();
       }

@@ -49,6 +49,7 @@ module.exports = defineConfig([
       "@typescript-eslint/ban-ts-comment": "off",
       "@angular-eslint/no-output-native": "off",
       "@angular-eslint/no-empty-lifecycle-method": "off",
+      "no-restricted-globals": ["error", "confirm", "alert"],
     },
   },
   {

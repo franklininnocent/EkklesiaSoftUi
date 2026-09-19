@@ -16,6 +16,7 @@ export type SidebarNavIconId =
   | 'support'
   | 'support-center'
   | 'application-access'
+  | 'notifications'
   | 'settings';
 
 export interface SidebarNavNode {

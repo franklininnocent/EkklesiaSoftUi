@@ -90,6 +90,30 @@ export class AuthService {
     return this.deleteWithFallback<{ success: boolean; data: User; message: string }>('/profile-image');
   }
 
+  changePassword(payload: {
+    current_password: string;
+    password: string;
+    password_confirmation: string;
+  }): Observable<{ success: boolean; message: string; data: AuthResponse }> {
+    return this.postWithFallback<{ success: boolean; message: string; data: AuthResponse }>(
+      '/password/change',
+      payload
+    ).pipe(
+      tap((response) => {
+        if (response?.data?.access_token) {
+          localStorage.setItem(environment.tokenKey, response.data.access_token);
+          localStorage.setItem(environment.refreshTokenKey, response.data.refresh_token);
+          localStorage.setItem(environment.expiryTimeKey, response.data.expiry_time);
+        }
+      })
+    );
+  }
+
+  mustChangePassword(user?: User | null): boolean {
+    const subject = user ?? this.currentUserValue;
+    return !!subject?.force_password_change;
+  }
+
   getToken(): string | null {
     return localStorage.getItem(environment.tokenKey);
   }
@@ -600,6 +624,71 @@ export class AuthService {
     const hasRbacViewPermission = this.hasAnyPermission(['roles.view', 'permissions.view']);
 
     return isTenantAdmin || hasRbacViewPermission;
+  }
+
+  /**
+   * Settings → Forgot Password Requests (mirrors backend approver audience).
+   * Always evaluate the passed-in user (sidebar/store), not only currentUserValue.
+   */
+  canViewPasswordRecoveryRequests(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      // #region agent log
+      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'auth.service.ts:canViewPasswordRecoveryRequests',message:'no user',data:{result:false},timestamp:Date.now(),hypothesisId:'H1',runId:'post-fix'})}).catch(()=>{});
+      // #endregion
+      return false;
+    }
+
+    const isSuper = this.isSuperAdminUser(user);
+    const isPrimaryAdmin = !!user.tenant_id && !!user.is_primary_admin;
+    const hasRecoveryPerm = this.userHasAnyPermission(user, [
+      'password.recovery.requests.view',
+      'password.recovery.requests.process',
+    ]);
+    const result = isSuper || isPrimaryAdmin || hasRecoveryPerm;
+
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'auth.service.ts:canViewPasswordRecoveryRequests',message:'visibility eval',data:{result,isSuper,isPrimaryAdmin,hasRecoveryPerm,roleName:user.role_name,paramUserId:user.id,paramIsSuperAdmin:user.is_super_admin},timestamp:Date.now(),hypothesisId:'H1-H2',runId:'post-fix'})}).catch(()=>{});
+    try { sessionStorage.setItem('debug-forgot-nav', JSON.stringify({ result, isSuper, roleName: user.role_name })); } catch { /* ignore */ }
+    // #endregion
+
+    return result;
+  }
+
+  canProcessPasswordRecoveryRequests(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdminUser(user)) {
+      return true;
+    }
+
+    if (user.tenant_id && !!user.is_primary_admin) {
+      return true;
+    }
+
+    return this.userHasAnyPermission(user, ['password.recovery.requests.process']);
+  }
+
+  private isSuperAdminUser(user: User): boolean {
+    return (
+      user.is_super_admin === true ||
+      user.role_name === 'SuperAdmin' ||
+      user.role_name === 'Super Admin' ||
+      user.role?.name === 'SuperAdmin' ||
+      user.role?.name === 'Super Admin' ||
+      !!user.roles?.some((role) => role.name === 'SuperAdmin' || role.name === 'Super Admin')
+    );
+  }
+
+  private userHasAnyPermission(user: User, permissions: string[]): boolean {
+    if (!user.permissions?.length) {
+      return false;
+    }
+
+    return permissions.some((permission) =>
+      user.permissions!.some((entry) => entry.name === permission)
+    );
   }
 
   canManageRbac(user: User | null = this.currentUserValue): boolean {

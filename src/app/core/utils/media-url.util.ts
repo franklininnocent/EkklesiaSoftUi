@@ -9,6 +9,33 @@ export interface SignedMediaUrls {
   thumbUrl?: string | null;
 }
 
+/**
+ * Normalize signed media URLs for <img src> in the Angular app.
+ * Rewrites absolute API URLs (e.g. http://127.0.0.1:8000/api/...) to same-origin /api/... paths.
+ */
+export function resolveMediaDisplaySrc(url?: string | null): string | null {
+  if (!url?.trim()) {
+    return null;
+  }
+
+  const trimmed = url.trim();
+
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.pathname.startsWith('/api/')) {
+        return `${parsed.pathname}${parsed.search}`;
+      }
+    } catch {
+      return trimmed;
+    }
+
+    return trimmed;
+  }
+
+  return trimmed;
+}
+
 export function resolveSignedDisplayUrl(
   source?: { profile_image_full_url?: string | null; photo_url?: string | null; logo_full_url?: string | null; patron_image_url?: string | null } | null
 ): string | null {
@@ -19,7 +46,7 @@ export function resolveSignedDisplayUrl(
     source?.patron_image_url ??
     null;
 
-  return url && url.trim() ? url.trim() : null;
+  return resolveMediaDisplaySrc(url);
 }
 
 export function resolveSignedThumbUrl(

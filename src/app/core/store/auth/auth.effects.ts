@@ -34,14 +34,11 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(AuthActions.loginSuccess),
       tap((action) => {
-        console.log('🎉 Login successful! Redirecting to dashboard...');
-        console.log('📊 Token info:', {
-          user_id: action.response.user_id,
-          role_id: action.response.role_id,
-          expiry_time: action.response.expiry_time
-        });
-        // Navigate to dashboard
-        this.router.navigate(['/dashboard']);
+        if (action.response.force_password_change) {
+          this.router.navigate(['/profile'], { queryParams: { forcePassword: '1' } });
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
       }),
       map(() => AuthActions.loadUser())
     )
@@ -113,12 +110,11 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(AuthActions.loadUserSuccess),
       switchMap(({ user }) => {
-        // If user has tenant data, dispatch setCurrentTenant action
         if (user.tenant) {
           console.log('🏢 Dispatching setCurrentTenant:', user.tenant);
           return of(TenantActions.setCurrentTenant({ tenant: user.tenant }));
         }
-        return of(); // Return empty observable if no tenant
+        return of();
       })
     )
   );

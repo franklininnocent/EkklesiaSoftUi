@@ -25,6 +25,10 @@ export function buildAppSidebarSections(): SidebarNavSection[] {
           menuId: 'dashboard',
           exact: true,
         }),
+        leaf('notifications', 'Notifications', '/notifications', {
+          icon: 'notifications',
+          menuId: 'notifications',
+        }),
       ],
     },
     {

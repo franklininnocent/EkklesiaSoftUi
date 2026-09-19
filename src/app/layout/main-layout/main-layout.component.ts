@@ -25,6 +25,8 @@ import { SubscriptionAccessService } from '@core/services/subscription-access.se
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { SidebarNavForestComponent } from '../sidebar-nav/sidebar-nav-forest.component';
+import { NotificationBellComponent } from '@features/notifications/components/notification-bell/notification-bell.component';
+import { NotificationPopoverComponent } from '@features/notifications/components/notification-popover/notification-popover.component';
 import {
   buildAppSidebarSections,
   filterSidebarSections,
@@ -45,6 +47,8 @@ import { SidebarNavSection } from '../sidebar-nav/sidebar-nav.model';
     UserAvatarComponent,
     ImageViewerComponent,
     SidebarNavForestComponent,
+    NotificationBellComponent,
+    NotificationPopoverComponent,
   ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
@@ -81,16 +85,29 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Load user data if authenticated but user is not in store (e.g., after page refresh)
+    if (this.authService.isAuthenticated()) {
+      this.store.dispatch(AuthActions.loadUser());
+    }
+
     this.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
       this.currentUser = user;
       this.visibleSidebarSections = filterSidebarSections(
         this.sidebarSections,
         (menuId) => this.navMenu.isVisible(menuId as NavMenuId, user)
       );
-      if (!user && this.authService.isAuthenticated()) {
-        this.store.dispatch(AuthActions.loadUser());
-      }
+      const settingsSection = this.visibleSidebarSections.find((s) => s.id === 'settings');
+      const settingsChildLabels = settingsSection?.items[0]?.children?.map((c) => ({
+        id: c.id,
+        label: c.label,
+        menuId: c.menuId,
+      })) ?? [];
+      const forgotVisible = this.navMenu.isVisible(
+        'settings-forgot-password-requests' as NavMenuId,
+        user
+      );
+      // #region agent log
+      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'main-layout.component.ts:ngOnInit',message:'sidebar settings children',data:{forgotVisible,settingsChildCount:settingsChildLabels.length,settingsChildLabels,userId:user?.id,email:user?.email?.replace(/(.{2}).+(@.*)/,'$1***$2')},timestamp:Date.now(),hypothesisId:'H4-H5'})}).catch(()=>{});
+      // #endregion
       if (this.appContext.hasParishResourceContext(user)) {
         this.subscriptionAccess.ensureLoaded();
       } else {
@@ -261,6 +278,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     this.closeUserMenu();
     setTimeout(() => {
       this.router.navigate(['/profile']);
+    }, 100);
+  }
+
+  navigateToChangePassword(): void {
+    this.closeUserMenu();
+    setTimeout(() => {
+      this.router.navigate(['/profile'], { queryParams: { changePassword: '1' } });
     }, 100);
   }
 

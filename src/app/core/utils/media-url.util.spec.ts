@@ -1,4 +1,9 @@
-import { resolveSignedDisplayUrl, validateMediaImageFile, MEDIA_IMAGE_MAX_BYTES_DEFAULT } from './media-url.util';
+import {
+  resolveMediaDisplaySrc,
+  resolveSignedDisplayUrl,
+  validateMediaImageFile,
+  MEDIA_IMAGE_MAX_BYTES_DEFAULT,
+} from './media-url.util';
 
 describe('media-url.util', () => {
   it('resolves signed display urls from known fields', () => {
@@ -6,6 +11,17 @@ describe('media-url.util', () => {
       .toBe('https://signed.example/a.webp');
     expect(resolveSignedDisplayUrl({ logo_full_url: 'https://signed.example/logo.webp' }))
       .toBe('https://signed.example/logo.webp');
+  });
+
+  it('rewrites absolute API media urls to same-origin /api paths', () => {
+    expect(
+      resolveMediaDisplaySrc(
+        'http://127.0.0.1:8000/api/tenant/media/serve?token=abc&signature=def'
+      )
+    ).toBe('/api/tenant/media/serve?token=abc&signature=def');
+    expect(resolveMediaDisplaySrc('/api/tenant/media/serve?token=abc')).toBe(
+      '/api/tenant/media/serve?token=abc'
+    );
   });
 
   it('validates supported image files', () => {

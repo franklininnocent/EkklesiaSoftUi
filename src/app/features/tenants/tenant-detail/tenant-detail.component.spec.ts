@@ -4,7 +4,10 @@ import { of, throwError } from 'rxjs';
 
 import { TenantDetailComponent } from './tenant-detail.component';
 import { TenantService } from '@core/services/tenant.service';
+import { ArchdioceseService } from '@core/services/church/archdiocese.service';
+import { DenominationService } from '@core/services/church/denomination.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { TenantDetailsSnapshot } from '@core/models/tenant.model';
 
 const mockSnapshot: TenantDetailsSnapshot = {
@@ -97,7 +100,8 @@ const mockSnapshot: TenantDetailsSnapshot = {
 describe('TenantDetailComponent', () => {
   let component: TenantDetailComponent;
   let fixture: ComponentFixture<TenantDetailComponent>;
-  let tenantService: jest.Mocked<Pick<TenantService, 'getTenantDetails' | 'getSubscriptionPlans' | 'getSubscriptionAudits'>>;
+  let tenantService: jest.Mocked<Pick<TenantService, 'getTenantDetails' | 'getSubscriptionPlans' | 'getSubscriptionAudits' | 'updateTenant' | 'updateTenantStatus' | 'deleteLogo'>>;
+  let confirmationDialog: jest.Mocked<Pick<ConfirmationDialogService, 'confirmDeactivate' | 'confirmActivate' | 'confirm'>>;
 
   beforeEach(async () => {
     tenantService = {
@@ -112,13 +116,31 @@ describe('TenantDetailComponent', () => {
         data: [],
         pagination: { current_page: 1, last_page: 1, total: 0 },
       })),
+      updateTenant: jest.fn().mockReturnValue(of({ success: true, data: { id: 47, name: 'Updated Parish' } })),
+      updateTenantStatus: jest.fn().mockReturnValue(of({ success: true })),
+      deleteLogo: jest.fn().mockReturnValue(of({ success: true })),
+    };
+
+    confirmationDialog = {
+      confirmDeactivate: jest.fn().mockReturnValue(of({ confirmed: true })),
+      confirmActivate: jest.fn().mockReturnValue(of({ confirmed: true })),
+      confirm: jest.fn().mockReturnValue(of({ confirmed: true })),
     };
 
     await TestBed.configureTestingModule({
       imports: [TenantDetailComponent],
       providers: [
         { provide: TenantService, useValue: tenantService },
+        { provide: ConfirmationDialogService, useValue: confirmationDialog },
         { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn() } },
+        {
+          provide: ArchdioceseService,
+          useValue: { getArchdioceses: jest.fn(() => of({ success: true, data: [{ id: 12, name: 'Test Diocese', code: 'test', active: 1 }] })) },
+        },
+        {
+          provide: DenominationService,
+          useValue: { getDenominations: jest.fn(() => of({ success: true, data: [{ id: 1, name: 'Catholic', code: 'catholic', active: 1, display_order: 1 }] })) },
+        },
         {
           provide: ActivatedRoute,
           useValue: {
@@ -167,5 +189,38 @@ describe('TenantDetailComponent', () => {
     tenantService.getTenantDetails.mockClear();
     component.loadDetails();
     expect(tenantService.getTenantDetails).toHaveBeenCalledWith(47);
+  });
+
+  it('toggleTenantStatus opens confirmation before deactivating', () => {
+    component.tenantId = 47;
+    component.toggleTenantStatus();
+    expect(confirmationDialog.confirmDeactivate).toHaveBeenCalledWith('Tenant');
+    expect(tenantService.updateTenantStatus).toHaveBeenCalledWith(47, 0);
+  });
+
+  it('deleteLogo opens confirmation before removing logo', () => {
+    component.tenantId = 47;
+    component.deleteLogo();
+    expect(confirmationDialog.confirm).toHaveBeenCalled();
+    expect(tenantService.deleteLogo).toHaveBeenCalledWith(47);
+  });
+
+  it('saveTenant sends tenant_name not name', () => {
+    component.tenant = { id: 47, name: 'St. Mary Parish' } as any;
+    component.tenantId = 47;
+    component.editForm = { name: 'Updated Parish Name', slogan: 'Faith', domain: 'example.test' };
+    component.editDenominationId = 1;
+    component.editArchdioceseId = 12;
+    component.editWebsite = 'sacredheart.org';
+    component.saveTenant();
+
+    expect(tenantService.updateTenant).toHaveBeenCalledWith(47, {
+      tenant_name: 'Updated Parish Name',
+      slogan: 'Faith',
+      domain: 'example.test',
+      denomination_id: 1,
+      archdiocese_id: 12,
+      website: 'https://sacredheart.org',
+    });
   });
 });

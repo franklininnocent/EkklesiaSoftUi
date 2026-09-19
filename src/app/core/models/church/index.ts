@@ -250,6 +250,30 @@ export interface UpdateChurchProfileRequest {
   patron_name?: string;
 }
 
+export type ChurchStatusMetricStatus = 'available' | 'unavailable';
+
+export interface ChurchStatusMetric {
+  key: string;
+  label: string;
+  status: ChurchStatusMetricStatus;
+  percent: number | null;
+  display: string;
+  tooltip: string;
+  summary?: string;
+  empty_message?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface ChurchStatusMetrics {
+  membership_health: ChurchStatusMetric;
+  sacramental_records: ChurchStatusMetric;
+  volunteer_engagement: ChurchStatusMetric;
+  profile_completeness: ChurchStatusMetric;
+  generated_at: string;
+}
+
+export type ChurchStatusMetricsResponse = ChurchDataResponse<ChurchStatusMetrics>;
+
 /**
  * Pope Details Model
  * Represents global Pope information for display in General Information section.

@@ -17,6 +17,38 @@
   gap: 1rem;
 }
 
+.clg__header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  justify-content: flex-end;
+}
+
+.clg__manage-roles-table-wrap {
+  overflow-x: auto;
+}
+
+.clg__manage-roles-table {
+  width: 100%;
+}
+
+.clg__manage-roles-select {
+  width: 100%;
+  min-width: 11rem;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid var(--cf-border, #cbd5e1);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  background: #fff;
+}
+
+.clg__manage-roles-action {
+  width: 6rem;
+  text-align: right;
+  white-space: nowrap;
+}
+
 .clg__title {
   margin: 0;
   font-size: var(--cf-text-page-title, 1.25rem);

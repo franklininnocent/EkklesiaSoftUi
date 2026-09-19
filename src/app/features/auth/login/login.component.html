@@ -1,61 +1,119 @@
 <div class="auth-container">
   <div class="auth-box">
     <div class="auth-header">
-      <h1 class="auth-title">Welcome to Ekklesia Soft</h1>
-      <p class="auth-subtitle">Sign in to your account to continue</p>
+      <h1 class="auth-title">Welcome to EkklesiaSoft</h1>
+      <p class="auth-subtitle" *ngIf="viewState === 'LOGIN'">Sign in to your account to continue</p>
+      <p class="auth-subtitle" *ngIf="viewState === 'FORGOT_EMAIL'">Forgot Password</p>
+      <p class="auth-subtitle" *ngIf="viewState === 'FORGOT_SUCCESS'">Request Submitted</p>
     </div>
 
     <app-card>
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-        <div class="form-group">
-          <app-input
-            type="email"
-            label="Email Address"
-            placeholder="Enter your email"
-            formControlName="email"
-            [error]="getErrorMessage('email')"
-            [required]="true"
-            aria-label="Email address"
-            aria-describedby="email-error"
-          ></app-input>
-        </div>
+      <ng-container *ngIf="viewState === 'LOGIN'">
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+          <div class="form-group">
+            <app-input
+              type="email"
+              label="Email Address"
+              placeholder="Enter your email"
+              formControlName="email"
+              [error]="getErrorMessage('email')"
+              [required]="true"
+              aria-label="Email address"
+            ></app-input>
+          </div>
 
-        <div class="form-group">
-          <app-input
-            type="password"
-            label="Password"
-            placeholder="Enter your password"
-            formControlName="password"
-            [error]="getErrorMessage('password')"
-            [required]="true"
-            aria-label="Password"
-            aria-describedby="password-error"
-          ></app-input>
-        </div>
+          <div class="form-group">
+            <app-input
+              type="password"
+              label="Password"
+              placeholder="Enter your password"
+              formControlName="password"
+              [error]="getErrorMessage('password')"
+              [required]="true"
+              aria-label="Password"
+            ></app-input>
+          </div>
 
-        <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
-          {{ error }}
-        </div>
+          <div class="forgot-password-row">
+            <button type="button" class="auth-link auth-link-button" (click)="showForgotPassword()">
+              Forgot Password?
+            </button>
+          </div>
+
+          <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
+            {{ error }}
+          </div>
+
+          <app-button
+            type="submit"
+            variant="primary"
+            size="lg"
+            [fullWidth]="true"
+            [loading]="(loading$ | async) ?? false"
+            aria-label="Sign in to your account"
+          >
+            Sign In
+          </app-button>
+        </form>
+      </ng-container>
+
+      <ng-container *ngIf="viewState === 'FORGOT_EMAIL'">
+        <form [formGroup]="forgotEmailForm" (ngSubmit)="submitForgotEmail()">
+          <p class="auth-description">
+            Enter the email address associated with your account.
+          </p>
+
+          <div class="form-group">
+            <app-input
+              type="email"
+              label="Email Address"
+              placeholder="Enter your email"
+              formControlName="email"
+              [error]="getForgotEmailError()"
+              [required]="true"
+              aria-label="Email address for password recovery"
+            ></app-input>
+          </div>
+
+          <div *ngIf="recoveryError" class="error-banner" role="alert" aria-live="polite">
+            {{ recoveryError }}
+          </div>
+
+          <app-button
+            type="submit"
+            variant="primary"
+            size="lg"
+            [fullWidth]="true"
+            [loading]="recoveryLoading"
+            aria-label="Submit password recovery request"
+          >
+            Submit Request
+          </app-button>
+
+          <div class="auth-footer">
+            <button type="button" class="auth-link auth-link-button" (click)="backToLogin()">
+              Back to Login
+            </button>
+          </div>
+        </form>
+      </ng-container>
+
+      <ng-container *ngIf="viewState === 'FORGOT_SUCCESS'">
+        <p class="auth-description" role="status">
+          {{ recoveryMessage }}
+        </p>
 
         <app-button
-          type="submit"
+          type="button"
           variant="primary"
           size="lg"
           [fullWidth]="true"
-          [loading]="(loading$ | async) ?? false"
-          aria-label="Sign in to your account"
+          (clicked)="backToLogin()"
+          aria-label="Return to login"
         >
-          Sign In
+          Back to Login
         </app-button>
-
-        <!--<div class="auth-footer">
-          <p>
-            Don't have an account?
-            <a routerLink="/auth/register" class="auth-link">Sign up</a>
-          </p>
-        </div>-->
-      </form>
+      </ng-container>
     </app-card>
   </div>
 </div>
-

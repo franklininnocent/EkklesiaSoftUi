@@ -43,6 +43,7 @@ import {
 } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { resolveMediaDisplaySrc } from '@core/utils/media-url.util';
 
 export type TenantListView = 'table' | 'card';
 
@@ -511,11 +512,27 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
+  onCreateTriggerClick(event: Event): void {
+    const target = event.target as HTMLElement | null;
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'A',location:'tenant-manager.ts:onCreateTriggerClick',message:'Add tenant click area hit',data:{loading:this.loading(),targetTag:target?.tagName||null,targetDisabled:(target as HTMLButtonElement)?.disabled??null,showCreateModal:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
+  }
+
   openCreateModal(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'A',location:'tenant-manager.ts:openCreateModal',message:'openCreateModal invoked',data:{loading:this.loading(),loaded:this.loaded(),showCreateModalBefore:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     this.showCreateModal.set(true);
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'B',location:'tenant-manager.ts:openCreateModal:afterSet',message:'showCreateModal after set(true)',data:{showCreateModal:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
   }
 
   closeCreateModal(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'C',location:'tenant-manager.ts:closeCreateModal',message:'closeCreateModal invoked',data:{showCreateModalBefore:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
     this.showCreateModal.set(false);
   }
 
@@ -724,16 +741,7 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   }
 
   getTenantLogoUrl(logoUrl: string): string {
-    if (!logoUrl?.trim()) {
-      return '';
-    }
-
-    const trimmed = logoUrl.trim();
-    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-      return trimmed;
-    }
-
-    return '';
+    return resolveMediaDisplaySrc(logoUrl) ?? '';
   }
 
   onLogoError(event: Event): void {

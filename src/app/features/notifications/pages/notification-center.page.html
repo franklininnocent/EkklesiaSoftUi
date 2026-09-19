@@ -1,0 +1,111 @@
+<section class="notification-center cf-page">
+  <app-page-header title="Notifications" subtitle="Stay on top of what needs your attention.">
+    <app-list-toolbar
+      searchPlaceholder="Search notifications…"
+      [searchValue]="search"
+      [showFilters]="false"
+      (searchChange)="onSearchChange($event)"
+    >
+      @if (inbox.unreadCount() > 0) {
+        <button type="button" class="cf-btn cf-btn-ghost" (click)="markAllRead()">Mark all read</button>
+      }
+      <a routerLink="/settings/notifications" class="cf-btn cf-btn-ghost">Preferences</a>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <app-tab-strip
+    [tabs]="tabItems"
+    [activeId]="activeView()"
+    mode="inpage"
+    ariaLabel="Notification views"
+    (tabChange)="onTabChange($event)"
+  ></app-tab-strip>
+
+  @if (selectionCount() > 0) {
+    <div class="cf-decision-strip notification-center__bulk" role="region" aria-label="Bulk actions">
+      <div class="cf-decision-strip__copy">
+        <strong>{{ selectionCount() }} selected</strong>
+        <span>Choose an action for the selected notifications.</span>
+      </div>
+      <div class="cf-decision-strip__actions">
+        <button type="button" class="cf-btn cf-btn-ghost" [disabled]="bulkWorking()" (click)="bulkMarkRead()">
+          Mark read
+        </button>
+        @if (activeView() !== 'archived') {
+          <button type="button" class="cf-btn cf-btn-ghost" [disabled]="bulkWorking()" (click)="bulkArchive()">
+            Archive
+          </button>
+        }
+        <button type="button" class="cf-btn-text" (click)="clearSelection()">Clear</button>
+      </div>
+    </div>
+  }
+
+  <div
+    id="notif-panel"
+    role="tabpanel"
+    [attr.aria-labelledby]="tabDomId(activeView())"
+    class="notification-center__panel"
+  >
+    @if (loading()) {
+      <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+        <p class="cf-loading-block__label">Loading notifications…</p>
+        <app-loading-skeleton type="list" [rows]="6"></app-loading-skeleton>
+      </div>
+    } @else if (error()) {
+      <div class="cf-inline-alert cf-panel" role="alert">
+        <p>{{ error() }}</p>
+        <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+      </div>
+    } @else if (!items().length) {
+      <app-cf-empty-state [title]="emptyTitle()" [description]="emptyDescription()"></app-cf-empty-state>
+    } @else {
+      <div class="cf-panel notification-center__workspace">
+        <div class="notification-center__select-all">
+          <label>
+            <input
+              type="checkbox"
+              [checked]="allVisibleSelected()"
+              (change)="toggleSelectAll($any($event.target).checked)"
+            />
+            <span>Select all on this page</span>
+          </label>
+        </div>
+
+        @for (group of groupedItems(); track group.group) {
+          <section class="notification-center__group" [attr.aria-label]="groupLabel(group.group)">
+            <h2 class="notification-center__group-title">{{ groupLabel(group.group) }}</h2>
+            <ul class="notification-center__list" role="list">
+              @for (item of group.items; track item.id) {
+                <li>
+                  <app-notification-list-item
+                    [item]="item"
+                    variant="workspace"
+                    [selectable]="true"
+                    [selected]="selectedIds().has(item.id)"
+                    [detailLink]="'/notifications/' + item.id"
+                    (selectionChange)="toggleSelect(item.id, $event)"
+                    (markRead)="markItemRead($event)"
+                  ></app-notification-list-item>
+                </li>
+              }
+            </ul>
+          </section>
+        }
+
+        @if (hasMore()) {
+          <div class="notification-center__more">
+            <button
+              type="button"
+              class="cf-btn cf-btn-ghost"
+              [disabled]="loadingMore()"
+              (click)="loadMore()"
+            >
+              {{ loadingMore() ? 'Loading…' : 'Load more' }}
+            </button>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</section>

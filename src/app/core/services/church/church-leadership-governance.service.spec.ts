@@ -59,6 +59,21 @@ describe('ChurchLeadershipGovernanceService', () => {
     req.flush({ success: true, data: { id: 'assignment-1' } });
   });
 
+  it('updates a custom role category', () => {
+    service.updateRole('role-1', { category: 'PARISH_COUNCIL' }).subscribe((response) => {
+      expect(response.success).toBe(true);
+      expect(response.data.category).toBe('PARISH_COUNCIL');
+    });
+
+    const req = httpMock.expectOne(`${baseUrl}/roles/role-1`);
+    expect(req.request.method).toBe('PUT');
+    expect(req.request.body).toEqual({ category: 'PARISH_COUNCIL' });
+    req.flush({
+      success: true,
+      data: { id: 'role-1', title: 'Secretary', category: 'PARISH_COUNCIL', category_label: 'Parish Councils' },
+    });
+  });
+
   it('terminates an assignment', () => {
     service.terminate('assignment-1', {
       end_date: '2026-08-31',

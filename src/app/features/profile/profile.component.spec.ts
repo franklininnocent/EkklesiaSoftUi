@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { NO_ERRORS_SCHEMA } from '@angular/core';
+import { ActivatedRoute, convertToParamMap } from '@angular/router';
 import { provideMockStore, MockStore } from '@ngrx/store/testing';
 import { of, throwError } from 'rxjs';
 import { ProfileComponent } from './profile.component';
@@ -73,6 +74,10 @@ describe('ProfileComponent', () => {
         }),
         { provide: AuthService, useValue: authStub },
         { provide: ToastService, useValue: toastStub },
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap: of(convertToParamMap({})) },
+        },
       ],
       schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();

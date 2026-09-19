@@ -1,0 +1,97 @@
+<div class="lrc" [class.lrc--invalid]="invalid" [class.lrc--open]="panelOpen">
+  <button
+    type="button"
+    class="lrc__trigger"
+    [id]="inputId"
+    (click)="togglePanel()"
+    [disabled]="disabled"
+    role="combobox"
+    aria-haspopup="listbox"
+    [attr.aria-expanded]="panelOpen"
+    [attr.aria-controls]="inputId + '_listbox'"
+    [attr.aria-required]="true"
+  >
+    <span class="lrc__trigger-value" [class.lrc__trigger-value--placeholder]="!selectedRole">
+      {{ displayLabel }}
+    </span>
+    <span class="lrc__trigger-chevron" aria-hidden="true">▼</span>
+  </button>
+
+  <div class="lrc__panel" *ngIf="panelOpen" (keydown)="onPanelKeydown($event)">
+    <div class="lrc__search-wrap">
+      <input
+        #searchInput
+        type="search"
+        class="lrc__search"
+        [(ngModel)]="searchQuery"
+        (ngModelChange)="onSearchChange()"
+        placeholder="Search roles..."
+        [attr.aria-label]="'Search leadership roles'"
+        autocomplete="off"
+      />
+    </div>
+
+    <div
+      class="lrc__results"
+      role="listbox"
+      [id]="inputId + '_listbox'"
+      [attr.aria-label]="'Leadership roles'"
+    >
+      <ng-container *ngIf="hasVisibleResults; else noMatches">
+        <section class="lrc__group" *ngFor="let group of groupedRoles; let lastGroup = last">
+          <p class="lrc__group-label">{{ group.label }}</p>
+          <button
+            type="button"
+            class="lrc__option"
+            *ngFor="let role of group.roles"
+            role="option"
+            [class.is-highlighted]="isHighlighted(role)"
+            [class.is-selected]="value === role.id"
+            [attr.aria-selected]="value === role.id"
+            (mousedown)="selectRole(role, $event)"
+            (mouseenter)="highlightRole(role)"
+          >
+            <span class="lrc__option-check" *ngIf="value === role.id" aria-hidden="true">✓</span>
+            <span>{{ role.title }}</span>
+          </button>
+          <div class="lrc__divider" *ngIf="!lastGroup || showCreateAction" aria-hidden="true"></div>
+        </section>
+      </ng-container>
+
+      <ng-template #noMatches>
+        <p class="lrc__empty">No matching roles</p>
+        <div class="lrc__divider" *ngIf="showCreateAction" aria-hidden="true"></div>
+      </ng-template>
+
+      <div *ngIf="showCreateAction" class="lrc__create-wrap">
+        <label class="lrc__create-category" [attr.for]="inputId + '_create_category'">
+          <span class="lrc__create-category-label">Category</span>
+          <select
+            [id]="inputId + '_create_category'"
+            class="lrc__create-category-select"
+            [(ngModel)]="createCategory"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onCreateCategoryChange()"
+            [disabled]="creating"
+          >
+            <option *ngFor="let option of categoryOptions" [ngValue]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+        </label>
+        <button
+          type="button"
+          class="lrc__create"
+          [class.is-highlighted]="isCreateHighlighted()"
+          [disabled]="creating"
+          (mousedown)="createCustomRole($event)"
+          (mouseenter)="highlightCreateAction()"
+        >
+          <span class="lrc__create-icon" aria-hidden="true">+</span>
+          <span>{{ createActionLabel }}</span>
+          <span class="lrc__create-loading" *ngIf="creating">…</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
