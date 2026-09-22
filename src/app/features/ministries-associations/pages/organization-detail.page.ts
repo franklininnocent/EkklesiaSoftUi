@@ -108,7 +108,6 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly cdr = inject(ChangeDetectorRef);
 
-  readonly tabs = ORGANIZATION_TABS;
   readonly tabLabels = TAB_LABELS;
   readonly profileDirectionItems = PROFILE_DIRECTION_ITEMS;
   readonly profileDirectionPanelId = 'org-profile-direction-panel';
@@ -140,8 +139,16 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
 
   readonly form = createOrganizationFormGroup(this.fb);
 
+  get visibleTabs(): OrganizationTab[] {
+    if (this.authService.canViewTenantAuditLogs()) {
+      return ORGANIZATION_TABS;
+    }
+
+    return ORGANIZATION_TABS.filter((tab) => tab !== 'audit');
+  }
+
   get tabStripItems(): TabStripItem[] {
-    return this.tabs.map((tab) => ({
+    return this.visibleTabs.map((tab) => ({
       id: tab,
       label: this.tabLabels[tab],
       domId: this.tabId(tab),
@@ -558,8 +565,9 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
   }
 
   private applyTabFromQuery(tab: string | null): void {
+    const allowedTabs = this.visibleTabs;
     const next: OrganizationTab =
-      tab && ORGANIZATION_TABS.includes(tab as OrganizationTab)
+      tab && allowedTabs.includes(tab as OrganizationTab)
         ? (tab as OrganizationTab)
         : 'profile';
 

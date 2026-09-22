@@ -44,7 +44,9 @@ import { PhoneCodeService } from '@core/services/phone-code.service';
 import { AuthService } from '@core/services/auth.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { SacramentService } from '@features/settings/sacraments/services/sacrament.service';
+import { ParishPersonService } from '@features/settings/sacraments/services/person.service';
 import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
+import { findFamilyMemberIndexByPersonId } from '../../utils/member-parent-display.util';
 
 type FamilyWorkspaceView = 'members' | 'financial' | 'history';
 
@@ -156,6 +158,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
     private donationsService: DonationsService,
     private authService: AuthService,
     private sacramentService: SacramentService,
+    private personService: ParishPersonService,
     private pastoralCareService: PastoralCareService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -1207,10 +1210,70 @@ export class FamilyDetail implements OnInit, OnDestroy {
   onNavigatorSelectMember(index: number): void {
     const member = this.family?.members?.[index];
     if (member?.id) {
-      this.selectedMemberId = member.id;
-      this.loadMemberRegisterSacraments();
-      this.cdr.markForCheck();
+      this.selectMemberById(member.id);
     }
+  }
+
+  onLinkedParentSelected(personId: string): void {
+    const trimmedPersonId = String(personId || '').trim();
+    if (!trimmedPersonId || !this.family?.members?.length) {
+      return;
+    }
+
+    const localIndex = findFamilyMemberIndexByPersonId(this.family.members, trimmedPersonId);
+    if (localIndex !== null) {
+      this.onNavigatorSelectMember(localIndex);
+      return;
+    }
+
+    this.personService
+      .get(trimmedPersonId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const linkedMember = response.data?.active_family_member;
+          if (!linkedMember?.id || !linkedMember.family_id) {
+            this.toastService.warning(
+              'This person is not linked to an active family member record.',
+              'Cannot open profile',
+              5000,
+            );
+            return;
+          }
+
+          if (linkedMember.family_id === this.family?.id) {
+            this.selectMemberById(linkedMember.id);
+            return;
+          }
+
+          void this.router.navigate(['/families', linkedMember.family_id], {
+            queryParams: { member: linkedMember.id },
+          });
+        },
+        error: () => {
+          this.toastService.error('Could not open the linked family member.', 'Error', 5000);
+        },
+      });
+  }
+
+  private selectMemberById(memberId: string): void {
+    if (!this.family?.members?.some((member) => member.id === memberId)) {
+      return;
+    }
+
+    if (this.workspaceView !== 'members') {
+      this.workspaceView = 'members';
+    }
+
+    this.selectedMemberId = memberId;
+    this.loadMemberRegisterSacraments();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { member: memberId, tab: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.cdr.markForCheck();
   }
 
   private loadMemberRegisterSacraments(): void {
@@ -1603,6 +1666,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
     return {
       // CRITICAL: Keep ID as string (UUID), don't convert to Number
       id: m.id ? String(m.id).trim() : null,
+      person_id: m.person_id ? String(m.person_id).trim() : (m.person?.id ? String(m.person.id).trim() : null),
       first_name: m.first_name || '',
       middle_name: m.middle_name || '',
       last_name: m.last_name || '',
@@ -1614,6 +1678,10 @@ export class FamilyDetail implements OnInit, OnDestroy {
       email: m.email || '',
       occupation: m.occupation || '',
       education: m.education || '',
+      father_person_id: m.person?.father_person_id ?? m.father_person_id ?? null,
+      father_name: m.display_father_name ?? m.father_name ?? m.person?.father_name ?? null,
+      mother_person_id: m.person?.mother_person_id ?? m.mother_person_id ?? null,
+      mother_name: m.display_mother_name ?? m.mother_name ?? m.person?.mother_name ?? null,
       baptism_date: m.baptism_date || '',
       first_communion_date: m.first_communion_date || '',
       confirmation_date: m.confirmation_date || '',

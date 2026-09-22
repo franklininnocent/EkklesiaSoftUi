@@ -9,11 +9,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable, Subject, of } from 'rxjs';
-import { catchError, distinctUntilChanged, filter, map, take, takeUntil } from 'rxjs/operators';
+import { catchError, distinctUntilChanged, filter, map, switchMap, take, takeUntil } from 'rxjs/operators';
 
 import { AppState } from '@core/store';
 import { User } from '@core/models';
-import { BCC, BCCStatistics, FamilyMember } from '@core/models/family.model';
+import { BCC, BCCStatistics, FamilyStatistics } from '@core/models/family.model';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { FamilyService } from '@core/services/family.service';
 import { BCCService } from '@core/services/bcc.service';
@@ -48,46 +49,28 @@ interface HeroKpi {
   sparkline: number[];
 }
 
-interface ScheduleItem {
-  time: string;
-  title: string;
-  detail: string;
-  status: 'confirmed' | 'pending' | 'action';
-  category: 'service' | 'volunteer' | 'facility';
-}
-
-interface VolunteerShift {
-  team: string;
-  filled: number;
-  required: number;
-  status: 'healthy' | 'watch' | 'critical';
-}
-
 interface LifeGroupMetric {
   label: string;
   value: string;
   detail: string;
 }
 
-interface GivingChannel {
+export type FinancialHubState = 'unauthorized' | 'loading' | 'ready' | 'error';
+export type DataLoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+interface GivingChannelRow {
   channel: string;
   amount: string;
   share: number;
 }
 
-interface GivingSummary {
-  weekly: string;
-  monthly: string;
-  budgetGoal: string;
-  budgetPercent: number;
-  recurringEnrollment: string;
-  recurringTrend: 'up' | 'down';
-}
-
-interface ChartMonth {
-  month: string;
-  giving: number;
-}
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  bank_transfer: 'Bank transfer',
+  cheque: 'Cheque',
+  online_placeholder: 'Online',
+  adjustment: 'Adjustment',
+};
 
 interface BccHighlight {
   id: string;
@@ -139,6 +122,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private donationsService = inject(DonationsService);
   private pastoralCare = inject(PastoralCareService);
   private ministriesApi = inject(MinistriesApiService);
+  private subscriptionAccess = inject(SubscriptionAccessService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
@@ -146,106 +130,21 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   currentUser$: Observable<User | null>;
   today = new Date();
-  searchQuery = '';
-  readonly maxGiving = 180;
   readonly chartBarMaxHeightPx = 140;
 
-  heroKpis: HeroKpi[] = [
-    {
-      id: 'visitors',
-      label: 'New Visitors',
-      value: '47',
-      sublabel: 'This month · 68% assimilation rate',
-      change: '+12%',
-      trend: 'up',
-      accent: 'indigo',
-      sparkline: [28, 31, 35, 38, 41, 44, 47]
-    },
-    {
-      id: 'volunteers',
-      label: 'Sunday Volunteer Readiness',
-      value: '78%',
-      sublabel: 'Next service · 9:00 AM',
-      change: '-6%',
-      trend: 'down',
-      accent: 'amber',
-      sparkline: [92, 88, 85, 84, 82, 80, 78]
-    },
-    {
-      id: 'tithes',
-      label: 'Weekly Tithes',
-      value: '$42,850',
-      sublabel: 'vs. $45,000 budget goal',
-      change: '+3.8%',
-      trend: 'up',
-      accent: 'forest',
-      sparkline: [38200, 39500, 40100, 41200, 41800, 42100, 42850]
-    }
-  ];
-
-  growthMetrics = {
-    newMembers: 34,
-    assimilationRate: 68,
-    visitorsToActive: 23
-  };
+  heroKpis: HeroKpi[] = [];
+  registryState: DataLoadState = 'idle';
+  bccStatsState: DataLoadState = 'idle';
+  familyStats: FamilyStatistics | null = null;
+  activeFamilies = 0;
+  activeMembers = 0;
+  membersCreatedThisMonth = 0;
+  familiesWithoutBcc = 0;
 
   lifeGroups: LifeGroupMetric[] = [
-    { label: 'Active BCCs', value: '—', detail: 'Loading group count...' },
-    { label: 'Utilization', value: '—', detail: 'Families placed in BCCs' },
-    { label: 'BCC Leaders', value: '—', detail: 'Leaders serving groups' }
-  ];
-
-  todaySchedule: ScheduleItem[] = [
-    {
-      time: '7:30 AM',
-      title: 'Media Team Check-in',
-      detail: 'Main Sanctuary · Lead: David Okonkwo',
-      status: 'confirmed',
-      category: 'volunteer'
-    },
-    {
-      time: '8:15 AM',
-      title: 'Kids Ministry Briefing',
-      detail: 'Building B · 4 volunteers still unconfirmed',
-      status: 'action',
-      category: 'volunteer'
-    },
-    {
-      time: '9:00 AM',
-      title: 'Sunday Morning Service',
-      detail: 'Main Sanctuary · Worship + Message',
-      status: 'confirmed',
-      category: 'service'
-    },
-    {
-      time: '10:45 AM',
-      title: 'Second Service Overflow',
-      detail: 'Fellowship Hall streaming feed',
-      status: 'pending',
-      category: 'service'
-    },
-    {
-      time: '12:30 PM',
-      title: 'Youth Wing Booking',
-      detail: 'New Members Lunch · 86 registered',
-      status: 'confirmed',
-      category: 'facility'
-    },
-    {
-      time: '4:00 PM',
-      title: 'Evening Prayer Gathering',
-      detail: 'Chapel · Pastor Elena Ramirez',
-      status: 'confirmed',
-      category: 'service'
-    }
-  ];
-
-  volunteerShifts: VolunteerShift[] = [
-    { team: 'Ushers & Greeters', filled: 18, required: 20, status: 'healthy' },
-    { team: 'Worship & Production', filled: 14, required: 14, status: 'healthy' },
-    { team: 'Kids Ministry', filled: 9, required: 15, status: 'critical' },
-    { team: 'Coffee & Hospitality', filled: 7, required: 10, status: 'watch' },
-    { team: 'Parking & Security', filled: 6, required: 8, status: 'watch' }
+    { label: 'Active BCCs', value: '—', detail: 'Loading group count…' },
+    { label: 'Family coverage', value: '—', detail: 'Families assigned to a Life Group' },
+    { label: 'BCC Leaders', value: '—', detail: 'Active BCC leaders across parish' }
   ];
 
   careAlerts: PastoralCareAlert[] = [];
@@ -258,31 +157,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   canAssignPastoral = false;
   pastoralLoaded = false;
   loadingPastoral = false;
+  pastoralError = false;
 
-  givingSummary: GivingSummary = {
-    weekly: '$42,850',
-    monthly: '$168,400',
-    budgetGoal: '$180,000',
-    budgetPercent: 94,
-    recurringEnrollment: '+18 new enrollments',
-    recurringTrend: 'up'
-  };
-
-  givingChannels: GivingChannel[] = [
-    { channel: 'Mobile App', amount: '$18,240', share: 43 },
-    { channel: 'Web Portal', amount: '$11,620', share: 27 },
-    { channel: 'Text-to-Give', amount: '$6,480', share: 15 },
-    { channel: 'Physical Plate', amount: '$6,510', share: 15 }
-  ];
-
-  givingTrendChart: ChartMonth[] = [
-    { month: 'Jan', giving: 148 },
-    { month: 'Feb', giving: 152 },
-    { month: 'Mar', giving: 158 },
-    { month: 'Apr', giving: 161 },
-    { month: 'May', giving: 165 },
-    { month: 'Jun', giving: 168 }
-  ];
+  financialHubState: FinancialHubState = 'unauthorized';
+  operationsSummary: OperationsDashboardSummary | null = null;
+  loadingFinancial = false;
 
   totalBCCs = 0;
   totalMembers = 0;
@@ -299,9 +178,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingBccDetails = false;
   loadingSacraments = false;
   loadingCelebrations = false;
-  operationsSummary: OperationsDashboardSummary | null = null;
-  loadingFinancial = false;
   canViewFinancial = false;
+
+  private readonly financialLoad$ = new Subject<void>();
 
   showMinistriesSection = false;
   loadingMinistries = false;
@@ -311,6 +190,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   canManageMembers = false;
   canManageLeadership = false;
   canConfigureTaxonomies = false;
+  canViewTenantAuditLogs = false;
 
   /** Dashboard v2.0 tab state — default Overview. */
   activeTab: DashboardTab = 'overview';
@@ -331,6 +211,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingMinistriesActivity = false;
   bccHighlightsError = false;
   celebrationsError = false;
+  celebrationsUnauthorized = false;
   sacramentsError = false;
   ministriesActivityError = false;
 
@@ -356,7 +237,8 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.weekRangeLabel = this.formatWeekRangeLabel();
+    this.weekRangeLabel = 'This week';
+    this.setupFinancialHubLoader();
 
     this.supportSessions.session$
       .pipe(
@@ -371,26 +253,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
         });
       });
 
-    this.store.select(selectCurrentUser).pipe(take(1), takeUntil(this.destroy$)).subscribe((user) => {
-      if (user?.tenant_id) {
-        this.tenantId = Number(user.tenant_id);
-      }
-      this.refreshDashboardAccess(user);
-      this.cdr.markForCheck();
-    });
+    // Wait for auth user (post-login store is briefly null until loadUserSuccess).
+    // Keep listening so late user hydration still triggers data loads without refresh.
+    this.store
+      .select(selectCurrentUser)
+      .pipe(
+        distinctUntilChanged(
+          (a, b) => a?.id === b?.id && a?.tenant_id === b?.tenant_id
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((user) => {
+        // #region agent log
+        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:ngOnInit',message:'dashboard user emission',data:{userPresent:!!user,userId:user?.id ?? null,tenantId:user?.tenant_id ?? null,href:location.href},hypothesisId:'H1',runId:'post-fix-v2',timestamp:Date.now()})}).catch(()=>{});
+        // #endregion
+        // Wait for hydrated user — a null emission must not wipe in-flight/loaded dashboard data.
+        if (!user) {
+          return;
+        }
+        if (user.tenant_id) {
+          this.tenantId = Number(user.tenant_id);
+        }
+        this.refreshDashboardAccess(user);
+        this.cdr.markForCheck();
+      });
   }
 
   private refreshDashboardAccess(user: User | null): void {
     const isTenantActor = !!user?.tenant_id && !this.authService.isPlatformActor(user);
+    const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
+    const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:refreshDashboardAccess',message:'refreshDashboardAccess',data:{userPresent:!!user,tenantId:user?.tenant_id ?? null,hasTenantContext,canDonations:hasTenantContext && this.authService.canAccessDonations(user,{hasActiveSupportSession}),willLoadStats:hasTenantContext},hypothesisId:'H1',runId:'post-fix-v2',timestamp:Date.now()})}).catch(()=>{});
+    // #endregion
 
-    if (isTenantActor) {
+    if (hasTenantContext) {
       this.loadFamilyStatistics();
       this.loadBccStatistics();
+    } else {
+      this.registryState = 'idle';
+      this.bccStatsState = 'idle';
+      this.rebuildHeroKpis();
     }
 
-    this.canViewFinancial = isTenantActor && this.authService.canAccessDonations(user);
+    this.canViewFinancial = hasTenantContext && this.authService.canAccessDonations(user, { hasActiveSupportSession });
     if (this.canViewFinancial) {
       this.loadOperationsDashboard();
+    } else {
+      this.financialHubState = 'unauthorized';
+      this.operationsSummary = null;
+      this.loadingFinancial = false;
+      this.rebuildHeroKpis();
     }
     this.canViewPastoral = isTenantActor && this.authService.canAccessPastoral(user);
     this.canAssignPastoral = this.authService.hasPermission('pastoral.care.assign');
@@ -466,6 +379,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
     if (
       this.showMinistriesSection &&
+      this.canViewTenantAuditLogs &&
       !this.ministriesActivityLoaded &&
       !this.loadingMinistriesActivity
     ) {
@@ -482,7 +396,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   retryMemberCelebrations(): void {
+    this.celebrationsLoaded = false;
     this.loadMemberCelebrations();
+  }
+
+  retryPastoralWorkflow(): void {
+    this.pastoralLoaded = false;
+    this.loadPastoralWorkflow();
   }
 
   retrySacramentDetails(): void {
@@ -502,72 +422,312 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   loadFamilyStatistics(): void {
+    this.registryState = 'loading';
+    this.rebuildHeroKpis();
+    this.cdr.markForCheck();
+
     this.familyService.getStatistics()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:loadFamilyStatistics',message:'family stats response',data:{success:!!response?.success,hasData:!!response?.data,totalFamilies:response?.data?.total_families ?? null},hypothesisId:'H1',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
           if (response.success && response.data) {
-            this.totalFamilies = response.data.total_families || 0;
-            this.totalMembers = response.data.total_members || 0;
-            if (this.totalMembers > 0) {
-              const assimilation = Math.min(95, Math.round((this.totalMembers / Math.max(this.totalMembers, 200)) * 68));
-              this.growthMetrics.newMembers = Math.max(this.growthMetrics.newMembers, Math.round(this.totalMembers * 0.024));
-              this.growthMetrics.assimilationRate = assimilation;
-              this.heroKpis[0].sublabel = `This month · ${assimilation}% assimilation rate`;
-            }
+            this.familyStats = response.data;
+            this.totalFamilies = response.data.total_families ?? 0;
+            this.totalMembers = response.data.total_members ?? 0;
+            this.activeFamilies = response.data.active_families ?? 0;
+            this.activeMembers = response.data.active_members ?? 0;
+            this.membersCreatedThisMonth = response.data.members_created_this_month ?? 0;
+            this.familiesWithoutBcc = response.data.families_without_bcc ?? 0;
+            this.registryState = 'ready';
+            this.updateLifeGroupCoverage();
+          } else {
+            this.registryState = 'error';
           }
+          this.rebuildHeroKpis();
           this.cdr.markForCheck();
         },
-        error: () => this.cdr.markForCheck()
+        error: (err) => {
+          // #region agent log
+          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:loadFamilyStatistics',message:'family stats error',data:{status:err?.status ?? null},hypothesisId:'H1',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          this.registryState = 'error';
+          this.rebuildHeroKpis();
+          this.cdr.markForCheck();
+        }
       });
   }
 
-  loadOperationsDashboard(): void {
-    this.loadingFinancial = true;
-    this.donationsService.getOperationsDashboard().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        this.operationsSummary = response.data ?? null;
-        this.applyFinancialSnapshot(this.operationsSummary);
-        this.loadingFinancial = false;
+  retryRegistry(): void {
+    this.loadFamilyStatistics();
+  }
+
+  private setupFinancialHubLoader(): void {
+    this.financialLoad$.pipe(
+      switchMap(() => {
+        this.loadingFinancial = true;
+        this.financialHubState = 'loading';
+        this.operationsSummary = null;
+        this.rebuildHeroKpis();
         this.cdr.markForCheck();
-      },
-      error: () => {
-        this.loadingFinancial = false;
+
+        return this.donationsService.getOperationsDashboard().pipe(
+          map((response) => ({ ok: true as const, data: response.data ?? null })),
+          catchError((error) => of({
+            ok: false as const,
+            status: error?.status ?? 0,
+          }))
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe((result) => {
+      this.loadingFinancial = false;
+
+      if (!result.ok) {
+        this.operationsSummary = null;
+        this.financialHubState = result.status === 403 ? 'unauthorized' : 'error';
+        this.rebuildHeroKpis();
         this.cdr.markForCheck();
+        return;
       }
+
+      if (!result.data?.financial) {
+        this.operationsSummary = null;
+        this.financialHubState = 'error';
+        this.rebuildHeroKpis();
+        this.cdr.markForCheck();
+        return;
+      }
+
+      this.operationsSummary = result.data;
+      this.financialHubState = 'ready';
+      this.applyFinancialSnapshot(result.data);
+      this.rebuildHeroKpis();
+      this.cdr.markForCheck();
     });
   }
 
-  private applyFinancialSnapshot(summary: OperationsDashboardSummary | null): void {
-    if (!summary?.financial) {
+  loadOperationsDashboard(): void {
+    if (!this.canViewFinancial) {
+      this.financialHubState = 'unauthorized';
       return;
     }
+    this.financialLoad$.next();
+  }
 
-    const monthCollected = summary.financial.totals?.current_month_collected ?? 0;
-    const outstanding = summary.financial.totals?.pending_dues ?? 0;
-    const health = summary.financial.health;
+  retryFinancialHub(): void {
+    this.loadOperationsDashboard();
+  }
 
-    this.heroKpis[2] = {
-      ...this.heroKpis[2],
-      label: 'Collections This Month',
-      value: this.formatCurrency(monthCollected),
-      sublabel: `${summary.financial.families?.participation_rate ?? 0}% family participation`,
-      change: health?.label ?? 'Live',
-      trend: health?.status === 'risk' ? 'down' : 'up'
-    };
+  private applyFinancialSnapshot(_summary: OperationsDashboardSummary): void {
+    // Hero KPIs rebuilt in rebuildHeroKpis() from operationsSummary.
+  }
 
-    this.givingSummary = {
-      weekly: this.formatCurrency(monthCollected * 0.25),
-      monthly: this.formatCurrency(monthCollected),
-      budgetGoal: this.formatCurrency(Math.max(monthCollected, outstanding + monthCollected)),
-      budgetPercent: monthCollected > 0 ? Math.min(100, Math.round((monthCollected / Math.max(outstanding + monthCollected, 1)) * 100)) : 0,
-      recurringEnrollment: `${summary.financial.attention_summary?.count ?? 0} families need follow-up`,
-      recurringTrend: (summary.financial.attention_summary?.count ?? 0) > 0 ? 'down' : 'up'
+  private rebuildHeroKpis(): void {
+    const kpis: HeroKpi[] = [];
+
+    if (this.registryState === 'loading' || this.registryState === 'idle') {
+      kpis.push(this.buildPlaceholderKpi('active-families', 'Active Families', 'indigo'));
+      kpis.push(this.buildPlaceholderKpi('active-members', 'Active Members', 'amber'));
+    } else if (this.registryState === 'error') {
+      kpis.push(this.buildErrorKpi('active-families', 'Active Families', 'indigo'));
+      kpis.push(this.buildErrorKpi('active-members', 'Active Members', 'amber'));
+    } else {
+      kpis.push({
+        id: 'active-families',
+        label: 'Active Families',
+        value: this.formatCompactNumber(this.activeFamilies),
+        sublabel: `${this.formatCompactNumber(this.totalFamilies)} total families`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'indigo',
+        sparkline: [],
+      });
+      kpis.push({
+        id: 'active-members',
+        label: 'Active Members',
+        value: this.formatCompactNumber(this.activeMembers),
+        sublabel: `${this.formatCompactNumber(this.totalMembers)} total members`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'amber',
+        sparkline: [],
+      });
+    }
+
+    if (this.canViewFinancial) {
+      if (this.financialHubState === 'loading') {
+        kpis.push(this.buildPlaceholderKpi('collections', 'Collections This Month', 'forest'));
+      } else if (this.financialHubState === 'ready' && this.operationsSummary?.financial) {
+        const financial = this.operationsSummary.financial;
+        const monthCollected = financial.totals?.current_month_collected ?? 0;
+        const mom = this.collectionTrendMom();
+        kpis.push({
+          id: 'collections',
+          label: 'Collections This Month',
+          value: this.formatCurrency(monthCollected),
+          sublabel: `${financial.families?.participation_rate ?? 0}% family participation`,
+          change: mom.change,
+          trend: mom.trend,
+          accent: 'forest',
+          sparkline: [],
+        });
+      }
+    }
+
+    this.heroKpis = kpis;
+  }
+
+  private buildPlaceholderKpi(
+    id: string,
+    label: string,
+    accent: HeroKpi['accent']
+  ): HeroKpi {
+    return {
+      id,
+      label,
+      value: '—',
+      sublabel: 'Loading…',
+      change: '—',
+      trend: 'neutral',
+      accent,
+      sparkline: [],
     };
   }
 
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
+  private buildErrorKpi(
+    id: string,
+    label: string,
+    accent: HeroKpi['accent']
+  ): HeroKpi {
+    return {
+      id,
+      label,
+      value: '—',
+      sublabel: 'Could not load',
+      change: '—',
+      trend: 'neutral',
+      accent,
+      sparkline: [],
+    };
+  }
+
+  private collectionTrendMom(): { change: string; trend: 'up' | 'down' | 'neutral' } {
+    const points = this.operationsSummary?.collection_trend ?? [];
+    if (points.length < 2) {
+      return { change: '—', trend: 'neutral' };
+    }
+
+    const current = Number(points[points.length - 1]?.collected ?? 0);
+    const previous = Number(points[points.length - 2]?.collected ?? 0);
+
+    if (previous === 0 && current === 0) {
+      return { change: '—', trend: 'neutral' };
+    }
+    if (previous === 0 && current > 0) {
+      return { change: '+100%', trend: 'up' };
+    }
+
+    const pct = ((current - previous) / previous) * 100;
+    const rounded = Math.round(pct);
+    return {
+      change: `${rounded >= 0 ? '+' : ''}${rounded}%`,
+      trend: rounded > 0 ? 'up' : rounded < 0 ? 'down' : 'neutral',
+    };
+  }
+
+  familyCoveragePercent(): number | null {
+    if (this.registryState !== 'ready' || !this.familyStats) {
+      return null;
+    }
+    const total = this.familyStats.total_families ?? 0;
+    if (total <= 0) {
+      return null;
+    }
+    const withBcc = this.familyStats.families_with_bcc ?? 0;
+    return Math.round((withBcc / total) * 100);
+  }
+
+  private updateLifeGroupCoverage(): void {
+    if (this.bccStatsState !== 'ready' || this.registryState !== 'ready') {
+      return;
+    }
+
+    const coverage = this.familyCoveragePercent();
+    if (coverage !== null) {
+      const assigned = this.familyStats?.families_with_bcc ?? 0;
+      const total = this.familyStats?.total_families ?? 0;
+      this.lifeGroups[1].value = `${coverage}%`;
+      this.lifeGroups[1].detail = `${assigned} of ${total} families assigned`;
+    }
+  }
+
+  isSubscriptionReadOnly(): boolean {
+    return this.subscriptionAccess.isReadOnly();
+  }
+
+  stewardshipCurrencyCode(): string {
+    return this.operationsSummary?.tenant_context?.currency_code || 'INR';
+  }
+
+  formatCurrency(value: number | null | undefined, currencyCode?: string): string {
+    const amount = value ?? 0;
+    const currency = currencyCode ?? this.stewardshipCurrencyCode();
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 0,
+    }).format(amount);
+  }
+
+  givingTrendPoints(): Array<{ month: string; collected: number }> {
+    const points = this.operationsSummary?.collection_trend ?? [];
+    return points.map((point) => ({
+      month: point.label?.split(' ')[0] ?? point.period,
+      collected: Number(point.collected ?? 0),
+    }));
+  }
+
+  maxGivingTrend(): number {
+    const values = this.givingTrendPoints().map((point) => point.collected);
+    const max = values.length ? Math.max(...values) : 0;
+    return max > 0 ? max : 1;
+  }
+
+  givingTrendIsEmpty(): boolean {
+    const points = this.givingTrendPoints();
+    if (!points.length) {
+      return true;
+    }
+    return points.every((point) => point.collected === 0);
+  }
+
+  givingChannelRows(): GivingChannelRow[] {
+    const mix = this.operationsSummary?.collections_by_method_this_month ?? {};
+    const total = Object.values(mix).reduce((sum, value) => sum + (value ?? 0), 0);
+    if (total <= 0) {
+      return [];
+    }
+
+    return Object.entries(mix)
+      .filter(([, amount]) => (amount ?? 0) > 0)
+      .sort(([, left], [, right]) => (right ?? 0) - (left ?? 0))
+      .map(([method, amount]) => ({
+        channel: PAYMENT_METHOD_LABELS[method] ?? method,
+        amount: this.formatCurrency(amount ?? 0),
+        share: Math.round(((amount ?? 0) / total) * 100),
+      }));
+  }
+
+  stewardshipPeriodLabel(): string {
+    const period = this.operationsSummary?.period;
+    if (!period?.month_start) {
+      return 'This month';
+    }
+    const start = new Date(`${period.month_start}T12:00:00`);
+    return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   }
 
   openFinancialDashboard(): void {
@@ -646,8 +806,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private resolveMinistriesAccess(user: User | null): void {
-    const isTenantActor = !!user?.tenant_id && !this.authService.isPlatformActor(user);
-    if (!isTenantActor || !this.authService.canAccessMinistries(user)) {
+    const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
+    const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
+    if (!hasTenantContext || !this.authService.canAccessMinistries(user)) {
       this.showMinistriesSection = false;
       this.ministriesSummary = null;
       this.ministriesActivity = [];
@@ -660,6 +821,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.manage_leadership');
     this.canConfigureTaxonomies =
       this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.configure');
+    this.canViewTenantAuditLogs = this.authService.canViewTenantAuditLogs(user);
 
     this.ministriesApi
       .getModuleStatus()
@@ -712,7 +874,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Operations — recent ministries audit feed (lazy, session-cached). */
   private loadMinistriesActivity(): void {
-    if (this.ministriesActivityLoaded || this.loadingMinistriesActivity) {
+    if (!this.canViewTenantAuditLogs || this.ministriesActivityLoaded || this.loadingMinistriesActivity) {
       return;
     }
 
@@ -741,24 +903,43 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   /** Overview — BCC stats for Life Groups strip and registry count. */
   loadBccStatistics(): void {
+    this.bccStatsState = 'loading';
+    this.lifeGroups[0].value = '—';
+    this.lifeGroups[0].detail = 'Loading group count…';
+    this.lifeGroups[1].value = '—';
+    this.lifeGroups[1].detail = 'Families assigned to a Life Group';
+    this.lifeGroups[2].value = '—';
+    this.lifeGroups[2].detail = 'Active BCC leaders across parish';
+    this.cdr.markForCheck();
+
     this.bccService.getStatistics()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
             this.bccStatistics = response.data;
-            this.totalBCCs = response.data.total_bccs || 0;
-            this.lifeGroups[0].value = String(response.data.active_bccs || this.totalBCCs);
-            this.lifeGroups[0].detail = `${response.data.total_families_in_bccs || 0} families assigned`;
-            this.lifeGroups[1].value = `${response.data.utilization_percentage || 0}%`;
-            this.lifeGroups[1].detail = `${response.data.bccs_with_space || 0} groups have open capacity`;
-            this.lifeGroups[2].value = String(response.data.total_leaders || 0);
+            this.totalBCCs = response.data.total_bccs ?? 0;
+            const activeBccs = response.data.active_bccs ?? 0;
+            this.lifeGroups[0].value = String(activeBccs);
+            this.lifeGroups[0].detail = `${response.data.total_families_in_bccs ?? 0} families in groups`;
+            this.lifeGroups[2].value = String(response.data.total_leaders ?? 0);
             this.lifeGroups[2].detail = 'Active BCC leaders across parish';
+            this.bccStatsState = 'ready';
+            this.updateLifeGroupCoverage();
+          } else {
+            this.bccStatsState = 'error';
           }
           this.cdr.markForCheck();
         },
-        error: () => this.cdr.markForCheck()
+        error: () => {
+          this.bccStatsState = 'error';
+          this.cdr.markForCheck();
+        }
       });
+  }
+
+  retryBccStats(): void {
+    this.loadBccStatistics();
   }
 
   /** Operations — top BCC list (lazy, session-cached). */
@@ -800,14 +981,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.sacramentsError = false;
     this.cdr.markForCheck();
 
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const dateFrom = monthStart.toISOString().slice(0, 10);
-    const dateTo = now.toISOString().slice(0, 10);
-
     this.sacramentService.getDashboardSummary({
-      date_from: dateFrom,
-      date_to: dateTo,
+      preset: 'calendar_month_mtd',
+      minimal: true,
       include_gaps: false,
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
@@ -852,35 +1028,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadMemberCelebrations(): void {
     this.loadingCelebrations = true;
     this.celebrationsError = false;
+    this.celebrationsUnauthorized = false;
     this.cdr.markForCheck();
 
-    this.memberService.getMembers({ status: 'active', per_page: 500, page: 1, sort_by: 'first_name', sort_order: 'asc' })
+    this.memberService.getCelebrations()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            const { start, end } = this.getThisWeekRange();
-            this.weekBirthdays = this.extractWeekBirthdays(response.data, start, end);
-            this.weekAnniversaries = this.extractWeekAnniversaries(response.data, start, end);
+            this.weekRangeLabel = response.data.week?.label ?? this.weekRangeLabel;
+            this.weekBirthdays = (response.data.birthdays ?? []).map((item) => this.mapCelebrationItem(item));
+            this.weekAnniversaries = (response.data.anniversaries ?? []).map((item) => this.mapCelebrationItem(item));
             this.celebrationsLoaded = true;
             this.celebrationsError = false;
+            this.celebrationsUnauthorized = false;
           } else if (response.success) {
             this.weekBirthdays = [];
             this.weekAnniversaries = [];
             this.celebrationsLoaded = true;
             this.celebrationsError = false;
+            this.celebrationsUnauthorized = false;
           } else {
             this.celebrationsError = true;
           }
           this.loadingCelebrations = false;
           this.cdr.markForCheck();
         },
-        error: () => {
-          this.celebrationsError = true;
+        error: (error) => {
+          this.celebrationsUnauthorized = error?.status === 403;
+          this.celebrationsError = error?.status !== 403;
           this.loadingCelebrations = false;
           this.cdr.markForCheck();
         }
       });
+  }
+
+  private mapCelebrationItem(item: {
+    id: string;
+    family_id?: string;
+    name: string;
+    day_label: string;
+    date_label: string;
+    detail: string;
+  }): CelebrationItem {
+    return {
+      id: item.id,
+      name: item.name,
+      dayLabel: item.day_label,
+      dateLabel: item.date_label,
+      detail: item.detail,
+      familyId: item.family_id,
+    };
   }
 
   private mapBccHighlight(bcc: BCC): BccHighlight {
@@ -896,110 +1094,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       meetingLabel,
       status: bcc.status
     };
-  }
-
-  private extractWeekBirthdays(members: FamilyMember[], weekStart: Date, weekEnd: Date): CelebrationItem[] {
-    const items: CelebrationItem[] = [];
-
-    for (const member of members) {
-      if (!member.date_of_birth || member.status === 'deceased') continue;
-      const parsed = this.parseMonthDay(member.date_of_birth);
-      if (!parsed || !this.isMonthDayInWeek(parsed.month, parsed.day, weekStart, weekEnd)) continue;
-
-      const eventDate = new Date(new Date().getFullYear(), parsed.month - 1, parsed.day);
-      const age = this.calculateAge(member.date_of_birth, eventDate);
-
-      items.push({
-        id: member.id,
-        name: this.getMemberDisplayName(member),
-        dayLabel: eventDate.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateLabel: eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        detail: age !== null ? `Turning ${age}` : 'Birthday',
-        familyId: member.family_id
-      });
-    }
-
-    return items.sort((a, b) => this.compareCelebrationDates(a, b));
-  }
-
-  private extractWeekAnniversaries(members: FamilyMember[], weekStart: Date, weekEnd: Date): CelebrationItem[] {
-    const items: CelebrationItem[] = [];
-
-    for (const member of members) {
-      if (!member.marriage_date || member.status === 'deceased') continue;
-      const parsed = this.parseMonthDay(member.marriage_date);
-      if (!parsed || !this.isMonthDayInWeek(parsed.month, parsed.day, weekStart, weekEnd)) continue;
-
-      const eventDate = new Date(new Date().getFullYear(), parsed.month - 1, parsed.day);
-      const years = eventDate.getFullYear() - new Date(member.marriage_date).getFullYear();
-      const spouse = member.marriage_spouse_name?.trim();
-      const coupleName = spouse
-        ? `${this.getMemberDisplayName(member)} & ${spouse}`
-        : this.getMemberDisplayName(member);
-
-      items.push({
-        id: `${member.id}-anniversary`,
-        name: coupleName,
-        dayLabel: eventDate.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateLabel: eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        detail: years > 0 ? `${years} years together` : 'Wedding anniversary',
-        familyId: member.family_id
-      });
-    }
-
-    return items.sort((a, b) => this.compareCelebrationDates(a, b));
-  }
-
-  private getMemberDisplayName(member: FamilyMember): string {
-    return member.full_name?.trim() || `${member.first_name} ${member.last_name}`.trim();
-  }
-
-  private getThisWeekRange(): { start: Date; end: Date } {
-    const now = new Date();
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    start.setDate(now.getDate() + diffToMonday);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-    return { start, end };
-  }
-
-  private formatWeekRangeLabel(): string {
-    const { start, end } = this.getThisWeekRange();
-    const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${startLabel} – ${endLabel}`;
-  }
-
-  private parseMonthDay(dateValue: string): { month: number; day: number } | null {
-    const parts = dateValue.split('T')[0].split('-').map(Number);
-    if (parts.length < 3 || !parts[1] || !parts[2]) return null;
-    return { month: parts[1], day: parts[2] };
-  }
-
-  private isMonthDayInWeek(month: number, day: number, weekStart: Date, weekEnd: Date): boolean {
-    const eventDate = new Date(new Date().getFullYear(), month - 1, day);
-    eventDate.setHours(12, 0, 0, 0);
-    return eventDate >= weekStart && eventDate <= weekEnd;
-  }
-
-  private calculateAge(dateOfBirth: string, onDate: Date): number | null {
-    const birth = new Date(dateOfBirth);
-    if (Number.isNaN(birth.getTime())) return null;
-    let age = onDate.getFullYear() - birth.getFullYear();
-    const monthDiff = onDate.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && onDate.getDate() < birth.getDate())) {
-      age -= 1;
-    }
-    return age + 1;
-  }
-
-  private compareCelebrationDates(a: CelebrationItem, b: CelebrationItem): number {
-    const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return order.indexOf(a.dayLabel) - order.indexOf(b.dayLabel);
   }
 
   private capitalize(value: string): string {
@@ -1052,30 +1146,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.max(4, Math.round((value / max) * this.chartBarMaxHeightPx));
   }
 
-  getVolunteerPercent(shift: VolunteerShift): number {
-    return Math.round((shift.filled / shift.required) * 100);
-  }
-
-  getVolunteerRingOffset(shift: VolunteerShift): number {
-    const circumference = 2 * Math.PI * 16;
-    const percent = this.getVolunteerPercent(shift) / 100;
-    return circumference * (1 - percent);
-  }
-
   navigateTo(route: string): void {
     this.router.navigate([route]);
   }
 
-  onSearchKeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-      event.preventDefault();
-      const input = event.target as HTMLInputElement;
-      input?.focus();
-    }
-  }
-
   private loadPastoralWorkflow(): void {
     this.loadingPastoral = true;
+    this.pastoralError = false;
     this.pastoralCare
       .dashboard()
       .pipe(takeUntil(this.destroy$))
@@ -1084,12 +1161,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.careAlerts = data?.alerts ?? [];
           this.pastoralTasks = data?.tasks ?? [];
           this.pastoralLoaded = true;
+          this.pastoralError = false;
           this.loadingPastoral = false;
           this.cdr.markForCheck();
         },
         error: () => {
-          this.careAlerts = [];
-          this.pastoralTasks = [];
+          this.pastoralError = true;
           this.loadingPastoral = false;
           this.cdr.markForCheck();
         },

@@ -85,6 +85,8 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // Soft refresh of profile on layout entry. loadUserFailure no longer wipes the
+    // session on transient errors, so this is safe after post-login navigation.
     if (this.authService.isAuthenticated()) {
       this.store.dispatch(AuthActions.loadUser());
     }
@@ -95,19 +97,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         this.sidebarSections,
         (menuId) => this.navMenu.isVisible(menuId as NavMenuId, user)
       );
-      const settingsSection = this.visibleSidebarSections.find((s) => s.id === 'settings');
-      const settingsChildLabels = settingsSection?.items[0]?.children?.map((c) => ({
-        id: c.id,
-        label: c.label,
-        menuId: c.menuId,
-      })) ?? [];
-      const forgotVisible = this.navMenu.isVisible(
-        'settings-forgot-password-requests' as NavMenuId,
-        user
-      );
-      // #region agent log
-      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'main-layout.component.ts:ngOnInit',message:'sidebar settings children',data:{forgotVisible,settingsChildCount:settingsChildLabels.length,settingsChildLabels,userId:user?.id,email:user?.email?.replace(/(.{2}).+(@.*)/,'$1***$2')},timestamp:Date.now(),hypothesisId:'H4-H5'})}).catch(()=>{});
-      // #endregion
       if (this.appContext.hasParishResourceContext(user)) {
         this.subscriptionAccess.ensureLoaded();
       } else {

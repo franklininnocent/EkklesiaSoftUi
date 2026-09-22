@@ -108,8 +108,7 @@ export class SupportCenterPage implements OnInit, OnDestroy {
   readonly canForceEnd =
     this.auth.hasPermission('support.sessions.end') || this.auth.isSuperAdmin();
 
-  readonly canExport =
-    this.auth.hasPermission('support.audit.view') || this.auth.isSuperAdmin();
+  readonly canExport = this.auth.canViewSupportOperationalAudit();
 
   readonly canApprove =
     this.auth.hasPermission('support.sessions.approve') || this.auth.isSuperAdmin();

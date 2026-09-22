@@ -117,13 +117,13 @@ export class NotificationInboxService {
       this.markReadOptimistic(item);
       this.closePopover();
       if (res?.success && res.data?.route) {
-        const route = res.data.route;
+        const route = res.data.route.startsWith('/') ? res.data.route : `/${res.data.route}`;
         const params = res.data.params ?? {};
-        const query = Object.keys(params).length ? { queryParams: params } : {};
-        this.router.navigate([route.startsWith('/') ? route.slice(1) : route], query);
+        const query = new URLSearchParams(params).toString();
+        void this.router.navigateByUrl(query ? `${route}?${query}` : route);
         return;
       }
-      this.router.navigate(['/notifications', item.id]);
+      void this.router.navigate(['/notifications', item.id]);
     });
   }
 

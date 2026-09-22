@@ -6,6 +6,7 @@ import { ChurchLeadershipService } from '@core/services/church/church-leadership
 import { ParishPersonService, ParishPerson } from '@features/settings/sacraments/services/person.service';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { PhoneCodeService } from '@core/services/phone-code.service';
 
 class GovernanceServiceMock {
   getCurrent = jest.fn(() =>
@@ -68,6 +69,14 @@ const mockPerson: ParishPerson = {
   first_name: 'Anto',
   last_name: 'Leader',
   full_name_display: 'Rev.Fr.Anto Leader',
+  email: 'anto@parish.test',
+  phone: '+919876543210',
+};
+
+const phoneCodeServiceMock = {
+  getPhoneCodeSync: jest.fn(() => '+91'),
+  currentPhoneCode: jest.fn(() => '+91'),
+  initializeFromApiOnce: jest.fn(() => of({ success: true, phoneCode: '+91' })),
 };
 
 describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
@@ -90,6 +99,7 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
           },
         },
         { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } },
+        { provide: PhoneCodeService, useValue: phoneCodeServiceMock },
       ],
     }).compileComponents();
 
@@ -100,17 +110,20 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
     fixture.detectChanges();
   });
 
-  it('enables Add Leader whenever the modal is open and not saving', () => {
+  it('requires governance category before Add Leader can submit', () => {
     component.openAssignModal();
     fixture.detectChanges();
 
     const submitButton: HTMLButtonElement | null = fixture.nativeElement.querySelector(
       '.clg-assign-modal button[type="submit"]',
     );
-    expect(submitButton?.disabled).toBe(false);
+    expect(submitButton?.disabled).toBe(true);
     expect(component.canSubmitAssign).toBe(false);
+    expect(fixture.nativeElement.querySelector('#assign_category')).toBeTruthy();
 
     component.selectPerson(mockPerson);
+    component.assignCategory = 'PARISH_CLERGY';
+    component.onAssignCategoryChange();
     component.assignForm.patchValue({ role_id: 'role-pastor-uuid' });
     fixture.detectChanges();
 
@@ -120,6 +133,8 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
 
   it('does not treat the form as ready when only role is selected without a name', () => {
     component.openAssignModal();
+    component.assignCategory = 'PARISH_CLERGY';
+    component.onAssignCategoryChange();
     component.assignForm.patchValue({ role_id: 'role-pastor-uuid' });
     fixture.detectChanges();
 
@@ -129,6 +144,8 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
   it('adds a leader when the name is typed and matches a search result', fakeAsync(() => {
     const api = TestBed.inject(ChurchLeadershipGovernanceService) as unknown as GovernanceServiceMock;
     component.openAssignModal();
+    component.assignCategory = 'PARISH_CLERGY';
+    component.onAssignCategoryChange();
     component.personQuery = 'Anto Leader';
     component.assignForm.patchValue({ role_id: 'role-pastor-uuid' });
     component.submitAssign();
@@ -140,9 +157,22 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
         is_external: false,
         person_id: 'person-uuid',
         role_id: 'role-pastor-uuid',
+        email: 'anto@parish.test',
+        phone: '+919876543210',
       }),
     );
   }));
+
+  it('prefills contact fields when a parish person is selected', () => {
+    component.openAssignModal();
+    component.selectPerson(mockPerson);
+    fixture.detectChanges();
+
+    expect(component.assignForm.getRawValue().email).toBe('anto@parish.test');
+    expect(component.assignForm.getRawValue().phone).toBe('9876543210');
+    expect(fixture.nativeElement.querySelector('#assign_email')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#assign_phone')).toBeTruthy();
+  });
 
   it('creates a leader from a typed name when no parish person matches', fakeAsync(() => {
     const api = TestBed.inject(ChurchLeadershipGovernanceService) as unknown as GovernanceServiceMock;
@@ -150,6 +180,8 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
     personService.search.mockReturnValueOnce(of({ success: true, data: [] }));
 
     component.openAssignModal();
+    component.assignCategory = 'PARISH_CLERGY';
+    component.onAssignCategoryChange();
     component.personQuery = 'Visiting Priest';
     component.assignForm.patchValue({ role_id: 'role-pastor-uuid' });
     component.submitAssign();
@@ -177,6 +209,8 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
         full_name: 'Rev.Fr.Anto Leader',
         first_name: 'Anto',
         last_name: 'Leader',
+        email: 'anto@parish.test',
+        phone: '+919876543210',
       },
       role_id: 'role-pastor-uuid',
       role: {
@@ -195,12 +229,19 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
     fixture.detectChanges();
 
     expect(fixture.nativeElement.querySelector('.clg-edit-modal')).toBeTruthy();
+    expect(component.editCategory).toBe('PARISH_CLERGY');
+    expect(fixture.nativeElement.querySelector('#edit_category')).toBeTruthy();
+
+    expect(component.editForm.getRawValue().email).toBe('anto@parish.test');
+    expect(component.editForm.getRawValue().phone).toBe('9876543210');
 
     component.editForm.patchValue({
       first_name: 'Anto',
       last_name: 'Leader Updated',
       role_id: 'role-pastor-uuid',
       start_date: '2025-10-28',
+      email: 'updated@parish.test',
+      phone: '9123456789',
     });
     component.submitEdit();
     tick();
@@ -212,6 +253,8 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
         last_name: 'Leader Updated',
         role_id: 'role-pastor-uuid',
         start_date: '2025-10-28',
+        email: 'updated@parish.test',
+        phone: '+9123456789',
       }),
     );
   }));
@@ -257,6 +300,18 @@ describe('ChurchLeadershipGovernanceComponent add leader modal', () => {
     component.canEdit = false;
     component.openAssignModal();
     expect(component.showAssignModal).toBe(false);
+  });
+
+  it('clears role when assign category changes to an incompatible group', () => {
+    component.openAssignModal();
+    component.assignCategory = 'PARISH_CLERGY';
+    component.onAssignCategoryChange();
+    component.assignForm.patchValue({ role_id: 'role-pastor-uuid' });
+
+    component.assignCategory = 'OTHER';
+    component.onAssignCategoryChange();
+
+    expect(component.assignForm.getRawValue().role_id).toBe('');
   });
 });
 
@@ -337,6 +392,7 @@ describe('ChurchLeadershipGovernanceComponent photo viewer', () => {
           },
         },
         { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } },
+        { provide: PhoneCodeService, useValue: phoneCodeServiceMock },
       ],
     }).compileComponents();
 

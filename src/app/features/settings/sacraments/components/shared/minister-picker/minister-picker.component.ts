@@ -47,6 +47,7 @@ export class MinisterPickerComponent implements OnInit, OnChanges, OnDestroy {
   source: Extract<ParticipantSourceKind, 'internal_leadership' | 'external'> = 'internal_leadership';
   assignments: LeadershipAssignment[] = [];
   legacyLeaders: ChurchLeadership[] = [];
+  leaderOptions: Array<{ id: string; label: string; assignment?: LeadershipAssignment; legacy?: ChurchLeadership }> = [];
   loadingLeaders = false;
   selectedAssignmentId: string | null = null;
   selectedLegacyLeaderId: number | null = null;
@@ -102,7 +103,7 @@ export class MinisterPickerComponent implements OnInit, OnChanges, OnDestroy {
     return `${title}${leader.full_name} (${leader.role})`;
   }
 
-  get leaderOptions(): Array<{ id: string; label: string; assignment?: LeadershipAssignment; legacy?: ChurchLeadership }> {
+  private rebuildLeaderOptions(): void {
     const assignmentOptions = this.assignments.map((assignment) => ({
       id: `assignment:${assignment.id}`,
       label: this.leaderLabel(assignment),
@@ -113,7 +114,7 @@ export class MinisterPickerComponent implements OnInit, OnChanges, OnDestroy {
       label: this.legacyLeaderLabel(leader),
       legacy: leader,
     }));
-    return [...assignmentOptions, ...legacyOptions];
+    this.leaderOptions = [...assignmentOptions, ...legacyOptions];
   }
 
   get selectedLeaderKey(): string | null {
@@ -152,11 +153,13 @@ export class MinisterPickerComponent implements OnInit, OnChanges, OnDestroy {
               assignment.status === 'active' &&
               (assignment.role?.category === 'PARISH_CLERGY' || assignment.role?.category === 'CANONICAL_DIOCESAN')
           );
+          this.rebuildLeaderOptions();
           this.loadingLeaders = false;
           this.cdr.markForCheck();
         },
         error: () => {
           this.assignments = [];
+          this.rebuildLeaderOptions();
           this.loadingLeaders = false;
           this.cdr.markForCheck();
         },
@@ -167,6 +170,7 @@ export class MinisterPickerComponent implements OnInit, OnChanges, OnDestroy {
       .subscribe({
         next: (response) => {
           this.legacyLeaders = response?.data ?? [];
+          this.rebuildLeaderOptions();
           this.cdr.markForCheck();
         },
       });

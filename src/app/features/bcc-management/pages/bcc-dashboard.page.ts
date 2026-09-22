@@ -74,6 +74,8 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
   private readonly search$ = new Subject<string>();
   private readonly api = inject(BCCService);
   private readonly auth = inject(AuthService);
+
+  readonly canViewTenantAuditLogs = this.auth.canViewTenantAuditLogs();
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -449,12 +451,12 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
       return;
     }
 
+    const leadership = this.summary.leadership;
     this.leadershipChartData = {
-      withPrimary:
-        this.summary.leadership.bccs_with_primary ?? this.summary.snapshot?.bccs_with_primary ?? 0,
-      withoutPrimary: this.summary.leadership.bccs_without_primary ?? 0,
-      activeLeaders: this.summary.leadership.active_leaders ?? 0,
-      coveragePercent: this.summary.leadership.coverage_percent ?? null,
+      withPrimary: leadership?.bccs_with_primary ?? this.summary.snapshot?.bccs_with_primary ?? 0,
+      withoutPrimary: leadership?.bccs_without_primary ?? 0,
+      activeLeaders: leadership?.active_leaders ?? 0,
+      coveragePercent: leadership?.coverage_percent ?? null,
     };
   }
 
@@ -555,8 +557,12 @@ export class BccDashboardPageComponent implements OnInit, OnDestroy {
     return `${sign}${value}${suffix}`;
   }
 
-  eventLabel(event: string): string {
-    return event.replace(/\./g, ' · ').replace(/_/g, ' ');
+  eventLabel(event: string | null | undefined): string {
+    return (event ?? '').replace(/\./g, ' · ').replace(/_/g, ' ');
+  }
+
+  flagLabel(flag: string | null | undefined): string {
+    return (flag ?? '').replace(/_/g, ' ');
   }
 
   private async patchQuery(patch: Record<string, string | null | undefined>): Promise<void> {

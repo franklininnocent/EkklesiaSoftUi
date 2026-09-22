@@ -1,4 +1,5 @@
 import { Routes, UrlMatchResult, UrlSegment } from '@angular/router';
+import { tenantAuditGuard } from '@core/guards/tenant-audit.guard';
 
 /** Only treat UUID segments as BCC detail ids so paths like `audit` never collide. */
 function bccDetailMatcher(segments: UrlSegment[]): UrlMatchResult | null {
@@ -25,6 +26,7 @@ export const BCC_ROUTES: Routes = [
   },
   {
     path: 'audit',
+    canActivate: [tenantAuditGuard],
     loadComponent: () =>
       import('./pages/bcc-audit.page').then((m) => m.BccAuditPageComponent),
   },

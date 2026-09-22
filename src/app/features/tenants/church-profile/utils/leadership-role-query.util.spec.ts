@@ -1,6 +1,7 @@
 import { LeadershipRoleOption } from '@core/models/church/leadership-governance.model';
 import { LeadershipAssignment } from '@core/models/church/leadership-governance.model';
 import {
+  filterRolesByCategory,
   findExactRoleMatch,
   groupLeadershipRoles,
   guessLeadershipRoleCategory,
@@ -44,6 +45,28 @@ describe('leadership-role-query.util', () => {
     expect(groups).toHaveLength(2);
     expect(groups[0].label).toBe('SYSTEM ROLES');
     expect(groups[1].label).toBe('MY CHURCH ROLES');
+  });
+
+  it('filters roles by governance category', () => {
+    const clergy = filterRolesByCategory(roles, 'PARISH_CLERGY');
+    expect(clergy).toHaveLength(1);
+    expect(clergy[0].title).toBe('Pastor');
+
+    const other = filterRolesByCategory(roles, 'OTHER');
+    expect(other).toHaveLength(1);
+    expect(other[0].title).toBe('Youth Coordinator');
+  });
+
+  it('keeps a pinned role visible when category filter differs', () => {
+    const filtered = filterRolesByCategory(roles, 'OTHER', '1');
+    expect(filtered.map((role) => role.title)).toEqual(['Pastor', 'Youth Coordinator']);
+  });
+
+  it('groups roles within a category filter', () => {
+    const groups = groupLeadershipRoles(roles, '', 'PARISH_CLERGY');
+    expect(groups).toHaveLength(1);
+    expect(groups[0].roles).toHaveLength(1);
+    expect(groups[0].roles[0].title).toBe('Pastor');
   });
 
   it('hides create action on exact match', () => {

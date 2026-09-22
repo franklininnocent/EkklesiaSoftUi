@@ -497,12 +497,26 @@
                 </div>
               </div>
               <div class="social-footer" *ngIf="canEdit">
-                <button class="btn-3d-mini btn-3d-edit" (click)="openEditSocialModal(social)">
-                  ✏️ Edit
-                </button>
-                <button class="btn-3d-mini btn-3d-delete" (click)="deleteSocialMedia(social)">
-                  🗑️ Delete
-                </button>
+                <div class="cf-row-actions">
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    (click)="openEditSocialModal(social)"
+                    [attr.aria-label]="'Edit ' + (social.platform | titlecase) + ' account'"
+                    [title]="'Edit ' + (social.platform | titlecase) + ' account'"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm cf-btn-danger"
+                    (click)="deleteSocialMedia(social)"
+                    [attr.aria-label]="'Delete ' + (social.platform | titlecase) + ' account'"
+                    [title]="'Delete ' + (social.platform | titlecase) + ' account'"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>

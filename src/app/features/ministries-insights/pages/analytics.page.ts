@@ -36,6 +36,7 @@ import {
   MinistriesInsightsUsageAnalytics,
   MinistriesInsightsWindowDays,
 } from '../models/ministries-insights.model';
+import { AuthService } from '@core/services/auth.service';
 import { insightsFeatureLabel, insightsStatusLabel } from '../utils/insights-labels';
 
 @Component({
@@ -62,6 +63,7 @@ export class MinistriesInsightsAnalyticsPageComponent implements OnInit, AfterVi
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly auth = inject(AuthService);
   private readonly destroy$ = new Subject<void>();
 
   @ViewChild('trendsCanvas') trendsCanvas?: ElementRef<HTMLCanvasElement>;
@@ -74,13 +76,20 @@ export class MinistriesInsightsAnalyticsPageComponent implements OnInit, AfterVi
     { days: 365, label: '12M' },
   ];
 
-  readonly sections: Array<{ id: MinistriesInsightsAnalyticsSection; label: string }> = [
-    { id: 'adoption', label: 'Adoption' },
-    { id: 'usage', label: 'Usage' },
-    { id: 'features', label: 'Features' },
-    { id: 'trends', label: 'Trends' },
-    { id: 'audit', label: 'Audit' },
-  ];
+  get sections(): Array<{ id: MinistriesInsightsAnalyticsSection; label: string }> {
+    const items: Array<{ id: MinistriesInsightsAnalyticsSection; label: string }> = [
+      { id: 'adoption', label: 'Adoption' },
+      { id: 'usage', label: 'Usage' },
+      { id: 'features', label: 'Features' },
+      { id: 'trends', label: 'Trends' },
+    ];
+
+    if (this.auth.canViewPlatformCompleteAudit()) {
+      items.push({ id: 'audit', label: 'Audit' });
+    }
+
+    return items;
+  }
 
   section: MinistriesInsightsAnalyticsSection = 'adoption';
   windowDays: MinistriesInsightsWindowDays = 30;

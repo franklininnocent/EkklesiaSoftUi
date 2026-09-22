@@ -1,18 +1,20 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { filter, map, switchMap, take } from 'rxjs/operators';
+import { catchError, filter, map, switchMap, take } from 'rxjs/operators';
 import { of } from 'rxjs';
 import { User } from '@core/models';
 import { AuthService } from '@core/services/auth.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import * as AuthActions from '@core/store/auth/auth.actions';
+import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 export const ministriesGuard: CanActivateFn = (_route, state) => {
   const authService = inject(AuthService);
   const access = inject(SubscriptionAccessService);
+  const ministriesApi = inject(MinistriesApiService);
   const router = inject(Router);
   const store = inject(Store);
   const supportSessions = inject(SupportSessionService);
@@ -63,25 +65,48 @@ export const ministriesGuard: CanActivateFn = (_route, state) => {
 
       access.ensureLoaded();
       return access.refresh().pipe(
-        map(() => {
-          if (access.canViewGatedModules()) {
-            return true;
+        switchMap(() => {
+          if (!access.canViewGatedModules()) {
+            const canViewSub = authService.canViewMySubscription(user);
+            if (canViewSub) {
+              void router.navigate(['/settings/my-subscription'], {
+                queryParams: { status: access.snapshot?.status || 'EXPIRED' },
+              });
+            } else {
+              void router.navigate(['/dashboard'], {
+                queryParams: {
+                  error: 'subscription',
+                  message:
+                    'Your subscription has ended or is suspended. Contact your administrator to restore access.',
+                },
+              });
+            }
+            return of(false);
           }
-          const canViewSub = authService.canViewMySubscription(user);
-          if (canViewSub) {
-            router.navigate(['/settings/my-subscription'], {
-              queryParams: { status: access.snapshot?.status || 'EXPIRED' },
-            });
-          } else {
-            router.navigate(['/dashboard'], {
-              queryParams: {
-                error: 'subscription',
-                message:
-                  'Your subscription has ended or is suspended. Contact your administrator to restore access.',
-              },
-            });
-          }
-          return false;
+
+          return ministriesApi.getModuleStatus().pipe(
+            map((response) => {
+              if (response.data?.enabled === true) {
+                return true;
+              }
+              void router.navigate(['/dashboard'], {
+                queryParams: {
+                  error: 'feature_disabled',
+                  message: 'Ministries & Associations is not enabled for this church.',
+                },
+              });
+              return false;
+            }),
+            catchError(() => {
+              void router.navigate(['/dashboard'], {
+                queryParams: {
+                  error: 'feature_disabled',
+                  message: 'Ministries & Associations is not enabled for this church.',
+                },
+              });
+              return of(false);
+            })
+          );
         })
       );
     })

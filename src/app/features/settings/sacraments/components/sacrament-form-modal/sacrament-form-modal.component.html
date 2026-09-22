@@ -351,7 +351,7 @@
             This person belongs to this church and is not in a family. No family will be created.
           </p>
           <p class="cf-split-field__hint" *ngIf="familySelectionType === 'existing'">
-            Choose a family already registered here, then choose the recipient from that family.
+            Choose a family already registered here, then identify who is receiving Baptism. A newborn or new adult does not need to be an existing member yet.
           </p>
           <p class="cf-split-field__hint" *ngIf="familySelectionType === 'new'">
             Create a new family in this church and add this person as a member. Saved together with the sacrament.
@@ -416,7 +416,39 @@
                 <p class="cf-split-field__hint" *ngIf="loadingFamilies">Loading families…</p>
               </div>
 
-              <div class="cf-split-field cf-split-field--full" *ngIf="usesPersonRecipientWorkflow() && selectedFamilyId">
+              <div class="cf-split-field cf-split-field--full" *ngIf="usesPersonRecipientWorkflow() && selectedFamilyId && isBaptism()">
+                <label id="baptism_recipient_mode_label">Who is receiving Baptism?</label>
+                <div class="sacrament-radio-row" role="radiogroup" aria-labelledby="baptism_recipient_mode_label">
+                  <label class="sacrament-radio">
+                    <input
+                      type="radio"
+                      name="existingFamilyRecipientMode"
+                      value="existing_member"
+                      [checked]="existingFamilyRecipientMode === 'existing_member'"
+                      (change)="onExistingFamilyRecipientModeChange('existing_member')"
+                    />
+                    <span>Existing family member</span>
+                  </label>
+                  <label class="sacrament-radio">
+                    <input
+                      type="radio"
+                      name="existingFamilyRecipientMode"
+                      value="new_person"
+                      [checked]="existingFamilyRecipientMode === 'new_person'"
+                      (change)="onExistingFamilyRecipientModeChange('new_person')"
+                    />
+                    <span>New person in this family</span>
+                  </label>
+                </div>
+                <p class="cf-split-field__hint">
+                  Choose new person when the baby or adult is not yet registered as a member. They become an official member from the Baptism date.
+                </p>
+              </div>
+
+              <div
+                class="cf-split-field cf-split-field--full"
+                *ngIf="usesPersonRecipientWorkflow() && selectedFamilyId && (!isBaptism() || existingFamilyRecipientMode === 'existing_member')"
+              >
                 <label for="recipient_member_id">
                   Recipient in this family <span class="cf-split-req" aria-hidden="true">*</span>
                 </label>
@@ -452,7 +484,59 @@
                 <p class="cf-split-field__hint">
                   Selecting a member prefills their person record. It does not change their saved profile.
                 </p>
+                <p class="cf-split-field__error" *ngIf="hasFieldError('recipient_member_id')">
+                  {{ fieldErrors['recipient_member_id'] }}
+                </p>
               </div>
+
+              <ng-container *ngIf="isBaptism() && familySelectionType === 'existing' && selectedFamilyId && existingFamilyRecipientMode === 'new_person'">
+                <div class="cf-split-field" data-testid="existing-family-new-person-block">
+                  <label for="existing_family_person_first">First name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <input
+                    id="existing_family_person_first"
+                    name="existing_family_person_first"
+                    [(ngModel)]="personDraft.first_name"
+                    data-testid="existing-family-new-person-first"
+                  />
+                  <p class="cf-split-field__error" *ngIf="hasFieldError('person_first_name')">
+                    {{ fieldErrors['person_first_name'] }}
+                  </p>
+                </div>
+                <div class="cf-split-field">
+                  <label for="existing_family_person_middle">Middle name <span class="cf-split-optional">optional</span></label>
+                  <input
+                    id="existing_family_person_middle"
+                    name="existing_family_person_middle"
+                    [(ngModel)]="personDraft.middle_name"
+                  />
+                </div>
+                <div class="cf-split-field">
+                  <label for="existing_family_person_last">Last name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <input
+                    id="existing_family_person_last"
+                    name="existing_family_person_last"
+                    [(ngModel)]="personDraft.last_name"
+                    data-testid="existing-family-new-person-last"
+                  />
+                  <p class="cf-split-field__error" *ngIf="hasFieldError('person_last_name')">
+                    {{ fieldErrors['person_last_name'] }}
+                  </p>
+                </div>
+                <div class="cf-split-field cf-split-field--full">
+                  <label for="relationship_to_head">Relationship to family head <span class="cf-split-req" aria-hidden="true">*</span></label>
+                  <select
+                    id="relationship_to_head"
+                    name="relationship_to_head"
+                    [(ngModel)]="relationshipToHead"
+                    data-testid="existing-family-relationship"
+                  >
+                    <option *ngFor="let opt of relationshipToHeadOptions" [ngValue]="opt.value">{{ opt.label }}</option>
+                  </select>
+                  <p class="cf-split-field__error" *ngIf="hasFieldError('relationship_to_head')">
+                    {{ fieldErrors['relationship_to_head'] }}
+                  </p>
+                </div>
+              </ng-container>
             </div>
           </div>
 
@@ -772,7 +856,7 @@
               [(ngModel)]="selectedFatherId"
               (ngModelChange)="onFatherSelect()"
               name="selectedFatherId"
-              [items]="getAvailableFathers()"
+              [items]="availableFathers"
               bindValue="id"
               [searchFn]="searchFamilyMember"
               placeholder="Select father from family…"
@@ -791,7 +875,7 @@
             <p class="cf-split-field__error" *ngIf="hasFieldError('father_name')">
               {{ getFieldError('father_name') }}
             </p>
-            <p class="cf-split-field__hint" *ngIf="getAvailableFathers().length === 0">
+            <p class="cf-split-field__hint" *ngIf="availableFathers.length === 0">
               No father found in family members. Please enter manually.
             </p>
           </div>
@@ -805,7 +889,7 @@
               [(ngModel)]="selectedMotherId"
               (ngModelChange)="onMotherSelect()"
               name="selectedMotherId"
-              [items]="getAvailableMothers()"
+              [items]="availableMothers"
               bindValue="id"
               [searchFn]="searchFamilyMember"
               placeholder="Select mother from family…"
@@ -824,7 +908,7 @@
             <p class="cf-split-field__error" *ngIf="hasFieldError('mother_name')">
               {{ getFieldError('mother_name') }}
             </p>
-            <p class="cf-split-field__hint" *ngIf="getAvailableMothers().length === 0">
+            <p class="cf-split-field__hint" *ngIf="availableMothers.length === 0">
               No mother found in family members. Please enter manually.
             </p>
           </div>

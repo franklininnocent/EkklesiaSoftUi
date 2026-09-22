@@ -53,11 +53,18 @@ export class BishopDetailComponent implements OnInit {
   uploadingPhoto = false;
   canManageImages = false;
 
-  readonly tabItems: TabStripItem[] = [
-    { id: 'person', label: 'Person', domId: 'bishop-tab-person', ariaControls: 'bishop-panel-person' },
-    { id: 'appointments', label: 'Appointments', domId: 'bishop-tab-appointments', ariaControls: 'bishop-panel-appointments' },
-    { id: 'audit', label: 'Audit', domId: 'bishop-tab-audit', ariaControls: 'bishop-panel-audit' },
-  ];
+  get tabItems(): TabStripItem[] {
+    const items: TabStripItem[] = [
+      { id: 'person', label: 'Person', domId: 'bishop-tab-person', ariaControls: 'bishop-panel-person' },
+      { id: 'appointments', label: 'Appointments', domId: 'bishop-tab-appointments', ariaControls: 'bishop-panel-appointments' },
+    ];
+
+    if (this.auth.canViewPlatformCompleteAudit()) {
+      items.push({ id: 'audit', label: 'Audit', domId: 'bishop-tab-audit', ariaControls: 'bishop-panel-audit' });
+    }
+
+    return items;
+  }
 
   get bishopStatusTone(): StatusBadgeTone {
     switch ((this.bishop?.status || '').toLowerCase()) {
@@ -80,7 +87,8 @@ export class BishopDetailComponent implements OnInit {
     });
     this.route.queryParamMap.subscribe((query) => {
       const tab = query.get('tab') as BishopDetailTab | null;
-      if (tab && ['person', 'appointments', 'audit'].includes(tab)) {
+      const allowed = this.tabItems.map((item) => item.id);
+      if (tab && allowed.includes(tab)) {
         this.activeTab = tab;
         this.cdr.markForCheck();
       }

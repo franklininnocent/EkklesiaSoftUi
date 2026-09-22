@@ -109,7 +109,7 @@ export class BccLifeStageChartComponent implements AfterViewInit, OnChanges, OnD
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['slices'] && !this.sameSlices(changes['slices'].previousValue, changes['slices'].currentValue)) {
-      this.renderChart();
+      requestAnimationFrame(() => this.renderChart());
     }
   }
 
@@ -136,7 +136,6 @@ export class BccLifeStageChartComponent implements AfterViewInit, OnChanges, OnD
 
     const canvas = this.canvas?.nativeElement;
     if (!canvas) {
-      queueMicrotask(() => this.renderChart());
       return;
     }
 

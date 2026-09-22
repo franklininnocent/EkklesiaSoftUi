@@ -122,7 +122,7 @@ export class BccGrowthPanelComponent implements AfterViewInit, OnChanges, OnDest
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['families'] || changes['people'] || changes['measure'] || changes['insufficientHistory']) {
-      this.renderChart();
+      requestAnimationFrame(() => this.renderChart());
     }
   }
 
@@ -145,7 +145,6 @@ export class BccGrowthPanelComponent implements AfterViewInit, OnChanges, OnDest
     }
     const canvas = this.canvas?.nativeElement;
     if (!canvas) {
-      queueMicrotask(() => this.renderChart());
       return;
     }
 

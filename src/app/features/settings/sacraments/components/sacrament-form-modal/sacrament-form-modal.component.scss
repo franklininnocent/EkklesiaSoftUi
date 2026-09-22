@@ -1,5 +1,7 @@
 @use '../../../../donations/styles/stewardship-split-layout.scss';
-@import '../shared/sacrament-control-chrome';
+@use '../shared/sacrament-control-chrome' as sacramentChrome;
+
+@include sacramentChrome.sacrament-control-chrome;
 
 .cf-split-banner {
   margin: 0 0 1rem;

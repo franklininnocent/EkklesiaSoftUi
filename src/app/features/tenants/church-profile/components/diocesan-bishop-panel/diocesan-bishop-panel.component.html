@@ -46,6 +46,10 @@
       description="Link your parish to a diocese in Church Profile before viewing the diocesan bishop record."
     ></app-cf-empty-state>
 
+    <div
+      class="diocesan-bishop-panel__columns"
+      *ngIf="(!loadingLeadership && leadership) || canViewRequests"
+    >
     <article
       class="diocesan-bishop-panel__record cf-panel"
       *ngIf="!loadingLeadership && leadership"
@@ -235,6 +239,7 @@
         </button>
       </app-cf-empty-state>
     </section>
+    </div>
   </ng-container>
 
   <app-bishop-report-update-wizard

@@ -226,8 +226,24 @@ export interface ParishExpenseRecord {
   status?: string;
 }
 
+export interface CollectionTrendPoint {
+  period: string;
+  label: string;
+  collected: number;
+}
+
+export interface OperationsDashboardPeriod {
+  month_start: string;
+  month_end: string;
+  timezone: string;
+}
+
 export interface OperationsDashboardSummary {
   persona?: DashboardPersona;
+  tenant_context?: { currency_code?: string; name?: string };
+  period?: OperationsDashboardPeriod;
+  collection_trend?: CollectionTrendPoint[];
+  collections_by_method_this_month?: Record<string, number>;
   financial?: {
     health?: FinancialHealthScore;
     totals?: {
@@ -556,10 +572,14 @@ export interface ContributionDue {
   family_id: string;
   plan_id: string;
   period_label: string;
+  period_start?: string | null;
+  period_end?: string | null;
   due_date: string;
   amount_due: number;
   amount_paid: number;
   outstanding_amount?: number;
+  schedule_state?: string;
+  is_overdue?: boolean;
   status: string;
   notes?: string | null;
   family?: { id: string; family_name: string; family_code?: string };
@@ -597,8 +617,13 @@ export interface FamilyContributionPlanSummary {
   amount_paid: number;
   amount_pending: number;
   outstanding_balance: number;
+  scheduled_total?: number;
+  overdue_amount?: number;
+  current_period_amount?: number;
+  future_scheduled_amount?: number;
   installment_count: number;
   next_due_date?: string | null;
+  next_upcoming_due_date?: string | null;
   overdue_count: number;
   status: 'active' | 'completed' | 'overdue' | 'inactive' | string;
   is_exempt?: boolean;
@@ -643,7 +668,10 @@ export interface DonationFamilyFinancialProfile {
       total_outstanding: number;
       active_plans_count: number;
     };
-    outstanding_dues: Array<ContributionDue & { is_overdue?: boolean }>;
+    outstanding_dues: Array<ContributionDue & { is_overdue?: boolean; schedule_state?: string }>;
+    current_period_dues?: Array<ContributionDue & { is_overdue?: boolean; schedule_state?: string }>;
+    scheduled_dues?: Array<ContributionDue & { is_overdue?: boolean; schedule_state?: string }>;
+    collect_allocation_dues?: Array<ContributionDue & { is_overdue?: boolean; schedule_state?: string }>;
     overdue_dues?: Array<ContributionDue & { is_overdue?: boolean }>;
     totals?: {
       assigned: number;

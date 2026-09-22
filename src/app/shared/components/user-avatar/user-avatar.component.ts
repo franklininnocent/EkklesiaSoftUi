@@ -51,6 +51,9 @@ export class UserAvatarComponent {
   }
 
   onImageError(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4fbd99'},body:JSON.stringify({sessionId:'4fbd99',location:'user-avatar.component.ts:onImageError',message:'avatar image failed to load',data:{imageUrl:this.imageUrl},timestamp:Date.now(),hypothesisId:'H3',runId:'post-fix'})}).catch(()=>{});
+    // #endregion
     this.imageBroken = true;
   }
 

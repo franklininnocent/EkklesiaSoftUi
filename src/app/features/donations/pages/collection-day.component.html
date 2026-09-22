@@ -1,55 +1,82 @@
 <section class="coc" role="main" aria-labelledby="coc-title">
   <!-- Command Bar -->
   <header class="coc-command">
-    <div class="coc-command__brand">
+    <div class="coc-command__context">
       <p class="coc-command__eyebrow">Stewardship Operations</p>
-      <h1 id="coc-title" class="cf-page-title">Collection Operations Center</h1>
-      <p class="coc-command__subtitle">Real-time contribution collection and payment processing workspace</p>
-    </div>
 
-    <div class="coc-command__meta">
-      <div class="coc-command__chip coc-command__chip--live" aria-live="polite">
-        <span class="coc-command__pulse" aria-hidden="true"></span>
-        <span>Session {{ sessionStatusLabel }}</span>
-      </div>
-      <div class="coc-command__chip">
-        <span class="coc-command__chip-label">Operator</span>
-        <strong>{{ operatorName }}</strong>
-      </div>
-      <div class="coc-command__chip">
-        <span class="coc-command__chip-label">Collection Date</span>
-        <strong>{{ collectionDateLabel }}</strong>
-      </div>
-    </div>
-
-    <div class="coc-command__actions">
-      <div class="coc-dropdown" [class.coc-dropdown--open]="quickActionsOpen">
-        <button
-          type="button"
-          class="coc-btn coc-btn--ghost"
-          (click)="toggleQuickActions($event)"
-          [attr.aria-expanded]="quickActionsOpen"
-          aria-haspopup="menu"
-        >
-          Quick Actions
-        </button>
-        <div class="coc-dropdown__menu" role="menu" *ngIf="quickActionsOpen" (click)="$event.stopPropagation()">
-          <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations/payments')">Payment Register</button>
-          <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations/receipts')">Receipts</button>
-          <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations/register')">Donation Register</button>
-          <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations')">Stewardship Dashboard</button>
+      <div class="coc-command__facts" role="group" aria-label="Collection session">
+        <div class="coc-command__fact coc-command__fact--live" aria-live="polite">
+          <span class="coc-command__pulse" aria-hidden="true"></span>
+          <span>Session {{ sessionStatusLabel }}</span>
+        </div>
+        <div class="coc-command__fact">
+          <span class="coc-command__fact-label">Operator</span>
+          <strong class="coc-command__fact-value coc-command__fact-value--truncate" [attr.title]="operatorName">{{ operatorName }}</strong>
+        </div>
+        <div class="coc-command__fact">
+          <span class="coc-command__fact-label">Collection Date</span>
+          <strong class="coc-command__fact-value">{{ collectionDateLabel }}</strong>
         </div>
       </div>
-      <button type="button" class="coc-btn coc-btn--ghost" (click)="exportTodayCollections()" [disabled]="!todayPayments.length">
-        Export
-      </button>
-      <button type="button" class="coc-btn coc-btn--ghost" (click)="openShortcuts()" aria-label="Keyboard shortcuts">
-        Shortcuts
-      </button>
-      <button type="button" class="coc-btn coc-btn--ghost" (click)="refreshSession()" [disabled]="sessionLoading">
-        {{ sessionLoading ? 'Refreshing…' : 'Refresh' }}
-      </button>
-      <button type="button" class="coc-btn coc-btn--primary" routerLink="/donations/payments">Exit Workspace</button>
+
+      <div class="coc-command__utils">
+        <button
+          type="button"
+          class="cf-btn-icon coc-command__icon-btn"
+          (click)="openShortcuts()"
+          aria-label="Keyboard shortcuts"
+          title="Keyboard shortcuts"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <rect x="2" y="4" width="20" height="16" rx="2" />
+            <path d="M6 8h.01M10 8h.01M14 8h.01M18 8h.01M8 12h.01M12 12h.01M16 12h.01M7 16h10" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="cf-btn-icon coc-command__icon-btn"
+          (click)="refreshSession()"
+          [disabled]="sessionLoading"
+          aria-label="Refresh session"
+          [attr.title]="sessionLoading ? 'Refreshing…' : 'Refresh session'"
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+            <path d="M21 3v6h-6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="coc-command__hero">
+      <div class="coc-command__copy">
+        <h1 id="coc-title" class="cf-page-title">Collection Operations Center</h1>
+        <p class="coc-command__subtitle">Real-time contribution collection and payment processing workspace</p>
+      </div>
+
+      <div class="coc-command__tools">
+        <div class="coc-dropdown" [class.coc-dropdown--open]="quickActionsOpen">
+          <button
+            type="button"
+            class="coc-btn coc-btn--ghost"
+            (click)="toggleQuickActions($event)"
+            [attr.aria-expanded]="quickActionsOpen"
+            aria-haspopup="menu"
+          >
+            Quick Actions
+          </button>
+          <div class="coc-dropdown__menu" role="menu" *ngIf="quickActionsOpen" (click)="$event.stopPropagation()">
+            <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations/payments')">Payment Register</button>
+            <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations/receipts')">Receipts</button>
+            <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations/register')">Donation Register</button>
+            <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations')">Stewardship Dashboard</button>
+          </div>
+        </div>
+        <button type="button" class="coc-btn coc-btn--ghost" (click)="exportTodayCollections()" [disabled]="!todayPayments.length">
+          Export
+        </button>
+        <button type="button" class="coc-btn coc-btn--ghost" routerLink="/donations/payments">Exit Workspace</button>
+      </div>
     </div>
   </header>
 

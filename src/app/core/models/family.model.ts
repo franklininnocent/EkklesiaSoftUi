@@ -59,12 +59,18 @@ export interface FamilyMember {
   /** Resolved from family relationships when returned by member APIs. */
   father_name?: string | null;
   mother_name?: string | null;
+  display_father_name?: string | null;
+  display_mother_name?: string | null;
+  father_person_id?: string | null;
+  mother_person_id?: string | null;
   person?: {
     id?: string;
     date_of_birth?: string | null;
     gender?: 'male' | 'female' | 'other' | null;
     father_name?: string | null;
     mother_name?: string | null;
+    father_person_id?: string | null;
+    mother_person_id?: string | null;
   };
   relationship_to_head: 'self' | 'spouse' | 'son' | 'daughter' | 'father' | 'mother' | 
                          'brother' | 'sister' | 'grandfather' | 'grandmother' | 
@@ -253,6 +259,7 @@ export interface FamilyStatistics {
   inactive_families: number;
   total_members: number;
   active_members: number;
+  members_created_this_month?: number;
   families_with_bcc: number;
   families_without_bcc: number;
   families_by_zone: {

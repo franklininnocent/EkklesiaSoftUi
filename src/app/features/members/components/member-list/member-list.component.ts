@@ -545,6 +545,15 @@ export class MemberListComponent implements OnInit, OnDestroy {
    * Or if the member is a child, the family head might be the father
    */
   getFatherName(member: FamilyMember): string | null {
+    const apiName = member.display_father_name || member.father_name;
+    if (apiName) {
+      return apiName;
+    }
+
+    if (member.person?.father_name) {
+      return member.person.father_name;
+    }
+
     if (!member?.family_id) {
       return null;
     }

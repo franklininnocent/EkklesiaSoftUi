@@ -641,6 +641,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     this.selectedBccId = null;
     this.marriageRegisterFilter = '';
     this.currentPage = 1;
+    this.clearFilterQueryParams();
     this.loadSacraments();
   }
 
@@ -1306,6 +1307,15 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       });
     }
 
+    if (this.selectedFamilyId) {
+      filters.push({
+        key: 'family_id',
+        label: 'Family',
+        value: this.selectedFamilyId,
+        displayValue: this.selectedFamilyId,
+      });
+    }
+
     if (this.marriageRegisterFilter) {
       filters.push({
         key: 'marriage_register_filter',
@@ -1378,6 +1388,8 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       this.bookNumberFilter = '';
     } else if (filter.key === 'bcc_id') {
       this.selectedBccId = null;
+    } else if (filter.key === 'family_id') {
+      this.selectedFamilyId = null;
     } else if (filter.key === 'marriage_register_filter') {
       this.marriageRegisterFilter = '';
     }
@@ -1389,6 +1401,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     }
 
     this.currentPage = 1;
+    this.clearFilterQueryParams();
     this.loadSacraments();
   }
 
@@ -1411,7 +1424,26 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
       field.value = undefined;
     });
     this.currentPage = 1;
+    this.clearFilterQueryParams();
     this.loadSacraments();
+  }
+
+  /** Drop sticky dashboard drill-down params so Clear all cannot be undone by the URL. */
+  private clearFilterQueryParams(): void {
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        sacrament_type_id: null,
+        status: null,
+        date_from: null,
+        date_to: null,
+        family_id: null,
+        bcc_id: null,
+        marriage_register_filter: null,
+      },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   ngOnDestroy(): void {

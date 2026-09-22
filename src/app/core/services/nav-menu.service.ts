@@ -19,6 +19,7 @@ export type NavMenuId =
   | 'members'
   | 'donations'
   | 'ministries'
+  | 'ministries-audit'
   | 'tenants'
   | 'platform-ministries'
   | 'roles-permissions'
@@ -201,6 +202,7 @@ export class NavMenuService {
       case 'bccs':
       case 'donations':
       case 'ministries':
+      case 'ministries-audit':
       case 'support':
       case 'sacraments':
       case 'users':
@@ -242,6 +244,8 @@ export class NavMenuService {
         return this.canViewDonations(user, hasActiveSupportSession);
       case 'ministries':
         return this.canAccessMinistries(user, hasActiveSupportSession);
+      case 'ministries-audit':
+        return this.auth.canViewTenantAuditLogs(user);
       case 'support':
         return this.auth.canAccessSupport(user);
       case 'sacraments':

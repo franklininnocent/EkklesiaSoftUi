@@ -4,6 +4,7 @@ import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { ministriesGuard } from './ministries.guard';
 
@@ -13,6 +14,7 @@ describe('ministriesGuard', () => {
     isAuthenticated: jest.Mock;
     currentUserValue: any;
     canAccessMinistries: jest.Mock;
+    isPlatformActor: jest.Mock;
     isSuperAdmin: jest.Mock;
     isEkklesiaAdmin: jest.Mock;
     canViewMySubscription: jest.Mock;
@@ -26,6 +28,7 @@ describe('ministriesGuard', () => {
       isAuthenticated: jest.fn(() => true),
       currentUserValue: null,
       canAccessMinistries: jest.fn(() => false),
+      isPlatformActor: jest.fn(() => false),
       isSuperAdmin: jest.fn(() => false),
       isEkklesiaAdmin: jest.fn(() => false),
       canViewMySubscription: jest.fn(() => false),
@@ -42,6 +45,14 @@ describe('ministriesGuard', () => {
             allowsGatedAccess: true,
             canViewGatedModules: jest.fn(() => true),
             snapshot: null,
+          },
+        },
+        {
+          provide: MinistriesApiService,
+          useValue: {
+            getModuleStatus: jest.fn(() =>
+              of({ success: true, data: { enabled: true, feature_key: 'ministries_associations' } })
+            ),
           },
         },
         {
@@ -64,8 +75,9 @@ describe('ministriesGuard', () => {
     });
   });
 
-  it('redirects EkklesiaAdmin without tenant context to Ministries Insights', (done) => {
+  it('redirects EkklesiaAdmin without tenant context to dashboard with support session notice', (done) => {
     auth.currentUserValue = { id: 1, tenant_id: null, role_name: 'EkklesiaAdmin' };
+    auth.isPlatformActor.mockReturnValue(true);
     auth.isEkklesiaAdmin.mockReturnValue(true);
     auth.canAccessMinistries.mockReturnValue(false);
 
@@ -79,9 +91,9 @@ describe('ministriesGuard', () => {
       (result$ as any).subscribe((allowed: boolean) => {
         expect(allowed).toBe(false);
         expect(navigate).toHaveBeenCalledWith(
-          ['/platform/ministries'],
+          ['/dashboard'],
           expect.objectContaining({
-            queryParams: expect.objectContaining({ notice: 'tenant_context_required' }),
+            queryParams: expect.objectContaining({ notice: 'support_session_required' }),
           })
         );
         done();
@@ -91,6 +103,7 @@ describe('ministriesGuard', () => {
 
   it('allows EkklesiaAdmin when a support session is active', (done) => {
     auth.currentUserValue = { id: 1, tenant_id: null, role_name: 'EkklesiaAdmin' };
+    auth.isPlatformActor.mockReturnValue(true);
     auth.isEkklesiaAdmin.mockReturnValue(true);
     auth.canAccessMinistries.mockReturnValue(true);
     supportSessionId = 'sess-1';

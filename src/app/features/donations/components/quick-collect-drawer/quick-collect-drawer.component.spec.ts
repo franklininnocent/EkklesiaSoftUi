@@ -114,4 +114,46 @@ describe('QuickCollectDrawerComponent', () => {
     component.gatewayReference = 'CHQ-1001';
     expect(component.canSubmit).toBe(true);
   });
+
+  it('auto-selects collectable dues and allocates payments to them', () => {
+    component.fundId = 'fund-1';
+    component.familyProfile = {
+      family_id: 'f1',
+      totals: { pending_due: 100, total_paid: 0 },
+      mandatory_contributions: {
+        collect_allocation_dues: [{
+          id: 'due-1',
+          period_label: '2026-09',
+          amount_due: 100,
+          amount_paid: 0,
+          outstanding_amount: 100,
+          plan: { name: 'Monthly Contribution' }
+        }]
+      }
+    } as any;
+
+    component.allocationOptions = (component as any).buildAllocationOptions(component.familyProfile);
+    (component as any).autoSelectCollectableAllocation();
+
+    expect(component.selectedAllocation?.allocatable_type).toBe('due');
+    expect(component.selectedAllocation?.allocatable_id).toBe('due-1');
+    expect(component.collectType).toBe('mandatory');
+
+    component.selectedFamily = { id: 'f1', family_name: 'Smith Family', family_code: 'FAM001' } as any;
+    component.payerName = 'John Smith';
+    component.amount = 100;
+
+    donationsService.createPayment.mockReturnValue(of({
+      success: true,
+      message: 'Payment recorded.',
+      data: { id: 'pay-2' } as any
+    }));
+    donationsService.getReceiptPreview.mockReturnValue(of({ success: true, data: {} as any }));
+
+    component.submit();
+
+    expect(donationsService.createPayment).toHaveBeenCalledWith(expect.objectContaining({
+      allocations: [{ allocatable_type: 'due', allocatable_id: 'due-1', amount: 100 }]
+    }));
+  });
 });

@@ -130,6 +130,7 @@ class BCCServiceMock {
 class AuthServiceMock {
   hasPermission = jest.fn(() => true);
   canAccessBcc = jest.fn(() => true);
+  canViewTenantAuditLogs = jest.fn(() => true);
 }
 
 describe('BccDashboardPageComponent', () => {

@@ -42,6 +42,7 @@ export class FamilyMemberDetailPanelComponent {
   @Output() deleteHeadProfileImage = new EventEmitter<void>();
   @Output() openSacramentModal = new EventEmitter<{ index: number; code: string }>();
   @Output() openHeadSacramentModal = new EventEmitter<string>();
+  @Output() linkedParentSelected = new EventEmitter<string>();
 
   sacramentsSectionExpanded = true;
 

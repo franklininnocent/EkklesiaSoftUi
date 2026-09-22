@@ -112,6 +112,8 @@ export interface AssignLeadershipPayloadBase {
   end_date?: string | null;
   jurisdiction_name?: string | null;
   appointment_letter_ref?: string | null;
+  email?: string | null;
+  phone?: string | null;
 }
 
 export interface AssignExistingPersonPayload extends AssignLeadershipPayloadBase {
@@ -155,6 +157,8 @@ export interface UpdateLeadershipAssignmentPayload {
   start_date: string;
   jurisdiction_name?: string | null;
   appointment_letter_ref?: string | null;
+  email?: string | null;
+  phone?: string | null;
 }
 
 export interface LeadershipHistoryFilters {

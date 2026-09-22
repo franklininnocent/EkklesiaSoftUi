@@ -96,7 +96,7 @@ export class BishopAuditTabComponent implements OnChanges {
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['bishopId'] && this.bishopId) {
-      this.canView = this.auth.hasEcclesiasticalPermission('bishops.view_audit');
+      this.canView = this.auth.canViewPlatformCompleteAudit();
       if (this.canView) {
         this.load();
       }

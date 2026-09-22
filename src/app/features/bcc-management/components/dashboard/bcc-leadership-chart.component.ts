@@ -170,7 +170,11 @@ export class BccLeadershipChartComponent implements AfterViewInit, OnChanges, On
     const coverage = this.data?.coveragePercent;
     this.coverageLabel = coverage === null || coverage === undefined ? null : `${coverage}%`;
     this.cdr.markForCheck();
-    queueMicrotask(() => this.renderChart());
+    this.scheduleRender();
+  }
+
+  private scheduleRender(): void {
+    requestAnimationFrame(() => this.renderChart());
   }
 
   private buildRings(): RadialRing[] {
@@ -227,7 +231,6 @@ export class BccLeadershipChartComponent implements AfterViewInit, OnChanges, On
 
     const canvas = this.canvas?.nativeElement;
     if (!canvas) {
-      queueMicrotask(() => this.renderChart());
       return;
     }
 

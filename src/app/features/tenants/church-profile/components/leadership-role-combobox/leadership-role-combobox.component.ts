@@ -25,6 +25,7 @@ import { ChurchLeadershipGovernanceService } from '@core/services/church/church-
 import { ToastService } from '@core/services/toast.service';
 import {
   canonicalizeLeadershipRoleTitle,
+  filterRolesByCategory,
   findExactRoleMatch,
   groupLeadershipRoles,
   guessLeadershipRoleCategory,
@@ -59,6 +60,8 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
   @Input() invalid = false;
   @Input() inputId = 'leadership_role_combobox';
   @Input() placeholder = 'Select a role';
+  @Input() categoryFilter: LeadershipCategory | '' = '';
+  @Input() defaultCreateCategory: LeadershipCategory = 'OTHER';
 
   @Output() roleCreated = new EventEmitter<LeadershipRoleOption>();
   @Output() rolesRefresh = new EventEmitter<LeadershipRoleOption[]>();
@@ -76,9 +79,13 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
   private onTouched: () => void = () => undefined;
 
   ngOnChanges(changes: SimpleChanges): void {
-    if (changes['roles'] && this.value) {
+    if (changes['roles'] || changes['categoryFilter'] || changes['defaultCreateCategory']) {
       this.cdr.markForCheck();
     }
+  }
+
+  get visibleRoles(): LeadershipRoleOption[] {
+    return filterRolesByCategory(this.roles, this.categoryFilter, this.value ?? '');
   }
 
   get selectedRole(): LeadershipRoleOption | undefined {
@@ -90,7 +97,7 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
   }
 
   get groupedRoles(): LeadershipRoleGroup[] {
-    return groupLeadershipRoles(this.roles, this.searchQuery);
+    return groupLeadershipRoles(this.visibleRoles, this.searchQuery);
   }
 
   get flatOptions(): LeadershipRoleOption[] {
@@ -98,7 +105,7 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
   }
 
   get showCreateAction(): boolean {
-    return shouldShowCreateRoleAction(this.roles, this.searchQuery, this.canCreate) && !this.creating;
+    return shouldShowCreateRoleAction(this.visibleRoles, this.searchQuery, this.canCreate) && !this.creating;
   }
 
   get createActionLabel(): string {
@@ -131,19 +138,12 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
     const target = event.target as HTMLElement | null;
-    const insideLrc = !!target?.closest('.lrc');
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b51fb5'},body:JSON.stringify({sessionId:'b51fb5',location:'leadership-role-combobox.component.ts:onDocumentClick',message:'document click',data:{panelOpen:this.panelOpen,insideLrc,willClose:this.panelOpen&&!insideLrc,targetTag:target?.tagName,targetClass:target?.className?.slice?.(0,80)},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
-    if (!insideLrc) {
+    if (!target?.closest('.lrc')) {
       this.closePanel();
     }
   }
 
   togglePanel(): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b51fb5'},body:JSON.stringify({sessionId:'b51fb5',location:'leadership-role-combobox.component.ts:togglePanel',message:'toggle panel',data:{disabled:this.disabled,panelOpen:this.panelOpen},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     if (this.disabled) {
       return;
     }
@@ -157,22 +157,12 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
     this.panelOpen = true;
     this.searchQuery = this.selectedRole?.title ?? '';
     this.highlightedIndex = 0;
-    this.syncSuggestedCategory();
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b51fb5'},body:JSON.stringify({sessionId:'b51fb5',location:'leadership-role-combobox.component.ts:openPanel',message:'panel opened',data:{rolesCount:this.roles.length,flatOptionsCount:this.flatOptions.length,disabled:this.disabled,searchQuery:this.searchQuery},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    this.createCategory = this.defaultCreateCategory;
+    if (this.searchQuery.trim()) {
+      this.syncSuggestedCategory();
+    }
     this.cdr.markForCheck();
-    queueMicrotask(() => {
-      this.searchInput?.nativeElement.focus();
-      const firstOption = document.querySelector('.lrc__option') as HTMLElement | null;
-      if (firstOption) {
-        const rect = firstOption.getBoundingClientRect();
-        const topEl = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2) as HTMLElement | null;
-        // #region agent log
-        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b51fb5'},body:JSON.stringify({sessionId:'b51fb5',location:'leadership-role-combobox.component.ts:openPanel:elementFromPoint',message:'top element at first option',data:{optionClass:firstOption.className,topTag:topEl?.tagName,topClass:topEl?.className?.slice?.(0,80),isOption:topEl===firstOption||!!topEl?.closest('.lrc__option')},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-        // #endregion
-      }
-    });
+    queueMicrotask(() => this.searchInput?.nativeElement.focus());
   }
 
   closePanel(): void {
@@ -196,9 +186,6 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
 
   selectRole(role: LeadershipRoleOption, event?: Event): void {
     event?.preventDefault();
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b51fb5'},body:JSON.stringify({sessionId:'b51fb5',location:'leadership-role-combobox.component.ts:selectRole',message:'role selected',data:{roleId:role.id,roleTitle:role.title},timestamp:Date.now(),runId:'post-fix',hypothesisId:'D'})}).catch(()=>{});
-    // #endregion
     this.value = role.id;
     this.onChange(role.id);
     this.onTouched();
@@ -213,7 +200,7 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
       return;
     }
 
-    const existing = findExactRoleMatch(this.roles, title);
+    const existing = findExactRoleMatch(this.visibleRoles, title);
     if (existing) {
       this.selectRole(existing);
       return;

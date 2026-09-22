@@ -97,6 +97,13 @@ describe('DiocesanBishopPanelComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Pending');
   });
 
+  it('places official record and suggestions side by side', () => {
+    const columns = fixture.nativeElement.querySelector('.diocesan-bishop-panel__columns');
+    expect(columns).toBeTruthy();
+    expect(columns.querySelector('#official-bishop-record')).toBeTruthy();
+    expect(columns.querySelector('#bishop-suggestions-heading')).toBeTruthy();
+  });
+
   it('opens suggestion wizard from primary action', () => {
     const button = fixture.nativeElement.querySelector(
       'button.cf-btn-primary',

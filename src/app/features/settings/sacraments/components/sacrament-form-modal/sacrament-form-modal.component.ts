@@ -120,8 +120,27 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   
   // Family member selection for parent auto-population (recipient uses ParticipantSourceControl)
   familyMembers: FamilyMember[] = [];
+  availableFathers: FamilyMember[] = [];
+  availableMothers: FamilyMember[] = [];
   loadingMembers = false;
+  private readonly fallbackMinisterRoles: string[] = ['priest', 'deacon', 'pastor', 'other'];
   selectedRecipientMemberId: string | null = null;
+  /** Baptism + existing family: pick an existing member or register a new person into the family. */
+  existingFamilyRecipientMode: 'existing_member' | 'new_person' = 'existing_member';
+  relationshipToHead = 'son';
+  readonly relationshipToHeadOptions: { value: string; label: string }[] = [
+    { value: 'self', label: 'Head of Family' },
+    { value: 'spouse', label: 'Spouse' },
+    { value: 'son', label: 'Son' },
+    { value: 'daughter', label: 'Daughter' },
+    { value: 'father', label: 'Father' },
+    { value: 'mother', label: 'Mother' },
+    { value: 'brother', label: 'Brother' },
+    { value: 'sister', label: 'Sister' },
+    { value: 'grandson', label: 'Grandson' },
+    { value: 'granddaughter', label: 'Granddaughter' },
+    { value: 'other', label: 'Other relative' },
+  ];
   resolvedPerson: ParishPerson | null = null;
   personLocked = false;
   personQuery = '';
@@ -754,6 +773,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.showFamilyForm = false;
     this.newlyCreatedFamily = null;
     this.familyMembers = [];
+    this.refreshAvailableParents();
     this.parentSelectionMode = 'dropdown';
     this.selectedFatherId = null;
     this.selectedMotherId = null;
@@ -1186,6 +1206,32 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       }
     }
 
+    if (this.isBaptism() && this.familySelectionType === 'existing' && this.selectedFamilyId) {
+      if (this.existingFamilyRecipientMode === 'existing_member') {
+        if (!this.selectedRecipientMemberId) {
+          this.fieldErrors['recipient_member_id'] =
+            'Select an existing family member, or choose new person if they are not yet registered.';
+          isValid = false;
+        }
+      } else {
+        const firstValidation = validateRequired(this.personDraft.first_name, 'First name');
+        if (!firstValidation.valid) {
+          this.fieldErrors['person_first_name'] = firstValidation.message || '';
+          isValid = false;
+        }
+        const lastValidation = validateRequired(this.personDraft.last_name, 'Last name');
+        if (!lastValidation.valid) {
+          this.fieldErrors['person_last_name'] = lastValidation.message || '';
+          isValid = false;
+        }
+        const relValidation = validateRequired(this.relationshipToHead, 'Relationship to family head');
+        if (!relValidation.valid) {
+          this.fieldErrors['relationship_to_head'] = relValidation.message || '';
+          isValid = false;
+        }
+      }
+    }
+
     if (this.isEucharist()) {
       const baptismDateValidation = validateRequired(this.formData['baptism_date'], 'Baptism date');
       if (!baptismDateValidation.valid) {
@@ -1566,7 +1612,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   ministerRoles(): string[] {
     return this.workflowPlan?.definition?.minister_roles?.length
       ? this.workflowPlan.definition.minister_roles
-      : ['priest', 'deacon', 'pastor', 'other'];
+      : this.fallbackMinisterRoles;
   }
 
   onMinisterDraftChange(draft: SacramentParticipantDraft): void {
@@ -2068,7 +2114,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
 
   private hasMinisterForSave(): boolean {
     if (this.ministerDraft?.source === 'internal_leadership') {
-      return !!this.ministerDraft.church_leadership_id;
+      return !!(this.ministerDraft.church_leadership_id || this.ministerDraft.leadership_assignment_id);
     }
     if (this.ministerDraft?.source === 'external') {
       return !!(this.ministerDraft.external_full_name || this.ministerDraft.display_name)?.trim();
@@ -2131,6 +2177,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.showFamilyForm = false;
     this.newlyCreatedFamily = null;
     this.familyMembers = [];
+    this.refreshAvailableParents();
     this.parentSelectionMode = 'dropdown';
     this.selectedFatherId = null;
     this.selectedMotherId = null;
@@ -2389,6 +2436,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.formData['family_id'] = null;
     this.formData['bcc_id'] = null;
     this.selectedRecipientMemberId = null;
+    this.existingFamilyRecipientMode = 'existing_member';
     this.clearResolvedPerson();
     this.cdr.detectChanges();
   }
@@ -2414,6 +2462,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     this.formData['bcc_id'] = null;
     
     this.selectedRecipientMemberId = null;
+    this.existingFamilyRecipientMode = 'existing_member';
     this.clearResolvedPerson();
     if (type === 'new') {
       this.showFamilyForm = false;
@@ -2422,6 +2471,17 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       this.loadFamilies();
     }
     
+    this.cdr.detectChanges();
+  }
+
+  onExistingFamilyRecipientModeChange(mode: 'existing_member' | 'new_person'): void {
+    this.existingFamilyRecipientMode = mode;
+    if (mode === 'new_person') {
+      this.selectedRecipientMemberId = null;
+      this.personLocked = false;
+      this.recipientContext = null;
+      this.baptismDuplicateWarning = null;
+    }
     this.cdr.detectChanges();
   }
 
@@ -2452,6 +2512,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (this.selectedFamilyId) {
       this.loadFamilyMembers(this.selectedFamilyId);
       this.selectedRecipientMemberId = null;
+      this.existingFamilyRecipientMode = 'existing_member';
       this.clearResolvedPerson();
       // Reset parent selections when family changes
       this.selectedFatherId = null;
@@ -2462,7 +2523,8 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       }
     } else {
       this.familyMembers = [];
-        this.selectedFatherId = null;
+      this.refreshAvailableParents();
+      this.selectedFatherId = null;
       this.selectedMotherId = null;
       this.parentSelectionMode = 'manual';
     }
@@ -2476,6 +2538,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   loadFamilyMembers(familyId: string): void {
     if (!familyId) {
       this.familyMembers = [];
+      this.refreshAvailableParents();
       return;
     }
 
@@ -2489,12 +2552,14 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
           } else {
             this.familyMembers = [];
           }
+          this.refreshAvailableParents();
           this.loadingMembers = false;
           this.cdr.markForCheck();
         },
         error: (error) => {
           console.error('Error loading family members:', error);
           this.familyMembers = [];
+          this.refreshAvailableParents();
           this.loadingMembers = false;
           this.cdr.markForCheck();
         }
@@ -2505,26 +2570,25 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
    * Get available fathers from family members
    */
   getAvailableFathers(): FamilyMember[] {
-    if (!this.familyMembers.length) return [];
-    
-    return this.familyMembers.filter(member => {
-      // Find members with relationship_to_head = 'father' or 'self' (if male)
-      return (member.relationship_to_head === 'father') ||
-             (member.relationship_to_head === 'self' && member.gender === 'male');
-    });
+    return this.availableFathers;
   }
 
   /**
    * Get available mothers from family members
    */
   getAvailableMothers(): FamilyMember[] {
-    if (!this.familyMembers.length) return [];
-    
-    return this.familyMembers.filter(member => {
-      // Find members with relationship_to_head = 'mother' or 'spouse' (if female and head is male)
-      return (member.relationship_to_head === 'mother') ||
-             (member.relationship_to_head === 'spouse' && member.gender === 'female');
-    });
+    return this.availableMothers;
+  }
+
+  private refreshAvailableParents(): void {
+    this.availableFathers = this.familyMembers.filter((member) =>
+      member.relationship_to_head === 'father' ||
+      (member.relationship_to_head === 'self' && member.gender === 'male')
+    );
+    this.availableMothers = this.familyMembers.filter((member) =>
+      member.relationship_to_head === 'mother' ||
+      (member.relationship_to_head === 'spouse' && member.gender === 'female')
+    );
   }
 
   /**
@@ -2548,7 +2612,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (father) {
       this.formData['father_name'] = this.getMemberFullName(father);
     }
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
   }
 
   /**
@@ -2564,7 +2628,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     if (mother) {
       this.formData['mother_name'] = this.getMemberFullName(mother);
     }
-    this.cdr.detectChanges();
+    this.cdr.markForCheck();
   }
 
   /**
@@ -2711,27 +2775,33 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     }
 
     if (this.usesPersonRecipientWorkflow() && !this.resolvedPerson) {
-      const composed = [this.personDraft.first_name, this.personDraft.middle_name, this.personDraft.last_name]
-        .filter(Boolean)
-        .join(' ')
-        .trim();
-      if (composed) {
-        this.formData['recipient_name'] = composed;
-      }
-      if (this.personDraft.date_of_birth) {
-        this.formData['recipient_birth_date'] = this.personDraft.date_of_birth;
-      }
-      if (this.personDraft.place_of_birth) {
-        this.formData['recipient_birth_place'] = this.personDraft.place_of_birth;
-      }
-      if (this.personDraft.gender) {
-        this.formData['recipient_gender'] = this.personDraft.gender;
-      }
-      if (this.personDraft.father_name) {
-        this.formData['father_name'] = this.personDraft.father_name;
-      }
-      if (this.personDraft.mother_name) {
-        this.formData['mother_name'] = this.personDraft.mother_name;
+      const includePersonDraft =
+        this.familySelectionType === null
+        || this.familySelectionType === 'new'
+        || (this.isBaptism() && this.familySelectionType === 'existing' && this.existingFamilyRecipientMode === 'new_person');
+      if (includePersonDraft) {
+        const composed = [this.personDraft.first_name, this.personDraft.middle_name, this.personDraft.last_name]
+          .filter(Boolean)
+          .join(' ')
+          .trim();
+        if (composed) {
+          this.formData['recipient_name'] = composed;
+        }
+        if (this.personDraft.date_of_birth) {
+          this.formData['recipient_birth_date'] = this.personDraft.date_of_birth;
+        }
+        if (this.personDraft.place_of_birth) {
+          this.formData['recipient_birth_place'] = this.personDraft.place_of_birth;
+        }
+        if (this.personDraft.gender) {
+          this.formData['recipient_gender'] = this.personDraft.gender;
+        }
+        if (this.personDraft.father_name) {
+          this.formData['father_name'] = this.personDraft.father_name;
+        }
+        if (this.personDraft.mother_name) {
+          this.formData['mother_name'] = this.personDraft.mother_name;
+        }
       }
     }
 
@@ -2744,7 +2814,12 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
 
     if (this.usesPersonRecipientWorkflow()) {
       payload.family_association = this.familySelectionType === null ? 'none' : this.familySelectionType;
-      payload.family_member_id = this.selectedRecipientMemberId;
+      if (this.isBaptism() && this.familySelectionType === 'existing' && this.existingFamilyRecipientMode === 'new_person') {
+        payload.family_member_id = undefined;
+        payload.relationship_to_head = this.relationshipToHead;
+      } else {
+        payload.family_member_id = this.selectedRecipientMemberId || undefined;
+      }
       payload.person_id = this.resolvedPerson?.id || undefined;
       payload.acknowledge_person_match = this.acknowledgePersonMatch || undefined;
       payload.use_person_id = this.useMatchedPersonId || undefined;
@@ -2752,7 +2827,14 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
         payload.family = { ...this.newFamilyDraft, bcc_id: this.newFamilyDraft.bcc_id || undefined };
         payload.relationship_to_head = 'self';
       }
-      if (!this.resolvedPerson) {
+      const needsPersonPayload =
+        !this.resolvedPerson
+        && (
+          this.familySelectionType === null
+          || this.familySelectionType === 'new'
+          || (this.isBaptism() && this.familySelectionType === 'existing' && this.existingFamilyRecipientMode === 'new_person')
+        );
+      if (needsPersonPayload) {
         payload.person = {
           first_name: this.personDraft.first_name,
           middle_name: this.personDraft.middle_name || undefined,

@@ -9,6 +9,7 @@ import {
   SacramentCertificateDownloadHistoryItem,
 } from '../../models/sacrament.model';
 import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
 import { Store } from '@ngrx/store';
 import { AppState } from '@core/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
@@ -100,8 +101,13 @@ export class SacramentDetailComponent implements OnInit, OnDestroy {
     private datePipe: DatePipe,
     private store: Store<AppState>,
     private tenantService: TenantService,
+    private authService: AuthService,
     private cdr: ChangeDetectorRef
   ) {}
+
+  get canViewDownloadHistory(): boolean {
+    return this.authService.canViewTenantAuditLogs();
+  }
 
   ngOnInit(): void {
     const id = this.route.snapshot.paramMap.get('id');

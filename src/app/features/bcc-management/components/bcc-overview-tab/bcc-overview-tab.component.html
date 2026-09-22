@@ -179,14 +179,38 @@
         <header class="bcc-overview__section-head">
           <h2 id="bcc-leadership">Leadership</h2>
         </header>
-        <ng-container *ngIf="o.leadership.has_primary; else noPrimaryLeadership">
-          <p class="cf-meta">Primary leader</p>
-          <p class="bcc-overview__leader-name">{{ o.leadership.primary_leader }}</p>
-          <p class="cf-meta">{{ o.leadership.active_count }} active {{ o.leadership.active_count === 1 ? 'leader' : 'leaders' }}</p>
+        <ng-container *ngIf="currentLeaders.length; else noCurrentLeadership">
+          <ul class="bcc-overview__leader-list">
+            <li *ngFor="let leader of currentLeaders" class="bcc-overview__leader-item">
+              <span class="bcc-overview__leader-line">
+                <a
+                  *ngIf="memberDetailLink(leader) as memberLink; else leaderNamePlain"
+                  class="cf-link bcc-overview__leader-name-link"
+                  [routerLink]="memberLink"
+                  [queryParams]="memberDetailQuery(leader)"
+                >
+                  <strong>{{ leader.member_name }}</strong>
+                </a>
+                <ng-template #leaderNamePlain>
+                  <strong>{{ leader.member_name }}</strong>
+                </ng-template>
+                <span class="bcc-overview__leader-sep" aria-hidden="true">·</span>
+                <span>{{ leaderDesignation(leader) }}</span>
+                <ng-container *ngIf="leaderContactPhone(leader) as phone">
+                  <span class="bcc-overview__leader-sep" aria-hidden="true">·</span>
+                  <span>{{ phone }}</span>
+                </ng-container>
+                <ng-container *ngIf="leaderContactEmail(leader) as email">
+                  <span class="bcc-overview__leader-sep" aria-hidden="true">·</span>
+                  <a class="bcc-overview__leader-email" [href]="'mailto:' + email">{{ email }}</a>
+                </ng-container>
+              </span>
+            </li>
+          </ul>
         </ng-container>
-        <ng-template #noPrimaryLeadership>
-          <p class="bcc-overview__leader-warning">No primary leader assigned</p>
-          <p class="cf-meta">This BCC currently has no designated primary leader.</p>
+        <ng-template #noCurrentLeadership>
+          <p class="bcc-overview__leader-warning">No current leaders assigned</p>
+          <p class="cf-meta">Assign leadership roles to show them here.</p>
         </ng-template>
         <button type="button" class="cf-btn" (click)="go('leadership')">View Leadership</button>
       </section>

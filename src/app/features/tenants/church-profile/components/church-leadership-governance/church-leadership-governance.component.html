@@ -73,6 +73,21 @@
 
             <div class="clg__card-body">
               <p class="clg__person">{{ assignment.person?.full_name }}</p>
+              <div
+                class="clg__contact"
+                *ngIf="leaderContactEmail(assignment) || leaderContactPhone(assignment)"
+              >
+                <a
+                  *ngIf="leaderContactEmail(assignment) as email"
+                  class="clg__contact-link"
+                  [href]="'mailto:' + email"
+                >{{ email }}</a>
+                <a
+                  *ngIf="leaderContactPhone(assignment) as phone"
+                  class="clg__contact-link"
+                  [href]="'tel:' + phone"
+                >{{ phone }}</a>
+              </div>
               <div class="clg__role-row">
                 <span class="clg__role">{{ assignment.role?.title }}</span>
                 <app-status-badge
@@ -169,7 +184,16 @@
         </thead>
         <tbody>
           <tr *ngFor="let row of history">
-            <td>{{ row.person?.full_name }}</td>
+            <td>
+              <div>{{ row.person?.full_name }}</div>
+              <div
+                class="clg__history-contact"
+                *ngIf="leaderContactEmail(row) || leaderContactPhone(row)"
+              >
+                <span *ngIf="leaderContactEmail(row) as email">{{ email }}</span>
+                <span *ngIf="leaderContactPhone(row) as phone">{{ phone }}</span>
+              </div>
+            </td>
             <td>{{ row.role?.title }}</td>
             <td>{{ row.role?.category_label }}</td>
             <td>{{ row.start_date }}</td>
@@ -272,6 +296,7 @@
             <ul class="cf-participant-source__results" *ngIf="showPersonResults && personResults.length">
               <li *ngFor="let person of personResults" (mousedown)="selectPerson(person, $event)">
                 <strong>{{ person.full_name_display || (person.first_name + ' ' + person.last_name) }}</strong>
+                <span class="clg__person-hint" *ngIf="personContactHint(person) as hint">{{ hint }}</span>
               </li>
             </ul>
           </ng-template>
@@ -312,9 +337,60 @@
       </div>
     </section>
 
+    <section class="cf-split-section" aria-labelledby="assign-section-contact">
+      <h3 id="assign-section-contact" class="cf-split-section__title">Contact</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="assign_email">
+            Email <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="email"
+            id="assign_email"
+            formControlName="email"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="cf-split-field">
+          <app-phone-input
+            [label]="'Phone'"
+            [id]="'assign_phone'"
+            [name]="'phone'"
+            [required]="false"
+            [disabled]="saving"
+            [maxLength]="15"
+            [minLength]="0"
+            formControlName="phone"
+          ></app-phone-input>
+        </div>
+      </div>
+    </section>
+
     <section class="cf-split-section" aria-labelledby="assign-section-role">
       <h3 id="assign-section-role" class="cf-split-section__title">Role &amp; dates</h3>
       <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="assign_category">
+            Governance category <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select
+            id="assign_category"
+            [(ngModel)]="assignCategory"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onAssignCategoryChange()"
+            aria-required="true"
+          >
+            <option value="" disabled>Select category…</option>
+            <option *ngFor="let option of categoryOptions" [ngValue]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+          <p class="cf-split-field__hint">
+            Parish Clergy, councils, ministries, or other — where this leader appears on the Leadership tab.
+          </p>
+        </div>
+
         <div class="cf-split-field cf-split-field--full">
           <label for="assign_role_id">
             Role <span class="cf-split-req" aria-hidden="true">*</span>
@@ -324,10 +400,13 @@
             formControlName="role_id"
             [roles]="roles"
             [canCreate]="canCreateCustomRole"
+            [categoryFilter]="assignCategory"
+            [defaultCreateCategory]="assignCategory || 'OTHER'"
             placeholder="Select a role"
             (rolesRefresh)="onRolesRefreshed($event)"
           ></app-leadership-role-combobox>
-          <p class="cf-split-field__hint">Choose the leadership role for this parish.</p>
+          <p class="cf-split-field__hint" *ngIf="!assignCategory">Select a category first.</p>
+          <p class="cf-split-field__hint" *ngIf="assignCategory">Choose the leadership role for this parish.</p>
         </div>
 
         <div class="cf-split-field">
@@ -376,7 +455,7 @@
       <button
         type="submit"
         class="cf-btn cf-btn-primary"
-        [disabled]="saving"
+        [disabled]="saving || !canSubmitAssign"
       >
         {{ saving ? 'Saving…' : 'Add Leader' }}
       </button>
@@ -530,7 +609,7 @@
     (ngSubmit)="submitEdit()"
     novalidate
   >
-    <p class="cf-meta">Update this leader’s name, role, and appointment details.</p>
+    <p class="cf-meta">Update this leader’s name, contact, role, and appointment details.</p>
 
     <section class="cf-split-section" aria-labelledby="edit-section-person">
       <h3 id="edit-section-person" class="cf-split-section__title">Leader</h3>
@@ -581,9 +660,59 @@
       </div>
     </section>
 
+    <section class="cf-split-section" aria-labelledby="edit-section-contact">
+      <h3 id="edit-section-contact" class="cf-split-section__title">Contact</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="edit_email">
+            Email <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="email"
+            id="edit_email"
+            formControlName="email"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="cf-split-field">
+          <app-phone-input
+            [label]="'Phone'"
+            [id]="'edit_phone'"
+            [name]="'phone'"
+            [required]="false"
+            [disabled]="saving"
+            [maxLength]="15"
+            [minLength]="0"
+            formControlName="phone"
+          ></app-phone-input>
+        </div>
+      </div>
+    </section>
+
     <section class="cf-split-section" aria-labelledby="edit-section-role">
       <h3 id="edit-section-role" class="cf-split-section__title">Role &amp; dates</h3>
       <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="edit_category">
+            Governance category <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select
+            id="edit_category"
+            [(ngModel)]="editCategory"
+            [ngModelOptions]="{ standalone: true }"
+            (ngModelChange)="onEditCategoryChange()"
+            aria-required="true"
+          >
+            <option *ngFor="let option of categoryOptions" [ngValue]="option.value">
+              {{ option.label }}
+            </option>
+          </select>
+          <p class="cf-split-field__hint">
+            Where this leader appears in Current Governance.
+          </p>
+        </div>
+
         <div class="cf-split-field cf-split-field--full">
           <label for="edit_role_id">
             Role <span class="cf-split-req" aria-hidden="true">*</span>
@@ -593,6 +722,8 @@
             formControlName="role_id"
             [roles]="roles"
             [canCreate]="canCreateCustomRole"
+            [categoryFilter]="editCategory"
+            [defaultCreateCategory]="editCategory"
             placeholder="Select a role"
             (rolesRefresh)="onRolesRefreshed($event)"
           ></app-leadership-role-combobox>

@@ -301,6 +301,7 @@
           </div>
         </div>
 
+        <ng-container *ngIf="canViewSubscriptionAuditHistory">
         <h3 class="tenant-detail__subheading">Subscription history</h3>
         <div *ngIf="auditsLoading" class="cf-loading-block"><p>Loading history…</p></div>
         <div *ngIf="auditsError" class="cf-inline-alert" role="alert">
@@ -328,6 +329,7 @@
           </table>
         </app-data-table>
         <app-cf-empty-state *ngIf="!auditsLoading && !auditsError && !subscriptionAudits.length" title="No subscription history" description="Lifecycle events will appear here." [hasActions]="false"></app-cf-empty-state>
+        </ng-container>
       </div>
 
       <!-- Modules -->
@@ -447,6 +449,22 @@
                   <dd>{{ details.church.primary_pastor.role || '—' }}</dd>
                   <dt>Appointed</dt>
                   <dd>{{ formatDate(details.church.primary_pastor.appointed_date) }}</dd>
+                  <dt>Email</dt>
+                  <dd>
+                    <a
+                      *ngIf="details.church.primary_pastor.email; else noPastorEmail"
+                      [href]="'mailto:' + details.church.primary_pastor.email"
+                    >{{ details.church.primary_pastor.email }}</a>
+                    <ng-template #noPastorEmail>—</ng-template>
+                  </dd>
+                  <dt>Phone</dt>
+                  <dd>
+                    <a
+                      *ngIf="details.church.primary_pastor.phone; else noPastorPhone"
+                      [href]="'tel:' + details.church.primary_pastor.phone"
+                    >{{ details.church.primary_pastor.phone }}</a>
+                    <ng-template #noPastorPhone>—</ng-template>
+                  </dd>
                 </dl>
               </ng-container>
               <ng-template #noPastor><p class="tenant-detail__muted">No primary pastor on record.</p></ng-template>

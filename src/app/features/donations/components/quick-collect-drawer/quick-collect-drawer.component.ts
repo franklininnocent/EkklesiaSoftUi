@@ -663,6 +663,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           this.fundId = this.funds[0].id;
         }
         this.allocationOptions = this.buildAllocationOptions(this.familyProfile);
+        this.autoSelectCollectableAllocation();
         if (this.familyProfile && !this.amount) {
           const pending = this.familyProfile.totals.pending_due;
           this.amount = pending > 0 ? pending : null;
@@ -826,7 +827,10 @@ export class QuickCollectDrawerComponent implements OnInit {
       return [];
     }
     const options: AllocationOption[] = [];
-    for (const due of profile.mandatory_contributions?.outstanding_dues?.slice(0, 3) ?? []) {
+    const collectDues = profile.mandatory_contributions?.collect_allocation_dues
+      ?? profile.mandatory_contributions?.outstanding_dues
+      ?? [];
+    for (const due of collectDues.slice(0, 3)) {
       options.push({
         label: due.plan?.name || due.period_label || 'Mandatory due',
         amount: due.outstanding_amount ?? Math.max(0, due.amount_due - due.amount_paid),
@@ -847,8 +851,8 @@ export class QuickCollectDrawerComponent implements OnInit {
     if (this.fundId) {
       const fund = this.funds.find((item) => item.id === this.fundId);
       if (fund) {
-        options.unshift({
-          label: fund.name,
+        options.push({
+          label: `${fund.name} (general gift)`,
           amount: profile.totals.pending_due > 0 ? profile.totals.pending_due : 500,
           type: 'general',
           allocatable_type: 'fund',
@@ -859,11 +863,28 @@ export class QuickCollectDrawerComponent implements OnInit {
     return options;
   }
 
+  private firstCollectableOption(): AllocationOption | null {
+    return this.allocationOptions.find(
+      (option) => option.allocatable_type === 'due' || option.allocatable_type === 'project_installment'
+    ) ?? null;
+  }
+
+  private autoSelectCollectableAllocation(): void {
+    const collectable = this.firstCollectableOption();
+    if (collectable) {
+      this.applyAllocation(collectable);
+      return;
+    }
+    this.selectedAllocation = null;
+    this.collectType = 'general';
+  }
+
   private buildAllocations(): Array<{ allocatable_type: string; allocatable_id: string; amount: number }> | undefined {
-    if (this.selectedAllocation) {
+    const target = this.selectedAllocation ?? this.firstCollectableOption();
+    if (target) {
       return [{
-        allocatable_type: this.selectedAllocation.allocatable_type,
-        allocatable_id: this.selectedAllocation.allocatable_id,
+        allocatable_type: target.allocatable_type,
+        allocatable_id: target.allocatable_id,
         amount: Number(this.amount)
       }];
     }
@@ -909,6 +930,9 @@ export class QuickCollectDrawerComponent implements OnInit {
         }
         if (this.familyProfile) {
           this.allocationOptions = this.buildAllocationOptions(this.familyProfile);
+          if (!this.selectedAllocation) {
+            this.autoSelectCollectableAllocation();
+          }
         }
       },
       error: () => {

@@ -153,7 +153,7 @@
         </div>
       </section>
 
-      <section class="detail-section download-history" aria-labelledby="download-history-title">
+      <section *ngIf="canViewDownloadHistory" class="detail-section download-history" aria-labelledby="download-history-title">
         <h3 id="download-history-title" class="section-title">Download History Audit Log</h3>
         <div class="download-history__table-wrap" *ngIf="downloadHistory.length; else noDownloadHistory">
           <table class="download-history__table">

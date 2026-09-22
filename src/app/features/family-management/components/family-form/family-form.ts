@@ -23,7 +23,7 @@ import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family
 import { ModalShellComponent } from '@shared/components';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { AuthService } from '@core/services';
-import { getCountryCallingCode, CountryCode, parsePhoneNumber, isValidPhoneNumber } from 'libphonenumber-js';
+import { getCountryCallingCode, CountryCode, parsePhoneNumber } from 'libphonenumber-js';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
 import {
   extractMemberApiError,
@@ -128,10 +128,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
 
     // If still defaulting to +1, hydrate from API once
     if (this.callingCode === '+1') {
-      this.phoneCodeService.initializeFromApiOnce().subscribe({
-        next: (res) => console.log('📞 Phone code hydrated from API:', res),
-        error: (e) => console.warn('⚠️ Phone code API hydrate error', e)
-      });
+      this.phoneCodeService.initializeFromApiOnce().subscribe();
     }
 
     // Load active BCCs first, then patch form (important for edit mode)
@@ -165,7 +162,6 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
   private initializePhoneCode(): void {
     try {
       const user = this.authService.currentUserValue as any;
-      console.log('🔍 Family Form - Initializing phone code, user:', user);
 
       // Try to get country code from user's tenant
       let iso2: string | undefined = user?.tenant?.country_code || user?.tenant?.country?.iso2;
@@ -174,7 +170,6 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
       if (!iso2) {
         try {
           iso2 = localStorage.getItem('tenant_country_code') || undefined;
-          console.log('📦 Using cached tenant_country_code from localStorage:', iso2);
         } catch {}
       }
 
@@ -184,23 +179,16 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
           const code = getCountryCallingCode(upper as CountryCode);
           if (code) {
             const phoneCode = `+${code}`;
-            console.log(`✅ Setting phone code to ${phoneCode} for country ${upper}`);
             this.phoneCodeService.setPhoneCode(phoneCode);
             // Cache for other parts of app
             try { localStorage.setItem('tenant_country_code', upper); } catch {}
-          } else {
-            console.warn(`⚠️ Could not get calling code for ISO2: ${upper}`);
           }
-        } catch (error) {
-          console.error('❌ Error getting country calling code:', error);
+        } catch {
+          // Invalid or unsupported country code — keep existing phone code
         }
-      } else {
-        console.warn('⚠️ No country code found. User tenant:', user?.tenant);
-        // Log current phone code to debug
-        console.log('📞 Current phone code from service:', this.phoneCodeService.getPhoneCodeSync());
       }
-    } catch (error) {
-      console.error('❌ Error initializing phone code:', error);
+    } catch {
+      // Phone code stays at the service default if tenant country is unavailable
     }
   }
 
@@ -234,29 +222,9 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
       // Load existing members
       // CRITICAL: Ensure all members are loaded with their IDs preserved
       if (this.family.members && this.family.members.length > 0) {
-        console.log('Loading family members into form:', {
-          memberCount: this.family.members.length,
-          memberIds: this.family.members.map(m => ({ id: m.id, name: `${m.first_name} ${m.last_name}` }))
-        });
-        
         this.family.members.forEach(member => {
-          // CRITICAL: Verify member has ID before adding
-          if (member.id) {
-            console.log('Adding member to form with ID:', { id: member.id, name: `${member.first_name} ${member.last_name}` });
-          } else {
-            console.warn('⚠️ Member without ID being added to form:', { name: `${member.first_name} ${member.last_name}` });
-          }
           this.addMember(member);
         });
-        
-        // Verify all members have IDs in form
-        console.log('Form members after loading:', 
-          this.members.controls.map((c, i) => ({ 
-            index: i, 
-            id: c.get('id')?.value, 
-            name: `${c.get('first_name')?.value} ${c.get('last_name')?.value}` 
-          }))
-        );
       }
     }
   }
@@ -639,11 +607,6 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
     if (memberId) {
       const existingIndex = this.findMemberIndexInForm(memberId);
       if (existingIndex !== null) {
-        console.warn('⚠️ Member already exists in form, skipping duplicate add:', {
-          memberId,
-          existingIndex,
-          memberName: `${member?.first_name} ${member?.last_name}`
-        });
         // Member already exists - don't add duplicate
         return;
       }
@@ -694,15 +657,13 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
       marriage_groom_church_name: [member?.marriage_groom_church_name || ''],
       marriage_groom_church_address: [member?.marriage_groom_church_address || ''],
       status: [member?.status || 'active'],
-      is_primary_contact: [member?.is_primary_contact || false]
+      is_primary_contact: [member?.is_primary_contact || false],
+      father_person_id: [member?.person?.father_person_id ?? member?.father_person_id ?? null],
+      father_name: [member?.display_father_name ?? member?.father_name ?? member?.person?.father_name ?? null],
+      mother_person_id: [member?.person?.mother_person_id ?? member?.mother_person_id ?? null],
+      mother_name: [member?.display_mother_name ?? member?.mother_name ?? member?.person?.mother_name ?? null],
     });
 
-    console.log('Adding member to form:', {
-      id: memberId,
-      name: `${member?.first_name} ${member?.last_name}`,
-      hasId: !!memberId
-    });
-    
     this.members.push(memberForm);
   }
 
@@ -1455,11 +1416,6 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
           
           // Basic sanity check - must be valid E.164 format
           if (!formatted || !formatted.startsWith('+') || formatted.length < 8 || formatted.length > 20) {
-            console.warn('⚠️ Formatted phone number failed sanity check, setting to null:', {
-              original: raw,
-              formatted: formatted,
-              length: formatted?.length
-            });
             return null;
           }
           
@@ -1472,109 +1428,30 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
           
           // Basic validation: must have detected country and reasonable length
           if (!detectedCountry) {
-            console.warn('⚠️ Could not detect country from phone number, setting to null:', {
-              original: raw,
-              formatted: formatted
-            });
             return null;
           }
           
           // If country matches tenant country, validate it's actually valid
           const countryMatches = detectedCountry.toUpperCase() === tenantCountry.toUpperCase();
           if (countryMatches) {
-            // For tenant country, validate using libphonenumber
-            // Be lenient - if it can be parsed and has reasonable format, send it
-            // Backend will do final validation
-            const isValid = phoneNumber.isValid() || isValidPhoneNumber(formatted, detectedCountry as CountryCode);
-            
             // For Indian numbers, ensure proper format
             if (tenantCountry === 'IN' && detectedCountry === 'IN') {
               const digitsOnly = formatted.replace(/\D/g, '');
               // Indian mobile numbers: 91 (country) + 10 digits = 12 digits total
               // Indian landlines might have area codes, so allow 12-13 digits
               if (digitsOnly.length < 12 || digitsOnly.length > 13) {
-                console.warn('⚠️ Indian phone number has wrong length, setting to null:', {
-                  original: raw,
-                  formatted: formatted,
-                  digitsOnly: digitsOnly,
-                  length: digitsOnly.length,
-                  expected: '12-13 digits (91 + 10-11 digits)'
-                });
                 return null;
               }
-              
-              // Additional validation: Indian mobile numbers should start with 6-9 after country code
-              const numberAfterCountry = digitsOnly.substring(2); // Skip "91"
-              if (numberAfterCountry.length === 10) {
-                const firstDigit = numberAfterCountry.charAt(0);
-                // Indian mobile numbers start with 6, 7, 8, or 9
-                if (!['6', '7', '8', '9'].includes(firstDigit)) {
-                  console.warn('⚠️ Indian mobile number does not start with 6-9, might be invalid:', {
-                    original: raw,
-                    formatted: formatted,
-                    numberAfterCountry: numberAfterCountry,
-                    firstDigit: firstDigit,
-                    note: 'Sending anyway - backend will validate'
-                  });
-                  // Still send it - might be a landline or valid number
-                }
-              }
-            }
-            
-            // If validation fails, still send it if it can be parsed and formatted
-            // Backend will do the final validation
-            if (!isValid) {
-              console.warn('⚠️ Phone number failed strict validation, but sending anyway (backend will validate):', {
-                original: raw,
-                formatted: formatted,
-                detectedCountry: detectedCountry,
-                tenantCountry: tenantCountry,
-                isValid: phoneNumber.isValid(),
-                isValidPhoneNumber: isValidPhoneNumber(formatted, detectedCountry as CountryCode),
-                note: 'Sending to backend for final validation'
-              });
-              // Still send it - backend will catch if it's truly invalid
             }
           }
           
-          // Phone number is valid (or for different country) - send it
-          // Backend will do final validation
-          console.log('✅ Phone number processed successfully:', {
-            original: raw,
-            formatted: formatted,
-            detectedCountry: detectedCountry,
-            tenantCountry: tenantCountry,
-            countryMatches: countryMatches,
-            isValid: phoneNumber.isValid()
-          });
           return formatted;
-        } catch (error: any) {
-          // Parsing/validation failed
-          console.warn('⚠️ Phone number processing exception, setting to null:', {
-            original: raw,
-            e164: e164Number,
-            country: tenantCountry,
-            error: error?.message || error
-          });
+        } catch {
           return null;
         }
       };
 
       if (Array.isArray(formData.members)) {
-        // CRITICAL: Log BEFORE processing to see raw form data
-        console.log('🔍 Raw form members BEFORE processing:', 
-          formData.members.map((m: any, idx: number) => ({
-            index: idx,
-            id: m?.id,
-            idType: typeof m?.id,
-            idValue: m?.id,
-            firstName: m?.first_name,
-            lastName: m?.last_name,
-            hasId: !!(m?.id !== undefined && m?.id !== null && m?.id !== '')
-          }))
-        );
-        
-        // CRITICAL: Deduplicate members by ID before sending to prevent duplicate updates/creates
         const memberMap = new Map<string, any>();
         const membersWithIds: any[] = [];
         const membersWithoutIds: any[] = [];
@@ -1613,12 +1490,6 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
             
             if (matchingMember?.id) {
               memberId = String(matchingMember.id).trim();
-              console.log('⚠️ Restored missing member ID by matching with original family data:', {
-                index: idx,
-                memberId,
-                name: `${firstName} ${lastName}`
-              });
-              // Update the form control with the restored ID
               formMemberControl?.get('id')?.setValue(memberId, { emitEvent: false });
             }
           }
@@ -1642,60 +1513,18 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
             phone: finalPhone
           };
           
-          // Log phone processing for debugging
-          console.log('📞 Phone processing for member:', {
-            index: idx,
-            memberName: `${m?.first_name} ${m?.last_name}`,
-            formPhoneValue: formPhoneValue,
-            memberPhoneValue: m?.phone,
-            rawPhone: rawPhone,
-            rawPhoneType: typeof rawPhone,
-            processedPhone: processedPhone,
-            processedPhoneType: typeof processedPhone,
-            finalPhone: finalPhone,
-            finalPhoneType: typeof finalPhone,
-            isNull: finalPhone === null,
-            isEmpty: finalPhone === '',
-            relationship: m?.relationship_to_head || formMemberControl?.get('relationship_to_head')?.value,
-            callingCode: dialCode,
-            tenantCountry: tenantCountry
-          });
-          
-          // Explicitly set ID from form control or member data
           if (memberId) {
             memberWithId.id = memberId;
             
-            // Deduplicate: if we've seen this ID before, keep the first one (or merge if needed)
             if (memberMap.has(memberWithId.id)) {
-              console.warn('⚠️ Duplicate member ID found in form, keeping first occurrence:', {
-                id: memberWithId.id,
-                firstName: memberWithId.first_name,
-                lastName: memberWithId.last_name,
-                duplicateIndex: idx
-              });
-              // Skip this duplicate
               return;
             }
             
             memberMap.set(memberWithId.id, memberWithId);
             membersWithIds.push(memberWithId);
-            
-            console.log('✅ Member with ID preserved:', {
-              index: idx,
-              id: memberWithId.id,
-              name: `${memberWithId.first_name} ${memberWithId.last_name}`,
-              source: formMemberId ? 'formControl' : 'memberData'
-            });
           } else {
-            // Member without ID - will be created as new
-            // CRITICAL: Explicitly set id to null to ensure backend treats it as new
             memberWithId.id = null;
             membersWithoutIds.push(memberWithId);
-            
-            console.log('🆕 Member without ID (will be created):', {
-              index: idx,
-              name: `${memberWithId.first_name} ${memberWithId.last_name}`
-            });
           }
         });
         
@@ -1719,49 +1548,14 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
             // Just ensure it's a valid string (starts with + and has reasonable length)
             const trimmed = phoneValue.trim();
             if (trimmed.startsWith('+') && trimmed.length >= 8 && trimmed.length <= 20) {
-              // Valid E.164 format - keep it
               phoneValue = trimmed;
             } else {
-              // Not a valid E.164 format - set to null
-              console.warn('⚠️ Invalid phone format in final cleanup, setting to null:', {
-                original: phoneValue,
-                trimmed: trimmed,
-                member: `${m.first_name} ${m.last_name}`
-              });
               phoneValue = null;
             }
           }
           
           // Return member with cleaned phone value
           return { ...m, phone: phoneValue };
-        });
-        
-        // Log summary with phone numbers for debugging
-        console.log('📤 FINAL PAYLOAD - Submitting family with members:', {
-          totalMembers: formData.members.length,
-          membersWithIds: membersWithIds.length,
-          membersWithoutIds: membersWithoutIds.length,
-          tenantCountry: tenantCountry,
-          callingCode: dialCode,
-          memberDetails: formData.members.map((m: any, idx: number) => ({
-            index: idx,
-            id: m.id,
-            name: `${m.first_name} ${m.last_name}`,
-            relationship: m.relationship_to_head,
-            phone: m.phone,
-            phoneType: typeof m.phone,
-            phoneIsNull: m.phone === null,
-            phoneIsEmpty: m.phone === '',
-            phoneStringified: JSON.stringify(m.phone),
-            phoneLength: m.phone ? String(m.phone).length : 0
-          })),
-          // Log the exact payload structure
-          exactPayload: JSON.stringify(formData.members.map((m: any) => ({
-            id: m.id,
-            first_name: m.first_name,
-            last_name: m.last_name,
-            phone: m.phone
-          })), null, 2)
         });
       }
       
@@ -1941,12 +1735,6 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
         });
         
         this.error = `Please fix the following errors:\n• ${fieldNames.join('\n• ')}`;
-        
-        // Also log for debugging
-        console.error('📋 Validation errors:', {
-          errors: this.validationErrors,
-          fieldNames: fieldNames
-        });
       }
     }
   }
@@ -2175,5 +1963,21 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
    */
   getActiveMemberCount(): number {
     return this.getActiveMemberCountInternal();
+  }
+
+  /**
+   * Show inactive-members warning only when user attempts to set family status to inactive.
+   */
+  shouldShowInactiveMembersWarning(): boolean {
+    if (this.getActiveMemberCountInternal() === 0) {
+      return false;
+    }
+
+    const statusControl = this.familyForm.get('status');
+    if (statusControl?.value !== 'inactive') {
+      return false;
+    }
+
+    return !!statusControl.dirty || !!statusControl.errors?.['hasActiveMembers'];
   }
 }

@@ -75,6 +75,71 @@ describe('BCCFormComponent', () => {
     component.onSubmit();
     expect(component.error).toBe('Failed');
   });
+
+  describe('shouldShowInactiveFamiliesWarning', () => {
+    const activeFamilies = [
+      { id: '1', status: 'active' },
+      { id: '2', status: 'active' }
+    ];
+
+    it('returns false for active BCC with active families on load', () => {
+      component.bcc = {
+        id: '123',
+        name: 'Existing',
+        status: 'active',
+        families: activeFamilies
+      } as any;
+      component.ngOnInit();
+
+      expect(component.shouldShowInactiveFamiliesWarning()).toBe(false);
+    });
+
+    it('returns true when user changes status to inactive', () => {
+      component.bcc = {
+        id: '123',
+        name: 'Existing',
+        status: 'active',
+        families: activeFamilies
+      } as any;
+      component.ngOnInit();
+      const statusControl = component.bccForm.get('status');
+      statusControl?.setValue('inactive');
+      statusControl?.markAsDirty();
+
+      expect(component.shouldShowInactiveFamiliesWarning()).toBe(true);
+    });
+
+    it('returns false when user changes back to active', () => {
+      component.bcc = {
+        id: '123',
+        name: 'Existing',
+        status: 'active',
+        families: activeFamilies
+      } as any;
+      component.ngOnInit();
+      const statusControl = component.bccForm.get('status');
+      statusControl?.setValue('inactive');
+      statusControl?.markAsDirty();
+      statusControl?.setValue('active');
+
+      expect(component.shouldShowInactiveFamiliesWarning()).toBe(false);
+    });
+
+    it('returns true when inactive status has hasActiveFamilies validation error', () => {
+      component.bcc = {
+        id: '123',
+        name: 'Existing',
+        status: 'active',
+        families: activeFamilies
+      } as any;
+      component.ngOnInit();
+      const statusControl = component.bccForm.get('status');
+      statusControl?.setValue('inactive');
+      statusControl?.setErrors({ hasActiveFamilies: true });
+
+      expect(component.shouldShowInactiveFamiliesWarning()).toBe(true);
+    });
+  });
 });
 
 

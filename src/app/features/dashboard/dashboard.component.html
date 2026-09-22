@@ -14,39 +14,32 @@
       </p>
       <p *ngIf="operationsSummary?.persona?.emphasis" class="cd-page-persona">{{ operationsSummary?.persona?.emphasis }}</p>
     </div>
-    <div class="cd-page-header__search">
-      <svg class="cd-page-header__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
-      </svg>
-      <input
-        type="search"
-        class="cd-page-header__search-input"
-        placeholder="Search members, events, volunteers..."
-        [(ngModel)]="searchQuery"
-        (keydown)="onSearchKeydown($event)"
-        aria-label="Search church operations"
-      />
-      <kbd class="cd-page-header__kbd">Ctrl+K</kbd>
-    </div>
   </header>
 
   <!-- Real church registry (live API counts) — shared above tabs -->
   <section class="cd-registry" aria-label="Church registry summary">
-    <button type="button" class="cd-registry__card" (click)="navigateTo('/families')">
-      <span class="cd-registry__label">Families</span>
-      <span class="cd-registry__value">{{ totalFamilies | number }}</span>
-      <span class="cd-registry__hint">View all families</span>
-    </button>
-    <button type="button" class="cd-registry__card" (click)="navigateTo('/members')">
-      <span class="cd-registry__label">Members</span>
-      <span class="cd-registry__value">{{ totalMembers | number }}</span>
-      <span class="cd-registry__hint">Member directory</span>
-    </button>
-    <button type="button" class="cd-registry__card" (click)="navigateTo('/bccs')">
-      <span class="cd-registry__label">Life Groups</span>
-      <span class="cd-registry__value">{{ totalBCCs | number }}</span>
-      <span class="cd-registry__hint">Manage BCCs</span>
-    </button>
+    <p *ngIf="registryState === 'loading'" class="cd-loading" role="status">Loading parish counts…</p>
+    <div *ngIf="registryState === 'error'" class="cd-registry__error" role="alert">
+      <p>Couldn’t load parish counts.</p>
+      <button type="button" class="cd-link-btn" (click)="retryRegistry()">Try again</button>
+    </div>
+    <ng-container *ngIf="registryState === 'ready'">
+      <button type="button" class="cd-registry__card" (click)="navigateTo('/families')">
+        <span class="cd-registry__label">Families</span>
+        <span class="cd-registry__value">{{ totalFamilies | number }}</span>
+        <span class="cd-registry__hint">All families · directory</span>
+      </button>
+      <button type="button" class="cd-registry__card" (click)="navigateTo('/members')">
+        <span class="cd-registry__label">Members</span>
+        <span class="cd-registry__value">{{ totalMembers | number }}</span>
+        <span class="cd-registry__hint">All members · directory</span>
+      </button>
+      <button type="button" class="cd-registry__card" (click)="navigateTo('/bccs')">
+        <span class="cd-registry__label">Life Groups</span>
+        <span class="cd-registry__value">{{ totalBCCs | number }}</span>
+        <span class="cd-registry__hint">All groups · manage BCCs</span>
+      </button>
+    </ng-container>
   </section>
 
   <!-- Overview | Operations -->
@@ -102,9 +95,6 @@
         </div>
         <div class="cd-kpi__value">{{ kpi.value }}</div>
         <p class="cd-kpi__sub">{{ kpi.sublabel }}</p>
-        <svg class="cd-kpi__spark" viewBox="0 0 72 28" preserveAspectRatio="none" aria-hidden="true">
-          <path [attr.d]="getSparklinePath(kpi.sparkline)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
       </article>
     </section>
 
@@ -117,25 +107,39 @@
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
             <h3>Giving Trend</h3>
-            <p class="cd-panel__desc">Last 6 months — monthly tithes (in $1k)</p>
+            <p class="cd-panel__desc" *ngIf="financialHubState === 'ready'">
+              Last 6 months · as of {{ operationsSummary?.period?.month_end || stewardshipPeriodLabel() }}
+            </p>
+            <p class="cd-panel__desc" *ngIf="financialHubState !== 'ready'">Monthly collections when giving data is available</p>
           </div>
         </header>
-        <div class="cd-chart">
+        <p *ngIf="financialHubState === 'loading'" class="cd-loading" role="status">Loading giving trend…</p>
+        <p *ngIf="financialHubState === 'unauthorized'" class="cd-panel__desc" role="status">Giving trends are available to people who can view Donations.</p>
+        <div *ngIf="financialHubState === 'error'" class="cd-panel__desc" role="alert">
+          <p>Couldn’t load giving trend.</p>
+          <button type="button" class="cd-panel__link" (click)="retryFinancialHub()">Try again</button>
+        </div>
+        <div class="cd-chart" *ngIf="financialHubState === 'ready'">
           <div class="cd-chart__legend">
-            <span class="cd-chart__legend-item cd-chart__legend-item--giving">Giving ($1k)</span>
+            <span class="cd-chart__legend-item cd-chart__legend-item--giving">Collections</span>
           </div>
-          <div class="cd-chart__grid" role="img" aria-label="Six month giving trend chart">
-            <div class="cd-chart__col" *ngFor="let point of givingTrendChart">
+          <div class="cd-chart__grid" role="img" [attr.aria-label]="'Six month giving trend chart for ' + stewardshipPeriodLabel()">
+            <div class="cd-chart__col" *ngFor="let point of givingTrendPoints()">
               <div class="cd-chart__bars">
                 <div
                   class="cd-chart__bar cd-chart__bar--giving"
-                  [style.height.px]="getChartBarHeightPx(point.giving, maxGiving)"
-                  [attr.title]="'$' + point.giving + 'k giving'"
+                  [style.height.px]="getChartBarHeightPx(point.collected, maxGivingTrend())"
+                  [attr.title]="formatCurrency(point.collected) + ' collected'"
                 ></div>
               </div>
+              <span class="cd-chart__amount">{{ formatCurrency(point.collected) }}</span>
               <span class="cd-chart__label">{{ point.month }}</span>
             </div>
           </div>
+          <p *ngIf="givingTrendIsEmpty()" class="cd-panel__desc" role="status">No collections in the last 6 months yet.</p>
+          <ul class="visually-hidden">
+            <li *ngFor="let point of givingTrendPoints()">{{ point.month }}: {{ formatCurrency(point.collected) }}</li>
+          </ul>
         </div>
       </article>
 
@@ -143,36 +147,47 @@
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
             <h3>Stewardship Hub</h3>
-            <p class="cd-panel__desc" *ngIf="operationsSummary?.financial?.health as health">
+            <p class="cd-panel__desc" *ngIf="financialHubState === 'ready' && operationsSummary?.financial?.health as health">
               Health score {{ health.score }} · {{ health.label }}
             </p>
-            <p class="cd-panel__desc" *ngIf="!operationsSummary">High-level stewardship health — connect donations for live totals</p>
+            <p class="cd-panel__desc" *ngIf="financialHubState === 'ready' && !operationsSummary?.financial?.health">
+              {{ stewardshipPeriodLabel() }} — live parish giving totals
+            </p>
           </div>
           <button type="button" class="cd-panel__link" *ngIf="canViewFinancial" (click)="openFinancialDashboard()">Open Financial Dashboard</button>
         </header>
-        <p *ngIf="loadingFinancial" class="cd-loading" role="status">Loading live stewardship data…</p>
-        <div class="cd-giving-summary" *ngIf="!loadingFinancial">
+        <p *ngIf="financialHubState === 'loading'" class="cd-loading" role="status">Loading live stewardship data…</p>
+        <p *ngIf="financialHubState === 'unauthorized'" class="cd-panel__desc" role="status">Giving totals are available to people who can view Donations.</p>
+        <div *ngIf="financialHubState === 'error'" class="cd-panel__desc" role="alert">
+          <p>Couldn’t load giving totals.</p>
+          <button type="button" class="cd-panel__link" (click)="retryFinancialHub()">Try again</button>
+        </div>
+        <div class="cd-giving-summary" *ngIf="financialHubState === 'ready' && operationsSummary?.financial as financial">
           <div class="cd-giving-summary__metric">
             <span class="cd-giving-summary__label">This Month</span>
-            <span class="cd-giving-summary__value">{{ givingSummary.monthly }}</span>
+            <span class="cd-giving-summary__value">{{ formatCurrency(financial.totals?.current_month_collected) }}</span>
+            <span class="cd-giving-summary__detail">{{ stewardshipPeriodLabel() }}</span>
           </div>
           <div class="cd-giving-summary__metric">
             <span class="cd-giving-summary__label">Outstanding</span>
-            <span class="cd-giving-summary__value">{{ operationsSummary ? formatCurrency(operationsSummary.financial?.totals?.pending_dues || 0) : givingSummary.budgetGoal }}</span>
+            <span class="cd-giving-summary__value">{{ formatCurrency(financial.totals?.pending_dues) }}</span>
+            <span class="cd-giving-summary__detail">Billed but not yet received</span>
           </div>
           <div class="cd-giving-summary__metric">
             <span class="cd-giving-summary__label">Families Needing Care</span>
-            <span class="cd-giving-summary__value">{{ operationsSummary?.financial?.attention_summary?.count || 0 }}</span>
-            <span class="cd-giving-summary__detail">{{ formatCurrency(operationsSummary?.financial?.attention_summary?.total_overdue_amount || 0) }} overdue</span>
+            <span class="cd-giving-summary__value">{{ financial.attention_summary?.count ?? 0 }}</span>
+            <span class="cd-giving-summary__detail">{{ formatCurrency(financial.attention_summary?.total_overdue_amount) }} overdue</span>
           </div>
           <div class="cd-giving-summary__metric">
             <span class="cd-giving-summary__label">Participation</span>
-            <span class="cd-giving-summary__value">{{ operationsSummary?.financial?.families?.participation_rate || 0 }}%</span>
+            <span class="cd-giving-summary__value">{{ financial.families?.participation_rate ?? 0 }}%</span>
+            <span class="cd-giving-summary__detail">Of active families, last 90 days</span>
           </div>
         </div>
-        <div class="cd-giving-channels" *ngIf="!operationsSummary">
+        <div class="cd-giving-channels" *ngIf="financialHubState === 'ready' && givingChannelRows().length">
           <h3 class="cd-giving-channels__title">Giving Channels</h3>
-          <div class="cd-giving-channel" *ngFor="let channel of givingChannels">
+          <p class="cd-giving-summary__detail">This month by payment method</p>
+          <div class="cd-giving-channel" *ngFor="let channel of givingChannelRows()">
             <div class="cd-giving-channel__head">
               <span>{{ channel.channel }}</span>
               <span>{{ channel.amount }}</span>
@@ -193,20 +208,20 @@
       <article class="cd-panel">
         <header class="cd-panel__head">
           <h3>Growth Vectors</h3>
-          <span class="cd-panel__badge">This Month</span>
         </header>
-        <dl class="cd-stat-row">
+        <p *ngIf="registryState === 'loading'" class="cd-loading" role="status">Loading growth metrics…</p>
+        <div *ngIf="registryState === 'error'" class="cd-panel__desc" role="alert">
+          <p>Couldn’t load growth metrics.</p>
+          <button type="button" class="cd-panel__link" (click)="retryRegistry()">Try again</button>
+        </div>
+        <dl class="cd-stat-row" *ngIf="registryState === 'ready'">
           <div class="cd-stat-row__item">
-            <dt>New Member Sign-ups</dt>
-            <dd>{{ growthMetrics.newMembers }}</dd>
+            <dt>New Member Sign-ups <span class="cd-panel__badge">This Month</span></dt>
+            <dd>{{ membersCreatedThisMonth | number }}</dd>
           </div>
           <div class="cd-stat-row__item">
-            <dt>Assimilation Progress</dt>
-            <dd>{{ growthMetrics.assimilationRate }}%</dd>
-          </div>
-          <div class="cd-stat-row__item">
-            <dt>Visitors to Active</dt>
-            <dd>{{ growthMetrics.visitorsToActive }}</dd>
+            <dt>Families Not in a Life Group</dt>
+            <dd>{{ familiesWithoutBcc | number }}</dd>
           </div>
         </dl>
       </article>
@@ -216,7 +231,12 @@
           <h3>Life Groups</h3>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">View groups</button>
         </header>
-        <div class="cd-groups-grid">
+        <p *ngIf="bccStatsState === 'loading'" class="cd-loading" role="status">Loading Life Group metrics…</p>
+        <div *ngIf="bccStatsState === 'error'" class="cd-panel__desc" role="alert">
+          <p>Couldn’t load Life Group metrics.</p>
+          <button type="button" class="cd-panel__link" (click)="retryBccStats()">Try again</button>
+        </div>
+        <div class="cd-groups-grid" *ngIf="bccStatsState === 'ready'">
           <div class="cd-groups-item" *ngFor="let group of lifeGroups">
             <span class="cd-groups-item__value">{{ group.value }}</span>
             <span class="cd-groups-item__label">{{ group.label }}</span>
@@ -280,7 +300,7 @@
             <div class="cd-ministries__empty">
               <p class="cd-empty" role="status">No ministries or associations yet.</p>
               <button
-                *ngIf="canCreateOrganization"
+                *ngIf="canCreateOrganization && !isSubscriptionReadOnly()"
                 type="button"
                 class="cd-panel__link cd-panel__link--inline"
                 (click)="navigateTo('/ministries/new')"
@@ -377,69 +397,17 @@
     <header class="cd-ops__band">
       <h2 class="cd-ops__label">Today&rsquo;s readiness</h2>
     </header>
-    <div class="cd-ops__today" aria-label="Today service and volunteer readiness">
-      <article class="cd-panel cd-ops__schedule">
+    <div class="cd-ops__today" aria-label="Service and volunteer readiness">
+      <article class="cd-panel cd-ops__readiness-empty">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
-            <h3>Sunday Service Readiness</h3>
-            <p class="cd-panel__desc">Today's schedule, volunteer check-ins, and venue flow</p>
-          </div>
-          <span class="cd-panel__live">Live operations</span>
-        </header>
-        <ol class="cd-timeline">
-          <li
-            *ngFor="let item of todaySchedule"
-            class="cd-timeline__item"
-            [class.is-action]="item.status === 'action'"
-          >
-            <time class="cd-timeline__time">{{ item.time }}</time>
-            <div class="cd-timeline__track">
-              <div class="cd-timeline__dot" [attr.data-category]="item.category"></div>
-            </div>
-            <div class="cd-timeline__content">
-              <div class="cd-timeline__title-row">
-                <h3>{{ item.title }}</h3>
-                <span class="cd-timeline__status" [attr.data-status]="item.status">
-                  {{ item.status === 'action' ? 'Action needed' : (item.status === 'pending' ? 'Pending' : 'Confirmed') }}
-                </span>
-              </div>
-              <p>{{ item.detail }}</p>
-            </div>
-          </li>
-        </ol>
-      </article>
-
-      <article class="cd-panel cd-ops__volunteers">
-        <header class="cd-panel__head">
-          <div class="cd-panel__head-copy">
-            <h3>Volunteer Coordination</h3>
-            <p class="cd-panel__desc">Sunday 9:00 AM service shift fulfillment</p>
+            <h3>Service &amp; volunteer readiness</h3>
+            <p class="cd-panel__desc">Sunday schedules and volunteer shift coverage are not configured for this parish yet.</p>
           </div>
         </header>
-        <ul class="cd-volunteer-list">
-          <li *ngFor="let shift of volunteerShifts" class="cd-volunteer-item" [attr.data-status]="shift.status">
-            <svg class="cd-volunteer-ring" viewBox="0 0 40 40" aria-hidden="true">
-              <circle cx="20" cy="20" r="16" fill="none" stroke="#e8edf2" stroke-width="4"/>
-              <circle
-                cx="20" cy="20" r="16" fill="none"
-                stroke="currentColor" stroke-width="4"
-                stroke-linecap="round"
-                transform="rotate(-90 20 20)"
-                [attr.stroke-dasharray]="100.53"
-                [attr.stroke-dashoffset]="getVolunteerRingOffset(shift)"
-              />
-            </svg>
-            <div class="cd-volunteer-item__content">
-              <div class="cd-volunteer-item__head">
-                <span class="cd-volunteer-item__team">{{ shift.team }}</span>
-                <span class="cd-volunteer-item__pct">{{ getVolunteerPercent(shift) }}%</span>
-              </div>
-              <p>{{ shift.filled }} of {{ shift.required }} filled</p>
-              <span class="cd-volunteer-item__flag" *ngIf="shift.status === 'critical'">Action needed before Sunday</span>
-              <span class="cd-volunteer-item__flag is-watch" *ngIf="shift.status === 'watch'">Recruit 1–2 more volunteers</span>
-            </div>
-          </li>
-        </ul>
+        <p class="cd-empty" role="status">
+          When service planning and volunteer coordination are enabled, readiness will appear here with live parish data.
+        </p>
       </article>
     </div>
 
@@ -456,8 +424,12 @@
           </div>
         </header>
         <p class="cd-panel__desc" *ngIf="loadingPastoral">Loading visits…</p>
-        <p class="cd-panel__desc" *ngIf="!loadingPastoral && !careAlerts.length">No open visit requests.</p>
-        <ul class="cd-care-list" *ngIf="careAlerts.length">
+        <div class="cd-error" role="alert" *ngIf="!loadingPastoral && pastoralError">
+          <p>Could not load pastoral care alerts right now.</p>
+          <button type="button" class="cd-link-btn" (click)="retryPastoralWorkflow()">Retry</button>
+        </div>
+        <p class="cd-panel__desc" role="status" *ngIf="!loadingPastoral && !pastoralError && !careAlerts.length">No open visit requests.</p>
+        <ul class="cd-care-list" *ngIf="!pastoralError && careAlerts.length">
           <li *ngFor="let alert of careAlerts" class="cd-care-item" [class.is-urgent]="alert.priority === 'urgent'">
             <div class="cd-care-item__count">{{ alert.count }}</div>
             <div class="cd-care-item__content">
@@ -474,8 +446,13 @@
             <p class="cd-panel__desc">Assign follow-ups to pastoral staff</p>
           </div>
         </header>
-        <p class="cd-panel__desc" *ngIf="!loadingPastoral && !pastoralTasks.length">No open or assigned visits.</p>
-        <ul class="cd-task-list" *ngIf="pastoralTasks.length">
+        <p class="cd-panel__desc" *ngIf="loadingPastoral">Loading visits…</p>
+        <div class="cd-error" role="alert" *ngIf="!loadingPastoral && pastoralError">
+          <p>Could not load pastoral workflow right now.</p>
+          <button type="button" class="cd-link-btn" (click)="retryPastoralWorkflow()">Retry</button>
+        </div>
+        <p class="cd-panel__desc" role="status" *ngIf="!loadingPastoral && !pastoralError && !pastoralTasks.length">No open or assigned visits.</p>
+        <ul class="cd-task-list" *ngIf="!pastoralError && pastoralTasks.length">
           <li *ngFor="let task of pastoralTasks" class="cd-task-item" [class.is-open]="task.status === 'open'">
             <div class="cd-task-item__main">
               <span class="cd-task-item__title">{{ task.title }}</span>
@@ -511,15 +488,22 @@
         </ul>
       </article>
 
-      <article class="cd-panel cd-ops__stewardship" *ngIf="operationsSummary?.families_requiring_attention?.length">
+      <article class="cd-panel cd-ops__stewardship" *ngIf="canViewFinancial">
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
             <h3>Families Needing Care</h3>
             <p class="cd-panel__desc">Outstanding balances requiring follow-up</p>
           </div>
-          <button type="button" class="cd-panel__link" *ngIf="canViewFinancial" (click)="openFinancialDashboard()">Open Financial Dashboard</button>
+          <button type="button" class="cd-panel__link" (click)="openFinancialDashboard()">Open Financial Dashboard</button>
         </header>
-        <ul class="cd-financial-attention">
+        <p class="cd-loading" role="status" *ngIf="financialHubState === 'loading'">Loading stewardship follow-ups…</p>
+        <p class="cd-panel__desc" role="status" *ngIf="financialHubState === 'unauthorized'">Giving totals are available to people who can view Donations.</p>
+        <div class="cd-error" role="alert" *ngIf="financialHubState === 'error'">
+          <p>Could not load stewardship follow-ups right now.</p>
+          <button type="button" class="cd-link-btn" (click)="retryFinancialHub()">Retry</button>
+        </div>
+        <p class="cd-empty" role="status" *ngIf="financialHubState === 'ready' && !(operationsSummary?.families_requiring_attention?.length)">No families with overdue balances right now.</p>
+        <ul class="cd-financial-attention" *ngIf="financialHubState === 'ready' && operationsSummary?.families_requiring_attention?.length">
           <li *ngFor="let family of operationsSummary?.families_requiring_attention ?? []">
             <button type="button" (click)="navigateToFamily(family.family_id)">
               <strong>{{ family.family_name }}</strong>
@@ -544,7 +528,8 @@
           <button type="button" class="cd-link-btn" (click)="navigateTo('/members')">Member directory</button>
         </header>
 
-        <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && !celebrationsError && weekBirthdays.length > 0">
+        <p class="cd-panel__desc" role="status" *ngIf="!loadingCelebrations && celebrationsUnauthorized">Member celebrations require Families view permission.</p>
+        <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && !celebrationsError && !celebrationsUnauthorized && weekBirthdays.length > 0">
           <li *ngFor="let item of weekBirthdays" class="cd-celebration-item">
             <button type="button" class="cd-celebration-item__main" (click)="navigateToFamily(item.familyId)">
               <span class="cd-celebration-item__day">{{ item.dayLabel }}</span>
@@ -555,7 +540,7 @@
             </button>
           </li>
         </ul>
-        <p class="cd-empty" role="status" *ngIf="!loadingCelebrations && !celebrationsError && weekBirthdays.length === 0">No member birthdays scheduled this week.</p>
+        <p class="cd-empty" role="status" *ngIf="!loadingCelebrations && !celebrationsError && !celebrationsUnauthorized && weekBirthdays.length === 0">No member birthdays scheduled this week.</p>
         <div class="cd-error" role="alert" *ngIf="!loadingCelebrations && celebrationsError">
           <p>Could not load birthdays right now.</p>
           <button type="button" class="cd-link-btn" (click)="retryMemberCelebrations()">Retry</button>
@@ -572,7 +557,7 @@
           <button type="button" class="cd-link-btn" (click)="navigateTo('/families')">Family records</button>
         </header>
 
-        <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && !celebrationsError && weekAnniversaries.length > 0">
+        <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && !celebrationsError && !celebrationsUnauthorized && weekAnniversaries.length > 0">
           <li *ngFor="let item of weekAnniversaries" class="cd-celebration-item cd-celebration-item--anniversary">
             <button type="button" class="cd-celebration-item__main" (click)="navigateToFamily(item.familyId)">
               <span class="cd-celebration-item__day">{{ item.dayLabel }}</span>
@@ -583,7 +568,7 @@
             </button>
           </li>
         </ul>
-        <p class="cd-empty" role="status" *ngIf="!loadingCelebrations && !celebrationsError && weekAnniversaries.length === 0">No wedding anniversaries this week.</p>
+        <p class="cd-empty" role="status" *ngIf="!loadingCelebrations && !celebrationsError && !celebrationsUnauthorized && weekAnniversaries.length === 0">No wedding anniversaries this week.</p>
         <div class="cd-error" role="alert" *ngIf="!loadingCelebrations && celebrationsError">
           <p>Could not load anniversaries right now.</p>
           <button type="button" class="cd-link-btn" (click)="retryMemberCelebrations()">Retry</button>
@@ -601,7 +586,7 @@
         <header class="cd-panel__head">
           <div class="cd-panel__head-copy">
             <h3>BCC Overview</h3>
-            <p class="cd-panel__desc">Basic Christian Communities — groups, capacity, and meeting rhythm</p>
+            <p class="cd-panel__desc">Basic Christian Communities — groups, families, and meeting rhythm</p>
           </div>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">View all BCCs</button>
         </header>
@@ -616,12 +601,12 @@
             <span class="cd-bcc-stat__value">{{ bccStatistics.total_families_in_bccs }}</span>
           </div>
           <div class="cd-bcc-stat">
-            <span class="cd-bcc-stat__label">Utilization</span>
-            <span class="cd-bcc-stat__value">{{ bccStatistics.utilization_percentage }}%</span>
+            <span class="cd-bcc-stat__label">Families without BCC</span>
+            <span class="cd-bcc-stat__value">{{ familiesWithoutBcc }}</span>
           </div>
           <div class="cd-bcc-stat">
-            <span class="cd-bcc-stat__label">Open Capacity</span>
-            <span class="cd-bcc-stat__value">{{ bccStatistics.bccs_with_space }}</span>
+            <span class="cd-bcc-stat__label">BCC Leaders</span>
+            <span class="cd-bcc-stat__value">{{ bccStatistics.total_leaders }}</span>
           </div>
         </div>
 
@@ -754,7 +739,12 @@
                 <p>Could not load recent ministries activity.</p>
                 <button type="button" class="cd-link-btn" (click)="retryMinistriesActivity()">Retry</button>
               </div>
-              <button type="button" class="cd-panel__link cd-panel__link--inline" (click)="navigateTo('/ministries/audit')">
+              <button
+                *ngIf="canViewTenantAuditLogs"
+                type="button"
+                class="cd-panel__link cd-panel__link--inline"
+                (click)="navigateTo('/ministries/audit')"
+              >
                 View audit log
               </button>
             </section>
@@ -781,7 +771,7 @@
             <h3 class="cd-ministries__actions-title">Action Center</h3>
             <div class="cd-ministries__action-grid">
               <button
-                *ngIf="canCreateOrganization"
+                *ngIf="canCreateOrganization && !isSubscriptionReadOnly()"
                 type="button"
                 class="cd-ministries__action-card"
                 (click)="navigateTo('/ministries/new')"

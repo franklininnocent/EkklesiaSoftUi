@@ -227,7 +227,9 @@ export class CollectionDayComponent implements OnInit {
     if (outstanding > 0) {
       suggestions.push({ label: `Full balance (${this.formatCurrency(outstanding)})`, amount: outstanding });
     }
-    const dues = this.familyProfile?.mandatory_contributions?.outstanding_dues ?? [];
+    const dues = this.familyProfile?.mandatory_contributions?.collect_allocation_dues
+      ?? this.familyProfile?.mandatory_contributions?.outstanding_dues
+      ?? [];
     dues.slice(0, 2).forEach((due) => {
       const dueAmount = due.outstanding_amount ?? ((due.amount_due || 0) - (due.amount_paid || 0));
       if (dueAmount > 0) {
@@ -568,8 +570,11 @@ export class CollectionDayComponent implements OnInit {
       next: (res) => {
         this.familyProfile = res.data ?? null;
         this.profileLoading = false;
-        if (this.outstandingBalance > 0 && !this.amount) {
-          this.amount = this.outstandingBalance;
+        if (this.outstandingBalance > 0) {
+          this.collectType = 'mandatory';
+          if (!this.amount) {
+            this.amount = this.outstandingBalance;
+          }
         }
         refreshStewardshipView(this.cdr);
         setTimeout(() => this.amountInput?.nativeElement.focus(), 0);
@@ -607,6 +612,34 @@ export class CollectionDayComponent implements OnInit {
     refreshStewardshipView(this.cdr);
   }
 
+  private buildPaymentAllocations(): Array<{ allocatable_type: string; allocatable_id: string; amount: number }> | undefined {
+    if (!this.amount || this.amount <= 0) {
+      return undefined;
+    }
+
+    const amount = Number(this.amount);
+
+    if (this.collectType === 'mandatory') {
+      const dues = this.familyProfile?.mandatory_contributions?.collect_allocation_dues
+        ?? this.familyProfile?.mandatory_contributions?.outstanding_dues
+        ?? this.familyProfile?.mandatory_contributions?.current_period_dues
+        ?? [];
+      const due = dues[0];
+      if (due?.id) {
+        return [{ allocatable_type: 'due', allocatable_id: due.id, amount }];
+      }
+    }
+
+    if (this.collectType === 'project') {
+      const installment = this.familyProfile?.project_contributions?.outstanding_installments?.[0];
+      if (installment?.id) {
+        return [{ allocatable_type: 'project_installment', allocatable_id: installment.id, amount }];
+      }
+    }
+
+    return undefined;
+  }
+
   submit(): void {
     if (!this.canSubmit || !this.selectedFamily || !this.amount) {
       return;
@@ -618,6 +651,7 @@ export class CollectionDayComponent implements OnInit {
     refreshStewardshipView(this.cdr);
     const sourceType = this.collectType === 'offering' ? 'voluntary' : 'general';
 
+    const allocations = this.buildPaymentAllocations();
     this.donationsService.createPayment({
       family_id: this.selectedFamily.id,
       payer_name: this.payerName.trim(),
@@ -626,7 +660,8 @@ export class CollectionDayComponent implements OnInit {
       method: this.method === 'upi' ? 'online_placeholder' : this.method,
       source_type: sourceType,
       notes: this.notes.trim() || undefined,
-      ...(this.needsReference ? { gateway_reference: this.gatewayReference.trim() } : {})
+      ...(this.needsReference ? { gateway_reference: this.gatewayReference.trim() } : {}),
+      ...(allocations?.length ? { allocations } : {})
     }).subscribe({
       next: (res) => {
         this.saving = false;

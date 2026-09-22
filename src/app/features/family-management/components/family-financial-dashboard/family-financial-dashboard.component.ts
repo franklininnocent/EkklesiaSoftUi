@@ -10,7 +10,7 @@ import {
   FamilyContributionPlanSummary
 } from '@features/donations/models/donation.model';
 
-type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
+type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | 'scheduled';
 
 @Component({
   selector: 'app-family-financial-dashboard',
@@ -50,7 +50,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
       </div>
 
       <div class="quick-kpis cf-kpi-grid">
-        <article class="kpi cf-kpi"><span>Outstanding</span><strong>{{ formatCurrency(profile.outstanding_balances?.total || profile.totals.pending_due) }}</strong></article>
+        <article class="kpi cf-kpi"><span>Outstanding</span><strong>{{ formatCurrency(profile.outstanding_balances?.total ?? profile.totals.pending_due) }}</strong></article>
         <article class="kpi cf-kpi"><span>Overdue</span><strong>{{ formatCurrency(profile.totals.overdue_amount || 0) }}</strong></article>
         <article class="kpi cf-kpi"><span>Total Paid</span><strong>{{ formatCurrency(profile.totals.total_paid) }}</strong></article>
         <article class="kpi cf-kpi"><span>Punctuality</span><strong>{{ profile.analytics?.punctuality?.score || 0 }}%</strong></article>
@@ -80,7 +80,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
             <tr *ngFor="let plan of contributionPlans">
               <td>
                 <strong>{{ plan.plan_name || plan.plan_id }}</strong>
-                <span class="plan-meta cf-caption">{{ plan.plan_code || '—' }} · {{ plan.frequency || '—' }}</span>
+                <span class="plan-meta cf-caption">{{ plan.plan_code || '—' }} · {{ frequencyLabel(plan.frequency) }}</span>
               </td>
               <td>{{ formatCurrency(plan.assigned_amount) }}</td>
               <td>{{ formatCurrency(plan.amount_paid) }}</td>
@@ -111,11 +111,46 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics';
                     class="cf-badge"
                     [class.cf-badge--critical]="due.is_overdue"
                     [class.cf-badge--neutral]="!due.is_overdue"
-                  >{{ due.is_overdue ? 'Overdue' : due.status }}</span>
+                  >{{ due.is_overdue ? 'Overdue' : 'Pending' }}</span>
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <div class="outstanding-dues-block" *ngIf="currentPeriodDues.length">
+          <h5 class="cf-subsection-title">This Period</h5>
+          <table class="cf-table">
+            <thead><tr><th>Period</th><th>Due Date</th><th>Outstanding</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr *ngFor="let due of currentPeriodDues">
+                <td>{{ due.plan?.name || due.period_label }}</td>
+                <td>{{ due.due_date | date }}</td>
+                <td>{{ formatCurrency(due.outstanding_amount ?? ((due.amount_due || 0) - (due.amount_paid || 0))) }}</td>
+                <td><span class="cf-badge cf-badge--info">Current</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="cf-disclosure" *ngIf="scheduledDues.length">
+          <button type="button" class="cf-disclosure__trigger" (click)="toggleSection('scheduled')">
+            <strong>Scheduled</strong>
+            <span>{{ scheduledDues.length }} future</span>
+          </button>
+          <div class="cf-disclosure__body" *ngIf="isExpanded('scheduled')">
+            <table class="cf-table">
+              <thead><tr><th>Period</th><th>Due Date</th><th>Expected</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr *ngFor="let due of scheduledDues">
+                  <td>{{ due.plan?.name || due.period_label }}</td>
+                  <td>{{ due.due_date | date }}</td>
+                  <td>{{ formatCurrency(due.amount_due || 0) }}</td>
+                  <td><span class="cf-badge cf-badge--neutral">Future</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </article>
 
@@ -345,6 +380,14 @@ export class FamilyFinancialDashboardComponent {
     return this.profile?.mandatory_contributions?.outstanding_dues ?? [];
   }
 
+  get currentPeriodDues(): Array<ContributionDue & { is_overdue?: boolean }> {
+    return this.profile?.mandatory_contributions?.current_period_dues ?? [];
+  }
+
+  get scheduledDues(): Array<ContributionDue & { is_overdue?: boolean }> {
+    return this.profile?.mandatory_contributions?.scheduled_dues ?? [];
+  }
+
   get hasProjects(): boolean {
     const projects = this.profile?.project_contributions;
     return !!(projects?.projects?.length || projects?.installment_ledger?.length);
@@ -376,6 +419,16 @@ export class FamilyFinancialDashboardComponent {
 
   get totalPaid(): number {
     return this.profile?.totals.total_paid ?? 0;
+  }
+
+  get mandatoryPaidOnPlans(): number {
+    return this.profile?.mandatory_contributions?.totals?.paid
+      ?? this.profile?.totals.mandatory_paid
+      ?? 0;
+  }
+
+  get otherGivingPaid(): number {
+    return (this.profile?.totals.voluntary_paid ?? 0) + (this.profile?.totals.project_paid ?? 0);
   }
 
   get financialStatusClass(): 'healthy' | 'attention' | 'risk' {
@@ -410,8 +463,16 @@ export class FamilyFinancialDashboardComponent {
       return `${this.formatCurrency(overdue)} is past the due date. ${this.formatCurrency(this.totalOutstanding)} total outstanding.`;
     }
     if (this.totalOutstanding > 0) {
+      const mandatoryPaid = this.mandatoryPaidOnPlans;
+      const otherGiving = this.otherGivingPaid;
+      if (mandatoryPaid > 0 && otherGiving > 0) {
+        return `${this.formatCurrency(this.totalOutstanding)} still owed · ${this.formatCurrency(mandatoryPaid)} on plans · ${this.formatCurrency(otherGiving)} in other giving.`;
+      }
+      if (mandatoryPaid > 0) {
+        return `${this.formatCurrency(this.totalOutstanding)} still owed · ${this.formatCurrency(mandatoryPaid)} applied to plans so far.`;
+      }
       if (this.totalPaid > 0) {
-        return `${this.formatCurrency(this.totalOutstanding)} still owed · ${this.formatCurrency(this.totalPaid)} collected so far.`;
+        return `${this.formatCurrency(this.totalOutstanding)} still owed · ${this.formatCurrency(this.totalPaid)} recorded (not yet applied to dues).`;
       }
       return `${this.formatCurrency(this.totalOutstanding)} owed on assigned contribution plans.`;
     }
@@ -479,6 +540,19 @@ export class FamilyFinancialDashboardComponent {
         maximumFractionDigits: 2
       }).format(amount);
     }
+  }
+
+  frequencyLabel(frequency?: string | null): string {
+    const labels: Record<string, string> = {
+      one_time: 'One time',
+      monthly: 'Monthly',
+      quarterly: 'Quarterly',
+      half_yearly: 'Half-yearly',
+      yearly: 'Yearly',
+      weekly: 'Weekly',
+      custom: 'Custom'
+    };
+    return labels[frequency || ''] || frequency || '—';
   }
 
   planStatusLabel(status: string): string {

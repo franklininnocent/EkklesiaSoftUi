@@ -4,6 +4,27 @@ import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
 import { FamilyMember, PaginatedResponse, ApiResponse } from '@core/models/family.model';
 
+export interface MemberCelebrationItem {
+  id: string;
+  family_id?: string;
+  name: string;
+  day_label: string;
+  date_label: string;
+  detail: string;
+  event_date: string;
+}
+
+export interface MemberCelebrationsResponse {
+  week: {
+    start: string;
+    end: string;
+    label: string;
+    timezone: string;
+  };
+  birthdays: MemberCelebrationItem[];
+  anniversaries: MemberCelebrationItem[];
+}
+
 export interface MemberFilters {
   search?: string;
   status?: string;
@@ -37,6 +58,16 @@ export class MemberService {
       }
     } catch {}
     return {};
+  }
+
+  /**
+   * Birthdays and anniversaries for the current parish week (server-side, tenant timezone).
+   */
+  getCelebrations(): Observable<ApiResponse<MemberCelebrationsResponse>> {
+    return this.http.get<ApiResponse<MemberCelebrationsResponse>>(
+      `${this.apiUrl}/celebrations`,
+      this.buildTenantCountryHeaders()
+    );
   }
 
   /**

@@ -22,7 +22,16 @@ export interface ParishPerson {
   city?: string | null;
   postal_code?: string | null;
   status?: string;
-  active_family_member?: { id: string; family_id: string } | null;
+  active_family_member?: {
+    id: string;
+    family_id: string;
+    family?: {
+      id?: string;
+      family_name?: string;
+      family_code?: string;
+      bcc?: { id?: string; name?: string; bcc_code?: string };
+    };
+  } | null;
 }
 
 export interface PersonMatch {
@@ -52,6 +61,14 @@ export class ParishPersonService {
     let params = new HttpParams().set('search', term).set('per_page', '12');
     if (unaffiliated) {
       params = params.set('unaffiliated', '1');
+    }
+    return this.http.get<PersonSearchResponse>(this.apiUrl, { params });
+  }
+
+  searchForParent(term: string, excludePersonId?: string | null): Observable<PersonSearchResponse> {
+    let params = new HttpParams().set('search', term).set('per_page', '12');
+    if (excludePersonId) {
+      params = params.set('exclude_person_id', excludePersonId);
     }
     return this.http.get<PersonSearchResponse>(this.apiUrl, { params });
   }

@@ -13,6 +13,7 @@ export function buildMinistriesSidebarTree(): SidebarNavNode {
       label: link.label,
       route: link.path,
       exact: link.exact,
+      menuId: link.id === 'audit' ? 'ministries-audit' : undefined,
     })),
   };
 }

@@ -69,6 +69,9 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.currentUser$ = this.store.select(selectCurrentUser).pipe(takeUntil(this.destroy$));
     this.currentUser$.subscribe((user) => {
       this.savedProfileImageUrl = user ? resolveUserProfileImageUrl(user) : null;
+      // #region agent log
+      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4fbd99'},body:JSON.stringify({sessionId:'4fbd99',location:'profile.component.ts:currentUser$',message:'profile image state',data:{userId:user?.id,profile_image_full_url:user?.profile_image_full_url??null,resolvedUrl:this.savedProfileImageUrl},timestamp:Date.now(),hypothesisId:'H2',runId:'post-fix'})}).catch(()=>{});
+      // #endregion
       this.forcePasswordChangeRequired = !!user?.force_password_change;
       this.maybeOpenForcedPasswordModal();
       this.cdr.markForCheck();

@@ -4,6 +4,8 @@ export interface SacramentDashboardParams {
   bcc_id?: string;
   include_gaps?: boolean;
   include_marriage_gaps?: boolean;
+  preset?: 'calendar_month_mtd';
+  minimal?: boolean;
 }
 
 export interface SacramentDashboardTypeKpi {

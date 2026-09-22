@@ -81,6 +81,19 @@ export class SacramentFormPage {
     await this.page.getByRole('option', { name: new RegExp(recipientLabel.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')) }).click();
   }
 
+  async selectBaptismNewPersonInExistingFamily(options: {
+    firstName: string;
+    lastName: string;
+    relationship?: string;
+  }): Promise<void> {
+    await this.page.getByRole('radio', { name: 'New person in this family' }).check();
+    await this.page.getByTestId('existing-family-new-person-first').fill(options.firstName);
+    await this.page.getByTestId('existing-family-new-person-last').fill(options.lastName);
+    if (options.relationship) {
+      await this.page.getByTestId('existing-family-relationship').selectOption(options.relationship);
+    }
+  }
+
   async assertBaptismRecipientProfile(expected: {
     dob: string;
     gender: string;

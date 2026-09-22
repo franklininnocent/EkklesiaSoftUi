@@ -109,6 +109,44 @@
   }
 }
 
+.clg__contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.125rem;
+}
+
+.clg__contact-link {
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: var(--cf-brand, #175cd3);
+  text-decoration: none;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.clg__person-hint {
+  display: block;
+  margin-top: 0.125rem;
+  font-size: 0.75rem;
+  color: var(--cf-text-muted, #667085);
+}
+
+.clg__history-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  margin-top: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--cf-text-muted, #667085);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
 .clg__card-edit {
   position: absolute;
   top: 0.5rem;

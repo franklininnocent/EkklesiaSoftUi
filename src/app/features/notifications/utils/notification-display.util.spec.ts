@@ -10,6 +10,9 @@ import { UserNotification } from '../models/notification.model';
 describe('notification-display.util', () => {
   it('maps known definition codes to readable labels', () => {
     expect(notificationDefinitionLabel('donations.refund.requested')).toBe('Refund approval needed');
+    expect(notificationDefinitionLabel('auth.password_recovery.requested')).toBe(
+      'Password recovery approval'
+    );
     expect(notificationDefinitionLabel('unknown.code.here')).toBe('unknown · code · here');
   });
 

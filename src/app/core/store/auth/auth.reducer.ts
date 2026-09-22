@@ -56,10 +56,10 @@ export const authReducer = createReducer(
   
   on(AuthActions.loginSuccess, (state, { response }) => ({
     ...state,
-    user: null, // User will be loaded separately via getCurrentUser()
+    // Keep any prior user until loadUserSuccess; clearing here races dashboard mounts.
     token: response.access_token,
     isAuthenticated: true,
-    loading: false,
+    loading: true,
     error: null
   })),
   
@@ -78,10 +78,10 @@ export const authReducer = createReducer(
   
   on(AuthActions.registerSuccess, (state, { response }) => ({
     ...state,
-    user: null, // User will be loaded separately via getCurrentUser()
+    // Keep any prior user until loadUserSuccess; clearing here races dashboard mounts.
     token: response.access_token,
     isAuthenticated: true,
-    loading: false,
+    loading: true,
     error: null
   })),
   
@@ -117,9 +117,8 @@ export const authReducer = createReducer(
   
   on(AuthActions.loadUserFailure, (state, { error }) => ({
     ...state,
-    user: null,
-    token: null,
-    isAuthenticated: false,
+    // Do not clear token/user here — transient get-user failures must not log the user out.
+    // AuthEffects.loadUserFailure$ clears the session only on real auth failures.
     loading: false,
     error
   })),

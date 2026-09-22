@@ -77,6 +77,10 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     if (this.bcc) {
       this.bccForm.patchValue(this.bcc);
+
+      // #region agent log
+      if (typeof fetch !== 'undefined') { fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cdba13'},body:JSON.stringify({sessionId:'cdba13',location:'bcc-form.ts:ngOnInit',message:'edit form initialized',data:{bccStatus:this.bcc.status,formStatus:this.bccForm.get('status')?.value,activeFamilyCount:this.getActiveFamilyCountInternal(),statusDirty:this.bccForm.get('status')?.dirty,legacyTemplateWouldShow:!!this.bcc && this.getActiveFamilyCountInternal() > 0,shouldShowWarning:this.shouldShowInactiveFamiliesWarning()},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{}); }
+      // #endregion
     }
 
     // Watch for status changes to validate against active families
@@ -106,6 +110,10 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
     // Only validate when trying to set to inactive
     if (status === 'inactive') {
       const activeFamilyCount = this.getActiveFamilyCountInternal();
+
+      // #region agent log
+      if (typeof fetch !== 'undefined') { fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cdba13'},body:JSON.stringify({sessionId:'cdba13',location:'bcc-form.ts:validateStatusChange',message:'status validation',data:{status,activeFamilyCount,statusDirty:statusControl.dirty,willSetError:activeFamilyCount > 0},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{}); }
+      // #endregion
       
       if (activeFamilyCount > 0) {
         statusControl.setErrors({
@@ -151,6 +159,28 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
    */
   getActiveFamilyCount(): number {
     return this.getActiveFamilyCountInternal();
+  }
+
+  /**
+   * Show inactive-families warning only when user attempts to set BCC status to inactive.
+   */
+  shouldShowInactiveFamiliesWarning(): boolean {
+    if (this.getActiveFamilyCountInternal() === 0) {
+      return false;
+    }
+
+    const statusControl = this.bccForm.get('status');
+    if (statusControl?.value !== 'inactive') {
+      return false;
+    }
+
+    const shouldShow = !!statusControl.dirty || !!statusControl.errors?.['hasActiveFamilies'];
+
+    // #region agent log
+    if (typeof fetch !== 'undefined') { fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'cdba13'},body:JSON.stringify({sessionId:'cdba13',location:'bcc-form.ts:shouldShowInactiveFamiliesWarning',message:'inactive families warning visibility',data:{shouldShow,status:statusControl?.value,dirty:statusControl?.dirty,hasActiveFamiliesError:!!statusControl?.errors?.['hasActiveFamilies'],activeFamilyCount:this.getActiveFamilyCountInternal(),hasBcc:!!this.bcc},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{}); }
+    // #endregion
+
+    return shouldShow;
   }
 
   ngAfterViewInit(): void {

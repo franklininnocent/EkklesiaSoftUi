@@ -125,6 +125,27 @@
       </div>
     </section>
 
+    <section class="cf-split-section" aria-labelledby="member-section-parents">
+      <h3 id="member-section-parents" class="cf-split-section__title">Parents</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <p class="cf-split-field__hint">
+            Select an existing member or enter the parent's name manually. This is not the same as relationship to the family head.
+          </p>
+        </div>
+        <app-parent-person-autocomplete
+          mode="father"
+          formControlName="father"
+          [excludePersonId]="excludePersonId"
+        ></app-parent-person-autocomplete>
+        <app-parent-person-autocomplete
+          mode="mother"
+          formControlName="mother"
+          [excludePersonId]="excludePersonId"
+        ></app-parent-person-autocomplete>
+      </div>
+    </section>
+
     <section class="cf-split-section" aria-labelledby="member-section-contact">
       <h3 id="member-section-contact" class="cf-split-section__title">Contact & Profile</h3>
       <div class="cf-split-grid">

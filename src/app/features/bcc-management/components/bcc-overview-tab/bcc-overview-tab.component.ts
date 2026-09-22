@@ -10,6 +10,7 @@ import {
   SimpleChanges,
   inject,
 } from '@angular/core';
+import { RouterLink } from '@angular/router';
 import { BCCService } from '@core/services/bcc.service';
 import { ApiResponse } from '@core/models/family.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
@@ -17,6 +18,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import {
   BccAgeBand,
   BccAgeGroup,
+  BccLeaderRow,
   BccOverview,
   BccTab,
 } from '../../models/bcc.model';
@@ -70,6 +72,7 @@ const GENDER_COLORS: Record<string, string> = {
   standalone: true,
   imports: [
     CommonModule,
+    RouterLink,
     LoadingSkeletonComponent,
     CfEmptyStateComponent,
     BccGrowthPanelComponent,
@@ -91,6 +94,7 @@ export class BccOverviewTabComponent implements OnChanges {
   loading = true;
   loadError: string | null = null;
   overview: BccOverview | null = null;
+  currentLeaders: BccLeaderRow[] = [];
   growthMeasure: BccGrowthMeasure = 'people';
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -102,6 +106,8 @@ export class BccOverviewTabComponent implements OnChanges {
   load(): void {
     this.loading = true;
     this.loadError = null;
+    this.currentLeaders = [];
+    this.loadCurrentLeaders();
     this.api.getOverview(this.bccId).subscribe({
       next: (res: ApiResponse<unknown>) => {
         const data = (res.data as BccOverview) ?? null;
@@ -137,6 +143,57 @@ export class BccOverviewTabComponent implements OnChanges {
 
   go(tab: BccTab, query?: Record<string, string>): void {
     this.navigate.emit({ tab, query });
+  }
+
+  leaderDesignation(leader: BccLeaderRow): string {
+    const description = leader.role_description?.trim();
+    if (description) {
+      return description;
+    }
+
+    const role = leader.role?.trim();
+    if (!role) {
+      return 'Leader';
+    }
+
+    return role.charAt(0).toUpperCase() + role.slice(1).replace(/_/g, ' ');
+  }
+
+  leaderContactPhone(leader: BccLeaderRow): string | null {
+    const phone = leader.contact_phone?.trim() || leader.leader_phone?.trim();
+    return phone || null;
+  }
+
+  leaderContactEmail(leader: BccLeaderRow): string | null {
+    const email = leader.contact_email?.trim() || leader.leader_email?.trim();
+    return email || null;
+  }
+
+  memberDetailLink(leader: BccLeaderRow): string[] | null {
+    if (!leader.family_id || !leader.family_member_id) {
+      return null;
+    }
+    return ['/families', leader.family_id];
+  }
+
+  memberDetailQuery(leader: BccLeaderRow): Record<string, string> {
+    return { member: leader.family_member_id };
+  }
+
+  private loadCurrentLeaders(): void {
+    this.api.getLeadershipCurrent(this.bccId).subscribe({
+      next: (res: ApiResponse<unknown>) => {
+        const data = res.data as { leaders?: BccLeaderRow[] };
+        this.currentLeaders = (data?.leaders ?? []).filter(
+          (leader) => leader.is_active && (!leader.status || leader.status === 'active')
+        );
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.currentLeaders = [];
+        this.cdr.markForCheck();
+      },
+    });
   }
 
   onGrowthMeasure(measure: BccGrowthMeasure): void {

@@ -189,6 +189,15 @@
   font-weight: 600;
 }
 
+.cd-registry__error {
+  grid-column: 1 / -1;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--cd-slate-200);
+  border-radius: var(--cd-radius);
+  background: var(--cd-slate-50);
+  color: var(--cd-slate-700);
+}
+
 // ─── Dashboard tabs (v2.0) ─────────────────────────────────
 .cd-tabs {
   display: flex;
@@ -995,10 +1004,23 @@
 }
 
 .cd-chart__label {
-  margin-top: 0.5rem;
+  margin-top: 0.25rem;
   font-size: 0.6875rem;
   font-weight: 600;
   color: var(--cd-slate-500);
+}
+
+.cd-chart__amount {
+  margin-top: 0.35rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--cd-slate-700);
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 // ─── Giving Hub ────────────────────────────────────────────

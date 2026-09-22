@@ -157,10 +157,13 @@ export class ChangePasswordModalComponent implements OnInit, OnDestroy {
   }
 
   private resolvePasswordChangeError(error: {
+    message?: string;
+    status?: number;
+    errors?: Record<string, string[]>;
     error?: { message?: string; errors?: Record<string, string[]> };
   }): string {
-    const payload = error?.error;
-    const fieldErrors = payload?.errors;
+    // Prefer interceptor-flattened shape ({ message, errors }) over raw HttpErrorResponse.
+    const fieldErrors = error?.errors ?? error?.error?.errors;
     if (fieldErrors) {
       const firstField = Object.keys(fieldErrors)[0];
       const firstMessage = firstField ? fieldErrors[firstField]?.[0] : undefined;
@@ -169,6 +172,26 @@ export class ChangePasswordModalComponent implements OnInit, OnDestroy {
       }
     }
 
-    return payload?.message || 'Unable to change password.';
+    const apiMessage = (error?.message || error?.error?.message || '').trim();
+    if (apiMessage) {
+      return this.toUserFacingPasswordMessage(apiMessage);
+    }
+
+    return 'Unable to change password. Check your current password and try a different new password.';
+  }
+
+  /** Map known API codes/messages into plain-language guidance. */
+  private toUserFacingPasswordMessage(apiMessage: string): string {
+    const normalized = apiMessage.toLowerCase();
+    if (normalized.includes('reuse a recent password')) {
+      return 'That new password was used recently. Please choose a different password you have not used before.';
+    }
+    if (normalized.includes('must differ from your current password')) {
+      return 'Your new password must be different from your current password.';
+    }
+    if (normalized.includes('current password is incorrect')) {
+      return 'Current password is incorrect. Enter the password you use to sign in.';
+    }
+    return apiMessage;
   }
 }

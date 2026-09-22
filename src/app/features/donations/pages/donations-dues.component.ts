@@ -31,7 +31,7 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
           <button type="button" class="cf-btn" *ngIf="canManage && overdueCount" (click)="queueBulkWhatsApp()" [disabled]="whatsAppQueueing">
             {{ whatsAppQueueing ? 'Queueing…' : 'WhatsApp all overdue' }}
           </button>
-          <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateScheduled()">Generate dues</button>
+          <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateScheduled()">Catch up auto plans</button>
         </div>
       </div>
 
@@ -222,17 +222,20 @@ export class DonationsDuesComponent implements OnInit {
   }
 
   isDueOverdue(due: ContributionDue): boolean {
+    if (due.is_overdue !== undefined) {
+      return !!due.is_overdue;
+    }
     if (due.status === 'paid' || due.status === 'waived' || due.status === 'cancelled') {
       return false;
     }
-    return new Date(due.due_date).getTime() < Date.now();
+    return due.schedule_state === 'overdue';
   }
 
   loadDues(): void {
     this.loading = true;
     this.error = null;
     refreshStewardshipView(this.cdr);
-    const filters: Record<string, string | boolean> = { per_page: '100' };
+    const filters: Record<string, string | boolean> = { per_page: '100', actionable: true };
     if (this.overdueOnly) {
       filters['overdue_only'] = true;
     }
@@ -331,7 +334,7 @@ export class DonationsDuesComponent implements OnInit {
   generateScheduled(): void {
     this.donationsService.generateScheduledContributions().subscribe({
       next: (res) => {
-        this.message = `${res.message} Generated ${res.data.generated} due(s).`;
+        this.message = `${res.message} Created ${res.data.generated} new due(s) across auto-generate plans.`;
         this.loadDues();
       },
       error: (err) => {

@@ -21,16 +21,6 @@
   background: var(--cf-critical-soft);
 }
 
-.plan-success-banner {
-  border-color: var(--cf-forest-soft);
-}
-
-.plan-success-banner__actions {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
-}
-
 .plans-workspace {
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
@@ -437,25 +427,8 @@
   margin-top: 0.1rem;
 }
 
-.plan-link {
-  border: 0;
-  background: none;
-  padding: 0;
-  color: var(--cf-primary);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
 .plan-row--highlight {
   background: var(--cf-indigo-soft);
-}
-
-.row-actions {
-  display: flex;
-  gap: 0.55rem;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
 .plan-load-error__text {

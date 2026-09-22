@@ -219,7 +219,7 @@
         </section>
       </div>
 
-      <!-- Community overview + size distribution -->
+      <!-- Community overview + size distribution + recent activity -->
       <div class="bcc-dash__split bcc-dash__split--overview">
         <section
           id="bcc-community-overview"
@@ -284,7 +284,7 @@
                   </td>
                   <td>
                     <span class="cf-meta" *ngIf="!row.attention_flags?.length">—</span>
-                    <span class="bcc-dash__flag" *ngFor="let flag of row.attention_flags">{{ flag.replace('_', ' ') }}</span>
+                    <span class="bcc-dash__flag" *ngFor="let flag of row.attention_flags">{{ flagLabel(flag) }}</span>
                   </td>
                 </tr>
               </tbody>
@@ -316,27 +316,33 @@
             </li>
           </ul>
         </section>
-      </div>
 
-      <!-- Recent activity -->
-      <section class="bcc-dash__activity cf-panel" aria-label="Recent activity">
-        <header class="bcc-dash__section-head">
-          <h2>Recent activity</h2>
-          <button type="button" class="cf-btn cf-btn--sm" (click)="openAudit()">View all</button>
-        </header>
-        <ul class="bcc-dash__activity-list" *ngIf="summary.recent_activity?.length; else noAct">
-          <li *ngFor="let item of summary.recent_activity">
-            <strong>{{ eventLabel(item.event) }}</strong>
-            <span class="cf-meta">
-              {{ item.bcc_name || 'BCC' }} · {{ item.actor_name || 'System' }}
-              <ng-container *ngIf="item.created_at"> · {{ item.created_at | date: 'medium' }}</ng-container>
-            </span>
-          </li>
-        </ul>
-        <ng-template #noAct>
-          <p class="cf-meta">No recent BCC activity.</p>
-        </ng-template>
-      </section>
+        <section class="bcc-dash__activity cf-panel" aria-label="Recent activity">
+          <header class="bcc-dash__section-head">
+            <h2>Recent activity</h2>
+            <button
+              *ngIf="canViewTenantAuditLogs"
+              type="button"
+              class="cf-btn cf-btn--sm"
+              (click)="openAudit()"
+            >
+              View all
+            </button>
+          </header>
+          <ul class="bcc-dash__activity-list" *ngIf="summary.recent_activity?.length; else noAct">
+            <li *ngFor="let item of summary.recent_activity | slice:0:2">
+              <strong>{{ eventLabel(item.event) }}</strong>
+              <span class="cf-meta">
+                {{ item.bcc_name || 'BCC' }} · {{ item.actor_name || 'System' }}
+                <ng-container *ngIf="item.created_at"> · {{ item.created_at | date: 'medium' }}</ng-container>
+              </span>
+            </li>
+          </ul>
+          <ng-template #noAct>
+            <p class="cf-meta">No recent BCC activity.</p>
+          </ng-template>
+        </section>
+      </div>
     </ng-template>
   </ng-container>
 

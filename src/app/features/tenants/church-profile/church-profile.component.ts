@@ -22,7 +22,7 @@ import { ToastService } from '@core/services/toast.service';
 import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { Tenant, TenantResponse } from '@core/models';
-import { finalize, takeUntil, switchMap, filter } from 'rxjs/operators';
+import { finalize, takeUntil, switchMap, filter, map } from 'rxjs/operators';
 import { getTenantCallingCode, tenantPhoneValidator } from '@core/validators/phone.validators';
 import { GeographyService, Country } from '@core/services/geography.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
@@ -37,7 +37,7 @@ import { DiocesanBishopPanelComponent } from './components/diocesan-bishop-panel
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { HostListener } from '@angular/core';
-import { Subject } from 'rxjs';
+import { Subject, of } from 'rxjs';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { resolveMediaDisplaySrc } from '@core/utils/media-url.util';
@@ -1522,13 +1522,21 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Apply social media list and force view refresh (OnPush component).
+   */
+  private applySocialMediaList(data: ChurchSocialMedia[]): void {
+    this.socialMedia = [...data];
+    this.cdr.detectChanges();
+  }
+
+  /**
    * Load social media accounts
    */
   private loadSocialMedia(): void {
     this.socialMediaService.getSocialMedia({ active: 1 }).subscribe({
       next: (response) => {
         if (response.success) {
-          this.socialMedia = response.data;
+          this.applySocialMediaList(response.data);
         }
       },
       error: (err: Error) => {
@@ -2407,19 +2415,45 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     }
 
     this.saving = true;
-    const formData = this.socialForm.value;
+    const formData = { ...this.socialForm.value };
+
+    // Normalize social media URL - prepend https:// if no protocol is present
+    if (formData.url && typeof formData.url === 'string' && formData.url.trim()) {
+      let url = formData.url.trim();
+      if (!url.match(/^https?:\/\//i)) {
+        url = url.replace(/^\/+/, '');
+        formData.url = 'https://' + url;
+      } else {
+        formData.url = url;
+      }
+    }
+
+    const isUpdate = !!this.selectedSocialMedia;
 
     const request = this.selectedSocialMedia
       ? this.socialMediaService.updateSocialMedia(this.selectedSocialMedia.id, formData)
       : this.socialMediaService.createSocialMedia(formData);
 
-    request.pipe(finalize(() => this.saving = false)).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.loadSocialMedia();
+    request.pipe(
+      switchMap((response) => {
+        if (!response.success) {
+          return of(null);
+        }
+        return this.socialMediaService.getSocialMedia({ active: 1 }).pipe(
+          map((listResponse) => ({ listResponse, isUpdate }))
+        );
+      }),
+      finalize(() => {
+        this.saving = false;
+        this.cdr.markForCheck();
+      }),
+    ).subscribe({
+      next: (result) => {
+        if (result?.listResponse.success) {
+          this.applySocialMediaList(result.listResponse.data);
           this.closeSocialModal();
           this.toastService.success(
-            this.selectedSocialMedia ? 'Social media account updated successfully!' : 'Social media account added successfully!',
+            result.isUpdate ? 'Social media account updated successfully!' : 'Social media account added successfully!',
             'Success'
           );
         }
@@ -2451,10 +2485,17 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
       filter((result) => result.confirmed),
       takeUntil(this.destroy$),
     ).subscribe(() => {
-    this.socialMediaService.deleteSocialMedia(social.id).subscribe({
-      next: (response) => {
-        if (response.success) {
-          this.loadSocialMedia();
+    this.socialMediaService.deleteSocialMedia(social.id).pipe(
+      switchMap((response) => {
+        if (!response.success) {
+          return of(null);
+        }
+        return this.socialMediaService.getSocialMedia({ active: 1 });
+      }),
+    ).subscribe({
+      next: (listResponse) => {
+        if (listResponse?.success) {
+          this.applySocialMediaList(listResponse.data);
           this.toastService.success('Social media account deleted successfully!', 'Success');
         }
       },

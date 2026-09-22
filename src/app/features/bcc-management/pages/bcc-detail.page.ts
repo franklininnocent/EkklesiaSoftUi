@@ -73,7 +73,10 @@ export class BccDetailPageComponent implements OnInit, OnDestroy {
     });
     this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((query) => {
       const tab = query.get('tab') as BccTab | null;
-      this.activeTab = tab && TABS.includes(tab) ? tab : 'overview';
+      const allowedTabs = TABS.filter(
+        (item) => item !== 'audit' || this.auth.canViewTenantAuditLogs()
+      );
+      this.activeTab = tab && allowedTabs.includes(tab) ? tab : 'overview';
       this.peopleQuery = {
         view: query.get('view') || '',
         gender: query.get('gender') || '',
@@ -269,12 +272,17 @@ export class BccDetailPageComponent implements OnInit, OnDestroy {
       this.memberCount === null ? 'Members' : `Members · ${this.memberCount}`;
     const leadershipLabel =
       this.leadershipCount === null ? 'Leadership' : `Leadership · ${this.leadershipCount}`;
-    return [
+    const items: TabStripItem[] = [
       { id: 'overview', label: 'Overview' },
       { id: 'members', label: membersLabel },
       { id: 'leadership', label: leadershipLabel },
       { id: 'member-history', label: 'Member History' },
-      { id: 'audit', label: 'Audit' },
     ];
+
+    if (this.auth.canViewTenantAuditLogs()) {
+      items.push({ id: 'audit', label: 'Audit' });
+    }
+
+    return items;
   }
 }

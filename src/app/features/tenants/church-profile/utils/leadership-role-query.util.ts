@@ -42,11 +42,28 @@ export function filterRolesByQuery(roles: LeadershipRoleOption[], query: string)
   return roles.filter((role) => normalizeLeadershipRoleTitle(role.title).includes(normalized));
 }
 
+export function filterRolesByCategory(
+  roles: LeadershipRoleOption[],
+  category: LeadershipCategory | '',
+  includeRoleId = '',
+): LeadershipRoleOption[] {
+  if (!category) {
+    return roles;
+  }
+
+  return roles.filter(
+    (role) => role.category === category || (includeRoleId !== '' && role.id === includeRoleId),
+  );
+}
+
 export function groupLeadershipRoles(
   roles: LeadershipRoleOption[],
   query = '',
+  categoryFilter: LeadershipCategory | '' = '',
+  includeRoleId = '',
 ): LeadershipRoleGroup[] {
-  const filtered = filterRolesByQuery(roles, query);
+  const categoryFiltered = filterRolesByCategory(roles, categoryFilter, includeRoleId);
+  const filtered = filterRolesByQuery(categoryFiltered, query);
   const systemRoles = filtered.filter((role) => role.is_global);
   const tenantRoles = filtered
     .filter((role) => !role.is_global)

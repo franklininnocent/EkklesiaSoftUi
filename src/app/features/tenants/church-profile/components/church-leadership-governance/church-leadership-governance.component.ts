@@ -42,6 +42,9 @@ import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edi
 import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 import { LeadershipRoleComboboxComponent } from '../leadership-role-combobox/leadership-role-combobox.component';
 import { ParishPerson, ParishPersonService } from '@features/settings/sacraments/services/person.service';
+import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { PhoneCodeService } from '@core/services/phone-code.service';
+import { formatPhoneForApi } from '@features/family-management/utils/prepare-family-member-payload.util';
 
 type HistoryView = 'table' | 'timeline';
 
@@ -63,6 +66,7 @@ type HistoryView = 'table' | 'timeline';
     EditIconButtonComponent,
     ImageViewerComponent,
     LeadershipRoleComboboxComponent,
+    PhoneInputComponent,
   ],
   templateUrl: './church-leadership-governance.component.html',
   styleUrl: './church-leadership-governance.component.scss',
@@ -77,6 +81,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
   private readonly personService = inject(ParishPersonService);
   private readonly authService = inject(AuthService);
   private readonly toastService = inject(ToastService);
+  private readonly phoneCodeService = inject(PhoneCodeService);
   private readonly fb = inject(FormBuilder);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -124,6 +129,8 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
   editPhotoFile: File | null = null;
   editPhotoPreview: string | null = null;
   photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+  assignCategory: LeadershipCategory | '' = '';
+  editCategory: LeadershipCategory = 'OTHER';
 
   readonly assignForm = this.fb.nonNullable.group({
     person_id: [''],
@@ -133,6 +140,8 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     end_date: [''],
     jurisdiction_name: [''],
     appointment_letter_ref: [''],
+    email: ['', [Validators.email, Validators.maxLength(255)]],
+    phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
   });
 
   readonly handoverForm = this.fb.nonNullable.group({
@@ -159,6 +168,8 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     start_date: ['', Validators.required],
     jurisdiction_name: [''],
     appointment_letter_ref: [''],
+    email: ['', [Validators.email, Validators.maxLength(255)]],
+    phone: ['', [Validators.maxLength(15), Validators.pattern(/^[0-9]*$/)]],
   });
 
   readonly categoryOptions = LEADERSHIP_CATEGORY_OPTIONS;
@@ -193,7 +204,8 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
 
     const { role_id, start_date } = this.assignForm.getRawValue();
     const hasPerson = !!this.selectedPerson || this.personQuery.trim().length >= 2;
-    return hasPerson
+    return !!this.assignCategory
+      && hasPerson
       && !!this.asId(role_id)
       && !!String(start_date ?? '').trim();
   }
@@ -473,6 +485,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     this.modalError = null;
     this.assignPhotoFile = null;
     this.assignPhotoPreview = null;
+    this.assignCategory = '';
     this.assignForm.reset({
       person_id: '',
       role_id: '',
@@ -481,11 +494,29 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
       end_date: '',
       jurisdiction_name: '',
       appointment_letter_ref: '',
+      email: '',
+      phone: '',
     });
+    this.assignForm.controls.role_id.disable();
     this.showAssignModal = true;
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b51fb5'},body:JSON.stringify({sessionId:'b51fb5',location:'church-leadership-governance.component.ts:openAssignModal',message:'assign modal opened',data:{rolesCount:this.roles.length,roleTitles:this.roles.slice(0,5).map((r)=>r.title)},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
+    this.cdr.markForCheck();
+  }
+
+  onAssignCategoryChange(): void {
+    if (!this.assignCategory) {
+      this.assignForm.controls.role_id.disable();
+      this.assignForm.controls.role_id.setValue('');
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.assignForm.controls.role_id.enable();
+    this.clearRoleIfCategoryMismatch('assign');
+    this.cdr.markForCheck();
+  }
+
+  onEditCategoryChange(): void {
+    this.clearRoleIfCategoryMismatch('edit');
     this.cdr.markForCheck();
   }
 
@@ -556,6 +587,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
       end_date: raw.end_date || null,
       jurisdiction_name: raw.jurisdiction_name || null,
       appointment_letter_ref: raw.appointment_letter_ref || null,
+      ...this.contactPayloadFromForm(raw.email, raw.phone),
     };
 
     const person = this.selectedPerson;
@@ -735,6 +767,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     this.editingAssignment = assignment;
     this.editPhotoFile = null;
     this.editPhotoPreview = this.leaderPhotoUrl(assignment);
+    this.editCategory = assignment.role?.category ?? 'OTHER';
     this.editForm.reset({
       first_name: assignment.person?.first_name || '',
       last_name: assignment.person?.last_name || '',
@@ -743,6 +776,8 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
       start_date: assignment.start_date,
       jurisdiction_name: assignment.jurisdiction_name || '',
       appointment_letter_ref: assignment.appointment_letter_ref || '',
+      email: assignment.person?.email || '',
+      phone: this.phoneDigitsFromStored(assignment.person?.phone),
     });
     this.modalError = null;
     this.showEditModal = true;
@@ -780,6 +815,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
       start_date: raw.start_date,
       jurisdiction_name: raw.jurisdiction_name || null,
       appointment_letter_ref: raw.appointment_letter_ref || null,
+      ...this.contactPayloadFromForm(raw.email, raw.phone),
     };
 
     this.api.updateAssignment(this.editingAssignment.id, payload).pipe(
@@ -900,6 +936,10 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     event?.preventDefault();
     this.selectedPerson = person;
     this.assignForm.controls.person_id.setValue(person.id);
+    this.assignForm.patchValue({
+      email: person.email || '',
+      phone: this.phoneDigitsFromStored(person.phone),
+    });
     this.personQuery = this.personDisplayName(person);
     this.showPersonResults = false;
     this.cdr.markForCheck();
@@ -909,6 +949,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     this.selectedPerson = null;
     this.personQuery = '';
     this.assignForm.controls.person_id.setValue('');
+    this.assignForm.patchValue({ email: '', phone: '' });
     this.cdr.markForCheck();
   }
 
@@ -956,9 +997,51 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     return (person.full_name_display || `${person.first_name} ${person.last_name}`).trim();
   }
 
+  personContactHint(person: ParishPerson): string | null {
+    const parts = [person.phone, person.email].filter((value) => !!String(value ?? '').trim());
+    return parts.length ? parts.join(' · ') : null;
+  }
+
+  leaderContactEmail(assignment: LeadershipAssignment): string | null {
+    const email = assignment.person?.email?.trim();
+    return email || null;
+  }
+
+  leaderContactPhone(assignment: LeadershipAssignment): string | null {
+    const phone = assignment.person?.phone?.trim();
+    return phone || null;
+  }
+
+  private contactPayloadFromForm(email: string, phone: string): { email: string | null; phone: string | null } {
+    const trimmedEmail = email.trim();
+    const formattedPhone = formatPhoneForApi(phone, this.phoneCodeService.getPhoneCodeSync());
+
+    return {
+      email: trimmedEmail || null,
+      phone: formattedPhone,
+    };
+  }
+
+  private phoneDigitsFromStored(phone: string | null | undefined): string {
+    if (!phone) {
+      return '';
+    }
+
+    const dialCode = this.phoneCodeService.getPhoneCodeSync().replace(/\D/g, '');
+    const digits = phone.replace(/\D/g, '');
+    if (dialCode && digits.startsWith(dialCode)) {
+      return digits.slice(dialCode.length);
+    }
+
+    return digits;
+  }
+
   private assignValidationMessage(): string {
     const { role_id, start_date } = this.assignForm.getRawValue();
 
+    if (!this.assignCategory) {
+      return 'Select a governance category (Parish Clergy, Other, etc.).';
+    }
     if (!this.selectedPerson && this.personQuery.trim().length < 2) {
       return 'Enter the leader’s name.';
     }
@@ -969,6 +1052,24 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
       return 'Choose a start date.';
     }
     return 'Complete the required fields to add this leader.';
+  }
+
+  private clearRoleIfCategoryMismatch(form: 'assign' | 'edit'): void {
+    const category = form === 'assign' ? this.assignCategory : this.editCategory;
+    if (!category) {
+      return;
+    }
+
+    const control = form === 'assign' ? this.assignForm.controls.role_id : this.editForm.controls.role_id;
+    const roleId = this.asId(control.getRawValue());
+    if (!roleId) {
+      return;
+    }
+
+    const role = this.roles.find((item) => item.id === roleId);
+    if (role && role.category !== category) {
+      control.setValue('');
+    }
   }
 
   private asId(value: unknown): string {

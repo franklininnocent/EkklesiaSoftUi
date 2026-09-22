@@ -59,13 +59,13 @@
               formControlName="status"
             >
               <option value="active">Active</option>
-              <option value="inactive" [disabled]="family && getActiveMemberCount() > 0">Inactive</option>
+              <option value="inactive">Inactive</option>
               <option value="migrated">Migrated</option>
             </select>
             <p class="cf-split-field__error" *ngIf="hasError('status')">
               {{ getErrorMessage('status') || (familyForm.get('status')?.errors?.['hasActiveMembers'] ? 'Cannot set Family to inactive with active members' : '') }}
             </p>
-            <p class="cf-split-field__error" *ngIf="family && getActiveMemberCount() > 0">
+            <p class="cf-split-field__error" *ngIf="shouldShowInactiveMembersWarning()">
               ⚠️ This Family has {{ getActiveMemberCount() }} active {{ getActiveMemberCount() === 1 ? 'member' : 'members' }} (including family head). Deactivate them before setting Family to inactive.
             </p>
             

@@ -107,7 +107,11 @@ export function prepareFamilyMemberPayload(
     marriage_groom_church_type: normalizeChurchType(value.marriage_groom_church_type),
     marriage_groom_church_name: sanitize(value.marriage_groom_church_name),
     marriage_groom_church_address: sanitize(value.marriage_groom_church_address),
-    status: (normalizeLower(value.status) || 'active') as FamilyMember['status']
+    status: (normalizeLower(value.status) || 'active') as FamilyMember['status'],
+    father_person_id: value.father_person_id || null,
+    father_name: sanitize(value.father_name),
+    mother_person_id: value.mother_person_id || null,
+    mother_name: sanitize(value.mother_name),
   };
 }
 

@@ -6,6 +6,7 @@ import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.
 import { ModalShellComponent } from '@shared/components';
 import { AuthService } from '@core/services';
 import { ParishPersonService, ParishPerson } from '@features/settings/sacraments/services/person.service';
+import { ParentPersonAutocompleteComponent, ParentPersonValue } from '../parent-person-autocomplete/parent-person-autocomplete.component';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
 export interface FamilyMemberFormValue {
@@ -23,6 +24,10 @@ export interface FamilyMemberFormValue {
   email?: string;
   occupation?: string;
   education?: string;
+  father_person_id?: string | null;
+  father_name?: string | null;
+  mother_person_id?: string | null;
+  mother_name?: string | null;
   baptism_date?: string;
   baptism_place?: string;
   baptism_godparent_primary?: string;
@@ -80,7 +85,7 @@ function createLocalPhoneValidator(getDialCode: () => string): ValidatorFn {
 @Component({
   selector: 'app-family-member-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent, ParentPersonAutocompleteComponent],
   templateUrl: './family-member-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-member-form-modal.component.scss']
@@ -155,7 +160,9 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       marriage_groom_church_type: ['home_parish'],
       marriage_groom_church_name: [''],
       marriage_groom_church_address: [''],
-      status: ['active']
+      status: ['active'],
+      father: this.fb.control<ParentPersonValue>({ person_id: null, name: null, linked: false }),
+      mother: this.fb.control<ParentPersonValue>({ person_id: null, name: null, linked: false }),
     });
     this.applyDateOfBirthValidators();
   }
@@ -278,6 +285,8 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
             baptism_location_type: 'home_parish',
             marriage_bride_church_type: 'home_parish',
             marriage_groom_church_type: 'home_parish',
+            father: { person_id: null, name: null, linked: false },
+            mother: { person_id: null, name: null, linked: false },
           });
           
           // CRITICAL: If isHeadOnly mode, ensure relationship is set to 'self'
@@ -409,7 +418,16 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
     if (!memberData.marriage_groom_church_type) {
       memberData.marriage_groom_church_type = 'home_parish';
     }
-    
+
+    memberData.father = this.buildParentControlValue(
+      member.father_person_id ?? null,
+      member.father_name ?? null
+    );
+    memberData.mother = this.buildParentControlValue(
+      member.mother_person_id ?? null,
+      member.mother_name ?? null
+    );
+
     // Use patchValue with emitEvent false to avoid triggering change detection issues
     this.form.patchValue(memberData, { emitEvent: false });
     
@@ -573,6 +591,19 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       || [person.first_name, person.middle_name, person.last_name].filter(Boolean).join(' ');
   }
 
+  get excludePersonId(): string | null {
+    const value = this.form.get('person_id')?.value;
+    return value ? String(value) : null;
+  }
+
+  private buildParentControlValue(personId: string | null, name: string | null): ParentPersonValue {
+    const trimmedName = name?.trim() || null;
+    if (personId) {
+      return { person_id: personId, name: trimmedName, linked: true };
+    }
+    return { person_id: null, name: trimmedName, linked: false };
+  }
+
   onSave(): void {
     if (this.form.invalid) {
       this.form.markAllAsTouched();
@@ -684,6 +715,15 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
         formValue[field] = null;
       }
     });
+
+    const father = formValue.father as ParentPersonValue | undefined;
+    const mother = formValue.mother as ParentPersonValue | undefined;
+    formValue.father_person_id = father?.linked ? father.person_id ?? null : null;
+    formValue.father_name = father?.name?.trim() || null;
+    formValue.mother_person_id = mother?.linked ? mother.person_id ?? null : null;
+    formValue.mother_name = mother?.name?.trim() || null;
+    delete formValue.father;
+    delete formValue.mother;
     
     // Debug log to verify the status value being sent
     console.log('Form submission - Final values:', {

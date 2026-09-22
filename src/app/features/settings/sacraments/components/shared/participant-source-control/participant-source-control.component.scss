@@ -1,5 +1,7 @@
 @use '../../../../../donations/styles/stewardship-split-layout.scss';
-@import '../sacrament-control-chrome';
+@use '../sacrament-control-chrome' as sacramentChrome;
+
+@include sacramentChrome.sacrament-control-chrome;
 
 .cf-participant-source {
   display: flex;

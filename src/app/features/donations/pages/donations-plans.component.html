@@ -14,14 +14,6 @@
   </div>
 
   <ng-container *ngIf="plansLoaded">
-    <div class="plan-success-banner plans-banner" *ngIf="lastCreatedPlan && !showForm" role="status">
-      <span><strong>{{ lastCreatedPlan.name }}</strong> created.</span>
-      <div class="plan-success-banner__actions">
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Create another</button>
-        <button type="button" class="cf-btn" (click)="scrollToPlan(lastCreatedPlan.id)">View plan</button>
-      </div>
-    </div>
-
     <div class="plan-load-error plans-banner plans-banner--error" *ngIf="plansLoadError" role="alert">
       <p class="plan-load-error__text">{{ plansLoadError }}</p>
       <button type="button" class="cf-btn cf-btn-primary" (click)="loadPlans()">Try again</button>
@@ -231,7 +223,7 @@
                     <td>{{ familyName(row.family_id) }}</td>
                     <td>₹{{ row.amount | number:'1.0-0' }}</td>
                     <td>{{ row.effective_from }}</td>
-                    <td><button type="button" class="plan-link" (click)="removeAssignment(i)">Remove</button></td>
+                    <td><button type="button" class="cf-btn-link" (click)="removeAssignment(i)">Remove</button></td>
                   </tr>
                 </tbody>
               </table>
@@ -276,7 +268,7 @@
                     <th>Frequency</th>
                     <th>Amount</th>
                     <th>Families</th>
-                    <th></th>
+                    <th class="cf-table__actions-col" scope="col"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -288,13 +280,25 @@
                     <td>
                       <strong>{{ plan.name }}</strong>
                       <span class="plan-meta">{{ plan.code }} · {{ plan.plan_type === 'individual' ? 'Varies' : 'Uniform' }}</span>
+                      <span class="plan-meta" *ngIf="plan.start_date">
+                        {{ plan.start_date | slice:0:10 }}<ng-container *ngIf="plan.end_date"> → {{ plan.end_date | slice:0:10 }}</ng-container>
+                      </span>
                     </td>
                     <td>{{ frequencyLabel(plan.frequency) }}</td>
                     <td>₹{{ plan.default_amount | number:'1.0-0' }}</td>
                     <td>{{ plan.assignments_count || '—' }}</td>
-                    <td class="row-actions">
-                      <button type="button" class="plan-link" *ngIf="canManage" (click)="editPlan(plan)">Edit</button>
-                      <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateDues(plan)">Generate dues</button>
+                    <td class="cf-table__actions-cell">
+                      <div class="cf-row-actions" *ngIf="canManage">
+                        <button type="button" class="cf-btn cf-btn--sm" (click)="editPlan(plan)">Edit</button>
+                        <button
+                          type="button"
+                          class="cf-btn cf-btn--sm"
+                          [disabled]="generatingPlanId === plan.id"
+                          (click)="generateDues(plan)"
+                        >
+                          {{ generatingPlanId === plan.id ? 'Generating…' : 'Generate dues' }}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>

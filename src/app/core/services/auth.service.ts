@@ -137,7 +137,8 @@ export class AuthService {
     // Prevent a prior platform Support session from leaking into a new login identity.
     this.supportSessions.clearSession();
 
-    // Store tokens
+    // Store tokens only. User hydration is owned by AuthEffects (loadUser / post-login).
+    // A parallel getCurrentUser() here raced the effects and could 401-clear the fresh session.
     localStorage.setItem(environment.tokenKey, response.access_token);
     localStorage.setItem(environment.refreshTokenKey, response.refresh_token);
     localStorage.setItem(environment.expiryTimeKey, response.expiry_time);
@@ -145,12 +146,6 @@ export class AuthService {
     if (response.role_id) {
       localStorage.setItem(environment.roleIdKey, response.role_id.toString());
     }
-    
-    // Fetch and set user details
-    this.getCurrentUser().subscribe({
-      next: (user) => this.setUser(user),
-      error: (err) => console.error('Failed to fetch user details:', err)
-    });
   }
 
   private setToken(token: string): void {
@@ -543,16 +538,54 @@ export class AuthService {
    * 
    * @returns True if user is Super Admin, false otherwise
    */
-  isSuperAdmin(): boolean {
-    const user = this.currentUserValue;
+  isSuperAdmin(user: User | null = this.currentUserValue): boolean {
     if (!user) return false;
-    
+
+    const hasSuperAdminRole =
+      (user.roles || []).some((role) => role?.name === 'SuperAdmin' || role?.name === 'Super Admin');
+
     // Never treat generic has_ekklesia_role as SuperAdmin (covers Manager/User too).
     return user.is_super_admin === true ||
-           this.hasRole('SuperAdmin') || 
-           this.hasRole('Super Admin') ||
+           hasSuperAdminRole ||
            user.role_name === 'SuperAdmin' ||
            user.role?.name === 'SuperAdmin';
+  }
+
+  /** Default tenant admin or SuperAdmin in a parish support session. */
+  canViewTenantAuditLogs(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin(user)) {
+      return true;
+    }
+
+    const primaryAdminRaw = (user as { is_primary_admin?: boolean | number | string }).is_primary_admin;
+    const isPrimaryAdmin =
+      primaryAdminRaw === true || primaryAdminRaw === 1 || primaryAdminRaw === '1';
+
+    return !!user.tenant_id && isPrimaryAdmin;
+  }
+
+  /** Complete platform audit trails (bishops, dioceses, cross-tenant insights, subscription history). */
+  canViewPlatformCompleteAudit(user: User | null = this.currentUserValue): boolean {
+    return this.isSuperAdmin(user);
+  }
+
+  /** Support Center operational session events. */
+  canViewSupportOperationalAudit(user: User | null = this.currentUserValue): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin(user)) {
+      return true;
+    }
+
+    const hasSupportAdminRole = (user.roles || []).some((role) => role?.name === 'SupportAdmin');
+
+    return hasSupportAdminRole || user.role_name === 'SupportAdmin';
   }
 
   /**
@@ -632,9 +665,6 @@ export class AuthService {
    */
   canViewPasswordRecoveryRequests(user: User | null = this.currentUserValue): boolean {
     if (!user) {
-      // #region agent log
-      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'auth.service.ts:canViewPasswordRecoveryRequests',message:'no user',data:{result:false},timestamp:Date.now(),hypothesisId:'H1',runId:'post-fix'})}).catch(()=>{});
-      // #endregion
       return false;
     }
 
@@ -644,14 +674,8 @@ export class AuthService {
       'password.recovery.requests.view',
       'password.recovery.requests.process',
     ]);
-    const result = isSuper || isPrimaryAdmin || hasRecoveryPerm;
 
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'auth.service.ts:canViewPasswordRecoveryRequests',message:'visibility eval',data:{result,isSuper,isPrimaryAdmin,hasRecoveryPerm,roleName:user.role_name,paramUserId:user.id,paramIsSuperAdmin:user.is_super_admin},timestamp:Date.now(),hypothesisId:'H1-H2',runId:'post-fix'})}).catch(()=>{});
-    try { sessionStorage.setItem('debug-forgot-nav', JSON.stringify({ result, isSuper, roleName: user.role_name })); } catch { /* ignore */ }
-    // #endregion
-
-    return result;
+    return isSuper || isPrimaryAdmin || hasRecoveryPerm;
   }
 
   canProcessPasswordRecoveryRequests(user: User | null = this.currentUserValue): boolean {

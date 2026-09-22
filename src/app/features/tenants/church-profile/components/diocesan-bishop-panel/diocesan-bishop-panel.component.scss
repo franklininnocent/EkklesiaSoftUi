@@ -1,7 +1,22 @@
 .diocesan-bishop-panel {
   display: grid;
   gap: var(--cf-space-4, 1.25rem);
-  max-width: 72rem;
+  max-width: 100%;
+}
+
+.diocesan-bishop-panel__columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--cf-space-4, 1.25rem);
+  align-items: start;
+
+  &:has(> :only-child) {
+    grid-template-columns: 1fr;
+  }
+
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr;
+  }
 }
 
 .diocesan-bishop-panel__intro {
@@ -31,9 +46,15 @@
   }
 }
 
-.diocesan-bishop-panel__record {
+.diocesan-bishop-panel__record,
+.diocesan-bishop-panel__requests {
   display: grid;
   gap: 1.25rem;
+  min-width: 0;
+}
+
+.diocesan-bishop-panel__requests {
+  gap: 0;
 }
 
 .diocesan-bishop-panel__record-banner {

@@ -65,17 +65,14 @@
             [class.cf-split-field__control--invalid]="hasError('status')"
           >
             <option value="active">Active</option>
-            <option value="inactive" [disabled]="bcc && getActiveFamilyCount() > 0">Inactive</option>
+            <option value="inactive">Inactive</option>
             <option value="suspended">Suspended</option>
           </select>
           <p class="cf-split-field__error" *ngIf="hasError('status')">
             {{ getErrorMessage('status') || (bccForm.get('status')?.errors?.['hasActiveFamilies'] ? 'Cannot set BCC to inactive with active families' : '') }}
           </p>
-          <p class="cf-split-field__error" *ngIf="bcc && getActiveFamilyCount() > 0">
+          <p class="cf-split-field__error" *ngIf="shouldShowInactiveFamiliesWarning()">
             This BCC has {{ getActiveFamilyCount() }} active {{ getActiveFamilyCount() === 1 ? 'family' : 'families' }}. Reassign or deactivate them before setting BCC to inactive.
-          </p>
-          <p class="cf-split-field__hint" *ngIf="!bcc || getActiveFamilyCount() === 0">
-            Current status of the BCC
           </p>
         </div>
       </div>

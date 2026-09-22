@@ -1,109 +1,187 @@
 <section class="head-profile" [attr.aria-label]="relationshipEyebrow + ' profile'" *ngIf="member as member">
   <section class="head-profile__overview" [attr.aria-label]="relationshipEyebrow + ' overview'">
-    <div class="head-profile__overview-inner">
-      <div class="head-profile__media">
-        <ng-container *ngIf="isFamilyHead; else memberAvatar">
-          <input
-            #profileImageInput
-            type="file"
-            class="head-profile__file-input"
-            accept="image/jpeg,image/jpg,image/png,image/webp"
-            tabindex="-1"
-            aria-hidden="true"
-            (change)="headProfileImageSelected.emit($event)"
-          />
-          <button
-            type="button"
-            class="head-profile__avatar"
-            [class.is-editing]="editingHeadImage"
-            [class.head-profile__avatar--previewable]="avatarImageUrl && !editingHeadImage"
-            [attr.aria-label]="
-              editingHeadImage
-                ? 'Upload profile photo'
-                : avatarImageUrl
-                  ? 'View photo of ' + getDisplayName(member)
-                  : 'Change profile photo'
-            "
-            (click)="onHeadAvatarClick()"
-          >
-            <img
-              *ngIf="avatarImageUrl"
-              [src]="avatarImageUrl"
-              alt=""
-              class="head-profile__avatar-img"
-            />
-            <span
-              *ngIf="!avatarImageUrl"
-              class="head-profile__avatar-initials"
-            >{{ (member.full_name || member.first_name || 'U').charAt(0) }}</span>
-            <span class="head-profile__avatar-camera" *ngIf="editingHeadImage" aria-hidden="true">📷</span>
-          </button>
-          <div class="head-profile__avatar-actions">
-            <button type="button" class="head-profile__text-btn" (click)="toggleHeadImageEdit.emit()">
-              {{ editingHeadImage ? 'Done' : 'Change photo' }}
-            </button>
-            <button
-              *ngIf="editingHeadImage && avatarImageUrl"
-              type="button"
-              class="head-profile__text-btn head-profile__text-btn--danger"
-              (click)="deleteHeadProfileImage.emit()"
-            >
-              Remove
-            </button>
-            <button
-              *ngIf="editingHeadImage"
-              type="button"
-              class="head-profile__text-btn"
-              (click)="profileImageInput.click()"
-            >
-              Upload
-            </button>
+    <div class="head-profile__overview-grid">
+      <div class="head-profile__col head-profile__col--identity">
+        <div class="head-profile__identity-cluster">
+          <div class="head-profile__media">
+            <ng-container *ngIf="isFamilyHead; else memberAvatar">
+              <input
+                #profileImageInput
+                type="file"
+                class="head-profile__file-input"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                tabindex="-1"
+                aria-hidden="true"
+                (change)="headProfileImageSelected.emit($event)"
+              />
+              <button
+                type="button"
+                class="head-profile__avatar"
+                [class.is-editing]="editingHeadImage"
+                [class.head-profile__avatar--previewable]="avatarImageUrl && !editingHeadImage"
+                [attr.aria-label]="
+                  editingHeadImage
+                    ? 'Upload profile photo'
+                    : avatarImageUrl
+                      ? 'View photo of ' + getDisplayName(member)
+                      : 'Change profile photo'
+                "
+                (click)="onHeadAvatarClick()"
+              >
+                <img
+                  *ngIf="avatarImageUrl"
+                  [src]="avatarImageUrl"
+                  alt=""
+                  class="head-profile__avatar-img"
+                />
+                <span
+                  *ngIf="!avatarImageUrl"
+                  class="head-profile__avatar-initials"
+                >{{ (member.full_name || member.first_name || 'U').charAt(0) }}</span>
+                <span class="head-profile__avatar-camera" *ngIf="editingHeadImage" aria-hidden="true">📷</span>
+              </button>
+              <div class="head-profile__avatar-actions">
+                <button type="button" class="head-profile__text-btn" (click)="toggleHeadImageEdit.emit()">
+                  {{ editingHeadImage ? 'Done' : 'Change photo' }}
+                </button>
+                <button
+                  *ngIf="editingHeadImage && avatarImageUrl"
+                  type="button"
+                  class="head-profile__text-btn head-profile__text-btn--danger"
+                  (click)="deleteHeadProfileImage.emit()"
+                >
+                  Remove
+                </button>
+                <button
+                  *ngIf="editingHeadImage"
+                  type="button"
+                  class="head-profile__text-btn"
+                  (click)="profileImageInput.click()"
+                >
+                  Upload
+                </button>
+              </div>
+            </ng-container>
+            <ng-template #memberAvatar>
+              <div
+                class="head-profile__avatar head-profile__avatar--static"
+                [class.head-profile__avatar--previewable]="avatarImageUrl"
+                aria-hidden="true"
+              >
+                <img
+                  *ngIf="avatarImageUrl"
+                  [src]="avatarImageUrl"
+                  alt=""
+                  class="head-profile__avatar-img head-profile__avatar-img--previewable"
+                  (click)="onMemberAvatarClick($event)"
+                />
+                <span
+                  *ngIf="!avatarImageUrl"
+                  class="head-profile__avatar-initials"
+                >{{ (member.full_name || member.first_name || 'U').charAt(0) }}</span>
+              </div>
+            </ng-template>
           </div>
-        </ng-container>
-        <ng-template #memberAvatar>
-          <div
-            class="head-profile__avatar head-profile__avatar--static"
-            [class.head-profile__avatar--previewable]="avatarImageUrl"
-            aria-hidden="true"
-          >
-            <img
-              *ngIf="avatarImageUrl"
-              [src]="avatarImageUrl"
-              alt=""
-              class="head-profile__avatar-img head-profile__avatar-img--previewable"
-              (click)="onMemberAvatarClick($event)"
-            />
-            <span
-              *ngIf="!avatarImageUrl"
-              class="head-profile__avatar-initials"
-            >{{ (member.full_name || member.first_name || 'U').charAt(0) }}</span>
+
+          <div class="head-profile__identity">
+            <div class="head-profile__identity-main">
+              <p class="head-profile__eyebrow">{{ relationshipEyebrow }}</p>
+              <div class="head-profile__name-row">
+                <h1 class="head-profile__name">{{ getDisplayName(member) }}</h1>
+                <span class="tag" [ngClass]="getStatusClass(member)">{{ getStatusLabel(member) }}</span>
+              </div>
+            </div>
+
+            <dl class="head-profile__contact-facts">
+              <div class="head-profile__fact">
+                <dt>Phone</dt>
+                <dd>
+                  <a *ngIf="member.phone; else emptyPhone" [href]="'tel:' + member.phone">{{ member.phone }}</a>
+                  <ng-template #emptyPhone>—</ng-template>
+                </dd>
+              </div>
+              <div class="head-profile__fact">
+                <dt>Email</dt>
+                <dd>
+                  <a *ngIf="member.email; else emptyEmail" [href]="'mailto:' + member.email">{{ member.email }}</a>
+                  <ng-template #emptyEmail>—</ng-template>
+                </dd>
+              </div>
+            </dl>
           </div>
-        </ng-template>
+        </div>
       </div>
 
-      <div class="head-profile__summary">
-        <div class="head-profile__summary-top">
-          <div class="head-profile__identity">
-            <p class="head-profile__eyebrow">{{ relationshipEyebrow }}</p>
-            <div class="head-profile__name-row">
-              <h1 class="head-profile__name">{{ getDisplayName(member) }}</h1>
-              <span class="tag" [ngClass]="getStatusClass(member)">{{ getStatusLabel(member) }}</span>
-            </div>
+      <div class="head-profile__col head-profile__col--details head-profile__col--vitals">
+        <dl class="head-profile__detail-facts">
+          <div class="head-profile__fact">
+            <dt>Date of birth</dt>
+            <dd>{{ formatDate(member.date_of_birth) }}</dd>
           </div>
+          <div class="head-profile__fact">
+            <dt>Age</dt>
+            <dd>{{ formatAge(member.date_of_birth) }}</dd>
+          </div>
+          <div class="head-profile__fact">
+            <dt>Gender</dt>
+            <dd>{{ formatGender(member.gender) }}</dd>
+          </div>
+          <div class="head-profile__fact">
+            <dt>Marital status</dt>
+            <dd>{{ formatMaritalStatus(member.marital_status) }}</dd>
+          </div>
+        </dl>
+      </div>
+
+      <div class="head-profile__col head-profile__col--details head-profile__col--lineage">
+        <div class="head-profile__col-actions">
           <app-edit-icon-button
             [ariaLabel]="'Edit ' + relationshipEyebrow + ' profile'"
             (clicked)="editProfile.emit()"
           />
         </div>
-
-        <dl class="head-profile__quick-facts" *ngIf="member.phone || member.email">
-          <div class="head-profile__quick-fact" *ngIf="member.phone">
-            <dt>Phone</dt>
-            <dd><a [href]="'tel:' + member.phone">{{ member.phone }}</a></dd>
+        <dl class="head-profile__detail-facts">
+          <div class="head-profile__fact">
+            <dt>Occupation</dt>
+            <dd>{{ formatTextValue(member.occupation) }}</dd>
           </div>
-          <div class="head-profile__quick-fact" *ngIf="member.email">
-            <dt>Email</dt>
-            <dd><a [href]="'mailto:' + member.email">{{ member.email }}</a></dd>
+          <div class="head-profile__fact">
+            <dt>Education</dt>
+            <dd>{{ formatTextValue(member.education) }}</dd>
+          </div>
+          <div class="head-profile__fact">
+            <dt>Father</dt>
+            <dd>
+              <button
+                *ngIf="isParentLinked(member, 'father'); else fatherPlain"
+                type="button"
+                class="head-profile__fact-link"
+                [attr.aria-label]="'View ' + formatTextValue(getFatherDisplayName(member)) + ' profile'"
+                (click)="onLinkedParentClick(member, 'father')"
+              >
+                {{ formatTextValue(getFatherDisplayName(member)) }}
+              </button>
+              <ng-template #fatherPlain>
+                {{ formatTextValue(getFatherDisplayName(member)) }}
+              </ng-template>
+            </dd>
+          </div>
+          <div class="head-profile__fact">
+            <dt>Mother</dt>
+            <dd>
+              <button
+                *ngIf="isParentLinked(member, 'mother'); else motherPlain"
+                type="button"
+                class="head-profile__fact-link"
+                [attr.aria-label]="'View ' + formatTextValue(getMotherDisplayName(member)) + ' profile'"
+                (click)="onLinkedParentClick(member, 'mother')"
+              >
+                {{ formatTextValue(getMotherDisplayName(member)) }}
+              </button>
+              <ng-template #motherPlain>
+                {{ formatTextValue(getMotherDisplayName(member)) }}
+              </ng-template>
+            </dd>
           </div>
         </dl>
       </div>
@@ -111,47 +189,6 @@
   </section>
 
   <div class="profile-workspace-body">
-    <section class="personal-details-panel" aria-labelledby="member-personal-heading">
-      <header class="personal-details-panel__head">
-        <div class="personal-details-panel__head-main">
-          <h3 id="member-personal-heading" class="personal-details-panel__title">Personal Details</h3>
-        </div>
-        <div class="personal-details-panel__head-actions">
-          <app-edit-icon-button
-            ariaLabel="Edit personal details"
-            (clicked)="editProfile.emit()"
-          />
-        </div>
-      </header>
-
-      <dl class="personal-details-panel__facts-grid">
-        <div class="personal-details-panel__fact">
-          <dt>Date of birth</dt>
-          <dd>{{ formatDate(member.date_of_birth) }}</dd>
-        </div>
-        <div class="personal-details-panel__fact">
-          <dt>Age</dt>
-          <dd>{{ formatAge(member.date_of_birth) }}</dd>
-        </div>
-        <div class="personal-details-panel__fact">
-          <dt>Gender</dt>
-          <dd>{{ formatGender(member.gender) }}</dd>
-        </div>
-        <div class="personal-details-panel__fact">
-          <dt>Marital status</dt>
-          <dd>{{ formatMaritalStatus(member.marital_status) }}</dd>
-        </div>
-        <div class="personal-details-panel__fact">
-          <dt>Occupation</dt>
-          <dd>{{ formatTextValue(member.occupation) }}</dd>
-        </div>
-        <div class="personal-details-panel__fact">
-          <dt>Education</dt>
-          <dd>{{ formatTextValue(member.education) }}</dd>
-        </div>
-      </dl>
-    </section>
-
     <section class="surface surface--full" aria-labelledby="member-sacraments-heading">
       <div class="surface__head surface__head--split">
         <div class="surface__head-main">

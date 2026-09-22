@@ -392,4 +392,35 @@ describe('SacramentFormModalComponent', () => {
     expect(component.marriageClassificationCode).toBe('both_catholic');
     expect(component.marriageRequiresDispensation).toBe(false);
   });
+
+  it('validateForm requires new person fields for baptism in existing family', () => {
+    component.isEditMode = false;
+    component.formData = {
+      sacrament_type_id: 1,
+      recipient_name: 'Grace Thomas',
+      date_administered: '2026-09-01',
+      place_administered: 'St. Mary',
+      recipient_birth_date: '2026-03-15',
+      recipient_birth_place: 'Parish City',
+      recipient_gender: 'female',
+      father_name: 'Joseph Thomas',
+      mother_name: 'Mary Thomas',
+    } as any;
+    component.familySelectionType = 'existing';
+    component.selectedFamilyId = 'family-uuid';
+    component.existingFamilyRecipientMode = 'new_person';
+    component.ministerDraft = {
+      role: 'minister',
+      source: 'external',
+      external_full_name: 'Fr. Thomas',
+    } as any;
+
+    expect(component.validateForm()).toBe(false);
+    expect(component.fieldErrors['person_first_name']).toBeTruthy();
+    expect(component.fieldErrors['person_last_name']).toBeTruthy();
+
+    component.personDraft.first_name = 'Grace';
+    component.personDraft.last_name = 'Thomas';
+    expect(component.validateForm()).toBe(true);
+  });
 });

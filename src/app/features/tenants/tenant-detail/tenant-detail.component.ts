@@ -86,6 +86,11 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   tenantId: number | null = null;
 
   activeTab: TenantDetailTab = 'overview';
+
+  get canViewSubscriptionAuditHistory(): boolean {
+    return this.authService.canViewPlatformCompleteAudit();
+  }
+
   readonly tabs: TabStripItem[] = [
     { id: 'overview', label: 'Overview' },
     { id: 'subscription', label: 'Subscription' },
@@ -288,7 +293,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   }
 
   loadSubscriptionAudits(resetPage = false): void {
-    if (!this.tenantId) return;
+    if (!this.tenantId || !this.canViewSubscriptionAuditHistory) return;
     if (resetPage) this.auditsPage = 1;
 
     this.auditsLoading = true;

@@ -308,7 +308,12 @@ export interface BccLeaderRow {
   notes?: string | null;
   remarks?: string | null;
   member_name: string | null;
+  family_id?: string | null;
   family_name: string | null;
+  leader_phone?: string | null;
+  leader_email?: string | null;
+  contact_phone?: string | null;
+  contact_email?: string | null;
 }
 
 export interface BccEligibleMember {

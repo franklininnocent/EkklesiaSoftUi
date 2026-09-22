@@ -1,4 +1,4 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { of } from 'rxjs';
 import { CollectionDayComponent } from './collection-day.component';
@@ -9,6 +9,7 @@ import { AuthService } from '@core/services/auth.service';
 
 describe('CollectionDayComponent', () => {
   let component: CollectionDayComponent;
+  let fixture: ComponentFixture<CollectionDayComponent>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
@@ -43,9 +44,22 @@ describe('CollectionDayComponent', () => {
       ]
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(CollectionDayComponent);
+    fixture = TestBed.createComponent(CollectionDayComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it('renders the command header hierarchy', () => {
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Collection Operations Center');
+    expect(text).toContain('Real-time contribution collection and payment processing workspace');
+    expect(text).toContain('Session Active');
+    expect(text).toContain('Operator');
+    expect(text).toContain('Test Operator');
+    expect(text).toContain('Collection Date');
+    expect(text).toContain('Quick Actions');
+    expect(text).toContain('Export');
+    expect(text).toContain('Exit Workspace');
   });
 
   it('requires family, payer, and amount before submit', () => {

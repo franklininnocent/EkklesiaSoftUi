@@ -256,8 +256,14 @@ export class DonationsService {
     );
   }
 
-  generatePlanDues(planId: string, payload: Record<string, unknown> = {}): Observable<{ success: boolean; message: string; data: ContributionDue[] }> {
-    return this.http.post<{ success: boolean; message: string; data: ContributionDue[] }>(
+  previewPlanGeneration(planId: string): Observable<{ success: boolean; data: { period_count: number; family_count: number; estimated_new_ops: number; periods: Array<{ period_label: string; period_start: string; period_end: string; due_date: string }> } }> {
+    return this.http.get<{ success: boolean; data: { period_count: number; family_count: number; estimated_new_ops: number; periods: Array<{ period_label: string; period_start: string; period_end: string; due_date: string }> } }>(
+      `${this.baseUrl}/plans/${planId}/generation-preview`
+    );
+  }
+
+  generatePlanDues(planId: string, payload: Record<string, unknown> = {}): Observable<{ success: boolean; message: string; data: ContributionDue[] | { generated_count?: number; unchanged_count?: number; family_count?: number; period_count?: number; status?: string } }> {
+    return this.http.post<{ success: boolean; message: string; data: ContributionDue[] | { generated_count?: number; unchanged_count?: number; family_count?: number; period_count?: number; status?: string } }>(
       `${this.baseUrl}/plans/${planId}/generate-dues`,
       payload
     );

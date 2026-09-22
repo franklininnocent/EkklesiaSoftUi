@@ -1,0 +1,67 @@
+<label [attr.for]="fieldId">
+  {{ label }}
+  <span class="cf-split-optional">optional</span>
+</label>
+
+<div class="cf-participant-source__combobox">
+  <input
+    #searchInput
+    [id]="fieldId"
+    type="text"
+    [attr.aria-label]="label"
+    role="combobox"
+    aria-autocomplete="list"
+    [attr.aria-expanded]="showResults && results.length > 0"
+    [attr.aria-controls]="listboxId"
+    autocomplete="off"
+    [disabled]="disabled"
+    [readonly]="linked && !editing"
+    [(ngModel)]="query"
+    (ngModelChange)="onQueryChange($event)"
+    (focus)="onFocus()"
+    (blur)="onBlur()"
+    placeholder="Type at least 2 letters…"
+  />
+
+  <p class="cf-split-field__hint" *ngIf="linked && !editing">
+    Existing parish record
+    <ng-container *ngIf="linkedPerson && familyLabel(linkedPerson) as familyText"> · {{ familyText }}</ng-container>
+    <ng-container *ngIf="linkedPerson && bccLabel(linkedPerson) as bccText"> · {{ bccText }}</ng-container>
+  </p>
+
+  <div class="cf-parent-person__actions" *ngIf="linked && !editing">
+    <button type="button" class="cf-btn" (click)="startChange()" [disabled]="disabled">Change</button>
+    <button type="button" class="cf-btn" (click)="unlink()" [disabled]="disabled">Unlink</button>
+    <button type="button" class="cf-btn" (click)="clear()" [disabled]="disabled">Clear</button>
+  </div>
+
+  <p class="cf-split-field__hint" *ngIf="searching">Searching…</p>
+  <p class="cf-split-field__error" *ngIf="searchError" role="alert">{{ searchError }}</p>
+  <p
+    class="cf-split-field__hint"
+    *ngIf="!searching && !searchError && query.trim().length >= 2 && results.length === 0 && showResults"
+  >
+    No existing record found. You can enter the name directly.
+  </p>
+  <p class="cf-split-field__hint" *ngIf="query.trim() && !linked && !searching">
+    Direct text — not linked to a parish record
+  </p>
+
+  <ul
+    class="cf-participant-source__results"
+    *ngIf="showResults && results.length && (!linked || editing)"
+    role="listbox"
+    [id]="listboxId"
+  >
+    <li
+      *ngFor="let person of results; let i = index"
+      role="option"
+      [id]="listboxId + '_opt_' + i"
+      (mousedown)="selectPerson(person)"
+    >
+      <strong>{{ personDisplayName(person) }}</strong>
+      <span class="cf-parent-person__result-meta" *ngIf="familyLabel(person) as familyText">{{ familyText }}</span>
+      <span class="cf-parent-person__result-meta" *ngIf="person.gender">{{ person.gender | titlecase }}</span>
+    </li>
+  </ul>
+</div>

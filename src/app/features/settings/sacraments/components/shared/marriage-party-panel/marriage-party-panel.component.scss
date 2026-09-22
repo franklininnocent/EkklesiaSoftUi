@@ -1,5 +1,7 @@
 @use '../../../../../donations/styles/stewardship-split-layout.scss';
-@import '../_sacrament-control-chrome.scss';
+@use '../sacrament-control-chrome' as sacramentChrome;
+
+@include sacramentChrome.sacrament-control-chrome;
 
 :host {
   display: block;
