@@ -3,7 +3,7 @@ import { provideNoopAnimations } from '@angular/platform-browser/animations';
 import { Router } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { of } from 'rxjs';
+import { BehaviorSubject, of, Subject } from 'rxjs';
 import { MainLayoutComponent } from './main-layout.component';
 import { AuthService } from '@core/services/auth.service';
 import { NavMenuService } from '@core/services/nav-menu.service';
@@ -16,6 +16,8 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
   let fixture: ComponentFixture<MainLayoutComponent>;
   let authServiceMock: any;
   let navMenuMock: { isVisible: jest.Mock };
+  let userSelection: BehaviorSubject<any>;
+  let snapshotSelection: Subject<any>;
 
   beforeEach(async () => {
     authServiceMock = {
@@ -30,6 +32,8 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
       currentUser$: of(null),
       canViewMySubscription: jest.fn().mockReturnValue(false),
     };
+    userSelection = new BehaviorSubject<any>(null);
+    snapshotSelection = new Subject<any>();
     navMenuMock = {
       isVisible: jest.fn().mockImplementation((id: string, user: any) => {
         if (id === 'tenants') {
@@ -49,7 +53,7 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
         {
           provide: Store,
           useValue: {
-            select: jest.fn().mockReturnValue(of(null)),
+            select: jest.fn().mockReturnValue(userSelection.asObservable()),
             dispatch: jest.fn()
           }
         },
@@ -73,7 +77,7 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
         {
           provide: SubscriptionAccessService,
           useValue: {
-            snapshot$: of(null),
+            snapshot$: snapshotSelection.asObservable(),
             ensureLoaded: jest.fn(),
             clear: jest.fn(),
           },
@@ -112,6 +116,33 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
 
     expect(component.canManageRoles(user)).toBe(true);
     expect(authServiceMock.canAccessRbac).toHaveBeenCalledWith(user);
+  });
+
+  it('shows Ministries & Associations after subscription access loads', () => {
+    let allowMinistries = false;
+    navMenuMock.isVisible.mockImplementation((id: string) => {
+      if (id === 'ministries') {
+        return allowMinistries;
+      }
+      return id === 'dashboard' || id === 'notifications';
+    });
+
+    userSelection.next({ tenant_id: 10, role_name: 'Administrator' });
+    fixture.detectChanges();
+
+    const labels = () =>
+      component.visibleSidebarSections.flatMap((section) => section.items.map((item) => item.label));
+
+    expect(labels()).not.toContain('Ministries & Associations');
+
+    allowMinistries = true;
+    snapshotSelection.next({
+      status: 'ACTIVE',
+      allows_gated_access: true,
+    });
+    fixture.detectChanges();
+
+    expect(labels()).toContain('Ministries & Associations');
   });
 
   it('hides roles management when RBAC access is denied', () => {

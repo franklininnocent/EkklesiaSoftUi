@@ -30,6 +30,7 @@ export class BreadcrumbComponent implements OnInit {
     'auth': 'Authentication',
     'login': 'Login',
     'register': 'Register',
+    'sacraments': 'Sacraments',
     'ministries': 'Ministries & Associations',
     'guests': 'Guest members',
     'audit': 'Audit log',
@@ -106,6 +107,14 @@ export class BreadcrumbComponent implements OnInit {
           breadcrumbs.push({
             label: this.getRouteLabel('ministries'),
             url: ministriesParent[1],
+          });
+        }
+
+        const sacramentRecord = url.match(/^(.*\/sacraments)\/view(?:\/|$)/);
+        if (sacramentRecord && !breadcrumbs.find(b => b.url === `${sacramentRecord[1]}/register`)) {
+          breadcrumbs.push({
+            label: 'Register',
+            url: `${sacramentRecord[1]}/register`,
           });
         }
 

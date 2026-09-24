@@ -21,6 +21,8 @@ import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/p
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { filter, take, takeUntil } from 'rxjs/operators';
@@ -36,7 +38,7 @@ interface AssignRoleTenantGroup {
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, UserAvatarComponent, ImageViewerComponent],
+  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, DataTableComponent, StatusBadgeComponent, UserAvatarComponent, ImageViewerComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -1570,6 +1572,14 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     return 'System';
   }
 
+  getRoleBadgeTone(role: Role): StatusBadgeTone {
+    const classification = this.getRoleClassification(role);
+    if (classification === 'protected') return 'critical';
+    if (classification === 'default') return 'warning';
+    if (classification === 'custom') return 'neutral';
+    return 'info';
+  }
+
   getRoleClassification(role: Role): 'protected' | 'default' | 'custom' | 'system' {
     if (role.role_classification === 'protected_system') {
       return 'protected';
@@ -1601,6 +1611,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   getStatusText(active: 0 | 1): string {
     return active === 1 ? 'Active' : 'Inactive';
+  }
+
+  getStatusBadgeTone(active: 0 | 1): StatusBadgeTone {
+    return active === 1 ? 'success' : 'neutral';
   }
 
   getRolesEmptyTitle(): string {

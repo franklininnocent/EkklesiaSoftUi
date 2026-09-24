@@ -94,8 +94,8 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       missing_sacrament: [''],
       progression: [''],
       city: [''],
-      sort_by: ['created_at'],
-      sort_order: ['desc']
+      sort_by: ['family_code'],
+      sort_order: ['asc']
     });
   }
 
@@ -482,8 +482,8 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       missing_sacrament: '',
       progression: '',
       city: '',
-      sort_by: 'created_at',
-      sort_order: 'desc'
+      sort_by: 'family_code',
+      sort_order: 'asc'
     });
     this.searchTerm = '';
     this.searchFields.forEach(field => {

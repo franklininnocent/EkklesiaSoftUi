@@ -1,4 +1,4 @@
-import { Component, inject, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Component, inject, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -10,8 +10,14 @@ import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import * as AuthActions from '@core/store/auth/auth.actions';
-import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
-import { UserAvatarComponent, ImageViewerComponent, CfMediaUploadComponent } from '@shared/components';
+import {
+  PageHeaderComponent,
+  UserAvatarComponent,
+  ImageViewerComponent,
+  StatusBadgeComponent,
+  SectionCardComponent,
+} from '@shared/components';
+import type { StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import {
   resolveUserProfileImageUrl,
   USER_PROFILE_IMAGE_ACCEPT,
@@ -20,6 +26,13 @@ import {
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
 import { ChangePasswordModalComponent } from './components/change-password-modal/change-password-modal.component';
+
+const TENANT_TIER_LABELS: Record<string, string> = {
+  platform: 'Platform',
+  diocese: 'Diocese',
+  parish: 'Parish',
+  branch: 'Branch',
+};
 
 @Component({
   selector: 'app-profile',
@@ -30,7 +43,8 @@ import { ChangePasswordModalComponent } from './components/change-password-modal
     PageHeaderComponent,
     UserAvatarComponent,
     ImageViewerComponent,
-    CfMediaUploadComponent,
+    StatusBadgeComponent,
+    SectionCardComponent,
     ChangePasswordModalComponent,
   ],
   templateUrl: './profile.component.html',
@@ -38,8 +52,6 @@ import { ChangePasswordModalComponent } from './components/change-password-modal
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ProfileComponent implements OnInit, OnDestroy {
-  @ViewChild('profileMediaUpload') profileMediaUpload?: CfMediaUploadComponent;
-
   private store = inject(Store<AppState>);
   private route = inject(ActivatedRoute);
   private router = inject(Router);
@@ -53,9 +65,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
 
   readonly profileImageAccept = USER_PROFILE_IMAGE_ACCEPT;
 
-  selectedProfileImage: File | null = null;
   profileImagePreviewUrl: string | null = null;
-  removeProfileImage = false;
   profileImageError: string | null = null;
   isSavingProfileImage = false;
 
@@ -69,9 +79,6 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.currentUser$ = this.store.select(selectCurrentUser).pipe(takeUntil(this.destroy$));
     this.currentUser$.subscribe((user) => {
       this.savedProfileImageUrl = user ? resolveUserProfileImageUrl(user) : null;
-      // #region agent log
-      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'4fbd99'},body:JSON.stringify({sessionId:'4fbd99',location:'profile.component.ts:currentUser$',message:'profile image state',data:{userId:user?.id,profile_image_full_url:user?.profile_image_full_url??null,resolvedUrl:this.savedProfileImageUrl},timestamp:Date.now(),hypothesisId:'H2',runId:'post-fix'})}).catch(()=>{});
-      // #endregion
       this.forcePasswordChangeRequired = !!user?.force_password_change;
       this.maybeOpenForcedPasswordModal();
       this.cdr.markForCheck();
@@ -107,36 +114,57 @@ export class ProfileComponent implements OnInit, OnDestroy {
     return this.authService.canManageOwnProfileImage(user);
   }
 
-  get displayProfileImageUrl(): string | null {
+  getUserPhotoUrl(user: User): string | null {
     if (this.profileImagePreviewUrl) {
       return this.profileImagePreviewUrl;
     }
 
-    if (this.removeProfileImage) {
+    return resolveUserProfileImageUrl(user);
+  }
+
+  getRoleNames(user: User): string[] {
+    const fromRoles = (user.roles ?? [])
+      .map((role) => role.name?.trim())
+      .filter((name): name is string => !!name);
+
+    if (fromRoles.length) {
+      return fromRoles;
+    }
+
+    const legacy = user.role_name?.trim() || user.role?.name?.trim();
+    return legacy ? [legacy] : [];
+  }
+
+  getAccountStatusLabel(user: User): string {
+    return user.active === 1 ? 'Active' : 'Inactive';
+  }
+
+  getAccountStatusTone(user: User): StatusBadgeTone {
+    return user.active === 1 ? 'success' : 'neutral';
+  }
+
+  getContactTypeLabel(user: User): string | null {
+    if (user.user_type === 1) {
+      return 'Primary contact';
+    }
+
+    if (user.user_type === 2) {
+      return 'Secondary contact';
+    }
+
+    return null;
+  }
+
+  formatTenantTier(tier?: string | null): string | null {
+    if (!tier) {
       return null;
     }
 
-    return this.savedProfileImageUrl;
+    return TENANT_TIER_LABELS[tier] ?? tier;
   }
 
-  get savedProfileImagePreviewUrl(): string | null {
-    return this.removeProfileImage ? null : this.savedProfileImageUrl;
-  }
-
-  get hasPendingProfileImageChange(): boolean {
-    return !!this.selectedProfileImage || this.removeProfileImage;
-  }
-
-  get hasSavedProfileImage(): boolean {
-    return !!this.savedProfileImageUrl;
-  }
-
-  getUserPhotoUrl(user: User): string | null {
-    if (this.hasPendingProfileImageChange) {
-      return this.displayProfileImageUrl;
-    }
-
-    return resolveUserProfileImageUrl(user);
+  hasTenantName(user: User): boolean {
+    return !!user.tenant?.name?.trim();
   }
 
   openChangePasswordModal(): void {
@@ -185,55 +213,12 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  onProfileImageValidationError(message: string): void {
-    this.profileImageError = message;
-    this.cdr.markForCheck();
+  onProfilePhotoSelected(event: Event, user: User): void {
+    void this.handleProfilePhotoSelected(event, user);
   }
 
-  onCfProfileImageSelected(file: File): void {
-    void this.applyProfileImageFile(file);
-  }
-
-  private async applyProfileImageFile(file: File): Promise<void> {
-    const error = await validateUserProfileImageFileAsync(file);
-    if (error) {
-      this.profileImageError = error;
-      this.profileMediaUpload?.clearLocalPreview();
-      this.cdr.markForCheck();
-      return;
-    }
-
-    this.revokeProfileImageObjectUrl();
-    this.selectedProfileImage = file;
-    this.removeProfileImage = false;
-    this.profileImageError = null;
-    this.profileImageObjectUrl = URL.createObjectURL(file);
-    this.profileImagePreviewUrl = this.profileImageObjectUrl;
-    this.cdr.markForCheck();
-  }
-
-  cancelProfileImageChanges(): void {
-    this.profileMediaUpload?.clearLocalPreview();
-    this.revokeProfileImageObjectUrl();
-    this.selectedProfileImage = null;
-    this.profileImagePreviewUrl = null;
-    this.removeProfileImage = false;
-    this.profileImageError = null;
-    this.cdr.markForCheck();
-  }
-
-  markProfileImageForRemoval(): void {
-    this.profileMediaUpload?.clearLocalPreview();
-    this.revokeProfileImageObjectUrl();
-    this.selectedProfileImage = null;
-    this.profileImagePreviewUrl = null;
-    this.removeProfileImage = !!this.savedProfileImageUrl;
-    this.profileImageError = null;
-    this.cdr.markForCheck();
-  }
-
-  saveProfileImageChanges(user: User): void {
-    if (!this.canManageOwnProfileImage(user) || !this.hasPendingProfileImageChange || this.isSavingProfileImage) {
+  removeProfilePhoto(user: User): void {
+    if (!this.canManageOwnProfileImage(user) || this.isSavingProfileImage || !this.getUserPhotoUrl(user)) {
       return;
     }
 
@@ -241,11 +226,7 @@ export class ProfileComponent implements OnInit, OnDestroy {
     this.profileImageError = null;
     this.cdr.markForCheck();
 
-    const request$ = this.selectedProfileImage
-      ? this.authService.uploadMyProfileImage(this.selectedProfileImage)
-      : this.authService.deleteMyProfileImage();
-
-    request$
+    this.authService.deleteMyProfileImage()
       .pipe(
         finalize(() => {
           this.isSavingProfileImage = false;
@@ -255,24 +236,75 @@ export class ProfileComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (response) => {
-          this.profileMediaUpload?.clearLocalPreview();
-          this.revokeProfileImageObjectUrl();
-          this.selectedProfileImage = null;
-          this.profileImagePreviewUrl = null;
-          this.removeProfileImage = false;
+          this.clearProfileImagePreview();
+          this.savedProfileImageUrl = resolveUserProfileImageUrl(response.data);
+          this.authService.syncCurrentUser(response.data);
+          this.store.dispatch(AuthActions.loadUserSuccess({ user: response.data }));
+          this.toastService.success(response.message || 'Profile photo removed.', 'Profile photo');
+          this.cdr.markForCheck();
+        },
+        error: (error) => {
+          const message = error.error?.message || 'Unable to remove profile photo. Please try again.';
+          this.profileImageError = message;
+          this.toastService.error(message, 'Profile photo');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private async handleProfilePhotoSelected(event: Event, user: User): Promise<void> {
+    const input = event.target as HTMLInputElement;
+    const file = input.files?.[0];
+    input.value = '';
+
+    if (!file || !this.canManageOwnProfileImage(user) || this.isSavingProfileImage) {
+      return;
+    }
+
+    const error = await validateUserProfileImageFileAsync(file);
+    if (error) {
+      this.profileImageError = error;
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.profileImageError = null;
+    this.revokeProfileImageObjectUrl();
+    this.profileImageObjectUrl = URL.createObjectURL(file);
+    this.profileImagePreviewUrl = this.profileImageObjectUrl;
+    this.cdr.markForCheck();
+
+    this.isSavingProfileImage = true;
+    this.authService.uploadMyProfileImage(file)
+      .pipe(
+        finalize(() => {
+          this.isSavingProfileImage = false;
+          this.cdr.markForCheck();
+        }),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (response) => {
+          this.clearProfileImagePreview();
           this.savedProfileImageUrl = resolveUserProfileImageUrl(response.data);
           this.authService.syncCurrentUser(response.data);
           this.store.dispatch(AuthActions.loadUserSuccess({ user: response.data }));
           this.toastService.success(response.message || 'Profile photo updated.', 'Profile photo');
           this.cdr.markForCheck();
         },
-        error: (error) => {
-          const message = error.error?.message || 'Unable to update profile photo. Please try again.';
+        error: (uploadError) => {
+          this.clearProfileImagePreview();
+          const message = uploadError.error?.message || 'Unable to update profile photo. Please try again.';
           this.profileImageError = message;
           this.toastService.error(message, 'Profile photo');
           this.cdr.markForCheck();
         },
       });
+  }
+
+  private clearProfileImagePreview(): void {
+    this.revokeProfileImageObjectUrl();
+    this.profileImagePreviewUrl = null;
   }
 
   private maybeOpenForcedPasswordModal(): void {

@@ -118,6 +118,17 @@ describe('RolesPermissionsComponent', () => {
     expect(message).toBe('Role name is required.');
   });
 
+  it('maps role badge tones for compact table status badges', () => {
+    const component = createComponent();
+
+    expect(component.getRoleBadgeTone({ role_classification: 'protected_system' } as any)).toBe('critical');
+    expect(component.getRoleBadgeTone({ role_classification: 'default_template' } as any)).toBe('warning');
+    expect(component.getRoleBadgeTone({ role_classification: 'custom' } as any)).toBe('neutral');
+    expect(component.getRoleBadgeTone({ role_classification: 'system', is_custom: false } as any)).toBe('info');
+    expect(component.getStatusBadgeTone(1)).toBe('success');
+    expect(component.getStatusBadgeTone(0)).toBe('neutral');
+  });
+
   it('uses full role catalog for user assignment checkboxes', () => {
     const component = createComponent({ currentUser: { tenant_id: 10 }, isTenantAdmin: true });
     component.isTenantMode = true;

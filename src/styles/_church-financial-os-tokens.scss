@@ -108,9 +108,9 @@
    * Semantic typography roles
    * Page Title is a dedicated token (not --cf-text-2xl) so the enterprise H1
    * scale can change without resizing compact chrome that uses 2xl.
-   * Mobile-first: 1.5rem → tablet 1.75rem → desktop 2rem (see media queries below).
+   * Compact page headers: 1.125rem (18px) at all breakpoints.
    */
-  --cf-text-page-title: 1.5rem;
+  --cf-text-page-title: 1.125rem;
   --cf-font-weight-page-title: 700;
   --cf-leading-page-title: 1.25;
   --cf-text-section-title: var(--cf-text-lg);
@@ -175,13 +175,13 @@
 
 @media (min-width: $cf-bp-md) {
   :root {
-    --cf-text-page-title: 1.75rem;
+    --cf-text-page-title: 1.125rem;
   }
 }
 
 @media (min-width: $cf-bp-lg) {
   :root {
-    --cf-text-page-title: 2rem;
+    --cf-text-page-title: 1.125rem;
   }
 }
 
@@ -321,9 +321,11 @@
 /* Official Page Title / H1 — single source of truth for top-level page headings.
    Prefer <app-page-header> (renders h1 inside .cf-hero) or class .cf-page-title. */
 .cf-hero h1,
-.cf-page-title {
+.cf-page-title,
+.cf-page-header.cf-hero .cf-page-header__title,
+.cf-page-header__title-row > h1 {
   margin: 0 0 var(--cf-space-1);
-  font-size: var(--cf-text-page-title);
+  font-size: var(--cf-text-page-title) !important;
   font-weight: var(--cf-font-weight-page-title);
   line-height: var(--cf-leading-page-title);
   color: var(--cf-color-text-primary);
@@ -331,7 +333,7 @@
   letter-spacing: -0.01em;
 }
 
-.cf-hero h3 {
+.cf-hero h3:not(.cf-page-header__title) {
   margin: 0 0 var(--cf-space-1);
   font-size: var(--cf-text-section-title);
   font-weight: 600;

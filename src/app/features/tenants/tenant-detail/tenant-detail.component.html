@@ -111,7 +111,7 @@
               <dd>
                 <ng-container *ngIf="isEditing; else denominationReadOnly">
                   <input
-                    *ngIf="loadingDenominations || denominationOptions === null"
+                    *ngIf="denominationOptions === null"
                     type="text"
                     class="cf-input"
                     disabled
@@ -123,9 +123,8 @@
                     class="cf-split-select tenant-detail__denomination-select"
                     [items]="denomOptions"
                     bindLabel="name"
-                    bindValue="id"
-                    [(ngModel)]="editDenominationId"
-                    [compareWith]="compareSelectIds"
+                    [(ngModel)]="editDenomination"
+                    [compareWith]="compareSelectItems"
                     [loading]="loadingDenominations"
                     [searchable]="true"
                     [clearable]="true"
@@ -139,7 +138,7 @@
               <dd>
                 <ng-container *ngIf="isEditing; else dioceseReadOnly">
                   <input
-                    *ngIf="loadingArchdioceses || archdioceseOptions === null"
+                    *ngIf="archdioceseOptions === null"
                     type="text"
                     class="cf-input"
                     disabled
@@ -151,13 +150,13 @@
                     class="cf-split-select tenant-detail__diocese-select"
                     [items]="options"
                     bindLabel="name"
-                    bindValue="id"
-                    [(ngModel)]="editArchdioceseId"
-                    [compareWith]="compareSelectIds"
+                    [(ngModel)]="editArchdiocese"
+                    [compareWith]="compareSelectItems"
                     [loading]="loadingArchdioceses"
                     [searchable]="true"
                     [clearable]="true"
                     [placeholder]="options.length ? 'Select diocese' : 'No dioceses available'"
+                    (ngModelChange)="onEditArchdioceseChange($event)"
                   ></ng-select>
                 </ng-container>
                 <ng-template #dioceseReadOnly>{{ details.identity.diocese_name || '—' }}</ng-template>

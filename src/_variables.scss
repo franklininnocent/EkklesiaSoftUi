@@ -109,12 +109,11 @@
   --sidebar-active: rgba(102, 126, 234, 0.2);
   --sidebar-width: 16.5rem;
   --sidebar-collapsed-width: 4.5rem;
-  --sidebar-nav-font-size: 0.7rem;
-  --sidebar-nav-font-size-nested: 0.8125rem;
-  --sidebar-nav-font-size-l2: var(--sidebar-nav-font-size-nested);
-  --sidebar-nav-font-size-l3: var(--sidebar-nav-font-size-nested);
-  --sidebar-nav-section-font-size: 0.6875rem;
-  --sidebar-nav-line-height: 1.45;
+  --sidebar-nav-font-size: 0.875rem;           /* 14px — root items */
+  --sidebar-nav-font-size-l2: 0.8125rem;       /* 13px — submenu L2 */
+  --sidebar-nav-font-size-l3: 0.8125rem;       /* 13px — submenu L3+ */
+  --sidebar-nav-section-font-size: 0.75rem;    /* 12px — section labels */
+  --sidebar-nav-line-height: 1.4;
   --sidebar-nav-item-pad-y: 0.4375rem;
   --sidebar-nav-item-pad-x: 0.75rem;
   --sidebar-nav-section-pad-y: 0.625rem;

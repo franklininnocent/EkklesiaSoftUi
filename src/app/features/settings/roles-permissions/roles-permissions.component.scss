@@ -526,6 +526,55 @@
   }
 }
 
+// ============ ROLES TAB — COMPACT CF TABLE ============
+.roles-table-panel {
+  margin-top: var(--cf-space-2, 0.5rem);
+
+  th.sortable {
+    padding-right: 1.5rem !important;
+  }
+
+  .action-btn {
+    width: 32px;
+    height: 32px;
+    margin-right: 0;
+  }
+
+  .cf-meta {
+    font-style: italic;
+  }
+}
+
+.roles-table__fit {
+  width: 1%;
+  white-space: nowrap;
+}
+
+.roles-table__description-col {
+  width: 100%;
+  max-width: 0;
+}
+
+.roles-table__name-text,
+.roles-table__description-text {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roles-table__name-text {
+  max-width: 16rem;
+  font-weight: 600;
+}
+
+@media (max-width: 768px) {
+  .roles-table-panel .action-btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+
 // ============ TABLE SYSTEM (Standardized) ============
 .table-container {
   overflow-x: auto;

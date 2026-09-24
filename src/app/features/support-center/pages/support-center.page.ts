@@ -13,6 +13,11 @@ import { StatusBadgeComponent } from '@shared/components/status-badge/status-bad
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { SectionCardComponent } from '@shared/components/section-card/section-card.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import {
+  AdvancedSearchPanelComponent,
+  SearchField,
+} from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
 import { CfDateTimeFieldComponent } from '@shared/components/cf-datetime-field/cf-datetime-field.component';
@@ -27,7 +32,6 @@ import { ToastService } from '@core/services/toast.service';
 import {
   dateWindowValidator,
   fieldErrorText,
-  filterDateRangeValidator,
   markFormGroupTouched,
 } from '@core/validators/form-validation.helper';
 import { SupportSessionService } from '../services/support-session.service';
@@ -68,6 +72,8 @@ type PendingAction =
     PaginationComponent,
     CfEmptyStateComponent,
     SectionCardComponent,
+    ListToolbarComponent,
+    AdvancedSearchPanelComponent,
     DataTableComponent,
     FormFieldComponent,
     CfDateTimeFieldComponent,
@@ -158,12 +164,17 @@ export class SupportCenterPage implements OnInit, OnDestroy {
   startSubmitted = false;
   approvalSubmitted = false;
   settingsSubmitted = false;
-  historySubmitted = false;
-  auditSubmitted = false;
   exporting = false;
   exportingAudit = false;
   error: string | null = null;
   success: string | null = null;
+
+  showHistoryFilters = false;
+  historySearchFields: SearchField[] = [];
+  showAuditFilters = false;
+  auditSearchFields: SearchField[] = [];
+  showGrantFilters = false;
+  grantSearchFields: SearchField[] = [];
 
   confirmOpen = false;
   endingSession = false;
@@ -175,27 +186,50 @@ export class SupportCenterPage implements OnInit, OnDestroy {
   pendingAction: PendingAction | null = null;
 
   readonly searchControl = this.fb.nonNullable.control('');
-  readonly historyForm = this.fb.nonNullable.group(
-    {
-      q: ['', Validators.maxLength(100)],
-      status: [''],
-      mode: [''],
-      from: [''],
-      to: [''],
-    },
-    { validators: [filterDateRangeValidator()] }
-  );
+  /** Applied History filters (search + drawer). Draft drawer values are separate until Apply. */
+  readonly historyForm = this.fb.nonNullable.group({
+    q: ['', Validators.maxLength(100)],
+    status: [''],
+    mode: [''],
+    from: [''],
+    to: [''],
+  });
 
-  readonly auditForm = this.fb.nonNullable.group(
-    {
-      q: ['', Validators.maxLength(100)],
-      event_type: ['', Validators.maxLength(64)],
-      module: ['', Validators.maxLength(64)],
-      from: [''],
-      to: [''],
-    },
-    { validators: [filterDateRangeValidator()] }
-  );
+  /** Applied Audit filters (search + drawer). */
+  readonly auditForm = this.fb.nonNullable.group({
+    q: ['', Validators.maxLength(100)],
+    event_type: ['', Validators.maxLength(64)],
+    module: ['', Validators.maxLength(64)],
+    from: [''],
+    to: [''],
+  });
+
+  get historyDrawerFilterCount(): number {
+    const f = this.historyForm.getRawValue();
+    return [f.status, f.mode, f.from, f.to].filter((v) => !!v).length;
+  }
+
+  get auditDrawerFilterCount(): number {
+    const f = this.auditForm.getRawValue();
+    return [f.event_type, f.module, f.from, f.to].filter((v) => !!v).length;
+  }
+
+  /** Applied grant list filters (search + drawer). Separate from create form. */
+  readonly grantListForm = this.fb.nonNullable.group({
+    q: ['', Validators.maxLength(100)],
+    status: [''],
+    allowed_mode: [''],
+  });
+
+  get grantDrawerFilterCount(): number {
+    const f = this.grantListForm.getRawValue();
+    return [f.status, f.allowed_mode].filter((v) => !!v).length;
+  }
+
+  get hasActiveGrantFilters(): boolean {
+    const f = this.grantListForm.getRawValue();
+    return !!(f.q.trim() || f.status || f.allowed_mode);
+  }
 
   readonly startForm = this.fb.nonNullable.group({
     mode: ['readonly' as SupportSessionMode, Validators.required],
@@ -254,6 +288,9 @@ export class SupportCenterPage implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.tabs = this.buildTabs();
+    this.initHistorySearchFields();
+    this.initAuditSearchFields();
+    this.initGrantSearchFields();
 
     this.grantForm.controls.starts_at.valueChanges
       .pipe(takeUntil(this.destroy$))
@@ -304,8 +341,7 @@ export class SupportCenterPage implements OnInit, OnDestroy {
           },
         });
 
-      this.searchControl.valueChanges.pipe(takeUntil(this.destroy$)).subscribe((q) => this.search$.next(q));
-      this.search$.next('');
+      this.search$.next(this.searchControl.value);
     }
 
     if (this.canViewSessions) {
@@ -386,6 +422,15 @@ export class SupportCenterPage implements OnInit, OnDestroy {
     } else if (this.activeTab === 'settings' && this.canManageSettings) {
       this.loadSettings();
     }
+    this.cdr.markForCheck();
+  }
+
+  onTenantSearch(query: string): void {
+    const next = query ?? '';
+    if (this.searchControl.value !== next) {
+      this.searchControl.setValue(next, { emitEvent: false });
+    }
+    this.search$.next(next);
     this.cdr.markForCheck();
   }
 
@@ -588,19 +633,73 @@ export class SupportCenterPage implements OnInit, OnDestroy {
   }
 
   loadGrants(): void {
+    if (this.loadingGrants) {
+      return;
+    }
+
     this.loadingGrants = true;
-    this.sessions.listGrants({ per_page: 50 }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (page) => {
-        this.grantRows = page.data;
-        this.loadingGrants = false;
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.loadingGrants = false;
-        this.error = 'Could not load access grants.';
-        this.cdr.markForCheck();
-      },
+    const f = this.grantListForm.getRawValue();
+    this.sessions
+      .listGrants({
+        q: f.q || undefined,
+        status: f.status || undefined,
+        allowed_mode: f.allowed_mode || undefined,
+        per_page: 50,
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (page) => {
+          this.grantRows = page.data;
+          this.loadingGrants = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.loadingGrants = false;
+          this.error = 'Could not load access grants.';
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  onGrantSearchChange(value: string): void {
+    this.grantListForm.patchValue({ q: value.slice(0, 100) });
+    this.error = null;
+    this.loadGrants();
+  }
+
+  openGrantFilters(): void {
+    this.syncGrantSearchFieldValues();
+    this.showGrantFilters = true;
+    this.cdr.markForCheck();
+  }
+
+  closeGrantFilters(): void {
+    this.showGrantFilters = false;
+    this.cdr.markForCheck();
+  }
+
+  onGrantAdvancedSearch(values: { [key: string]: unknown }): void {
+    this.grantListForm.patchValue({
+      status: String(values['status'] ?? '').trim(),
+      allowed_mode: String(values['allowed_mode'] ?? '').trim(),
     });
+    this.syncGrantSearchFieldValues();
+    this.showGrantFilters = false;
+    this.error = null;
+    this.loadGrants();
+  }
+
+  onGrantClearFilters(): void {
+    this.grantListForm.patchValue({
+      status: '',
+      allowed_mode: '',
+    });
+    this.grantSearchFields.forEach((field) => {
+      field.value = undefined;
+    });
+    this.error = null;
+    this.loadGrants();
+    this.cdr.markForCheck();
   }
 
   createGrant(): void {
@@ -679,26 +778,6 @@ export class SupportCenterPage implements OnInit, OnDestroy {
 
   settingsFieldError(controlName: string): string | null {
     return fieldErrorText(controlName, this.settingsForm, this.settingsSubmitted);
-  }
-
-  historyToError(): string | null {
-    if (!this.historySubmitted && !this.historyForm.controls.to.touched) {
-      return null;
-    }
-    if (this.historyForm.hasError('fromAfterTo')) {
-      return 'To date must be on or after From date.';
-    }
-    return fieldErrorText('to', this.historyForm, this.historySubmitted);
-  }
-
-  auditToError(): string | null {
-    if (!this.auditSubmitted && !this.auditForm.controls.to.touched) {
-      return null;
-    }
-    if (this.auditForm.hasError('fromAfterTo')) {
-      return 'To date must be on or after From date.';
-    }
-    return fieldErrorText('to', this.auditForm, this.auditSubmitted);
   }
 
   private resetGrantForm(): void {
@@ -907,19 +986,64 @@ export class SupportCenterPage implements OnInit, OnDestroy {
     });
   }
 
-  applyHistoryFilters(): void {
-    this.historySubmitted = true;
-    markFormGroupTouched(this.historyForm, '#history-filters-form ');
+  onHistorySearchChange(value: string): void {
+    this.historyForm.patchValue({ q: value.slice(0, 100) });
+    this.historyPage = 1;
+    this.error = null;
+    this.loadHistory();
+  }
+
+  openHistoryFilters(): void {
+    this.syncHistorySearchFieldValues();
+    this.showHistoryFilters = true;
     this.cdr.markForCheck();
-    if (this.historyForm.invalid) {
+  }
+
+  closeHistoryFilters(): void {
+    this.showHistoryFilters = false;
+    this.cdr.markForCheck();
+  }
+
+  onHistoryAdvancedSearch(values: { [key: string]: unknown }): void {
+    const from = String(values['from'] ?? '').trim();
+    const to = String(values['to'] ?? '').trim();
+    if (this.isInvalidDateRange(from, to)) {
+      this.error = 'To date must be on or after From date.';
+      this.cdr.markForCheck();
       return;
     }
+
+    this.historyForm.patchValue({
+      status: String(values['status'] ?? '').trim(),
+      mode: String(values['mode'] ?? '').trim(),
+      from,
+      to,
+    });
+    this.syncHistorySearchFieldValues();
+    this.showHistoryFilters = false;
+    this.error = null;
     this.historyPage = 1;
     this.loadHistory();
   }
 
+  onHistoryClearFilters(): void {
+    this.historyForm.patchValue({
+      status: '',
+      mode: '',
+      from: '',
+      to: '',
+    });
+    this.historySearchFields.forEach((field) => {
+      field.value = undefined;
+    });
+    this.error = null;
+    this.historyPage = 1;
+    this.loadHistory();
+    this.cdr.markForCheck();
+  }
+
   loadHistory(): void {
-    if (this.loadingHistory || this.historyForm.invalid) {
+    if (this.loadingHistory) {
       return;
     }
 
@@ -992,18 +1116,61 @@ export class SupportCenterPage implements OnInit, OnDestroy {
       });
   }
 
-  applyAuditFilters(): void {
-    this.auditSubmitted = true;
-    markFormGroupTouched(this.auditForm, '#audit-filters-form ');
-    this.cdr.markForCheck();
-    if (this.auditForm.invalid) {
-      return;
-    }
+  onAuditSearchChange(value: string): void {
+    this.auditForm.patchValue({ q: value.slice(0, 100) });
+    this.error = null;
     this.loadAudit();
   }
 
+  openAuditFilters(): void {
+    this.syncAuditSearchFieldValues();
+    this.showAuditFilters = true;
+    this.cdr.markForCheck();
+  }
+
+  closeAuditFilters(): void {
+    this.showAuditFilters = false;
+    this.cdr.markForCheck();
+  }
+
+  onAuditAdvancedSearch(values: { [key: string]: unknown }): void {
+    const from = String(values['from'] ?? '').trim();
+    const to = String(values['to'] ?? '').trim();
+    if (this.isInvalidDateRange(from, to)) {
+      this.error = 'To date must be on or after From date.';
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.auditForm.patchValue({
+      event_type: String(values['event_type'] ?? '').trim().slice(0, 64),
+      module: String(values['module'] ?? '').trim().slice(0, 64),
+      from,
+      to,
+    });
+    this.syncAuditSearchFieldValues();
+    this.showAuditFilters = false;
+    this.error = null;
+    this.loadAudit();
+  }
+
+  onAuditClearFilters(): void {
+    this.auditForm.patchValue({
+      event_type: '',
+      module: '',
+      from: '',
+      to: '',
+    });
+    this.auditSearchFields.forEach((field) => {
+      field.value = undefined;
+    });
+    this.error = null;
+    this.loadAudit();
+    this.cdr.markForCheck();
+  }
+
   loadAudit(): void {
-    if (this.loadingAudit || this.auditForm.invalid) {
+    if (this.loadingAudit) {
       return;
     }
 
@@ -1058,6 +1225,145 @@ export class SupportCenterPage implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
       });
+  }
+
+  private initHistorySearchFields(): void {
+    const f = this.historyForm.getRawValue();
+    this.historySearchFields = [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        group: 'Session',
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'ended', label: 'Ended' },
+          { value: 'expired', label: 'Expired' },
+        ],
+        value: f.status || undefined,
+      },
+      {
+        key: 'mode',
+        label: 'Mode',
+        type: 'select',
+        group: 'Session',
+        options: [
+          { value: 'readonly', label: 'Read only' },
+          { value: 'standard', label: 'Standard' },
+          { value: 'emergency', label: 'Emergency' },
+        ],
+        value: f.mode || undefined,
+      },
+      {
+        key: 'from',
+        label: 'From',
+        type: 'date',
+        group: 'Date range',
+        value: f.from || undefined,
+      },
+      {
+        key: 'to',
+        label: 'To',
+        type: 'date',
+        group: 'Date range',
+        value: f.to || undefined,
+      },
+    ];
+  }
+
+  private syncHistorySearchFieldValues(): void {
+    const f = this.historyForm.getRawValue();
+    this.historySearchFields.forEach((field) => {
+      const raw = f[field.key as keyof typeof f];
+      field.value = raw ? raw : undefined;
+    });
+  }
+
+  private initGrantSearchFields(): void {
+    const f = this.grantListForm.getRawValue();
+    this.grantSearchFields = [
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        group: 'Grant',
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'revoked', label: 'Revoked' },
+          { value: 'expired', label: 'Expired' },
+        ],
+        value: f.status || undefined,
+      },
+      {
+        key: 'allowed_mode',
+        label: 'Allowed mode',
+        type: 'select',
+        group: 'Grant',
+        options: [
+          { value: 'any', label: 'Any' },
+          { value: 'readonly', label: 'Read only' },
+          { value: 'standard', label: 'Standard' },
+          { value: 'emergency', label: 'Emergency' },
+        ],
+        value: f.allowed_mode || undefined,
+      },
+    ];
+  }
+
+  private syncGrantSearchFieldValues(): void {
+    const f = this.grantListForm.getRawValue();
+    this.grantSearchFields.forEach((field) => {
+      const raw = f[field.key as keyof typeof f];
+      field.value = raw ? raw : undefined;
+    });
+  }
+
+  private initAuditSearchFields(): void {
+    const f = this.auditForm.getRawValue();
+    this.auditSearchFields = [
+      {
+        key: 'event_type',
+        label: 'Event type',
+        type: 'text',
+        group: 'Event',
+        placeholder: 'Event type',
+        value: f.event_type || undefined,
+      },
+      {
+        key: 'module',
+        label: 'Module',
+        type: 'text',
+        group: 'Event',
+        placeholder: 'Module',
+        value: f.module || undefined,
+      },
+      {
+        key: 'from',
+        label: 'From',
+        type: 'date',
+        group: 'Date range',
+        value: f.from || undefined,
+      },
+      {
+        key: 'to',
+        label: 'To',
+        type: 'date',
+        group: 'Date range',
+        value: f.to || undefined,
+      },
+    ];
+  }
+
+  private syncAuditSearchFieldValues(): void {
+    const f = this.auditForm.getRawValue();
+    this.auditSearchFields.forEach((field) => {
+      const raw = f[field.key as keyof typeof f];
+      field.value = raw ? raw : undefined;
+    });
+  }
+
+  private isInvalidDateRange(from: string, to: string): boolean {
+    return !!from && !!to && from > to;
   }
 
   loadSettings(): void {

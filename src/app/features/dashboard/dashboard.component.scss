@@ -189,7 +189,8 @@
   font-weight: 600;
 }
 
-.cd-registry__error {
+.cd-registry__error,
+.cd-registry__empty {
   grid-column: 1 / -1;
   padding: 0.75rem 1rem;
   border: 1px solid var(--cd-slate-200);

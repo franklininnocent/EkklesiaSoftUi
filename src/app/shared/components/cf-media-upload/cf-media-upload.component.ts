@@ -33,6 +33,8 @@ export class CfMediaUploadComponent implements OnChanges {
   @Input() canManage = true;
   @Input() previewUrl: string | null = null;
   @Input() previewClickable = false;
+  /** When false, hides the inline preview block (caller may show the image elsewhere). */
+  @Input() showPreview = true;
   @Input() inputId = 'cf-media-upload-input';
 
   @Output() fileSelected = new EventEmitter<File>();

@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
@@ -26,10 +26,12 @@ import {
   ],
   templateUrl: './support-ticket-catalog-panel.component.html',
   styleUrl: './support-ticket-catalog-panel.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class SupportTicketCatalogPanelComponent implements OnInit {
   private readonly catalog = inject(SupportTicketCatalogService);
   private readonly fb = inject(FormBuilder);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   loading = true;
   saving = false;
@@ -63,14 +65,17 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
   load(): void {
     this.loading = true;
     this.error = null;
+    this.cdr.markForCheck();
     this.catalog.list().subscribe({
       next: (rows) => {
-        this.rows = rows;
+        this.rows = rows ?? [];
         this.loading = false;
+        this.cdr.markForCheck();
       },
       error: () => {
         this.error = 'Could not load ticket request types.';
         this.loading = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -84,6 +89,7 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
       requires_bug_fields: false,
     });
     this.showTypeModal = true;
+    this.cdr.markForCheck();
   }
 
   openEditType(row: SupportCatalogRequestType): void {
@@ -95,6 +101,7 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
       requires_bug_fields: row.requires_bug_fields,
     });
     this.showTypeModal = true;
+    this.cdr.markForCheck();
   }
 
   closeTypeModal(): void {
@@ -103,11 +110,13 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
     }
     this.showTypeModal = false;
     this.editingType = null;
+    this.cdr.markForCheck();
   }
 
   saveType(): void {
     if (this.typeForm.invalid) {
       this.typeForm.markAllAsTouched();
+      this.cdr.markForCheck();
       return;
     }
 
@@ -119,6 +128,7 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
       requires_bug_fields: raw.requires_bug_fields ?? false,
     };
     this.saving = true;
+    this.cdr.markForCheck();
     const request = this.editingType
       ? this.catalog.updateType(this.editingType.id, payload)
       : this.catalog.createType(payload);
@@ -128,11 +138,13 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
         this.saving = false;
         this.showTypeModal = false;
         this.editingType = null;
+        this.cdr.markForCheck();
         this.load();
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Could not save request type.';
+        this.error = err?.error?.message || err?.message || 'Could not save request type.';
         this.saving = false;
+        this.cdr.markForCheck();
       },
     });
   }
@@ -148,7 +160,8 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
       .subscribe({
         next: () => this.load(),
         error: (err) => {
-          this.error = err?.error?.message || 'Could not update request type.';
+          this.error = err?.error?.message || err?.message || 'Could not update request type.';
+          this.cdr.markForCheck();
         },
       });
   }
@@ -162,6 +175,7 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
       active: true,
     });
     this.showCategoryModal = true;
+    this.cdr.markForCheck();
   }
 
   openEditCategory(type: SupportCatalogRequestType, category: SupportCatalogCategory): void {
@@ -173,6 +187,7 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
       active: category.active,
     });
     this.showCategoryModal = true;
+    this.cdr.markForCheck();
   }
 
   closeCategoryModal(): void {
@@ -182,11 +197,13 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
     this.showCategoryModal = false;
     this.categoryParentType = null;
     this.editingCategory = null;
+    this.cdr.markForCheck();
   }
 
   saveCategory(): void {
     if (!this.categoryParentType || this.categoryForm.invalid) {
       this.categoryForm.markAllAsTouched();
+      this.cdr.markForCheck();
       return;
     }
 
@@ -197,6 +214,7 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
       active: raw.active ?? true,
     };
     this.saving = true;
+    this.cdr.markForCheck();
     const typeId = this.categoryParentType.id;
     const request = this.editingCategory
       ? this.catalog.updateCategory(typeId, this.editingCategory.id, payload)
@@ -208,11 +226,13 @@ export class SupportTicketCatalogPanelComponent implements OnInit {
         this.showCategoryModal = false;
         this.categoryParentType = null;
         this.editingCategory = null;
+        this.cdr.markForCheck();
         this.load();
       },
       error: (err) => {
-        this.error = err?.error?.message || 'Could not save category.';
+        this.error = err?.error?.message || err?.message || 'Could not save category.';
         this.saving = false;
+        this.cdr.markForCheck();
       },
     });
   }

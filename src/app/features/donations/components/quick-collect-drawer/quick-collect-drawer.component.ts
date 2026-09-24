@@ -11,6 +11,7 @@ import { DonationsService } from '../../services/donations.service';
 import { QuickCollectRecentFamily, QuickCollectService } from '../../services/quick-collect.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
 import { localDateOnly, requiresGatewayReference } from '../../utils/local-date-only';
+import { formatPaymentDateTime } from '../../utils/payment-datetime';
 import {
   DonationFamilyFinancialProfile,
   DonationPayment,
@@ -327,7 +328,7 @@ interface ActivityRow {
       color: var(--cf-muted); padding: 0.15rem 0.45rem; cursor: pointer;
     }
     .qc-body { padding: 1rem 1.15rem; overflow: auto; flex: 1; }
-    .qc-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 1rem; align-items: start; }
+    .qc-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 1rem; align-items: start; }
     .qc-main { display: grid; gap: 1rem; min-width: 0; }
     .qc-section { display: grid; gap: 0.75rem; }
     .qc-section--compact { gap: 0.5rem; }
@@ -434,6 +435,7 @@ interface ActivityRow {
     .qc-activity__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
     .qc-activity__row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.84rem; }
     .qc-activity__meta { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; color: var(--cf-muted); margin-top: 0.1rem; }
+    .qc-activity__meta span { white-space: nowrap; }
     .qc-footer__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-left: auto; }
     .cf-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
     @media (max-width: 720px) {
@@ -951,7 +953,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           family_name: payment.family?.family_name || payment.payer_name || 'Family',
           amount: payment.amount,
           method: payment.method,
-          time_label: this.formatTime(payment.created_at || payment.payment_date),
+          time_label: formatPaymentDateTime(payment.created_at || payment.payment_date),
           status: payment.status
         }));
       },
@@ -959,17 +961,6 @@ export class QuickCollectDrawerComponent implements OnInit {
         this.activityRows = [];
       }
     });
-  }
-
-  private formatTime(value?: string): string {
-    if (!value) {
-      return 'Today';
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return 'Today';
-    }
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   private clearAutoReset(): void {

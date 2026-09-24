@@ -6,7 +6,8 @@ import { Subject, takeUntil } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
 import { MemberService, MemberFilters } from '../../services/member.service';
 import { BCCService } from '@core/services/bcc.service';
-import { FamilyMember, BCC } from '@core/models/family.model';
+import { FamilyMember, BCC, Family } from '@core/models/family.model';
+import { getMemberParentDisplayName } from '../../../family-management/utils/member-parent-display.util';
 import { PaginationComponent } from '@shared/components';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
@@ -679,6 +680,22 @@ export class MemberListComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Role shown once in the identity strip. The dialog title already carries the name.
+   */
+  getRelationshipLabel(member: FamilyMember): string {
+    if (this.isFamilyHead(member)) {
+      return 'Family head';
+    }
+
+    const relationship = (member.relationship_to_head || '').trim();
+    if (!relationship) {
+      return 'Member';
+    }
+
+    return relationship.replace(/_/g, ' ');
+  }
+
+  /**
    * Format date for display
    */
   formatDate(date: string | null | undefined): string {
@@ -695,52 +712,19 @@ export class MemberListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get full address for member (from family if member doesn't have own address)
+   * Household address as separate lines so a stored trailing comma
+   * does not collapse into "Oak Ave,, Apartment".
+   */
+  getMemberAddressLines(member: FamilyMember | null | undefined = this.selectedMember): string[] {
+    return this.buildAddressLines(member?.family);
+  }
+
+  /**
+   * Single-line address for compact surfaces (table cells).
    */
   getMemberAddress(): string | null {
-    if (!this.selectedMember?.family) {
-      return null;
-    }
-
-    const family = this.selectedMember.family;
-    const addressParts: string[] = [];
-
-    // Address line 1
-    if (family.address_line_1) {
-      addressParts.push(family.address_line_1.trim());
-    }
-
-    // Address line 2
-    if (family.address_line_2) {
-      addressParts.push(family.address_line_2.trim());
-    }
-
-    // City
-    if (family.city) {
-      addressParts.push(family.city.trim());
-    }
-
-    // State (if available)
-    if (family.state?.name) {
-      addressParts.push(family.state.name.trim());
-    }
-
-    // Postal code
-    if (family.postal_code) {
-      addressParts.push(family.postal_code.trim());
-    }
-
-    // Country (if available)
-    if (family.country?.name) {
-      addressParts.push(family.country.name.trim());
-    }
-
-    // If we have any address parts, join them with commas and return
-    if (addressParts.length > 0) {
-      return addressParts.join(', ');
-    }
-
-    return null;
+    const lines = this.getMemberAddressLines(this.selectedMember);
+    return lines.length ? lines.join(', ') : null;
   }
 
   /**
@@ -777,50 +761,55 @@ export class MemberListComponent implements OnInit, OnDestroy {
    * Format: line1, line2, city, state - postal_code, country
    */
   getMemberAddressForTable(member: FamilyMember): string | null {
-    if (!member?.family) {
+    const lines = this.getMemberAddressLines(member);
+    return lines.length ? lines.join(', ') : null;
+  }
+
+  private buildAddressLines(family: Family | null | undefined): string[] {
+    if (!family) {
+      return [];
+    }
+
+    const lines: string[] = [];
+    const line1 = this.cleanAddressPart(family.address_line_1);
+    const line2 = this.cleanAddressPart(family.address_line_2);
+    if (line1) {
+      lines.push(line1);
+    }
+    if (line2) {
+      lines.push(line2);
+    }
+
+    const locality = [this.cleanAddressPart(family.city), this.cleanAddressPart(family.state?.name)]
+      .filter((part): part is string => !!part)
+      .join(', ');
+    const postal = this.cleanAddressPart(family.postal_code);
+    const cityLine = [locality, postal].filter((part): part is string => !!part).join(' ');
+    if (cityLine) {
+      lines.push(cityLine);
+    }
+
+    const country = this.cleanAddressPart(family.country?.name);
+    if (country) {
+      lines.push(country);
+    }
+
+    return lines;
+  }
+
+  private cleanAddressPart(value: string | null | undefined): string | null {
+    if (!value) {
       return null;
     }
 
-    const family = member.family;
-    const addressParts: string[] = [];
+    const cleaned = value
+      .replace(/,+/g, ',')
+      .replace(/\s*,\s*/g, ', ')
+      .replace(/^[,\s]+|[,\s]+$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
 
-    // Address line 1
-    if (family.address_line_1) {
-      addressParts.push(family.address_line_1.trim());
-    }
-
-    // Address line 2
-    if (family.address_line_2) {
-      addressParts.push(family.address_line_2.trim());
-    }
-
-    // City
-    if (family.city) {
-      addressParts.push(family.city.trim());
-    }
-
-    // State (if available)
-    if (family.state?.name) {
-      addressParts.push(family.state.name.trim());
-    }
-
-    // Postal code (with dash separator if state exists)
-    if (family.postal_code) {
-      addressParts.push(family.postal_code.trim());
-    }
-
-    // Country (if available)
-    if (family.country?.name) {
-      addressParts.push(family.country.name.trim());
-    }
-
-    // If we have any address parts, join them with commas and return
-    // The CSS will handle wrapping to two lines if needed
-    if (addressParts.length > 0) {
-      return addressParts.join(', ');
-    }
-
-    return null;
+    return cleaned || null;
   }
 
   /**
@@ -852,30 +841,29 @@ export class MemberListComponent implements OnInit, OnDestroy {
   getParentInfo(): { father?: string; mother?: string } | null {
     if (!this.selectedMember) return null;
 
-    // For marriage, check if member is bride or groom
-    if (this.selectedMember.marriage_bride_full_name) {
-      // Member is groom
-      return {
-        father: this.selectedMember.marriage_groom_father_name || undefined,
-        mother: this.selectedMember.marriage_groom_mother_name || undefined
-      };
-    } else if (this.selectedMember.marriage_groom_full_name) {
-      // Member is bride
-      return {
-        father: this.selectedMember.marriage_bride_father_name || undefined,
-        mother: this.selectedMember.marriage_bride_mother_name || undefined
-      };
+    const member = this.selectedMember;
+    let father = this.presentName(getMemberParentDisplayName(member, 'father'))
+      || this.presentName(this.getFatherName(member));
+    let mother = this.presentName(getMemberParentDisplayName(member, 'mother'));
+
+    if (member.marriage_bride_full_name) {
+      father = father || this.presentName(member.marriage_groom_father_name);
+      mother = mother || this.presentName(member.marriage_groom_mother_name);
+    } else if (member.marriage_groom_full_name) {
+      father = father || this.presentName(member.marriage_bride_father_name);
+      mother = mother || this.presentName(member.marriage_bride_mother_name);
     }
 
-    // For non-head members, try to get from family head if relationship indicates parent-child
-    const relationship = this.selectedMember.relationship_to_head?.toLowerCase();
-    if (relationship === 'son' || relationship === 'daughter' || relationship === 'child') {
-      // Could potentially get from family head, but for now return null
-      // as we don't have parent fields in FamilyMember model
+    if (!father && !mother) {
       return null;
     }
 
-    return null;
+    return { father, mother };
+  }
+
+  private presentName(value: string | null | undefined): string | undefined {
+    const trimmed = (value || '').trim();
+    return trimmed || undefined;
   }
 
   /**

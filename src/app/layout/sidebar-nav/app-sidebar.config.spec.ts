@@ -21,6 +21,23 @@ describe('app-sidebar.config', () => {
     expect(churchProfile?.children?.some((child) => child.id === 'church-profile-social')).toBe(true);
   });
 
+  it('exposes sacraments dashboard and register under the parish menu', () => {
+    const sections = buildAppSidebarSections();
+    const parish = sections.find((section) => section.id === 'parish');
+    const sacraments = parish?.items.find((item) => item.id === 'sacraments');
+
+    expect(sacraments?.route).toBe('/sacraments');
+    expect(sacraments?.menuId).toBe('sacraments');
+    expect(sacraments?.children?.map((child) => child.id)).toEqual([
+      'sacraments-dashboard',
+      'sacraments-register',
+    ]);
+    expect(sacraments?.children?.[0].exact).toBe(true);
+    expect(sacraments?.children?.[0].route).toBe('/sacraments');
+    expect(sacraments?.children?.[1].route).toBe('/sacraments/register');
+    expect(sacraments?.children?.every((child) => child.menuId === undefined)).toBe(true);
+  });
+
   it('filters items by menu visibility', () => {
     const sections = filterSidebarSections(buildAppSidebarSections(), (menuId) => menuId !== 'tenants');
     const platform = sections.find((section) => section.id === 'platform');

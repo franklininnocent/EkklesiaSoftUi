@@ -75,6 +75,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
+  private archdioceseLoadSeq = 0;
 
   details: TenantDetailsSnapshot | null = null;
   photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
@@ -107,6 +108,8 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   editForm: Partial<Tenant> = {};
   editDenominationId: number | null = null;
   editArchdioceseId: number | null = null;
+  editDenomination: Denomination | null = null;
+  editArchdiocese: Archdiocese | null = null;
   editWebsite = '';
   denominations: Denomination[] = [];
   denominationOptions: Denomination[] | null = null;
@@ -114,11 +117,14 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   archdioceses: Archdiocese[] = [];
   archdioceseOptions: Archdiocese[] | null = null;
   loadingArchdioceses = false;
-  compareSelectIds = (left: number | string | null, right: number | string | null): boolean => {
-    if (left == null || right == null) {
+  compareSelectItems = (
+    left: Denomination | Archdiocese | null,
+    right: Denomination | Archdiocese | null,
+  ): boolean => {
+    if (!left || !right) {
       return left === right;
     }
-    return Number(left) === Number(right);
+    return Number(left.id) === Number(right.id);
   };
   logoFile: File | null = null;
   logoPreview: string | null = null;
@@ -203,9 +209,17 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
             this.syncTenantShim(response.data);
             this.editForm = { ...this.tenant };
             // #region agent log
-            if (typeof fetch === 'function') {
-              fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H4',location:'tenant-detail.component.ts:loadDetails',message:'tenant details loaded',data:{denominationId:response.data.identity?.denomination_id,denominationName:response.data.identity?.denomination_name,dioceseId:response.data.identity?.diocese_id,isEditing:this.isEditing},timestamp:Date.now()})}).catch(()=>{});
-            }
+            this.logSelectDebug('H1', 'tenant-detail.component.ts:loadDetails', 'tenant details loaded', {
+              denominationId: response.data.identity?.denomination_id ?? null,
+              denominationIdType: response.data.identity?.denomination_id == null ? 'null' : typeof response.data.identity.denomination_id,
+              denominationName: response.data.identity?.denomination_name ?? null,
+              dioceseId: response.data.identity?.diocese_id ?? null,
+              dioceseIdType: response.data.identity?.diocese_id == null ? 'null' : typeof response.data.identity.diocese_id,
+              dioceseName: response.data.identity?.diocese_name ?? null,
+              churchDenomination: response.data.church?.denomination ?? null,
+              churchArchdioceseId: response.data.church?.archdiocese?.id ?? null,
+              churchArchdioceseName: response.data.church?.archdiocese?.name ?? null,
+            });
             // #endregion
           } else {
             this.error = response.message || 'Failed to load tenant details';
@@ -344,9 +358,16 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
           this.syncEditSelectValues();
           this.loadingDenominations = false;
           // #region agent log
-          if (typeof fetch === 'function') {
-            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadDenominations',message:'denominations loaded for tenant edit',data:{success:response.success,count:this.denominationOptions?.length??0,isEditing:this.isEditing},timestamp:Date.now()})}).catch(()=>{});
-          }
+          const denomMatch = this.denominationOptions?.find(d => Number(d.id) === Number(this.editDenominationId));
+          this.logSelectDebug('H2', 'tenant-detail.component.ts:loadDenominations', 'denominations loaded for tenant edit', {
+            success: response.success,
+            count: this.denominationOptions?.length ?? 0,
+            sampleId: this.denominationOptions?.[0]?.id ?? null,
+            sampleIdType: this.denominationOptions?.[0] ? typeof this.denominationOptions[0].id : 'none',
+            editDenominationId: this.editDenominationId,
+            matchedName: denomMatch?.name ?? null,
+          });
+          this.scheduleSelectDomLog('H5', 'loadDenominations');
           // #endregion
           this.cdr.markForCheck();
         },
@@ -368,18 +389,33 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       denominationId ?? (this.isEditing ? this.editDenominationId : null),
     );
     const filters = filterId ? { denomination_id: filterId } : undefined;
+    const seq = ++this.archdioceseLoadSeq;
+    const selectedBefore = this.editArchdioceseId;
 
     this.archdioceseService.getArchdioceses(filters)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           const rows = Array.isArray(response.data) ? response.data : [];
+          const stale = seq !== this.archdioceseLoadSeq;
           this.applyArchdioceseOptions(response.success ? rows : []);
           this.loadingArchdioceses = false;
           // #region agent log
-          if (typeof fetch === 'function') {
-            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadArchdioceses',message:'archdioceses loaded for tenant edit',data:{success:response.success,count:this.archdioceseOptions?.length??0,filterDenominationId:filterId},timestamp:Date.now()})}).catch(()=>{});
-          }
+          const dioceseMatch = this.archdioceseOptions?.find(a => Number(a.id) === Number(selectedBefore));
+          this.logSelectDebug('H4', 'tenant-detail.component.ts:loadArchdioceses', 'archdioceses loaded for tenant edit', {
+            success: response.success,
+            count: this.archdioceseOptions?.length ?? 0,
+            filterDenominationId: filterId,
+            seq,
+            stale,
+            selectedBefore,
+            selectedAfter: this.editArchdioceseId,
+            clearedSelection: selectedBefore != null && this.editArchdioceseId == null,
+            matchedName: dioceseMatch?.name ?? null,
+            sampleId: this.archdioceseOptions?.[0]?.id ?? null,
+            sampleIdType: this.archdioceseOptions?.[0] ? typeof this.archdioceseOptions[0].id : 'none',
+          });
+          this.scheduleSelectDomLog('H5', 'loadArchdioceses');
           // #endregion
           this.cdr.markForCheck();
         },
@@ -388,9 +424,11 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
           this.archdioceses = [];
           this.loadingArchdioceses = false;
           // #region agent log
-          if (typeof fetch === 'function') {
-            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadArchdioceses:error',message:'archdioceses load failed',data:{error:err?.message||'unknown'},timestamp:Date.now()})}).catch(()=>{});
-          }
+          this.logSelectDebug('H4', 'tenant-detail.component.ts:loadArchdioceses:error', 'archdioceses load failed', {
+            error: err?.message || 'unknown',
+            seq,
+            filterDenominationId: filterId,
+          });
           // #endregion
           this.toastService.error('Could not load dioceses for editing.', 'Error');
           this.cdr.markForCheck();
@@ -398,9 +436,28 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  onEditDenominationChange(value: number | null): void {
-    this.editDenominationId = this.coerceOptionalId(value);
+  onEditDenominationChange(value: Denomination | null): void {
+    const previous = this.editDenominationId;
+    this.editDenomination = value;
+    this.editDenominationId = this.coerceOptionalId(value?.id);
+    // #region agent log
+    this.logSelectDebug('H3', 'tenant-detail.component.ts:onEditDenominationChange', 'denomination ngModelChange', {
+      incoming: value?.id ?? null,
+      incomingType: value == null ? 'null' : typeof value,
+      incomingName: value?.name ?? null,
+      previous,
+      next: this.editDenominationId,
+    });
+    // #endregion
+    if (previous === this.editDenominationId) {
+      return;
+    }
     this.loadArchdioceses(this.editDenominationId);
+  }
+
+  onEditArchdioceseChange(value: Archdiocese | null): void {
+    this.editArchdiocese = value;
+    this.editArchdioceseId = this.coerceOptionalId(value?.id);
   }
 
   toggleEdit(): void {
@@ -413,9 +470,17 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       this.syncEditSelectValues();
       this.loadArchdioceses(this.editDenominationId);
       // #region agent log
-      if (typeof fetch === 'function') {
-        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H1-H2',location:'tenant-detail.component.ts:toggleEdit',message:'edit mode enabled',data:{isEditing:this.isEditing,editDenominationId:this.editDenominationId,editArchdioceseId:this.editArchdioceseId,denominationOptionCount:this.denominationOptions?.length??null,loadingDenominations:this.loadingDenominations},timestamp:Date.now()})}).catch(()=>{});
-      }
+      this.logSelectDebug('H2', 'tenant-detail.component.ts:toggleEdit', 'edit mode enabled', {
+        editDenominationId: this.editDenominationId,
+        editArchdioceseId: this.editArchdioceseId,
+        denominationOptionCount: this.denominationOptions?.length ?? null,
+        archdioceseOptionCount: this.archdioceseOptions?.length ?? null,
+        loadingDenominations: this.loadingDenominations,
+        loadingArchdioceses: this.loadingArchdioceses,
+        denomMatched: this.denominationOptions?.some(d => Number(d.id) === Number(this.editDenominationId)) ?? false,
+        dioceseMatched: this.archdioceseOptions?.some(a => Number(a.id) === Number(this.editArchdioceseId)) ?? false,
+      });
+      this.scheduleSelectDomLog('H5', 'toggleEdit');
       // #endregion
     }
     this.cdr.markForCheck();
@@ -463,6 +528,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     if (this.tenant) this.editForm = { ...this.tenant };
     this.editDenominationId = this.coerceOptionalId(this.details?.identity.denomination_id);
     this.editArchdioceseId = this.coerceOptionalId(this.details?.identity.diocese_id);
+    this.syncEditSelectValues();
     this.editWebsite = this.details?.contact.website ?? '';
     this.cdr.markForCheck();
   }
@@ -478,6 +544,40 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   private syncEditSelectValues(): void {
     this.editDenominationId = this.coerceOptionalId(this.editDenominationId);
     this.editArchdioceseId = this.coerceOptionalId(this.editArchdioceseId);
+    this.editDenomination = this.resolveDenominationSelection(this.editDenominationId);
+    this.editArchdiocese = this.resolveArchdioceseSelection(this.editArchdioceseId);
+  }
+
+  private resolveDenominationSelection(id: number | null): Denomination | null {
+    if (id == null) {
+      return null;
+    }
+    return this.denominationOptions?.find(d => Number(d.id) === id)
+      ?? this.fallbackDenomination(id);
+  }
+
+  private resolveArchdioceseSelection(id: number | null): Archdiocese | null {
+    if (id == null) {
+      return null;
+    }
+    return this.archdioceseOptions?.find(a => Number(a.id) === id)
+      ?? this.fallbackArchdiocese(id);
+  }
+
+  private fallbackDenomination(id: number): Denomination | null {
+    const name = this.details?.identity.denomination_name;
+    if (!name) {
+      return null;
+    }
+    return { id, name, code: '', active: 1, display_order: 0 };
+  }
+
+  private fallbackArchdiocese(id: number): Archdiocese | null {
+    const name = this.details?.identity.diocese_name;
+    if (!name) {
+      return null;
+    }
+    return { id, name, country: '', active: 1 };
   }
 
   private applyArchdioceseOptions(rows: Archdiocese[]): void {
@@ -487,9 +587,60 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       this.editArchdioceseId != null
       && !this.archdioceseOptions.some(a => Number(a.id) === Number(this.editArchdioceseId))
     ) {
+      // #region agent log
+      this.logSelectDebug('H4', 'tenant-detail.component.ts:applyArchdioceseOptions', 'cleared diocese because it was missing from options', {
+        editArchdioceseId: this.editArchdioceseId,
+        optionCount: this.archdioceseOptions.length,
+      });
+      // #endregion
       this.editArchdioceseId = null;
     }
+    this.editArchdiocese = this.resolveArchdioceseSelection(this.editArchdioceseId);
   }
+
+  // #region agent log
+  private logSelectDebug(hypothesisId: string, location: string, message: string, data: Record<string, unknown>): void {
+    if (typeof fetch !== 'function') {
+      return;
+    }
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bd4ad4' },
+      body: JSON.stringify({
+        sessionId: 'bd4ad4',
+        runId: 'pre-fix',
+        hypothesisId,
+        location,
+        message,
+        data: {
+          ...data,
+          isEditing: this.isEditing,
+          boundDenominationName: this.editDenomination?.name ?? null,
+          boundDioceseName: this.editArchdiocese?.name ?? null,
+        },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+  }
+
+  private scheduleSelectDomLog(hypothesisId: string, source: string): void {
+    requestAnimationFrame(() => {
+      const denomLabel = document.querySelector('.tenant-detail__denomination-select .ng-value-label')?.textContent?.trim() ?? null;
+      const dioceseLabel = document.querySelector('.tenant-detail__diocese-select .ng-value-label')?.textContent?.trim() ?? null;
+      const denomPlaceholder = document.querySelector('.tenant-detail__denomination-select .ng-placeholder')?.textContent?.trim() ?? null;
+      const diocesePlaceholder = document.querySelector('.tenant-detail__diocese-select .ng-placeholder')?.textContent?.trim() ?? null;
+      this.logSelectDebug(hypothesisId, 'tenant-detail.component.ts:selectDom', 'rendered select labels', {
+        source,
+        denomLabel,
+        dioceseLabel,
+        denomPlaceholder,
+        diocesePlaceholder,
+        editDenominationId: this.editDenominationId,
+        editArchdioceseId: this.editArchdioceseId,
+      });
+    });
+  }
+  // #endregion
 
   private normalizeWebsite(value: string | null | undefined): string | null {
     const website = (value ?? '').trim();

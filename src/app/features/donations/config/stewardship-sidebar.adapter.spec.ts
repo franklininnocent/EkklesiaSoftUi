@@ -10,8 +10,8 @@ describe('stewardship-sidebar.adapter', () => {
     expect(tree.route).toBe('/donations');
   });
 
-  it('maps all five workspaces', () => {
-    expect(tree.children?.length).toBe(5);
+  it('maps all four workspaces', () => {
+    expect(tree.children?.length).toBe(4);
     expect(tree.children?.map((c) => c.label)).toEqual(
       STEWARDSHIP_WORKSPACES.map((w) => w.label)
     );
@@ -23,16 +23,16 @@ describe('stewardship-sidebar.adapter', () => {
     expect(sidebarLinks.length).toBe(linkCount);
   });
 
-  it('preserves dashboard exact flag and families cross-module path', () => {
+  it('preserves dashboard exact flag and collect dues/donors links', () => {
     const leadership = tree.children?.find((c) => c.id === 'donations-leadership');
     const dashboard = leadership?.children?.find((c) => c.route === '/donations');
     expect(dashboard?.exact).toBe(true);
     expect(dashboard?.label).toBe('Dashboard');
 
-    const families = tree.children?.find((c) => c.id === 'donations-families');
-    const directory = families?.children?.find((c) => c.route === '/families');
-    expect(directory?.label).toBe('Family Directory');
-    expect(directory?.excludeFromAutoExpand).toBe(true);
+    const collect = tree.children?.find((c) => c.id === 'donations-collect');
+    const routes = collect?.children?.map((c) => c.route) ?? [];
+    expect(routes).toContain('/donations/dues');
+    expect(routes).toContain('/donations/donors');
   });
 
   it('includes configure children routes', () => {

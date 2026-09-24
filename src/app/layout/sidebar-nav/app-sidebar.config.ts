@@ -48,10 +48,16 @@ export function buildAppSidebarSections(): SidebarNavSection[] {
           icon: 'members',
           menuId: 'members',
         }),
-        leaf('sacraments', 'Sacraments', '/sacraments', {
-          icon: 'sacraments',
-          menuId: 'sacraments',
-        }),
+        {
+          ...leaf('sacraments', 'Sacraments', '/sacraments', {
+            icon: 'sacraments',
+            menuId: 'sacraments',
+          }),
+          children: [
+            leaf('sacraments-dashboard', 'Dashboard', '/sacraments', { exact: true }),
+            leaf('sacraments-register', 'Register', '/sacraments/register'),
+          ],
+        },
       ],
     },
     {

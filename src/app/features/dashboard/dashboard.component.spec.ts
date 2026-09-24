@@ -13,6 +13,7 @@ import { PastoralCareService } from '@features/pastoral-care/services/pastoral-c
 import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { TenantService } from '@core/services/tenant.service';
 import { DashboardComponent } from './dashboard.component';
 
 const familyStatsFixture = {
@@ -70,6 +71,7 @@ describe('DashboardComponent (ministries module-status)', () => {
     hasPermission: jest.Mock;
     isSuperAdmin: jest.Mock;
     isPlatformActor: jest.Mock;
+    canManageTenants: jest.Mock;
   };
   let supportSessionId: string | null;
 
@@ -84,8 +86,9 @@ describe('DashboardComponent (ministries module-status)', () => {
       canAccessPastoral: jest.fn(() => false),
       hasPermission: jest.fn(() => false),
       isSuperAdmin: jest.fn(() => false),
-      isPlatformActor: jest.fn(() => true),
-    };
+    isPlatformActor: jest.fn(() => true),
+    canManageTenants: jest.fn(() => false),
+  };
 
     await TestBed.configureTestingModule({
       imports: [DashboardComponent],
@@ -116,6 +119,10 @@ describe('DashboardComponent (ministries module-status)', () => {
           },
         },
         { provide: MinistriesApiService, useValue: ministriesApi },
+        {
+          provide: TenantService,
+          useValue: { getStatistics: jest.fn(() => of({ success: true, data: null })) },
+        },
         {
           provide: FamilyService,
           useValue: { getStatistics: jest.fn(() => of(familyStatsFixture)) },
@@ -178,6 +185,7 @@ describe('DashboardComponent (Stewardship Hub)', () => {
     hasPermission: jest.Mock;
     isSuperAdmin: jest.Mock;
     isPlatformActor: jest.Mock;
+    canManageTenants: jest.Mock;
   };
 
   const tenantUser = {
@@ -221,6 +229,7 @@ describe('DashboardComponent (Stewardship Hub)', () => {
       hasPermission: jest.fn(() => false),
       isSuperAdmin: jest.fn(() => false),
       isPlatformActor: jest.fn(() => false),
+      canManageTenants: jest.fn(() => false),
     };
 
     await TestBed.configureTestingModule({
@@ -245,6 +254,10 @@ describe('DashboardComponent (Stewardship Hub)', () => {
           },
         },
         { provide: DonationsService, useValue: donationsService },
+        {
+          provide: TenantService,
+          useValue: { getStatistics: jest.fn(() => of({ success: true, data: null })) },
+        },
         {
           provide: FamilyService,
           useValue: { getStatistics: jest.fn(() => of(familyStatsFixture)) },
@@ -386,6 +399,7 @@ describe('DashboardComponent (Overview metrics)', () => {
     hasPermission: jest.Mock;
     isSuperAdmin: jest.Mock;
     isPlatformActor: jest.Mock;
+    canManageTenants: jest.Mock;
   };
 
   const tenantUser = {
@@ -409,6 +423,7 @@ describe('DashboardComponent (Overview metrics)', () => {
       hasPermission: jest.fn(() => false),
       isSuperAdmin: jest.fn(() => false),
       isPlatformActor: jest.fn(() => false),
+      canManageTenants: jest.fn(() => false),
     };
 
     await TestBed.configureTestingModule({
@@ -431,6 +446,10 @@ describe('DashboardComponent (Overview metrics)', () => {
               return null;
             },
           },
+        },
+        {
+          provide: TenantService,
+          useValue: { getStatistics: jest.fn(() => of({ success: true, data: null })) },
         },
         { provide: FamilyService, useValue: familyService },
         { provide: BCCService, useValue: bccService },

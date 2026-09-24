@@ -3,8 +3,8 @@
     class="no-print"
     [title]="certificateTypeBadge()"
     [subtitle]="detailSubtitle()"
-    [backLink]="['/sacraments']"
-    backLabel="Back to list"
+    [backLink]="['/sacraments/register']"
+    backLabel="Back to register"
   >
     <ng-container *ngIf="supportsOfficialCertificate()">
       <button

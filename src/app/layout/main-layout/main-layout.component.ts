@@ -93,10 +93,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
     this.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
       this.currentUser = user;
-      this.visibleSidebarSections = filterSidebarSections(
-        this.sidebarSections,
-        (menuId) => this.navMenu.isVisible(menuId as NavMenuId, user)
-      );
+      this.refreshVisibleSidebar();
       if (this.appContext.hasParishResourceContext(user)) {
         this.subscriptionAccess.ensureLoaded();
       } else {
@@ -106,6 +103,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     });
 
     this.subscriptionAccess.snapshot$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.refreshVisibleSidebar();
       this.cdr.markForCheck();
     });
 
@@ -189,6 +187,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
     this.isMobileNavOpen = false;
     this.cdr.markForCheck();
+  }
+
+  private refreshVisibleSidebar(): void {
+    this.visibleSidebarSections = filterSidebarSections(
+      this.sidebarSections,
+      (menuId) => this.navMenu.isVisible(menuId as NavMenuId, this.currentUser)
+    );
   }
 
   private updateViewportState(): void {

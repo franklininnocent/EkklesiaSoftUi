@@ -15,68 +15,77 @@
       <p>{{ loadError() }}</p>
       <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
     </div>
+  } @else if (grouped().length === 0) {
+    <app-cf-empty-state
+      title="No alerts to configure"
+      description="Your role does not include notification settings you can change."
+      icon="bell"
+      [hasActions]="false"
+    ></app-cf-empty-state>
   } @else {
-    @for (group of grouped(); track group.category) {
-      <section class="cf-panel notification-prefs__section" [attr.aria-labelledby]="'prefs-' + group.category">
-        <header class="notification-prefs__section-header">
-          <h2 class="notification-prefs__section-title" [id]="'prefs-' + group.category">{{ group.label }}</h2>
-          <p class="notification-prefs__section-desc">Control delivery channels for {{ group.label | lowercase }} alerts.</p>
-        </header>
+    <div class="notification-prefs__grid">
+      @for (group of grouped(); track group.category) {
+        <section class="cf-panel notification-prefs__section" [attr.aria-labelledby]="'prefs-' + group.category">
+          <header class="notification-prefs__section-header">
+            <h2 class="notification-prefs__section-title" [id]="'prefs-' + group.category">{{ group.label }}</h2>
+            <p class="notification-prefs__section-desc">Control delivery channels for {{ group.label | lowercase }} alerts.</p>
+          </header>
 
-        <div class="cf-table-responsive">
-          <table class="cf-table notification-prefs__table">
-            <thead>
-              <tr>
-                <th scope="col">Notification</th>
-                <th scope="col" class="notification-prefs__channel-col">In-app</th>
-                <th scope="col" class="notification-prefs__channel-col">Email</th>
-                <th scope="col" class="notification-prefs__channel-col">Push</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (pref of group.items; track pref.definition_code) {
+          <div class="cf-table-responsive">
+            <table class="cf-table notification-prefs__table">
+              <thead>
                 <tr>
-                  <td>
-                    <span class="notification-prefs__label">{{ definitionLabel(pref.definition_code) }}</span>
-                    @if (pref.mandatory) {
-                      <app-status-badge label="Required" tone="info"></app-status-badge>
-                    }
-                  </td>
-                  <td class="notification-prefs__channel-col">
-                    <label class="notification-prefs__toggle">
-                      <span class="sr-only">In-app for {{ definitionLabel(pref.definition_code) }}</span>
-                      <input
-                        type="checkbox"
-                        [checked]="pref.in_app"
-                        [disabled]="pref.mandatory"
-                        (change)="toggle(pref, 'in_app')"
-                      />
-                    </label>
-                  </td>
-                  <td class="notification-prefs__channel-col">
-                    <label class="notification-prefs__toggle">
-                      <span class="sr-only">Email for {{ definitionLabel(pref.definition_code) }}</span>
-                      <input
-                        type="checkbox"
-                        [checked]="pref.email"
-                        [disabled]="pref.mandatory"
-                        (change)="toggle(pref, 'email')"
-                      />
-                    </label>
-                  </td>
-                  <td class="notification-prefs__channel-col">
-                    <label class="notification-prefs__toggle" title="Push notifications coming soon">
-                      <span class="sr-only">Push for {{ definitionLabel(pref.definition_code) }} (coming soon)</span>
-                      <input type="checkbox" [checked]="pref.push" disabled />
-                    </label>
-                  </td>
+                  <th scope="col">Notification</th>
+                  <th scope="col" class="notification-prefs__channel-col">In-app</th>
+                  <th scope="col" class="notification-prefs__channel-col">Email</th>
+                  <th scope="col" class="notification-prefs__channel-col">Push</th>
                 </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-      </section>
-    }
+              </thead>
+              <tbody>
+                @for (pref of group.items; track pref.definition_code) {
+                  <tr>
+                    <td>
+                      <span class="notification-prefs__label">{{ definitionLabel(pref.definition_code) }}</span>
+                      @if (pref.mandatory) {
+                        <app-status-badge label="Required" tone="info"></app-status-badge>
+                      }
+                    </td>
+                    <td class="notification-prefs__channel-col">
+                      <label class="notification-prefs__toggle">
+                        <span class="sr-only">In-app for {{ definitionLabel(pref.definition_code) }}</span>
+                        <input
+                          type="checkbox"
+                          [checked]="pref.in_app"
+                          [disabled]="pref.mandatory"
+                          (change)="toggle(pref, 'in_app')"
+                        />
+                      </label>
+                    </td>
+                    <td class="notification-prefs__channel-col">
+                      <label class="notification-prefs__toggle">
+                        <span class="sr-only">Email for {{ definitionLabel(pref.definition_code) }}</span>
+                        <input
+                          type="checkbox"
+                          [checked]="pref.email"
+                          [disabled]="pref.mandatory"
+                          (change)="toggle(pref, 'email')"
+                        />
+                      </label>
+                    </td>
+                    <td class="notification-prefs__channel-col">
+                      <label class="notification-prefs__toggle" title="Push notifications coming soon">
+                        <span class="sr-only">Push for {{ definitionLabel(pref.definition_code) }} (coming soon)</span>
+                        <input type="checkbox" [checked]="pref.push" disabled />
+                      </label>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+        </section>
+      }
+    </div>
 
     <div class="notification-prefs__footer">
       <button type="button" class="cf-btn cf-btn-primary" [disabled]="saving()" (click)="save()">

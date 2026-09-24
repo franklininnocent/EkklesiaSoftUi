@@ -1,6 +1,6 @@
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
 
-export type CfIconAction = 'view' | 'print';
+export type CfIconAction = 'view' | 'print' | 'void' | 'reissue';
 
 @Component({
   selector: 'app-cf-icon-action-button',
@@ -11,7 +11,10 @@ export type CfIconAction = 'view' | 'print';
       class="cf-icon-btn"
       [class.cf-icon-btn--view]="action === 'view'"
       [class.cf-icon-btn--print]="action === 'print'"
+      [class.cf-icon-btn--void]="action === 'void'"
+      [class.cf-icon-btn--reissue]="action === 'reissue'"
       [class.cf-icon-btn--sm]="size === 'sm'"
+      [class.cf-icon-btn--labeled]="label"
       [disabled]="disabled"
       [attr.aria-label]="ariaLabel"
       [attr.title]="title || ariaLabel"
@@ -51,6 +54,41 @@ export type CfIconAction = 'view' | 'print';
             <rect x="6" y="14" width="12" height="8"></rect>
           </svg>
         }
+        @case ('void') {
+          <svg
+            class="cf-icon-btn__icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+          </svg>
+        }
+        @case ('reissue') {
+          <svg
+            class="cf-icon-btn__icon"
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+        }
+      }
+      @if (label) {
+        <span class="cf-icon-btn__label">{{ label }}</span>
       }
     </button>
   `,
@@ -61,6 +99,7 @@ export class CfIconActionButtonComponent {
   @Input({ required: true }) action!: CfIconAction;
   @Input({ required: true }) ariaLabel!: string;
   @Input() title = '';
+  @Input() label = '';
   @Input() size: 'sm' | 'md' = 'md';
   @Input() disabled = false;
 

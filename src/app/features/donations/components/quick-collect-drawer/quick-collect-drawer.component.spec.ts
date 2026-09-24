@@ -6,6 +6,7 @@ import { DonationsService } from '../../services/donations.service';
 import { QuickCollectService } from '../../services/quick-collect.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
 import { ToastService } from '@core/services/toast.service';
+import { localDateOnly } from '../../utils/local-date-only';
 
 describe('QuickCollectDrawerComponent', () => {
   let component: QuickCollectDrawerComponent;
@@ -61,6 +62,54 @@ describe('QuickCollectDrawerComponent', () => {
     expect(component.isOpen).toBe(true);
     expect(donationsService.getFunds).toHaveBeenCalled();
     expect(donationsService.getPayments).toHaveBeenCalled();
+  });
+
+  it('shows recent payments with date and time labels', () => {
+    donationsService.getPayments.mockReturnValue(of({
+      success: true,
+      data: {
+        data: [
+          {
+            id: 'pay-1',
+            family: { family_name: 'Adam Hutchinson' },
+            amount: 100,
+            method: 'cash',
+            created_at: '2026-09-24T16:00:00',
+            status: 'completed'
+          },
+          {
+            id: 'pay-2',
+            family: { family_name: 'Smith Family' },
+            amount: 250,
+            method: 'upi',
+            created_at: '2026-09-23T09:05:00',
+            status: 'completed'
+          }
+        ],
+        current_page: 1,
+        last_page: 1,
+        total: 2
+      }
+    } as any));
+
+    const fixture = TestBed.createComponent(QuickCollectDrawerComponent);
+    fixture.detectChanges();
+    quickCollectService.open();
+    fixture.detectChanges();
+
+    const today = localDateOnly();
+    expect(donationsService.getPayments).toHaveBeenCalledWith(expect.objectContaining({
+      payment_date_from: today,
+      payment_date_to: today,
+      per_page: '8'
+    }));
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('24 Sep 2026, 04:00 PM');
+    expect(text).toContain('23 Sep 2026, 09:05 AM');
+    expect(text).toContain('Cash');
+    expect(text).toContain('UPI');
+    expect(fixture.componentInstance.activityRows).toHaveLength(2);
   });
 
   it('maps UPI to online_placeholder when recording payment', () => {

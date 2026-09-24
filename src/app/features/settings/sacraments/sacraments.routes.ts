@@ -29,6 +29,7 @@ export const SACRAMENTS_ROUTES: Routes = [
   },
   {
     path: 'register',
+    data: { breadcrumbLabel: 'Register' },
     loadComponent: () =>
       import('./components/sacrament-list/sacrament-list.component').then(
         (m) => m.SacramentListComponent
@@ -36,6 +37,7 @@ export const SACRAMENTS_ROUTES: Routes = [
   },
   {
     path: 'migration',
+    data: { breadcrumbLabel: 'Name links' },
     loadComponent: () =>
       import('./components/migration-queue/sacrament-migration-queue.component').then(
         (m) => m.SacramentMigrationQueueComponent
@@ -61,6 +63,7 @@ export const SACRAMENTS_ROUTES: Routes = [
   },
   {
     path: 'view/:id',
+    data: { breadcrumbLabel: 'Record' },
     loadComponent: () =>
       import('./components/sacrament-detail/sacrament-detail.component').then(
         (m) => m.SacramentDetailComponent

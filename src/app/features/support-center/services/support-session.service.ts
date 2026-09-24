@@ -393,16 +393,24 @@ export class SupportSessionService {
   }
 
   listGrants(filters: {
+    q?: string;
     status?: string;
     tenant_id?: number;
+    allowed_mode?: string;
     per_page?: number;
   } = {}): Observable<PaginatedPayload<SupportAccessGrant>> {
     let params = new HttpParams();
+    if (filters.q) {
+      params = params.set('q', filters.q);
+    }
     if (filters.status) {
       params = params.set('status', filters.status);
     }
     if (filters.tenant_id) {
       params = params.set('tenant_id', String(filters.tenant_id));
+    }
+    if (filters.allowed_mode) {
+      params = params.set('allowed_mode', filters.allowed_mode);
     }
     params = params.set('per_page', String(filters.per_page || 50));
 

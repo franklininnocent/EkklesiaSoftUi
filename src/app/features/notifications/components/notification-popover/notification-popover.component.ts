@@ -101,6 +101,10 @@ export class NotificationPopoverComponent implements OnDestroy {
     this.deactivateFocus();
   }
 
+  retryRecent(): void {
+    this.inbox.loadRecent();
+  }
+
   unreadLabel(): string {
     const count = this.inbox.unreadCount();
     if (count > 99) {

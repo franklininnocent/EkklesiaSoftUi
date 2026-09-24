@@ -93,7 +93,7 @@ export const SETTINGS_ROUTES: Routes = [
   },
   {
     path: 'default-seeds',
-    data: { breadcrumbLabel: 'Default Seeds' },
+    data: { breadcrumbLabel: 'Recommended defaults' },
     loadComponent: () =>
       import('./default-seeds/default-seeds.page').then((m) => m.DefaultSeedsPage),
   },

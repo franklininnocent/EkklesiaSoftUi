@@ -1,4 +1,4 @@
-export type StewardshipWorkspaceId = 'leadership' | 'collect' | 'families' | 'projects' | 'configure';
+export type StewardshipWorkspaceId = 'leadership' | 'collect' | 'projects' | 'configure';
 
 export interface StewardshipNavLink {
   path: string;
@@ -35,15 +35,7 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
       { path: '/donations/collection-day', label: 'Collection Day', description: 'Live collection workspace' },
       { path: '/donations/payments', label: 'Payment Register', description: 'All recorded payments' },
       { path: '/donations/register', label: "Today's Register", description: 'Today’s collection log' },
-      { path: '/donations/receipts', label: 'Receipts', description: 'Receipt hub and printing' }
-    ]
-  },
-  {
-    id: 'families',
-    label: 'Families',
-    hint: 'Outstanding & directory',
-    links: [
-      { path: '/families', label: 'Family Directory', description: 'Browse parish families' },
+      { path: '/donations/receipts', label: 'Receipts', description: 'Receipt hub and printing' },
       { path: '/donations/dues', label: 'Outstanding Contributions', description: 'Overdue and open balances' },
       { path: '/donations/donors', label: 'Donors', description: 'Contributor directory' }
     ]
@@ -74,11 +66,15 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
 ];
 
 export function resolveStewardshipWorkspace(path: string): StewardshipWorkspaceId {
-  if (matchesAny(path, ['/donations/payments', '/donations/register', '/donations/receipts', '/donations/collection-day'])) {
+  if (matchesAny(path, [
+    '/donations/payments',
+    '/donations/register',
+    '/donations/receipts',
+    '/donations/collection-day',
+    '/donations/dues',
+    '/donations/donors'
+  ])) {
     return 'collect';
-  }
-  if (matchesAny(path, ['/donations/dues', '/donations/donors', '/families'])) {
-    return 'families';
   }
   if (matchesAny(path, ['/donations/projects', '/donations/campaigns', '/donations/project-installments'])) {
     return 'projects';

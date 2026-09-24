@@ -50,7 +50,7 @@ export class SubscriptionAccessService {
   readonly canViewGatedModules = computed(() => {
     const snap = this.snapshotSignal();
     if (!snap) {
-      return true;
+      return false;
     }
     return !!snap.allows_gated_access;
   });
@@ -115,11 +115,11 @@ export class SubscriptionAccessService {
   }
 
   private applySnapshot(snap: SubscriptionAccessSnapshot | null, tenantId: number | null): void {
-    this.snapshotSubject.next(snap);
     this.snapshotSignal.set(snap);
     this.loadedForTenantId = snap ? tenantId : null;
     this.loadingSubject.next(false);
     this.loadingSignal.set(false);
+    this.snapshotSubject.next(snap);
   }
 
   private startPollingIfNeeded(): void {

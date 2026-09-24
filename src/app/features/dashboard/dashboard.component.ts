@@ -28,6 +28,8 @@ import {
   MinistriesAuditLogEntry,
   MinistriesDashboardSummary,
 } from '@features/ministries-associations/models/ministries.model';
+import { TenantService } from '@core/services/tenant.service';
+import { TenantStatisticsResponse } from '@core/models/tenant.model';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { PastoralCareService } from '@features/pastoral-care/services/pastoral-care.service';
 import {
@@ -123,6 +125,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private pastoralCare = inject(PastoralCareService);
   private ministriesApi = inject(MinistriesApiService);
   private subscriptionAccess = inject(SubscriptionAccessService);
+  private tenantService = inject(TenantService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
@@ -135,6 +138,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   heroKpis: HeroKpi[] = [];
   registryState: DataLoadState = 'idle';
   bccStatsState: DataLoadState = 'idle';
+  platformStatsState: DataLoadState = 'idle';
+  platformStats: TenantStatisticsResponse['data'] | null = null;
+  private platformStatsUserId: number | null = null;
   familyStats: FamilyStatistics | null = null;
   activeFamilies = 0;
   activeMembers = 0;
@@ -284,13 +290,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
     const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
     // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:refreshDashboardAccess',message:'refreshDashboardAccess',data:{userPresent:!!user,tenantId:user?.tenant_id ?? null,hasTenantContext,canDonations:hasTenantContext && this.authService.canAccessDonations(user,{hasActiveSupportSession}),willLoadStats:hasTenantContext},hypothesisId:'H1',runId:'post-fix-v2',timestamp:Date.now()})}).catch(()=>{});
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bd4ad4'},body:JSON.stringify({sessionId:'bd4ad4',location:'dashboard.component.ts:refreshDashboardAccess',message:'dashboard access resolved',data:{userPresent:!!user,tenantId:user?.tenant_id ?? null,hasTenantContext,canManageTenants:!!user && this.authService.canManageTenants(user),willLoadParishStats:hasTenantContext,willLoadPlatformStats:!hasTenantContext && !!user && this.authService.canManageTenants(user)},hypothesisId:'H6',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
     // #endregion
 
     if (hasTenantContext) {
+      this.platformStats = null;
+      this.platformStatsState = 'idle';
+      this.platformStatsUserId = null;
       this.loadFamilyStatistics();
       this.loadBccStatistics();
+    } else if (user && this.authService.canManageTenants(user)) {
+      this.registryState = 'idle';
+      this.bccStatsState = 'idle';
+      this.loadPlatformStatistics(user.id);
     } else {
+      this.platformStats = null;
+      this.platformStatsState = 'idle';
+      this.platformStatsUserId = null;
       this.registryState = 'idle';
       this.bccStatsState = 'idle';
       this.rebuildHeroKpis();
@@ -464,6 +480,57 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.loadFamilyStatistics();
   }
 
+  retryPlatformStatistics(): void {
+    const userId = this.platformStatsUserId;
+    this.platformStatsUserId = null;
+    this.platformStatsState = 'idle';
+    if (userId != null) {
+      this.loadPlatformStatistics(userId);
+    }
+  }
+
+  private loadPlatformStatistics(userId: number): void {
+    if (
+      this.platformStatsUserId === userId
+      && (this.platformStatsState === 'loading' || this.platformStatsState === 'ready')
+    ) {
+      return;
+    }
+
+    this.platformStatsUserId = userId;
+    this.platformStatsState = 'loading';
+    this.rebuildHeroKpis();
+    this.cdr.markForCheck();
+
+    this.tenantService.getStatistics()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.platformStats = response.data;
+            this.platformStatsState = 'ready';
+          } else {
+            this.platformStats = null;
+            this.platformStatsState = 'error';
+          }
+          // #region agent log
+          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bd4ad4'},body:JSON.stringify({sessionId:'bd4ad4',location:'dashboard.component.ts:loadPlatformStatistics',message:'platform tenant statistics',data:{success:!!response?.success,total:response?.data?.total_tenants ?? null,active:response?.data?.active_tenants ?? null,trial:response?.data?.in_trial ?? null,state:this.platformStatsState},hypothesisId:'H6',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          this.rebuildHeroKpis();
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.platformStats = null;
+          this.platformStatsState = 'error';
+          // #region agent log
+          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bd4ad4'},body:JSON.stringify({sessionId:'bd4ad4',location:'dashboard.component.ts:loadPlatformStatistics',message:'platform tenant statistics failed',data:{status:err?.status ?? null},hypothesisId:'H6',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
+          // #endregion
+          this.rebuildHeroKpis();
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
   private setupFinancialHubLoader(): void {
     this.financialLoad$.pipe(
       switchMap(() => {
@@ -528,9 +595,39 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private rebuildHeroKpis(): void {
     const kpis: HeroKpi[] = [];
 
-    if (this.registryState === 'loading' || this.registryState === 'idle') {
+    if (this.platformStatsState === 'loading') {
+      kpis.push(this.buildPlaceholderKpi('active-churches', 'Active churches', 'indigo'));
+      kpis.push(this.buildPlaceholderKpi('churches', 'Churches', 'amber'));
+    } else if (this.platformStatsState === 'ready' && this.platformStats) {
+      kpis.push({
+        id: 'active-churches',
+        label: 'Active churches',
+        value: this.formatCompactNumber(this.platformStats.active_tenants),
+        sublabel: `${this.formatCompactNumber(this.platformStats.total_tenants)} churches`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'indigo',
+        sparkline: [],
+      });
+      kpis.push({
+        id: 'churches-trial',
+        label: 'In trial',
+        value: this.formatCompactNumber(this.platformStats.in_trial),
+        sublabel: `${this.formatCompactNumber(this.platformStats.subscribed)} subscribed`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'amber',
+        sparkline: [],
+      });
+    } else if (this.platformStatsState === 'error') {
+      kpis.push(this.buildErrorKpi('active-churches', 'Active churches', 'indigo'));
+      kpis.push(this.buildErrorKpi('churches', 'Churches', 'amber'));
+    } else if (this.registryState === 'loading') {
       kpis.push(this.buildPlaceholderKpi('active-families', 'Active Families', 'indigo'));
       kpis.push(this.buildPlaceholderKpi('active-members', 'Active Members', 'amber'));
+    } else if (this.registryState === 'idle') {
+      kpis.push(this.buildIdleKpi('active-families', 'Active Families', 'indigo'));
+      kpis.push(this.buildIdleKpi('active-members', 'Active Members', 'amber'));
     } else if (this.registryState === 'error') {
       kpis.push(this.buildErrorKpi('active-families', 'Active Families', 'indigo'));
       kpis.push(this.buildErrorKpi('active-members', 'Active Members', 'amber'));
@@ -578,6 +675,23 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
 
     this.heroKpis = kpis;
+  }
+
+  private buildIdleKpi(
+    id: string,
+    label: string,
+    accent: HeroKpi['accent']
+  ): HeroKpi {
+    return {
+      id,
+      label,
+      value: '—',
+      sublabel: 'Open a church to see counts',
+      change: '—',
+      trend: 'neutral',
+      accent,
+      sparkline: [],
+    };
   }
 
   private buildPlaceholderKpi(
