@@ -6,8 +6,11 @@
   --cf-font-serif: Georgia, "Times New Roman", serif;
 
   --cf-slate-900: #0f172a;
+  --cf-slate-800: #1e293b;
   --cf-slate-700: #334155;
+  --cf-slate-600: #475569;
   --cf-slate-500: #64748b;
+  --cf-slate-400: #94a3b8;
   --cf-slate-300: #cbd5e1;
   --cf-slate-200: #e2e8f0;
   --cf-slate-100: #f1f5f9;
@@ -36,8 +39,36 @@
   --cf-panel-border: var(--cf-slate-200);
   --cf-muted: var(--cf-slate-500);
   --cf-primary: #2563eb;
+  --cf-primary-hover: #1d4ed8;
+  --cf-primary-active: #1e40af;
   --cf-primary-soft: var(--cf-indigo-soft);
+  --cf-primary-subtle: #eff6ff;
   --cf-overlay-bg: rgba(15, 23, 42, 0.45);
+
+  --cf-focus-ring: var(--cf-primary);
+  --cf-focus-ring-width: 2px;
+  --cf-focus-ring-offset: 2px;
+
+  --cf-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --cf-shadow-sm: var(--cf-shadow);
+  --cf-shadow-md: 0 4px 6px rgba(15, 23, 42, 0.07);
+
+  --cf-duration-fast: 150ms;
+  --cf-duration-base: 200ms;
+  --cf-duration-slow: 300ms;
+  --cf-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --cf-bp-sm: 480px;
+  --cf-bp-md: 768px;
+  --cf-bp-lg: 1024px;
+
+  --cf-shell-sidebar-width: 16.5rem;
+  --cf-shell-sidebar-width-collapsed: 4.5rem;
+  --cf-shell-topbar-height: 52px;
+  --cf-shell-topbar-height-tablet: 48px;
+  --cf-shell-topbar-height-mobile: 44px;
+
+  --cf-color-text-on-dark: #ffffff;
 
   /*
    * Popup / modal system — single source of truth for centered dialogs.
