@@ -148,7 +148,7 @@
     border: 2px solid white;
     box-shadow: 0 2px 4px rgba(251, 191, 36, 0.5);
     z-index: 2;
-    animation: pulse 2s ease-in-out infinite;
+    animation: btn-badge-pulse 2s ease-in-out infinite;
   }
 }
 
@@ -161,7 +161,7 @@
   }
 }
 
-@keyframes pulse {
+@keyframes btn-badge-pulse {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.15); }
 }
