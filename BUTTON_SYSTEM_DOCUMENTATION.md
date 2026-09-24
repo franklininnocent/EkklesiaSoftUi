@@ -1,5 +1,7 @@
 # Enterprise-Level Standardized Button System
 
+> **Deprecated.** New code uses `.cf-btn` — see [docs/design-system/buttons.md](../docs/design-system/buttons.md). This system is scheduled for retirement ([migration guide](../docs/design-system/migration-guide.md)).
+
 ## Overview
 
 This document describes the comprehensive, enterprise-level button system implemented across the entire EkklesiaSoft application. All buttons follow consistent design, styling, animations, and behavior to ensure a professional, cohesive user experience.

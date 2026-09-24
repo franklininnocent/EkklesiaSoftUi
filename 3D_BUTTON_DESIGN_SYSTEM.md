@@ -1,5 +1,7 @@
 # 3D Button Design System Documentation
 
+> **Deprecated.** New code uses `.cf-btn` — see [docs/design-system/buttons.md](../docs/design-system/buttons.md). This system is scheduled for retirement ([migration guide](../docs/design-system/migration-guide.md)).
+
 ## Overview
 
 This document describes the **premium 3D button design system** implemented across the Roles & Permissions module. Each action button features unique color-coded backgrounds, depth effects, and glossy finishes that create a modern, professional, and visually engaging interface.
