@@ -1,0 +1,726 @@
+{
+  "total": 7122,
+  "files": {
+    "src/_professional-theme.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 12,
+      "function-disallowed-list": 12
+    },
+    "src/app/features/application-access/components/application-access-investigation-modal/application-access-investigation-modal.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 9
+    },
+    "src/app/features/application-access/components/application-access-live-feed/application-access-live-feed.component.scss": {
+      "color-no-hex": 6,
+      "declaration-property-value-disallowed-list": 6
+    },
+    "src/app/features/application-access/pages/application-access.page.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 8
+    },
+    "src/app/features/auth/login/login.component.scss": {
+      "color-no-hex": 6,
+      "declaration-property-value-disallowed-list": 2
+    },
+    "src/app/features/auth/register/register.component.scss": {
+      "color-no-hex": 3
+    },
+    "src/app/features/bcc-management/components/bcc-detail-modal/bcc-detail-modal.component.scss": {
+      "declaration-property-value-disallowed-list": 5
+    },
+    "src/app/features/bcc-management/components/bcc-form/bcc-form.scss": {
+      "function-disallowed-list": 1
+    },
+    "src/app/features/bcc-management/components/bcc-leadership-tab/bcc-leadership-tab.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 24,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/bcc-management/components/bcc-list/bcc-list.scss": {
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/features/bcc-management/components/bcc-members-tab/bcc-members-tab.component.scss": {
+      "declaration-property-value-disallowed-list": 5
+    },
+    "src/app/features/bcc-management/components/bcc-overview-tab/bcc-overview-tab.component.scss": {
+      "declaration-property-value-disallowed-list": 19
+    },
+    "src/app/features/bcc-management/pages/bcc-dashboard.page.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 36,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/bcc-management/pages/bcc-detail.page.scss": {
+      "declaration-property-value-disallowed-list": 22
+    },
+    "src/app/features/dashboard/dashboard.component.scss": {
+      "color-no-hex": 51,
+      "declaration-property-value-disallowed-list": 149,
+      "function-disallowed-list": 3
+    },
+    "src/app/features/donations/dashboard/components/foc-collection-health-kpi/foc-collection-health-kpi.component.scss": {
+      "color-no-hex": 19,
+      "declaration-property-value-disallowed-list": 9,
+      "function-disallowed-list": 9
+    },
+    "src/app/features/donations/dashboard/components/foc-command-bar/foc-command-bar.component.scss": {
+      "color-no-hex": 22,
+      "declaration-property-value-disallowed-list": 38,
+      "function-disallowed-list": 25
+    },
+    "src/app/features/donations/dashboard/components/foc-expense-modal/foc-expense-modal.component.scss": {
+      "color-no-hex": 43,
+      "declaration-property-value-disallowed-list": 41,
+      "function-disallowed-list": 15
+    },
+    "src/app/features/donations/dashboard/components/foc-workspace-menu/foc-workspace-menu.component.scss": {
+      "color-no-hex": 84,
+      "declaration-property-value-disallowed-list": 48,
+      "function-disallowed-list": 9
+    },
+    "src/app/features/donations/dashboard/styles/financial-command-center.scss": {
+      "color-no-hex": 28,
+      "declaration-property-value-disallowed-list": 48,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/donations/pages/collection-day.component.scss": {
+      "color-no-hex": 61,
+      "declaration-property-value-disallowed-list": 101,
+      "function-disallowed-list": 17
+    },
+    "src/app/features/donations/pages/collection-health-center.page.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 19
+    },
+    "src/app/features/donations/pages/donations-categories.component.scss": {
+      "color-no-hex": 6,
+      "declaration-property-value-disallowed-list": 1,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/donations/pages/donations-expenses.component.scss": {
+      "color-no-hex": 3,
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/donations/pages/donations-history.component.scss": {
+      "declaration-property-value-disallowed-list": 25,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/donations/pages/donations-plans.component.scss": {
+      "color-no-hex": 5,
+      "declaration-property-value-disallowed-list": 36,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/donations/pages/donations-projects.component.scss": {
+      "color-no-hex": 7,
+      "declaration-property-value-disallowed-list": 29,
+      "function-disallowed-list": 3
+    },
+    "src/app/features/donations/pages/donations-recurring.component.scss": {
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/donations/styles/stewardship-split-layout.scss": {
+      "color-no-hex": 6,
+      "declaration-property-value-disallowed-list": 45,
+      "function-disallowed-list": 5
+    },
+    "src/app/features/family-management/components/bcc-transfer-modal/bcc-transfer-modal.component.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 8
+    },
+    "src/app/features/family-management/components/enroll-from-family-modal/enroll-from-family-modal.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/family-management/components/family-affiliations-panel/family-affiliations-panel.component.scss": {
+      "color-no-hex": 40,
+      "declaration-property-value-disallowed-list": 28,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/family-management/components/family-detail/family-detail.scss": {
+      "color-no-hex": 182,
+      "declaration-property-value-disallowed-list": 163,
+      "function-disallowed-list": 92
+    },
+    "src/app/features/family-management/components/family-form/family-form.scss": {
+      "color-no-hex": 172,
+      "declaration-property-value-disallowed-list": 103,
+      "function-disallowed-list": 18
+    },
+    "src/app/features/family-management/components/family-head-profile-block/family-head-profile-block.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/family-management/components/family-list/family-list.scss": {
+      "color-no-hex": 10,
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/family-management/components/family-member-detail-panel/family-member-detail-panel.component.scss": {
+      "color-no-hex": 18,
+      "declaration-property-value-disallowed-list": 9,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/family-management/components/family-member-detail-panel/member-sacrament-detail.component.scss": {
+      "color-no-hex": 22,
+      "declaration-property-value-disallowed-list": 12
+    },
+    "src/app/features/family-management/components/family-member-form-modal/family-member-form-modal.component.scss": {
+      "function-disallowed-list": 1
+    },
+    "src/app/features/family-management/components/family-nav-search/family-nav-search.component.scss": {
+      "color-no-hex": 13,
+      "declaration-property-value-disallowed-list": 7
+    },
+    "src/app/features/family-management/components/family-relationship-navigator/family-relationship-navigator.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 3,
+      "function-disallowed-list": 3
+    },
+    "src/app/features/family-management/components/family-summary-card/family-summary-card.component.scss": {
+      "color-no-hex": 17,
+      "declaration-property-value-disallowed-list": 8,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/family-management/components/family-transition-history-panel/family-transition-history-panel.component.scss": {
+      "color-no-hex": 7,
+      "declaration-property-value-disallowed-list": 8
+    },
+    "src/app/features/family-management/components/marriage-household-modal/marriage-household-modal.component.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 11
+    },
+    "src/app/features/family-management/components/member-nav-row/member-nav-row.component.scss": {
+      "color-no-hex": 43,
+      "declaration-property-value-disallowed-list": 7,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/family-management/components/parent-person-autocomplete/parent-person-autocomplete.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 6,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/family-management/components/sacrament-edit-modal/sacrament-edit-modal.component.scss": {
+      "color-no-hex": 28,
+      "declaration-property-value-disallowed-list": 17,
+      "function-disallowed-list": 15
+    },
+    "src/app/features/family-management/styles/_family-head-card.scss": {
+      "color-no-hex": 54,
+      "declaration-property-value-disallowed-list": 56,
+      "function-disallowed-list": 41
+    },
+    "src/app/features/family-management/styles/_hierarchy-group.scss": {
+      "color-no-hex": 27,
+      "declaration-property-value-disallowed-list": 5,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/family-management/styles/_profile-sections.scss": {
+      "color-no-hex": 53,
+      "declaration-property-value-disallowed-list": 34
+    },
+    "src/app/features/members/components/member-list/member-list.component.scss": {
+      "color-no-hex": 11,
+      "declaration-property-value-disallowed-list": 12
+    },
+    "src/app/features/ministries-associations/components/member-history-detail-modal/member-history-detail-modal.component.scss": {
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/features/ministries-associations/components/membership-status-modal/membership-status-modal.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/ministries-associations/pages/organization-detail.page.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 20,
+      "function-disallowed-list": 7
+    },
+    "src/app/features/ministries-insights/pages/analytics.page.scss": {
+      "color-no-hex": 29,
+      "declaration-property-value-disallowed-list": 16,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/ministries-insights/pages/ministries-insights-shell.page.scss": {
+      "color-no-hex": 4
+    },
+    "src/app/features/ministries-insights/pages/organizations.page.scss": {
+      "color-no-hex": 3,
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/features/ministries-insights/pages/overview.page.scss": {
+      "color-no-hex": 18,
+      "declaration-property-value-disallowed-list": 14,
+      "function-disallowed-list": 3
+    },
+    "src/app/features/ministries-insights/pages/reports.page.scss": {
+      "color-no-hex": 6,
+      "declaration-property-value-disallowed-list": 7
+    },
+    "src/app/features/ministries-insights/pages/tenant-detail.page.scss": {
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/ministries-insights/pages/tenants.page.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/notifications/components/notification-bell/notification-bell.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/notifications/components/notification-list-item/notification-list-item.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 11
+    },
+    "src/app/features/notifications/components/notification-popover/notification-popover.component.scss": {
+      "declaration-property-value-disallowed-list": 6,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/notifications/pages/notification-center.page.scss": {
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/notifications/pages/notification-detail.page.scss": {
+      "declaration-property-value-disallowed-list": 13
+    },
+    "src/app/features/notifications/pages/notification-preferences.page.scss": {
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/features/pastoral-care/components/request-visit-modal/request-visit-modal.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/features/profile/components/change-password-modal/change-password-modal.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/profile/profile.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/settings/data-export/data-export.page.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 7
+    },
+    "src/app/features/settings/ecclesiastical/bishops/bishop-detail/bishop-detail.component.scss": {
+      "color-no-hex": 44,
+      "declaration-property-value-disallowed-list": 33,
+      "function-disallowed-list": 8
+    },
+    "src/app/features/settings/ecclesiastical/bishops/bishop-form-modal/bishop-form-modal.component.scss": {
+      "color-no-hex": 15,
+      "declaration-property-value-disallowed-list": 9,
+      "function-disallowed-list": 3
+    },
+    "src/app/features/settings/ecclesiastical/bishops/bishop-list/bishop-list.component.scss": {
+      "color-no-hex": 75,
+      "declaration-property-value-disallowed-list": 50,
+      "function-disallowed-list": 13
+    },
+    "src/app/features/settings/ecclesiastical/bishops/bishop-update-queue/bishop-update-queue.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 15
+    },
+    "src/app/features/settings/ecclesiastical/dioceses/appoint-successor-modal/appoint-successor-modal.component.scss": {
+      "color-no-hex": 6,
+      "declaration-property-value-disallowed-list": 8
+    },
+    "src/app/features/settings/ecclesiastical/dioceses/diocese-detail/diocese-detail.component.scss": {
+      "color-no-hex": 40,
+      "declaration-property-value-disallowed-list": 22,
+      "function-disallowed-list": 8
+    },
+    "src/app/features/settings/ecclesiastical/dioceses/diocese-form-modal/diocese-form-modal.component.scss": {
+      "color-no-hex": 10,
+      "declaration-property-value-disallowed-list": 7,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/settings/ecclesiastical/dioceses/diocese-list/diocese-list.component.scss": {
+      "color-no-hex": 64,
+      "declaration-property-value-disallowed-list": 43,
+      "function-disallowed-list": 10
+    },
+    "src/app/features/settings/ecclesiastical/ecclesiastical.component.scss": {
+      "color-no-hex": 7,
+      "declaration-property-value-disallowed-list": 6
+    },
+    "src/app/features/settings/ecclesiastical/overview/overview.component.scss": {
+      "color-no-hex": 70,
+      "declaration-property-value-disallowed-list": 38,
+      "function-disallowed-list": 9
+    },
+    "src/app/features/settings/ecclesiastical/pope-details/pope-details-management.component.scss": {
+      "color-no-hex": 18,
+      "declaration-property-value-disallowed-list": 3,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/settings/ecclesiastical/sacrament-types/components/sacrament-type-form/sacrament-type-form.component.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 7,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/settings/ecclesiastical/sacrament-types/components/sacrament-type-list/sacrament-type-list.component.scss": {
+      "color-no-hex": 64,
+      "declaration-property-value-disallowed-list": 29,
+      "function-disallowed-list": 4
+    },
+    "src/app/features/settings/forgot-password-requests/forgot-password-requests.page.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/settings/my-subscription/my-subscription.component.scss": {
+      "color-no-hex": 8,
+      "declaration-property-value-disallowed-list": 9
+    },
+    "src/app/features/settings/roles-permissions/assign-permissions-modal/assign-permissions-modal.component.scss": {
+      "color-no-hex": 57,
+      "declaration-property-value-disallowed-list": 46,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/settings/roles-permissions/role-form-modal/role-form-modal.component.scss": {
+      "color-no-hex": 5,
+      "declaration-property-value-disallowed-list": 18,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/settings/roles-permissions/role-permission-workspace/role-permission-workspace.component.scss": {
+      "color-no-hex": 25,
+      "declaration-property-value-disallowed-list": 40,
+      "function-disallowed-list": 6
+    },
+    "src/app/features/settings/roles-permissions/roles-permissions.component.scss": {
+      "color-no-hex": 86,
+      "declaration-property-value-disallowed-list": 73,
+      "function-disallowed-list": 62
+    },
+    "src/app/features/settings/sacrament-settings/sacrament-settings.page.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/holy-orders-form/holy-orders-form.component.scss": {
+      "color-no-hex": 10,
+      "declaration-property-value-disallowed-list": 17
+    },
+    "src/app/features/settings/sacraments/components/migration-queue/sacrament-migration-queue.component.scss": {
+      "declaration-property-value-disallowed-list": 1,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/sacrament-detail/sacrament-detail.component.scss": {
+      "color-no-hex": 95,
+      "declaration-property-value-disallowed-list": 94,
+      "function-disallowed-list": 17
+    },
+    "src/app/features/settings/sacraments/components/sacrament-form-modal/sacrament-form-modal.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 7,
+      "function-disallowed-list": 3
+    },
+    "src/app/features/settings/sacraments/components/sacrament-form/sacrament-form.component.scss": {
+      "color-no-hex": 80,
+      "declaration-property-value-disallowed-list": 49,
+      "function-disallowed-list": 50
+    },
+    "src/app/features/settings/sacraments/components/sacrament-list/sacrament-list.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 16
+    },
+    "src/app/features/settings/sacraments/components/sacraments-dashboard/sacraments-dashboard.component.scss": {
+      "color-no-hex": 65,
+      "declaration-property-value-disallowed-list": 16,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/shared/_sacrament-control-chrome.scss": {
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/features/settings/sacraments/components/shared/cf-field-provenance/cf-field-provenance.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/shared/church-affiliation-control/church-affiliation-control.component.scss": {
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/shared/correct-sacrament-dialog/correct-sacrament-dialog.component.scss": {
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/shared/marriage-party-panel/marriage-party-panel.component.scss": {
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/settings/sacraments/components/shared/minister-picker/minister-picker.component.scss": {
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/shared/missing-fields-summary/missing-fields-summary.component.scss": {
+      "color-no-hex": 3,
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/settings/sacraments/components/shared/participant-source-control/participant-source-control.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 6,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/settings/sacraments/components/shared/person-context-summary/person-context-summary.component.scss": {
+      "color-no-hex": 12,
+      "declaration-property-value-disallowed-list": 10
+    },
+    "src/app/features/settings/sacraments/components/shared/sacrament-conflict-panel/sacrament-conflict-panel.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 7
+    },
+    "src/app/features/settings/sacraments/components/shared/sacrament-evidence-summary/sacrament-evidence-summary.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 7
+    },
+    "src/app/features/settings/sacraments/components/shared/sacrament-review-panel/sacrament-review-panel.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 6
+    },
+    "src/app/features/settings/sacraments/components/shared/void-sacrament-dialog/void-sacrament-dialog.component.scss": {
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/settings/settings.component.scss": {
+      "color-no-hex": 22,
+      "declaration-property-value-disallowed-list": 18,
+      "function-disallowed-list": 10
+    },
+    "src/app/features/settings/subscription/subscription-management.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 5
+    },
+    "src/app/features/support-center/components/support-session-banner/support-session-banner.component.scss": {
+      "color-no-hex": 5,
+      "declaration-property-value-disallowed-list": 1,
+      "function-disallowed-list": 7
+    },
+    "src/app/features/support-center/components/support-ticket-catalog-panel/support-ticket-catalog-panel.component.scss": {
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/support/pages/support-dashboard.page.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/features/support/pages/support-ticket-detail.page.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 4
+    },
+    "src/app/features/tenants/church-profile/church-profile.component.scss": {
+      "color-no-hex": 67,
+      "declaration-property-value-disallowed-list": 390,
+      "function-disallowed-list": 241
+    },
+    "src/app/features/tenants/church-profile/components/bishop-report-update-wizard/bishop-report-update-wizard.component.scss": {
+      "color-no-hex": 19,
+      "declaration-property-value-disallowed-list": 16
+    },
+    "src/app/features/tenants/church-profile/components/church-leader-detail/church-leader-detail.component.scss": {
+      "color-no-hex": 45,
+      "declaration-property-value-disallowed-list": 25,
+      "function-disallowed-list": 4
+    },
+    "src/app/features/tenants/church-profile/components/church-leader-role-selector/church-leader-role-selector.component.scss": {
+      "color-no-hex": 33,
+      "declaration-property-value-disallowed-list": 18,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/tenants/church-profile/components/church-leader-workspace/church-leader-workspace.component.scss": {
+      "color-no-hex": 77,
+      "declaration-property-value-disallowed-list": 56,
+      "function-disallowed-list": 6
+    },
+    "src/app/features/tenants/church-profile/components/church-leadership-governance/church-leadership-governance.component.scss": {
+      "color-no-hex": 21,
+      "declaration-property-value-disallowed-list": 33,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/tenants/church-profile/components/church-leadership-table/church-leadership-table.component.scss": {
+      "color-no-hex": 58,
+      "declaration-property-value-disallowed-list": 27,
+      "function-disallowed-list": 2
+    },
+    "src/app/features/tenants/church-profile/components/diocesan-bishop-panel/diocesan-bishop-panel.component.scss": {
+      "color-no-hex": 29,
+      "declaration-property-value-disallowed-list": 32
+    },
+    "src/app/features/tenants/church-profile/components/leadership-role-combobox/leadership-role-combobox.component.scss": {
+      "color-no-hex": 21,
+      "declaration-property-value-disallowed-list": 18,
+      "function-disallowed-list": 1
+    },
+    "src/app/features/tenants/tenant-create-modal/tenant-create-modal.scss": {
+      "function-disallowed-list": 1
+    },
+    "src/app/features/tenants/tenant-detail/tenant-detail.component.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 2
+    },
+    "src/app/features/tenants/tenant-manager/tenant-manager.scss": {
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/features/users/user-form-modal/user-form-modal.component.scss": {
+      "color-no-hex": 8,
+      "declaration-property-value-disallowed-list": 20,
+      "function-disallowed-list": 3
+    },
+    "src/app/layout/main-layout/main-layout.component.scss": {
+      "color-no-hex": 23,
+      "declaration-property-value-disallowed-list": 15,
+      "function-disallowed-list": 22
+    },
+    "src/app/layout/sidebar-nav/sidebar-nav.styles.scss": {
+      "color-no-hex": 2,
+      "function-disallowed-list": 3
+    },
+    "src/app/shared/components/add-member-icon-button/add-member-icon-button.component.scss": {
+      "color-no-hex": 7,
+      "function-disallowed-list": 1
+    },
+    "src/app/shared/components/advanced-search-panel/advanced-search-panel.component.scss": {
+      "color-no-hex": 47,
+      "declaration-property-value-disallowed-list": 27,
+      "function-disallowed-list": 11
+    },
+    "src/app/shared/components/bishop-avatar/bishop-avatar.component.scss": {
+      "color-no-hex": 3
+    },
+    "src/app/shared/components/bishop-photo-control/bishop-photo-control.component.scss": {
+      "color-no-hex": 3,
+      "declaration-property-value-disallowed-list": 3,
+      "function-disallowed-list": 1
+    },
+    "src/app/shared/components/breadcrumb/breadcrumb.scss": {
+      "color-no-hex": 8
+    },
+    "src/app/shared/components/button/button.component.scss": {
+      "color-no-hex": 95,
+      "declaration-property-value-disallowed-list": 8,
+      "function-disallowed-list": 53
+    },
+    "src/app/shared/components/card/card.component.scss": {
+      "declaration-property-value-disallowed-list": 15
+    },
+    "src/app/shared/components/cf-datetime-field/cf-datetime-field.component.scss": {
+      "color-no-hex": 3,
+      "function-disallowed-list": 1
+    },
+    "src/app/shared/components/cf-icon-action-button/cf-icon-action-button.component.scss": {
+      "color-no-hex": 15,
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 2
+    },
+    "src/app/shared/components/cf-media-upload/cf-media-upload.component.scss": {
+      "color-no-hex": 9,
+      "declaration-property-value-disallowed-list": 4,
+      "function-disallowed-list": 1
+    },
+    "src/app/shared/components/confirmation-modal/confirmation-modal.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 1,
+      "function-disallowed-list": 2
+    },
+    "src/app/shared/components/edit-icon-button/edit-icon-button.component.scss": {
+      "color-no-hex": 10,
+      "function-disallowed-list": 8
+    },
+    "src/app/shared/components/empty-state/empty-state.component.scss": {
+      "color-no-hex": 13,
+      "declaration-property-value-disallowed-list": 8,
+      "function-disallowed-list": 1
+    },
+    "src/app/shared/components/filter-panel/filter-panel.component.scss": {
+      "color-no-hex": 36,
+      "declaration-property-value-disallowed-list": 26,
+      "function-disallowed-list": 5
+    },
+    "src/app/shared/components/image-viewer/image-viewer.component.scss": {
+      "color-no-hex": 4,
+      "declaration-property-value-disallowed-list": 3,
+      "function-disallowed-list": 4
+    },
+    "src/app/shared/components/input/input.component.scss": {
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 2
+    },
+    "src/app/shared/components/list-toolbar/list-toolbar.component.scss": {
+      "color-no-hex": 1
+    },
+    "src/app/shared/components/loading-skeleton/loading-skeleton.component.scss": {
+      "color-no-hex": 15,
+      "declaration-property-value-disallowed-list": 15
+    },
+    "src/app/shared/components/loading-spinner/loading-spinner.component.scss": {
+      "color-no-hex": 11,
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 1
+    },
+    "src/app/shared/components/modal-shell/modal-shell.component.scss": {
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 2
+    },
+    "src/app/shared/components/pagination/pagination.component.scss": {
+      "color-no-hex": 23,
+      "declaration-property-value-disallowed-list": 17,
+      "function-disallowed-list": 3
+    },
+    "src/app/shared/components/phone-input/phone-input.component.scss": {
+      "color-no-hex": 26,
+      "declaration-property-value-disallowed-list": 8,
+      "function-disallowed-list": 2
+    },
+    "src/app/shared/components/rich-text/rich-text-editor/rich-text-editor.component.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 22
+    },
+    "src/app/shared/components/rich-text/rich-text-viewer/rich-text-viewer.component.scss": {
+      "declaration-property-value-disallowed-list": 10
+    },
+    "src/app/shared/components/section-card/section-card.component.scss": {
+      "declaration-property-value-disallowed-list": 3
+    },
+    "src/app/shared/components/section-collapse-toggle/section-collapse-toggle.component.scss": {
+      "color-no-hex": 9,
+      "function-disallowed-list": 1
+    },
+    "src/app/shared/components/subscription-status-banner/subscription-status-banner.component.scss": {
+      "color-no-hex": 10,
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/shared/components/tab-strip/tab-strip.component.scss": {
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/app/shared/components/toast-container/toast-container.component.scss": {
+      "color-no-hex": 28,
+      "declaration-property-value-disallowed-list": 5,
+      "function-disallowed-list": 9
+    },
+    "src/app/shared/components/user-avatar/user-avatar.component.scss": {
+      "color-no-hex": 10
+    },
+    "src/app/shared/styles/_form-validation.scss": {
+      "color-no-hex": 21,
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 10
+    },
+    "src/app/shared/styles/_standardized-list.scss": {
+      "color-no-hex": 62,
+      "declaration-property-value-disallowed-list": 41,
+      "function-disallowed-list": 11
+    },
+    "src/app/shared/styles/_status-indicator.scss": {
+      "color-no-hex": 2,
+      "declaration-property-value-disallowed-list": 2,
+      "function-disallowed-list": 11
+    },
+    "src/styles.scss": {
+      "color-no-hex": 1,
+      "declaration-property-value-disallowed-list": 30,
+      "function-disallowed-list": 3
+    },
+    "src/styles/_button-system.scss": {
+      "color-no-hex": 87,
+      "declaration-property-value-disallowed-list": 3,
+      "function-disallowed-list": 31
+    },
+    "src/styles/_church-financial-os-mixins.scss": {
+      "declaration-property-value-disallowed-list": 1
+    },
+    "src/styles/animations.scss": {
+      "function-disallowed-list": 7
+    }
+  }
+}

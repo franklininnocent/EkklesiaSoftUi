@@ -1,0 +1,18 @@
+{
+  "customSyntax": "postcss-scss",
+  "rules": {
+    "color-no-hex": true,
+    "function-disallowed-list": ["rgb", "rgba", "hsl", "hsla"],
+    "declaration-property-value-disallowed-list": {
+      "/^(margin|padding)(-(top|right|bottom|left|inline|block)(-(start|end))?)?$|^(row-|column-)?gap$/": [
+        "/^(?!.*var\\().*(^|[\\s(])-?\\d*\\.?\\d+(px|rem|em)\\b/"
+      ]
+    }
+  },
+  "ignoreFiles": [
+    "src/styles/_church-financial-os-tokens.scss",
+    "src/styles/_cf-legacy-compat.scss",
+    "src/styles/certificate-tokens.scss",
+    "src/app/features/**/certificates/**"
+  ]
+}
