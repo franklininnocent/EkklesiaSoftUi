@@ -472,9 +472,42 @@
 // RESPONSIVE DESIGN
 // ============================================================================
 
+// Every class name the app renders that contains "btn-" — the exact set the
+// former `[class*="btn-"]` selector matched. Remove names as their screens
+// move to `.cf-btn`; do not add new ones. `.cf-btn` phone sizing lives in
+// `_church-financial-os-tokens.scss`.
+$legacy-touch-target-classes: (
+  'app-add-member-icon-btn--sm', 'app-edit-icon-btn--on-dark', 'app-edit-icon-btn--sm',
+  'btn-3d-delete', 'btn-3d-edit', 'btn-3d-mini', 'btn-3d-view', 'btn-action-inline',
+  'btn-activate', 'btn-add', 'btn-back', 'btn-cancel', 'btn-clear-all', 'btn-clear-all-chips',
+  'btn-close', 'btn-create', 'btn-create-inline', 'btn-danger', 'btn-deactivate', 'btn-delete',
+  'btn-edit', 'btn-expand', 'btn-export', 'btn-filter', 'btn-filters', 'btn-full', 'btn-icon',
+  'btn-icon-only', 'btn-import', 'btn-info', 'btn-lg', 'btn-link', 'btn-loading', 'btn-md',
+  'btn-outline', 'btn--primary', 'btn-primary', 'btn-refresh', 'btn-retry', 'btn-save',
+  'btn-search', 'btn-secondary', 'btn-sm', 'btn-spinner', 'btn-success', 'btn-toggle-search',
+  'btn-warning',
+  'cf-btn-danger', 'cf-btn--disabled', 'cf-btn-ghost', 'cf-btn-icon', 'cf-btn-link',
+  'cf-btn-primary', 'cf-btn-secondary', 'cf-btn--sm', 'cf-btn-sm', 'cf-btn--subtle', 'cf-btn-text',
+  'cf-icon-btn--labeled', 'cf-icon-btn--print', 'cf-icon-btn--reissue', 'cf-icon-btn--sm',
+  'cf-icon-btn--view', 'cf-icon-btn--void', 'cf-image-viewer__tool-btn--reset',
+  'cld__btn--danger', 'cld__btn--ghost', 'cld__btn--primary',
+  'clw__btn--ghost', 'clw__btn--primary', 'clw__btn--secondary',
+  'coc-btn--ghost', 'coc-btn--primary', 'coc-btn--subtle', 'cp-action-btn--primary',
+  'density-toggle__btn--active', 'em-action-btn--edit', 'em-action-btn--toggle',
+  'em-btn--outline', 'em-btn--primary', 'foc-btn--primary', 'foc-btn--subtle',
+  'foc-disb__btn--ghost', 'foc-disb__btn--primary', 'head-profile__text-btn--danger',
+  'page-btn-first', 'page-btn-last', 'page-btn-next', 'page-btn-prev',
+  'rich-text-editor__btn--active', 'rich-text-editor__btn--label', 'rich-text-editor__btn-text',
+  'template-btn--clear', 'tenant-manager__create-btn-wrap'
+);
+
+$legacy-touch-target-selector: '.btn-3d-base';
+@each $name in $legacy-touch-target-classes {
+  $legacy-touch-target-selector: '#{$legacy-touch-target-selector}, .#{$name}';
+}
+
 @media (max-width: 768px) {
-  .btn-3d-base,
-  [class*="btn-"] {
+  #{$legacy-touch-target-selector} {
     min-width: 44px;
     min-height: 44px;
     padding: 0.625rem;

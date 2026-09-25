@@ -178,6 +178,7 @@
   --cf-panel-pad: var(--cf-space-4);
 
   --cf-control-height: 2.25rem;
+  --cf-touch-target: 44px;
   --cf-control-pad-y: 0.35rem;
   --cf-control-pad-x: 0.6rem;
 
@@ -1930,5 +1931,25 @@ button.cf-btn-link,
 .cf-table__cell--truncate {
   @include cf-truncate;
   max-width: 0;
+}
+
+/* Phone touch targets. Compact (`--sm`, and the misspelt `cf-btn-sm` still in
+   some templates) and filter-bar buttons keep the control height so they stay
+   aligned with the inputs beside them. */
+@media (max-width: 768px) {
+  .cf-btn:not(.cf-btn--sm, .cf-btn-sm) {
+    min-height: var(--cf-touch-target);
+  }
+
+  .cf-btn-icon:not(.cf-btn--sm, .cf-btn-sm) {
+    width: var(--cf-touch-target);
+    height: var(--cf-touch-target);
+    min-height: var(--cf-touch-target);
+  }
+
+  .cf-filters .cf-btn,
+  .cf-filters .cf-btn-primary {
+    min-height: var(--cf-control-height);
+  }
 }
 
