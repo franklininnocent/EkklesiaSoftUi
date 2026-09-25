@@ -98,7 +98,7 @@
                     {{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}
                   </span>
                   <span class="cp-chip cp-chip--neutral" *ngIf="getFoundedYear()">Founded {{ getFoundedYear() }}</span>
-                  <span class="cp-chip cp-chip--plan">{{ (churchProfile.plan || 'basic') | titlecase }} Plan</span>
+                  <span class="cp-chip cp-chip--plan" *ngIf="churchProfile.plan">{{ churchProfile.plan | titlecase }} Plan</span>
                 </div>
               </div>
             </div>
@@ -366,7 +366,7 @@
             <div class="header-right">
               <button 
                 *ngIf="canEdit"
-                class="btn btn-primary" 
+                class="cf-btn cf-btn-primary" 
                 (click)="openNewStatisticModal()"
                 type="button"
                 title="Add new statistic">
@@ -426,7 +426,7 @@
             <p>Track membership, attendance, and church metrics over time.</p>
             <button 
               *ngIf="canEdit"
-              class="btn btn-primary" 
+              class="cf-btn cf-btn-primary" 
               (click)="openNewStatisticModal()"
               type="button"
               title="Add first statistic">
@@ -456,7 +456,7 @@
             <div class="header-right">
               <button 
                 *ngIf="canEdit"
-                class="btn btn-primary" 
+                class="cf-btn cf-btn-primary" 
                 (click)="openNewSocialModal()"
                 type="button"
                 title="Add new social media account">
@@ -528,7 +528,7 @@
             <p>Connect your church's social media presence.</p>
             <button 
               *ngIf="canEdit"
-              class="btn btn-primary" 
+              class="cf-btn cf-btn-primary" 
               (click)="openNewSocialModal()"
               type="button"
               title="Add first social media account">

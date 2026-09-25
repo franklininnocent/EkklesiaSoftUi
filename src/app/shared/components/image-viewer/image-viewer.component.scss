@@ -32,6 +32,11 @@
   z-index: 1;
 }
 
+.cf-image-viewer__spinner {
+  font-size: 2.5rem;
+  border-width: 3px;
+}
+
 .cf-image-viewer__error p {
   margin: 0;
   font-size: var(--cf-text-sm);

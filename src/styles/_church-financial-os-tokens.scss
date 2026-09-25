@@ -311,6 +311,19 @@
   }
 }
 
+/* Inline busy indicator, sized to the surrounding font. In a button, pair with
+   [disabled] and aria-busy while the action runs. */
+.cf-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
 .cf-btn-primary {
   border-color: transparent;
   background: var(--cf-primary);
@@ -319,6 +332,11 @@
   &:hover:not(:disabled) {
     filter: brightness(0.95);
     background: var(--cf-primary);
+  }
+
+  /* `.cf-btn:disabled` mutes the label, which is unreadable on the filled background. */
+  &:disabled {
+    color: #fff;
   }
 }
 
@@ -1779,6 +1797,7 @@
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    color: #fff;
   }
 }
 

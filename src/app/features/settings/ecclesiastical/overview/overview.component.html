@@ -2,7 +2,7 @@
   <app-page-header
     title="Ecclesiastical Data Management"
     subtitle="Comprehensive overview of dioceses, archdioceses, and bishops worldwide">
-    <button class="btn btn-secondary" (click)="refreshStatistics()" [disabled]="loading">
+    <button class="cf-btn" (click)="refreshStatistics()" [disabled]="loading">
       <span class="btn-icon">🔄</span>
       Refresh
     </button>
@@ -112,12 +112,13 @@
               </div>
             </div>
           </div>
-          <app-empty-state
+          <app-cf-empty-state
+            [hasActions]="false"
             *ngIf="!dioceseStats?.by_country || (dioceseStats?.by_country?.length || 0) === 0"
             icon="📊"
             title="No Data"
             description="No diocese distribution data available">
-          </app-empty-state>
+          </app-cf-empty-state>
         </div>
       </div>
 
@@ -141,12 +142,13 @@
               </div>
             </div>
           </div>
-          <app-empty-state
+          <app-cf-empty-state
+            [hasActions]="false"
             *ngIf="!dioceseStats?.by_denomination || (dioceseStats?.by_denomination?.length || 0) === 0"
             icon="📊"
             title="No Data"
             description="No denomination distribution data available">
-          </app-empty-state>
+          </app-cf-empty-state>
         </div>
       </div>
 
@@ -173,12 +175,13 @@
               </div>
             </div>
           </div>
-          <app-empty-state
+          <app-cf-empty-state
+            [hasActions]="false"
             *ngIf="!bishopStats?.by_title || (bishopStats?.by_title?.length || 0) === 0"
             icon="📊"
             title="No Data"
             description="No bishop title distribution data available">
-          </app-empty-state>
+          </app-cf-empty-state>
         </div>
       </div>
 
@@ -202,12 +205,13 @@
               </div>
             </div>
           </div>
-          <app-empty-state
+          <app-cf-empty-state
+            [hasActions]="false"
             *ngIf="!bishopStats?.by_diocese || (bishopStats?.by_diocese?.length || 0) === 0"
             icon="📊"
             title="No Data"
             description="No bishop-diocese distribution data available">
-          </app-empty-state>
+          </app-cf-empty-state>
         </div>
       </div>
     </div>
@@ -245,12 +249,13 @@
               </div>
             </div>
           </div>
-          <app-empty-state
+          <app-cf-empty-state
+            [hasActions]="false"
             *ngIf="!dioceseStats?.recent_additions || (dioceseStats?.recent_additions?.length || 0) === 0"
             icon="📝"
             title="No Recent Additions"
             description="No dioceses have been added recently">
-          </app-empty-state>
+          </app-cf-empty-state>
         </div>
       </div>
 
@@ -284,12 +289,13 @@
               </div>
             </div>
           </div>
-          <app-empty-state
+          <app-cf-empty-state
+            [hasActions]="false"
             *ngIf="!bishopStats?.recent_additions || (bishopStats?.recent_additions?.length || 0) === 0"
             icon="📝"
             title="No Recent Additions"
             description="No bishops have been added recently">
-          </app-empty-state>
+          </app-cf-empty-state>
         </div>
       </div>
     </div>
@@ -339,7 +345,7 @@
     <div class="error-icon">⚠️</div>
     <h3 class="error-title">Failed to Load Statistics</h3>
     <p class="error-message">{{ error }}</p>
-    <button class="btn btn-primary" (click)="refreshStatistics()">
+    <button class="cf-btn cf-btn-primary" (click)="refreshStatistics()">
       <span class="btn-icon">🔄</span>
       Try Again
     </button>

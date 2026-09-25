@@ -1,0 +1,50 @@
+// Phone touch targets for class names that predate `.cf-btn`.
+//
+// This is the subset of the former `[class*="btn-"]` selector that templates
+// still render. Remove names as their screens move to `.cf-btn`; do not add new
+// ones. `.cf-btn` phone sizing lives in `_church-financial-os-tokens.scss`.
+// Must load before the tokens file so `.cf-btn` padding keeps winning.
+// Only controls are sized: some names (`btn-icon`, `btn-spinner`) also sit on
+// icon and spinner spans inside buttons. `:where()` keeps specificity at one class.
+$legacy-touch-target-classes: (
+  'app-add-member-icon-btn--sm', 'app-edit-icon-btn--on-dark', 'app-edit-icon-btn--sm',
+  'btn-3d-delete', 'btn-3d-edit', 'btn-3d-mini', 'btn-3d-view',
+  'btn-clear-all', 'btn-clear-all-chips', 'btn-close', 'btn-danger', 'btn-expand', 'btn-icon',
+  'btn-primary', 'btn-spinner', 'btn-toggle-search', 'btn-warning',
+  'cf-btn-danger', 'cf-btn--disabled', 'cf-btn-ghost', 'cf-btn-icon', 'cf-btn-link',
+  'cf-btn-primary', 'cf-btn-secondary', 'cf-btn--sm', 'cf-btn-sm', 'cf-btn--subtle', 'cf-btn-text',
+  'cf-icon-btn--labeled', 'cf-icon-btn--print', 'cf-icon-btn--reissue', 'cf-icon-btn--sm',
+  'cf-icon-btn--view', 'cf-icon-btn--void', 'cf-image-viewer__tool-btn--reset',
+  'cld__btn--danger', 'cld__btn--ghost', 'cld__btn--primary',
+  'clw__btn--ghost', 'clw__btn--primary', 'clw__btn--secondary',
+  'coc-btn--ghost', 'coc-btn--primary', 'coc-btn--subtle', 'cp-action-btn--primary',
+  'density-toggle__btn--active', 'em-action-btn--edit', 'em-action-btn--toggle',
+  'em-btn--outline', 'em-btn--primary', 'foc-btn--primary', 'foc-btn--subtle',
+  'foc-disb__btn--ghost', 'foc-disb__btn--primary', 'head-profile__text-btn--danger',
+  'page-btn-first', 'page-btn-last', 'page-btn-next', 'page-btn-prev',
+  'rich-text-editor__btn--active', 'rich-text-editor__btn--label', 'rich-text-editor__btn-text',
+  'template-btn--clear', 'tenant-manager__create-btn-wrap'
+);
+
+$legacy-touch-target-selector: null;
+@each $name in $legacy-touch-target-classes {
+  @if $legacy-touch-target-selector {
+    $legacy-touch-target-selector: '#{$legacy-touch-target-selector}, .#{$name}';
+  } @else {
+    $legacy-touch-target-selector: '.#{$name}';
+  }
+}
+$legacy-touch-target-selector: ':where(button, a, label, input, [role="button"]):is(#{$legacy-touch-target-selector})';
+
+@media (max-width: 768px) {
+  #{$legacy-touch-target-selector} {
+    min-width: 44px;
+    min-height: 44px;
+    padding: calc(var(--cf-space-2) + var(--cf-space-1) / 2);
+
+    svg, .btn-icon {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}

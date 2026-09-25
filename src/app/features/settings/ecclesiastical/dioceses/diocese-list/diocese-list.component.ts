@@ -9,7 +9,7 @@ import { ToastService } from '@core/services';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { DioceseFormModalComponent } from '../diocese-form-modal/diocese-form-modal.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
-import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
@@ -23,7 +23,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
     ConfirmationModalComponent, 
     DioceseFormModalComponent,
     LoadingSkeletonComponent,
-    EmptyStateComponent,
+    CfEmptyStateComponent,
     AdvancedSearchPanelComponent,
     PaginationComponent,
     PageHeaderComponent,

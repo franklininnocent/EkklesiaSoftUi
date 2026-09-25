@@ -13,7 +13,6 @@ import { Store } from '@ngrx/store';
 import { Observable, Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 
-import { ButtonComponent, InputComponent, CardComponent } from '@shared/components';
 import { AppState } from '@core/store';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import { selectAuthLoading, selectAuthError } from '@core/store/auth/auth.selectors';
@@ -29,9 +28,6 @@ import {
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
-    ButtonComponent,
-    InputComponent,
-    CardComponent,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',

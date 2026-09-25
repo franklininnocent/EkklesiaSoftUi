@@ -3,7 +3,7 @@
     title="Sacrament Types"
     subtitle="Manage sacrament type master data">
     <div class="sacrament-type-page-header-actions">
-      <button class="btn btn-primary" (click)="onCreate()">
+      <button class="cf-btn cf-btn-primary" (click)="onCreate()">
         <span class="btn-icon">+</span>
         Create Sacrament Type
       </button>
@@ -21,10 +21,10 @@
         placeholder="Search by name, code, or description..."
         class="search-input"
       />
-      <button class="btn btn-secondary" (click)="onSearch()">
+      <button class="cf-btn" (click)="onSearch()">
         🔍 Search
       </button>
-      <button *ngIf="searchTerm" class="btn btn-link" (click)="clearSearch()">
+      <button *ngIf="searchTerm" class="cf-btn-link" (click)="clearSearch()">
         Clear
       </button>
     </div>
@@ -52,7 +52,7 @@
 
       <div class="filter-actions">
         <button *ngIf="searchTerm || selectedCategory || selectedStatus" 
-                class="btn btn-link" 
+                class="cf-btn-link" 
                 (click)="clearFilters()">
           Clear All Filters
         </button>
@@ -138,13 +138,13 @@
     <app-loading-skeleton *ngIf="loading" type="table" [rows]="10" [columns]="8"></app-loading-skeleton>
 
     <!-- Empty State -->
-    <app-empty-state
+    <app-cf-empty-state
       *ngIf="!loading && sacramentTypes.length === 0"
+      icon="📭"
       title="No sacrament types found"
-      description="Get started by creating your first sacrament type"
-      buttonText="Create First Sacrament Type"
-      (action)="onCreate()"
-    ></app-empty-state>
+      description="Get started by creating your first sacrament type">
+      <button type="button" class="cf-btn cf-btn-primary" (click)="onCreate()">Create First Sacrament Type</button>
+    </app-cf-empty-state>
   </div>
 
   <!-- Pagination -->

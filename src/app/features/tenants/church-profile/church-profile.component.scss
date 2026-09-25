@@ -3,7 +3,6 @@
  * Comprehensive styling for church profile, leadership, statistics, and social media management
  */
 
-@use '../../../../styles/button-system' as *;
 @use '../../../shared/styles/standardized-list' as *;
 @use '../../donations/styles/stewardship-split-layout.scss';
 
@@ -481,19 +480,6 @@
     // Header right container for buttons (matches standard list header pattern)
     .header-right {
       @extend %standard-header-right;
-    }
-    
-    // Standard button styles for Add Leader button
-    // Using explicit styles to ensure they override any conflicting styles
-    button.btn,
-    .btn {
-      @extend %standard-btn;
-    }
-    
-    button.btn-primary,
-    .btn.btn-primary,
-    .btn-primary {
-      @extend %standard-btn-primary;
     }
     
     .btn-icon {
@@ -4241,15 +4227,6 @@
   p {
     color: var(--text-secondary);
     margin: 0 0 1.5rem 0;
-  }
-  
-  // Ensure buttons in empty state match standard button styles
-  .btn {
-    @extend %standard-btn;
-  }
-  
-  .btn-primary {
-    @extend %standard-btn-primary;
   }
   
   .btn-icon {

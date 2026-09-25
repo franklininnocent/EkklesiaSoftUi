@@ -10,7 +10,7 @@ import { ToastService } from '@core/services/toast.service';
 import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { User } from '@core/models/user.model';
-import { CardComponent, PaginationComponent } from '@shared/components';
+import { PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
@@ -38,7 +38,7 @@ interface AssignRoleTenantGroup {
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, DataTableComponent, StatusBadgeComponent, UserAvatarComponent, ImageViewerComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, DataTableComponent, StatusBadgeComponent, UserAvatarComponent, ImageViewerComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

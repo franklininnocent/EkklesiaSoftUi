@@ -222,12 +222,12 @@
 <div class="inline-container" *ngIf="show && isInline" role="region" aria-label="Assign permissions panel">
   <div class="assignment-context-bar">
     <div class="assignment-context-bar__left">
-      <button class="btn-back" (click)="close()" type="button" title="Back to Roles">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <button class="cf-btn-icon" (click)="close()" type="button" title="Back to Roles">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
-        <span>Back to Roles</span>
+        <span class="sr-only">Back to Roles</span>
       </button>
       <div class="assignment-context-bar__role" *ngIf="role">
         <span class="assignment-context-bar__label">Assigning permissions to</span>
@@ -265,9 +265,9 @@
   </div>
 
   <div class="inline-footer">
-    <button class="btn-secondary" (click)="close()" [disabled]="isSaving" type="button">Cancel</button>
+    <button class="cf-btn" (click)="close()" [disabled]="isSaving" type="button">Cancel</button>
     <button
-      class="btn-primary"
+      class="cf-btn cf-btn-primary"
       (click)="save()"
       [disabled]="isSaving || isLoading || !hasChanges() || hasAdminPermissionConflict()"
       type="button">

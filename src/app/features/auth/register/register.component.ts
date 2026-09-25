@@ -6,7 +6,6 @@ import { Store } from '@ngrx/store';
 import { Observable, Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
-import { ButtonComponent, InputComponent, CardComponent } from '@shared/components';
 import { AppState } from '@core/store';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import { selectAuthLoading, selectAuthError } from '@core/store/auth/auth.selectors';
@@ -17,10 +16,7 @@ import { selectAuthLoading, selectAuthError } from '@core/store/auth/auth.select
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    RouterModule,
-    ButtonComponent,
-    InputComponent,
-    CardComponent
+    RouterModule
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',
