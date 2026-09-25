@@ -67,6 +67,21 @@ describe('cf-intl.util', () => {
       expect(cfFormatDate(instant, 'time')).toMatch(/^\d{1,2}:\d{2}\s[AP]M$/);
     });
 
+    it('parses Laravel/SQL timestamps and microsecond fractions', () => {
+      const expected = new Date(2026, 8, 25, 10, 15, 0).getTime();
+      expect(cfParseDate('2026-09-25 10:15:00')?.getTime()).toBe(expected);
+      expect(cfParseDate('2026-09-25 10:15')?.getTime()).toBe(expected);
+      expect(cfParseDate('2026-09-25T04:30:00.123456Z')?.getTime()).toBe(Date.UTC(2026, 8, 25, 4, 30, 0, 123));
+      expect(cfParseDate('2026-09-25 10:00:00+0530')?.getTime()).toBe(Date.UTC(2026, 8, 25, 4, 30));
+      expect(cfParseDate('2026-09-25 25:00:00')).toBeNull();
+    });
+
+    it('keeps years below 100 and leap days on their calendar day', () => {
+      expect(cfParseDate('0099-01-01')?.getFullYear()).toBe(99);
+      expect(cfParseDate('2024-02-29')?.getDate()).toBe(29);
+      expect(cfParseDate('2026-02-29')).toBeNull();
+    });
+
     it('accepts Date objects and returns empty for missing or invalid input', () => {
       expect(cfFormatDate(new Date(2026, 0, 5))).toBe('Jan 5, 2026');
       expect(cfFormatDate(null)).toBe('');

@@ -24,6 +24,7 @@ export const CF_DEFAULT_DATE_LOCALE = 'en-US';
 
 const NUMERIC_STRING = /^-?\d+(\.\d+)?$/;
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
+const DATE_TIME = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})?$/;
 
 const numberFormats = new Map<string, Intl.NumberFormat>();
 const dateFormats = new Map<string, Intl.DateTimeFormat>();
@@ -116,10 +117,16 @@ export function cfParseDate(value: string | Date | null | undefined): Date | nul
   const dateOnly = trimmed.match(DATE_ONLY);
   if (dateOnly) {
     const [, y, m, d] = dateOnly;
-    const date = new Date(Number(y), Number(m) - 1, Number(d));
+    const date = new Date(2000, Number(m) - 1, Number(d));
+    date.setFullYear(Number(y));
     return date.getMonth() === Number(m) - 1 ? date : null;
   }
-  const parsed = new Date(trimmed);
+  // SQL-style `YYYY-MM-DD HH:mm:ss` and microsecond fractions are not portable Date.parse input.
+  const dateTime = trimmed.match(DATE_TIME);
+  const iso = dateTime
+    ? `${dateTime[1]}T${dateTime[2]}${dateTime[3] ? `.${dateTime[3].slice(0, 3).padEnd(3, '0')}` : ''}${(dateTime[4] ?? '').replace(/^([+-]\d{2})(\d{2})$/, '$1:$2')}`
+    : trimmed;
+  const parsed = new Date(iso);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 

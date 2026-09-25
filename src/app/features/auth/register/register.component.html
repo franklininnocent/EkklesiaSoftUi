@@ -22,9 +22,9 @@
             aria-required="true"
             [class.cf-form-field__control--invalid]="!!getErrorMessage('name')"
             [attr.aria-invalid]="getErrorMessage('name') ? 'true' : null"
-            [attr.aria-describedby]="getErrorMessage('name') ? 'name-error' : null"
+            [attr.aria-describedby]="getErrorMessage('name') ? 'register-name-error' : null"
           />
-          <p *ngIf="getErrorMessage('name') as message" id="name-error" class="cf-form-field__error">{{ message }}</p>
+          <p *ngIf="getErrorMessage('name') as message" id="register-name-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
         <div class="form-group cf-form-field">
@@ -42,9 +42,9 @@
             aria-required="true"
             [class.cf-form-field__control--invalid]="!!getErrorMessage('email')"
             [attr.aria-invalid]="getErrorMessage('email') ? 'true' : null"
-            [attr.aria-describedby]="getErrorMessage('email') ? 'email-error' : null"
+            [attr.aria-describedby]="getErrorMessage('email') ? 'register-email-error' : null"
           />
-          <p *ngIf="getErrorMessage('email') as message" id="email-error" class="cf-form-field__error">{{ message }}</p>
+          <p *ngIf="getErrorMessage('email') as message" id="register-email-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
         <div class="form-group cf-form-field">
@@ -62,9 +62,9 @@
             aria-required="true"
             [class.cf-form-field__control--invalid]="!!getErrorMessage('password')"
             [attr.aria-invalid]="getErrorMessage('password') ? 'true' : null"
-            [attr.aria-describedby]="getErrorMessage('password') ? 'password-error' : null"
+            [attr.aria-describedby]="getErrorMessage('password') ? 'register-password-error' : null"
           />
-          <p *ngIf="getErrorMessage('password') as message" id="password-error" class="cf-form-field__error">{{ message }}</p>
+          <p *ngIf="getErrorMessage('password') as message" id="register-password-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
         <div class="form-group cf-form-field">
@@ -82,9 +82,9 @@
             aria-required="true"
             [class.cf-form-field__control--invalid]="!!getErrorMessage('password_confirmation')"
             [attr.aria-invalid]="getErrorMessage('password_confirmation') ? 'true' : null"
-            [attr.aria-describedby]="getErrorMessage('password_confirmation') ? 'password-confirmation-error' : null"
+            [attr.aria-describedby]="getErrorMessage('password_confirmation') ? 'register-password-confirmation-error' : null"
           />
-          <p *ngIf="getErrorMessage('password_confirmation') as message" id="password-confirmation-error" class="cf-form-field__error">{{ message }}</p>
+          <p *ngIf="getErrorMessage('password_confirmation') as message" id="register-password-confirmation-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
         <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
