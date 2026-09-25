@@ -202,11 +202,11 @@ describe('SacramentListComponent', () => {
     });
 
     it('onRowMenuAction invokes existing handlers and closes the menu', () => {
-      spyOn(component, 'viewCertificate');
-      spyOn(component, 'onEditSacrament');
-      spyOn(component, 'openCorrectDialog');
-      spyOn(component, 'openVoidDialog');
-      spyOn(component, 'onDeleteSacrament');
+      jest.spyOn(component, 'viewCertificate').mockImplementation(() => undefined);
+      jest.spyOn(component, 'onEditSacrament').mockImplementation(() => undefined);
+      jest.spyOn(component, 'openCorrectDialog').mockImplementation(() => undefined);
+      jest.spyOn(component, 'openVoidDialog').mockImplementation(() => undefined);
+      jest.spyOn(component, 'onDeleteSacrament').mockImplementation(() => undefined);
 
       component.openRowMenuId = 42;
 

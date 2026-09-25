@@ -40,7 +40,10 @@ describe('BCCListComponent', () => {
       providers: [
         provideRouter([]),
         { provide: BCCService, useClass: BCCServiceMock },
-        { provide: AuthService, useValue: { isTenantAdmin: () => true } },
+        { provide: AuthService, useValue: {
+          hasPermission: jest.fn(() => true),
+          hasParishContext: jest.fn(() => true),
+          canViewTenantAuditLogs: jest.fn(() => false), isTenantAdmin: () => true } },
         { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn() } },
       ]
     }).compileComponents();

@@ -102,9 +102,6 @@ export class AuthEffects {
         tap(({ user }) => {
           const redirect = this.postAuthRedirect;
           this.postAuthRedirect = null;
-          // #region agent log
-          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'auth.effects.ts:navigateAfterAuthUserLoad$',message:'navigate after user in store',data:{redirect,userId:user?.id ?? null,tenantId:user?.tenant_id ?? null},hypothesisId:'H1',runId:'post-fix-v2',timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           if (redirect === 'profile') {
             this.router.navigate(['/profile'], { queryParams: { forcePassword: '1' } });
           } else if (redirect === 'dashboard') {
@@ -153,9 +150,6 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(AuthActions.loadUserSuccess),
       switchMap(({ user }) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'auth.effects.ts:loadUserSuccess$',message:'loadUserSuccess received',data:{userId:user?.id,tenantId:user?.tenant_id ?? null,href:typeof location!=='undefined'?location.href:null},hypothesisId:'H1',runId:'post-fix-v2',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         if (user.tenant) {
           return of(TenantActions.setCurrentTenant({ tenant: user.tenant }));
         }
@@ -172,9 +166,6 @@ export class AuthEffects {
           const message = String(error || '');
           const isAuthFailure = /unauthorized|unauthenticated|401/i.test(message);
           const hasToken = !!this.authService.getToken();
-          // #region agent log
-          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'auth.effects.ts:loadUserFailure$',message:'loadUserFailure handled',data:{error:message.slice(0,160),isAuthFailure,hasToken,willClearSession:isAuthFailure || !hasToken},hypothesisId:'H6',runId:'post-fix-v2',timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
 
           // Only wipe the session on real auth failures. Transient/network errors must not
           // bounce a freshly logged-in user back to login and clear their token.

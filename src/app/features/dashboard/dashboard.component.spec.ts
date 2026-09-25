@@ -13,6 +13,7 @@ import { PastoralCareService } from '@features/pastoral-care/services/pastoral-c
 import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { TenantService } from '@core/services/tenant.service';
 import { DashboardComponent } from './dashboard.component';
 
@@ -134,6 +135,16 @@ describe('DashboardComponent (ministries module-status)', () => {
         {
           provide: SubscriptionAccessService,
           useValue: { isReadOnly: jest.fn(() => false) },
+        },
+        {
+          provide: EntitlementService,
+          useValue: {
+            load: () => of(null),
+            refresh: () => of(null),
+            hasFeature: () => true,
+            hasAllFeatures: () => true,
+            appliesToCurrentUser: () => false,
+          },
         },
         { provide: MemberService, useValue: memberServiceMock },
         {
@@ -269,6 +280,16 @@ describe('DashboardComponent (Stewardship Hub)', () => {
         {
           provide: SubscriptionAccessService,
           useValue: { isReadOnly: jest.fn(() => false) },
+        },
+        {
+          provide: EntitlementService,
+          useValue: {
+            load: () => of(null),
+            refresh: () => of(null),
+            hasFeature: () => true,
+            hasAllFeatures: () => true,
+            appliesToCurrentUser: () => false,
+          },
         },
         { provide: MemberService, useValue: memberServiceMock },
         {
@@ -476,6 +497,16 @@ describe('DashboardComponent (Overview metrics)', () => {
         {
           provide: SubscriptionAccessService,
           useValue: { isReadOnly: jest.fn(() => false) },
+        },
+        {
+          provide: EntitlementService,
+          useValue: {
+            load: () => of(null),
+            refresh: () => of(null),
+            hasFeature: () => true,
+            hasAllFeatures: () => true,
+            appliesToCurrentUser: () => false,
+          },
         },
       ],
     }).compileComponents();

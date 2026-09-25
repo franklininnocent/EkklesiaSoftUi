@@ -36,7 +36,8 @@ describe('DataExportPage progress modal (DOM)', () => {
               of(new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04])], { type: 'application/zip' })),
           },
         },
-        { provide: AuthService, useValue: { hasPermission: () => true } },
+        { provide: AuthService, useValue: {
+          hasTenantPermission: jest.fn(() => true), hasPermission: () => true } },
       ],
     });
 

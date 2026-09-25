@@ -1,28 +1,23 @@
-import { ChangeDetectorRef } from '@angular/core';
-import { convertToParamMap } from '@angular/router';
+import { TestBed } from '@angular/core/testing';
+import { ActivatedRoute, convertToParamMap, Router } from '@angular/router';
 import { of } from 'rxjs';
 import { RolesPermissionsComponent } from './roles-permissions.component';
+import { RolesService } from '@core/services/roles.service';
+import { PermissionsService } from '@core/services/permissions.service';
+import { UsersService } from '@core/services/users.service';
+import { ToastService } from '@core/services/toast.service';
+import { AuthService } from '@core/services/auth.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 
 describe('RolesPermissionsComponent', () => {
-  const createComponent = (overrides?: { currentUser?: any; isTenantAdmin?: boolean; isSuperAdmin?: boolean; isEkklesiaAdmin?: boolean; hasPermission?: boolean }) => {
-    const rolesServiceMock = {
-      getRoles: jest.fn().mockReturnValue(of({ data: [] })),
-      deleteRole: jest.fn().mockReturnValue(of({})),
-      toggleRoleStatus: jest.fn().mockReturnValue(of({}))
-    };
-    const permissionsServiceMock = {
-      getPermissions: jest.fn().mockReturnValue(of({ data: [] })),
-      deletePermission: jest.fn().mockReturnValue(of({}))
-    };
-    const usersServiceMock = {
-      getUsers: jest.fn().mockReturnValue(of({ data: [] })),
-      assignRoles: jest.fn().mockReturnValue(of({}))
-    };
-    const toastServiceMock = {
-      success: jest.fn(),
-      error: jest.fn(),
-      warning: jest.fn()
-    };
+  const createComponent = (overrides?: {
+    currentUser?: any;
+    isTenantAdmin?: boolean;
+    isSuperAdmin?: boolean;
+    isEkklesiaAdmin?: boolean;
+    hasPermission?: boolean;
+  }) => {
     const authServiceMock = {
       currentUserValue: overrides?.currentUser ?? null,
       currentUser$: of(overrides?.currentUser ?? null),
@@ -30,36 +25,80 @@ describe('RolesPermissionsComponent', () => {
       isEkklesiaAdmin: jest.fn().mockReturnValue(overrides?.isEkklesiaAdmin ?? false),
       isTenantAdmin: jest.fn().mockReturnValue(overrides?.isTenantAdmin ?? false),
       hasPermission: jest.fn().mockReturnValue(overrides?.hasPermission ?? false),
-      canManageRbac: jest.fn().mockReturnValue((overrides?.isTenantAdmin ?? false) || (overrides?.isSuperAdmin ?? false) || (overrides?.isEkklesiaAdmin ?? false)),
-      refreshUser: jest.fn()
-    };
-    const cdrMock = {
-      detectChanges: jest.fn(),
-      markForCheck: jest.fn()
-    } as unknown as ChangeDetectorRef;
-
-    const routeMock = {
-      queryParamMap: of(convertToParamMap({})),
-    };
-    const routerMock = {
-      url: '/settings/roles-permissions',
-      navigate: jest.fn().mockResolvedValue(true),
+      canManageRbac: jest
+        .fn()
+        .mockReturnValue(
+          (overrides?.isTenantAdmin ?? false) ||
+            (overrides?.isSuperAdmin ?? false) ||
+            (overrides?.isEkklesiaAdmin ?? false)
+        ),
+      refreshUser: jest.fn(),
     };
 
-    return new RolesPermissionsComponent(
-      rolesServiceMock as any,
-      permissionsServiceMock as any,
-      usersServiceMock as any,
-      toastServiceMock as any,
-      authServiceMock as any,
-      cdrMock,
-      routeMock as any,
-      routerMock as any
-    );
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [RolesPermissionsComponent],
+      providers: [
+        {
+          provide: RolesService,
+          useValue: {
+            getRoles: jest.fn().mockReturnValue(of({ data: [] })),
+            deleteRole: jest.fn().mockReturnValue(of({})),
+            toggleRoleStatus: jest.fn().mockReturnValue(of({})),
+          },
+        },
+        {
+          provide: PermissionsService,
+          useValue: {
+            getPermissions: jest.fn().mockReturnValue(of({ data: [] })),
+            deletePermission: jest.fn().mockReturnValue(of({})),
+          },
+        },
+        {
+          provide: UsersService,
+          useValue: {
+            getUsers: jest.fn().mockReturnValue(of({ data: [] })),
+            assignRoles: jest.fn().mockReturnValue(of({})),
+          },
+        },
+        {
+          provide: ToastService,
+          useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() },
+        },
+        { provide: AuthService, useValue: authServiceMock },
+        {
+          provide: ActivatedRoute,
+          useValue: { queryParamMap: of(convertToParamMap({})) },
+        },
+        {
+          provide: Router,
+          useValue: { url: '/settings/roles-permissions', navigate: jest.fn().mockResolvedValue(true) },
+        },
+        {
+          provide: ConfirmationDialogService,
+          useValue: { confirm: jest.fn().mockResolvedValue(true) },
+        },
+        {
+          provide: EntitlementService,
+          useValue: {
+            hasFeature: () => true,
+            hasAllFeatures: () => true,
+            load: () => of(null),
+          },
+        },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(RolesPermissionsComponent);
+    return fixture.componentInstance;
   };
 
   it('blocks permission CRUD in tenant mode', () => {
-    const component = createComponent({ currentUser: { tenant_id: 10 }, isTenantAdmin: true, hasPermission: true });
+    const component = createComponent({
+      currentUser: { tenant_id: 10 },
+      isTenantAdmin: true,
+      hasPermission: true,
+    });
     component.isTenantMode = true;
 
     expect(component.canCreatePermission()).toBe(false);
@@ -90,8 +129,14 @@ describe('RolesPermissionsComponent', () => {
   });
 
   it('allows manage roles for tenant administrators and platform admins', () => {
-    const tenantAdmin = createComponent({ currentUser: { tenant_id: 10, role_name: 'Administrator' }, isTenantAdmin: true });
-    const platformAdmin = createComponent({ currentUser: { tenant_id: null, role_name: 'SuperAdmin' }, isSuperAdmin: true });
+    const tenantAdmin = createComponent({
+      currentUser: { tenant_id: 10, role_name: 'Administrator' },
+      isTenantAdmin: true,
+    });
+    const platformAdmin = createComponent({
+      currentUser: { tenant_id: null, role_name: 'SuperAdmin' },
+      isSuperAdmin: true,
+    });
 
     expect(tenantAdmin.canManageRoles()).toBe(true);
     expect(platformAdmin.canManageRoles()).toBe(true);
@@ -99,21 +144,27 @@ describe('RolesPermissionsComponent', () => {
 
   it('returns friendly validation message for 422 API errors', () => {
     const component = createComponent({ currentUser: { tenant_id: 10 }, isTenantAdmin: true });
-    const message = (component as any).getFriendlyErrorMessage({
-      status: 422,
-      error: { errors: { name: ['Role name is required.'] } }
-    }, 'fallback');
+    const message = (component as any).getFriendlyErrorMessage(
+      {
+        status: 422,
+        error: { errors: { name: ['Role name is required.'] } },
+      },
+      'fallback'
+    );
 
     expect(message).toBe('Role name is required.');
   });
 
   it('reads flattened interceptor error shape for 422 messages', () => {
     const component = createComponent({ currentUser: { tenant_id: 10 }, isTenantAdmin: true });
-    const message = (component as any).getFriendlyErrorMessage({
-      status: 422,
-      message: 'Validation error',
-      errors: { name: ['Role name is required.'] }
-    }, 'fallback');
+    const message = (component as any).getFriendlyErrorMessage(
+      {
+        status: 422,
+        message: 'Validation error',
+        errors: { name: ['Role name is required.'] },
+      },
+      'fallback'
+    );
 
     expect(message).toBe('Role name is required.');
   });

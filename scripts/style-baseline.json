@@ -1,5 +1,5 @@
 {
-  "total": 6608,
+  "total": 6584,
   "files": {
     "src/_professional-theme.scss": {
       "color-no-hex": 7,
@@ -367,10 +367,6 @@
       "color-no-hex": 1,
       "declaration-property-value-disallowed-list": 4
     },
-    "src/app/features/settings/my-subscription/my-subscription.component.scss": {
-      "color-no-hex": 8,
-      "declaration-property-value-disallowed-list": 9
-    },
     "src/app/features/settings/roles-permissions/assign-permissions-modal/assign-permissions-modal.component.scss": {
       "color-no-hex": 51,
       "declaration-property-value-disallowed-list": 43,
@@ -481,7 +477,7 @@
     },
     "src/app/features/settings/subscription/subscription-management.component.scss": {
       "color-no-hex": 1,
-      "declaration-property-value-disallowed-list": 5
+      "declaration-property-value-disallowed-list": 1
     },
     "src/app/features/support-center/components/support-session-banner/support-session-banner.component.scss": {
       "color-no-hex": 5,
@@ -546,8 +542,7 @@
       "function-disallowed-list": 1
     },
     "src/app/features/tenants/tenant-detail/tenant-detail.component.scss": {
-      "color-no-hex": 2,
-      "declaration-property-value-disallowed-list": 2
+      "declaration-property-value-disallowed-list": 1
     },
     "src/app/features/tenants/tenant-manager/tenant-manager.scss": {
       "declaration-property-value-disallowed-list": 3

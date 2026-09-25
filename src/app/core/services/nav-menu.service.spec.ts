@@ -1,3 +1,5 @@
+import { EntitlementService } from '@core/services/entitlement.service';
+import { of } from 'rxjs';
 import { TestBed } from '@angular/core/testing';
 import { NavMenuService } from './nav-menu.service';
 import { AuthService } from './auth.service';
@@ -35,6 +37,15 @@ describe('NavMenuService', () => {
 
     TestBed.configureTestingModule({
       providers: [
+      {
+        provide: EntitlementService,
+        useValue: {
+          hasFeature: () => true,
+          hasAllFeatures: () => true,
+          appliesToCurrentUser: () => false,
+          load: () => of(null),
+        },
+      },
         NavMenuService,
         { provide: AuthService, useValue: authMock },
         { provide: ApplicationContextService, useValue: appContextMock },
@@ -197,5 +208,43 @@ describe('NavMenuService', () => {
     expect(service.isVisible('settings-forgot-password-requests', superAdmin)).toBe(true);
     expect(service.isVisible('settings-forgot-password-requests', primaryAdmin)).toBe(true);
     expect(service.isVisible('settings-forgot-password-requests', parishUser)).toBe(false);
+  });
+
+  describe('plan features', () => {
+    const tenantAdmin = { tenant_id: 5, role_name: 'Administrator' } as any;
+    let entitlements: { hasFeature: jest.Mock; hasAllFeatures: jest.Mock };
+
+    beforeEach(() => {
+      entitlements = TestBed.inject(EntitlementService) as any;
+      entitlements.hasFeature = jest.fn((code: string) => code !== 'CONTRIBUTIONS');
+      entitlements.hasAllFeatures = jest.fn((codes: string[]) => !codes.includes('CONTRIBUTIONS'));
+      (authMock.isPlatformActor as jest.Mock).mockReturnValue(false);
+      (authMock.canAccessDonations as jest.Mock).mockReturnValue(true);
+      (authMock.canAccessMinistries as jest.Mock).mockReturnValue(true);
+      (appContextMock.resolveNavigationSnapshot as jest.Mock).mockReturnValue({
+        actorKind: 'tenant',
+        application: 'TENANT',
+        supportActive: false,
+        targetTenantId: 5,
+      });
+    });
+
+    it('hides a menu whose feature is not in the plan, keeping the rest', () => {
+      expect(service.isVisible('donations', tenantAdmin)).toBe(false);
+      expect(entitlements.hasFeature).toHaveBeenCalledWith('CONTRIBUTIONS');
+      expect(service.isVisible('ministries', tenantAdmin)).toBe(true);
+      expect(service.isVisible('families', tenantAdmin)).toBe(true);
+    });
+
+    it('never shows a menu the role cannot see, even when the plan includes it', () => {
+      (authMock.canAccessMinistries as jest.Mock).mockReturnValue(false);
+
+      expect(service.isVisible('ministries', tenantAdmin)).toBe(false);
+    });
+
+    it('checks link targets against the route feature map', () => {
+      expect(service.isRouteAllowed('/donations')).toBe(false);
+      expect(service.isRouteAllowed('/families')).toBe(true);
+    });
   });
 });

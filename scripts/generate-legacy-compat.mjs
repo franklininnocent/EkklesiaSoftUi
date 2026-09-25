@@ -37,6 +37,10 @@ const BRAND_OVERRIDES = {
   '--primary-dark': 'var(--cf-primary-active)',
   '--primary-light': '#60a5fa',
   '--topbar-bg': '#ffffff',
+  // White-on-fill must meet WCAG AA (≥4.5:1). Legacy #10b981 was 2.54:1.
+  '--success-color': '#15803d',
+  '--success-solid': '#15803d',
+  '--success-icon': '#15803d',
 };
 
 /**

@@ -15,6 +15,7 @@ import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { BCC, BCCStatistics, FamilyStatistics } from '@core/models/family.model';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { FamilyService } from '@core/services/family.service';
 import { BCCService } from '@core/services/bcc.service';
@@ -125,6 +126,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private pastoralCare = inject(PastoralCareService);
   private ministriesApi = inject(MinistriesApiService);
   private subscriptionAccess = inject(SubscriptionAccessService);
+  private entitlements = inject(EntitlementService);
   private tenantService = inject(TenantService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
@@ -270,9 +272,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         takeUntil(this.destroy$)
       )
       .subscribe((user) => {
-        // #region agent log
-        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:ngOnInit',message:'dashboard user emission',data:{userPresent:!!user,userId:user?.id ?? null,tenantId:user?.tenant_id ?? null,href:location.href},hypothesisId:'H1',runId:'post-fix-v2',timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         // Wait for hydrated user — a null emission must not wipe in-flight/loaded dashboard data.
         if (!user) {
           return;
@@ -289,9 +288,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const isTenantActor = !!user?.tenant_id && !this.authService.isPlatformActor(user);
     const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
     const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bd4ad4'},body:JSON.stringify({sessionId:'bd4ad4',location:'dashboard.component.ts:refreshDashboardAccess',message:'dashboard access resolved',data:{userPresent:!!user,tenantId:user?.tenant_id ?? null,hasTenantContext,canManageTenants:!!user && this.authService.canManageTenants(user),willLoadParishStats:hasTenantContext,willLoadPlatformStats:!hasTenantContext && !!user && this.authService.canManageTenants(user)},hypothesisId:'H6',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
 
     if (hasTenantContext) {
       this.platformStats = null;
@@ -446,9 +442,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:loadFamilyStatistics',message:'family stats response',data:{success:!!response?.success,hasData:!!response?.data,totalFamilies:response?.data?.total_families ?? null},hypothesisId:'H1',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           if (response.success && response.data) {
             this.familyStats = response.data;
             this.totalFamilies = response.data.total_families ?? 0;
@@ -466,9 +459,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         },
         error: (err) => {
-          // #region agent log
-          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'dashboard.component.ts:loadFamilyStatistics',message:'family stats error',data:{status:err?.status ?? null},hypothesisId:'H1',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           this.registryState = 'error';
           this.rebuildHeroKpis();
           this.cdr.markForCheck();
@@ -513,18 +503,12 @@ export class DashboardComponent implements OnInit, OnDestroy {
             this.platformStats = null;
             this.platformStatsState = 'error';
           }
-          // #region agent log
-          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bd4ad4'},body:JSON.stringify({sessionId:'bd4ad4',location:'dashboard.component.ts:loadPlatformStatistics',message:'platform tenant statistics',data:{success:!!response?.success,total:response?.data?.total_tenants ?? null,active:response?.data?.active_tenants ?? null,trial:response?.data?.in_trial ?? null,state:this.platformStatsState},hypothesisId:'H6',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           this.rebuildHeroKpis();
           this.cdr.markForCheck();
         },
         error: (err) => {
           this.platformStats = null;
           this.platformStatsState = 'error';
-          // #region agent log
-          fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'bd4ad4'},body:JSON.stringify({sessionId:'bd4ad4',location:'dashboard.component.ts:loadPlatformStatistics',message:'platform tenant statistics failed',data:{status:err?.status ?? null},hypothesisId:'H6',runId:'post-fix',timestamp:Date.now()})}).catch(()=>{});
-          // #endregion
           this.rebuildHeroKpis();
           this.cdr.markForCheck();
         },
@@ -935,14 +919,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
       this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.manage_leadership');
     this.canConfigureTaxonomies =
       this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.configure');
-    this.canViewTenantAuditLogs = this.authService.canViewTenantAuditLogs(user);
+    this.canViewTenantAuditLogs = false;
 
-    this.ministriesApi
-      .getModuleStatus()
-      .pipe(takeUntil(this.destroy$))
+    this.entitlements
+      .load()
+      .pipe(
+        switchMap(() => this.ministriesApi.getModuleStatus()),
+        takeUntil(this.destroy$)
+      )
       .subscribe({
         next: (response) => {
-          const enabled = response.data?.enabled === true;
+          this.canViewTenantAuditLogs =
+            this.authService.canViewTenantAuditLogs(user) && this.entitlements.hasFeature('AUDIT_LOG');
+          const enabled = response.data?.enabled === true && this.entitlements.hasFeature('MINISTRIES');
           this.showMinistriesSection = enabled;
           if (enabled) {
             this.loadMinistriesSummary();

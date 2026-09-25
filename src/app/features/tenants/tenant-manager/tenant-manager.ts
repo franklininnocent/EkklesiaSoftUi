@@ -24,7 +24,6 @@ import { AuthService } from '@core/services/auth.service';
 import { DioceseService } from '@core/services/ecclesiastical/diocese.service';
 import {
   Tenant,
-  TenantPlan,
   TenantStatisticsResponse,
   TenantTier,
   TenantSubscriptionStatusFilter,
@@ -44,6 +43,8 @@ import {
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { resolveMediaDisplaySrc } from '@core/utils/media-url.util';
+import { SubscriptionAdminService } from '@features/subscriptions/services/subscription-admin.service';
+import { subscriptionAdminCapabilities } from '@features/subscriptions/services/subscription-admin-access';
 
 export type TenantListView = 'table' | 'card';
 
@@ -75,6 +76,7 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   private router = inject(Router);
   private fb = inject(FormBuilder);
   private dioceseService = inject(DioceseService);
+  private subscriptionAdmin = inject(SubscriptionAdminService);
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
 
@@ -95,6 +97,8 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   readonly pageSizeOptions: number[] = [10, 20, 50, 100];
 
   archdioceses: Diocese[] = [];
+  /** Plan key → display name, loaded from the subscription catalog. */
+  private planNames: Record<string, string> = {};
   searchFields: SearchField[] = [];
   filterForm: FormGroup;
 
@@ -132,6 +136,7 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.initializeSearchFields();
     this.loadArchdioceses();
+    this.loadPlanOptions();
     this.loadStatistics();
     this.setupSearchDebounce();
     this.loadTenants();
@@ -284,6 +289,30 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
       });
   }
 
+  private loadPlanOptions(): void {
+    if (!subscriptionAdminCapabilities(this.authService).view) {
+      return;
+    }
+    this.subscriptionAdmin
+      .listPlans({ includeLegacy: true, includeArchived: true })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (plans) => {
+          this.planNames = Object.fromEntries(plans.map((plan) => [plan.key, plan.name]));
+          const field = this.searchFields.find((row) => row.key === 'plan');
+          if (field) {
+            field.options = plans
+              .filter((plan) => !plan.is_legacy || plan.tenant_count > 0)
+              .map((plan) => ({ value: plan.key, label: plan.name }));
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
   private setupSearchDebounce(): void {
     this.filterForm
       .get('search')
@@ -311,12 +340,7 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
         key: 'plan',
         label: 'Plan',
         type: 'select',
-        options: [
-          { value: 'free', label: 'Free' },
-          { value: 'basic', label: 'Basic' },
-          { value: 'premium', label: 'Premium' },
-          { value: 'enterprise', label: 'Enterprise' },
-        ],
+        options: [],
         value: this.filterForm.get('plan')?.value,
       },
       {
@@ -420,17 +444,11 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
     }
 
     if (values.plan) {
-      const planLabels: Record<TenantPlan, string> = {
-        free: 'Free',
-        basic: 'Basic',
-        premium: 'Premium',
-        enterprise: 'Enterprise',
-      };
       filters.push({
         key: 'plan',
         label: 'Plan',
         value: values.plan,
-        displayValue: planLabels[values.plan as TenantPlan] || values.plan,
+        displayValue: this.formatPlan(values.plan),
       });
     }
 
@@ -514,25 +532,13 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
 
   onCreateTriggerClick(event: Event): void {
     const target = event.target as HTMLElement | null;
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'A',location:'tenant-manager.ts:onCreateTriggerClick',message:'Add tenant click area hit',data:{loading:this.loading(),targetTag:target?.tagName||null,targetDisabled:(target as HTMLButtonElement)?.disabled??null,showCreateModal:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
   }
 
   openCreateModal(): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'A',location:'tenant-manager.ts:openCreateModal',message:'openCreateModal invoked',data:{loading:this.loading(),loaded:this.loaded(),showCreateModalBefore:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     this.showCreateModal.set(true);
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'B',location:'tenant-manager.ts:openCreateModal:afterSet',message:'showCreateModal after set(true)',data:{showCreateModal:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
   }
 
   closeCreateModal(): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'f564b8'},body:JSON.stringify({sessionId:'f564b8',runId:'pre-fix',hypothesisId:'C',location:'tenant-manager.ts:closeCreateModal',message:'closeCreateModal invoked',data:{showCreateModalBefore:this.showCreateModal()},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     this.showCreateModal.set(false);
   }
 
@@ -671,14 +677,11 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
     return `${count}${limit}`;
   }
 
-  formatPlan(plan: TenantPlan): string {
-    const labels: Record<TenantPlan, string> = {
-      free: 'Free',
-      basic: 'Basic',
-      premium: 'Premium',
-      enterprise: 'Enterprise',
-    };
-    return labels[plan] || plan;
+  formatPlan(plan: string | null | undefined): string {
+    if (!plan) {
+      return '—';
+    }
+    return this.planNames[plan] ?? plan.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   formatTier(tier?: TenantTier | null): string {

@@ -8,6 +8,7 @@ import { of, NEVER } from 'rxjs';
 import { SacramentsDashboardComponent } from './sacraments-dashboard.component';
 import { SacramentService } from '../../services/sacrament.service';
 import { BCCService } from '@core/services/bcc.service';
+import { AuthService } from '@core/services/auth.service';
 import { SacramentDashboardSummary } from '../../models/sacrament-dashboard.model';
 
 function buildSummary(overrides: Partial<SacramentDashboardSummary> = {}): SacramentDashboardSummary {
@@ -127,6 +128,13 @@ describe('SacramentsDashboardComponent', () => {
       imports: [SacramentsDashboardComponent],
       providers: [
         provideRouter([]),
+        {
+          provide: AuthService,
+          useValue: {
+            hasParishContext: jest.fn(() => true),
+            currentUserValue: { id: 1, tenant_id: 1 },
+          },
+        },
         {
           provide: SacramentService,
           useValue: { getDashboardSummary },

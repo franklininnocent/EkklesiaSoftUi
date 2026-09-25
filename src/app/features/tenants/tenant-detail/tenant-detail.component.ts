@@ -26,11 +26,10 @@ import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status
 import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { TenantPlanPanelComponent } from '@features/subscriptions/components/tenant-plan-panel/tenant-plan-panel.component';
 import { Subject, takeUntil } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { environment } from '@environments/environment';
-
-const PLAN_RANK_LADDER = ['free', 'basic', 'premium', 'enterprise'] as const;
 
 type TenantDetailTab =
   | 'overview'
@@ -58,6 +57,7 @@ type TenantDetailTab =
     DataTableComponent,
     UserAvatarComponent,
     ImageViewerComponent,
+    TenantPlanPanelComponent,
   ],
   templateUrl: './tenant-detail.component.html',
   styleUrls: ['./tenant-detail.component.scss'],
@@ -129,12 +129,8 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   logoFile: File | null = null;
   logoPreview: string | null = null;
 
-  availablePlans: Record<string, any> = {};
-  currency = 'INR';
   durationOptions: Array<{ value: number; label: string }> = [];
-  selectedPlan = '';
   subscriptionDuration = 12;
-  showUpgradeModal = false;
   showRenewModal = false;
   showSuspendModal = false;
   showReactivateModal = false;
@@ -208,19 +204,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
             this.details = response.data;
             this.syncTenantShim(response.data);
             this.editForm = { ...this.tenant };
-            // #region agent log
-            this.logSelectDebug('H1', 'tenant-detail.component.ts:loadDetails', 'tenant details loaded', {
-              denominationId: response.data.identity?.denomination_id ?? null,
-              denominationIdType: response.data.identity?.denomination_id == null ? 'null' : typeof response.data.identity.denomination_id,
-              denominationName: response.data.identity?.denomination_name ?? null,
-              dioceseId: response.data.identity?.diocese_id ?? null,
-              dioceseIdType: response.data.identity?.diocese_id == null ? 'null' : typeof response.data.identity.diocese_id,
-              dioceseName: response.data.identity?.diocese_name ?? null,
-              churchDenomination: response.data.church?.denomination ?? null,
-              churchArchdioceseId: response.data.church?.archdiocese?.id ?? null,
-              churchArchdioceseName: response.data.church?.archdiocese?.name ?? null,
-            });
-            // #endregion
           } else {
             this.error = response.message || 'Failed to load tenant details';
           }
@@ -250,7 +233,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       slogan: snapshot.identity.slogan ?? null,
       slug: snapshot.identity.slug,
       domain: snapshot.identity.domain ?? null,
-      plan: (sub.plan_key as Tenant['plan']) || 'free',
+      plan: sub.plan_key ?? '',
       max_users: sub.max_users ?? snapshot.administration.max_users,
       max_storage_mb: sub.max_storage_mb ?? 0,
       trial_ends_at: sub.trial_ends_at ?? null,
@@ -357,18 +340,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
           this.denominations = this.denominationOptions ?? [];
           this.syncEditSelectValues();
           this.loadingDenominations = false;
-          // #region agent log
-          const denomMatch = this.denominationOptions?.find(d => Number(d.id) === Number(this.editDenominationId));
-          this.logSelectDebug('H2', 'tenant-detail.component.ts:loadDenominations', 'denominations loaded for tenant edit', {
-            success: response.success,
-            count: this.denominationOptions?.length ?? 0,
-            sampleId: this.denominationOptions?.[0]?.id ?? null,
-            sampleIdType: this.denominationOptions?.[0] ? typeof this.denominationOptions[0].id : 'none',
-            editDenominationId: this.editDenominationId,
-            matchedName: denomMatch?.name ?? null,
-          });
-          this.scheduleSelectDomLog('H5', 'loadDenominations');
-          // #endregion
           this.cdr.markForCheck();
         },
         error: () => {
@@ -400,36 +371,12 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
           const stale = seq !== this.archdioceseLoadSeq;
           this.applyArchdioceseOptions(response.success ? rows : []);
           this.loadingArchdioceses = false;
-          // #region agent log
-          const dioceseMatch = this.archdioceseOptions?.find(a => Number(a.id) === Number(selectedBefore));
-          this.logSelectDebug('H4', 'tenant-detail.component.ts:loadArchdioceses', 'archdioceses loaded for tenant edit', {
-            success: response.success,
-            count: this.archdioceseOptions?.length ?? 0,
-            filterDenominationId: filterId,
-            seq,
-            stale,
-            selectedBefore,
-            selectedAfter: this.editArchdioceseId,
-            clearedSelection: selectedBefore != null && this.editArchdioceseId == null,
-            matchedName: dioceseMatch?.name ?? null,
-            sampleId: this.archdioceseOptions?.[0]?.id ?? null,
-            sampleIdType: this.archdioceseOptions?.[0] ? typeof this.archdioceseOptions[0].id : 'none',
-          });
-          this.scheduleSelectDomLog('H5', 'loadArchdioceses');
-          // #endregion
           this.cdr.markForCheck();
         },
         error: (err) => {
           this.archdioceseOptions = [];
           this.archdioceses = [];
           this.loadingArchdioceses = false;
-          // #region agent log
-          this.logSelectDebug('H4', 'tenant-detail.component.ts:loadArchdioceses:error', 'archdioceses load failed', {
-            error: err?.message || 'unknown',
-            seq,
-            filterDenominationId: filterId,
-          });
-          // #endregion
           this.toastService.error('Could not load dioceses for editing.', 'Error');
           this.cdr.markForCheck();
         },
@@ -440,15 +387,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     const previous = this.editDenominationId;
     this.editDenomination = value;
     this.editDenominationId = this.coerceOptionalId(value?.id);
-    // #region agent log
-    this.logSelectDebug('H3', 'tenant-detail.component.ts:onEditDenominationChange', 'denomination ngModelChange', {
-      incoming: value?.id ?? null,
-      incomingType: value == null ? 'null' : typeof value,
-      incomingName: value?.name ?? null,
-      previous,
-      next: this.editDenominationId,
-    });
-    // #endregion
     if (previous === this.editDenominationId) {
       return;
     }
@@ -469,19 +407,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       this.editWebsite = this.details?.contact.website ?? '';
       this.syncEditSelectValues();
       this.loadArchdioceses(this.editDenominationId);
-      // #region agent log
-      this.logSelectDebug('H2', 'tenant-detail.component.ts:toggleEdit', 'edit mode enabled', {
-        editDenominationId: this.editDenominationId,
-        editArchdioceseId: this.editArchdioceseId,
-        denominationOptionCount: this.denominationOptions?.length ?? null,
-        archdioceseOptionCount: this.archdioceseOptions?.length ?? null,
-        loadingDenominations: this.loadingDenominations,
-        loadingArchdioceses: this.loadingArchdioceses,
-        denomMatched: this.denominationOptions?.some(d => Number(d.id) === Number(this.editDenominationId)) ?? false,
-        dioceseMatched: this.archdioceseOptions?.some(a => Number(a.id) === Number(this.editArchdioceseId)) ?? false,
-      });
-      this.scheduleSelectDomLog('H5', 'toggleEdit');
-      // #endregion
     }
     this.cdr.markForCheck();
   }
@@ -587,60 +512,10 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       this.editArchdioceseId != null
       && !this.archdioceseOptions.some(a => Number(a.id) === Number(this.editArchdioceseId))
     ) {
-      // #region agent log
-      this.logSelectDebug('H4', 'tenant-detail.component.ts:applyArchdioceseOptions', 'cleared diocese because it was missing from options', {
-        editArchdioceseId: this.editArchdioceseId,
-        optionCount: this.archdioceseOptions.length,
-      });
-      // #endregion
       this.editArchdioceseId = null;
     }
     this.editArchdiocese = this.resolveArchdioceseSelection(this.editArchdioceseId);
   }
-
-  // #region agent log
-  private logSelectDebug(hypothesisId: string, location: string, message: string, data: Record<string, unknown>): void {
-    if (typeof fetch !== 'function') {
-      return;
-    }
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'bd4ad4' },
-      body: JSON.stringify({
-        sessionId: 'bd4ad4',
-        runId: 'pre-fix',
-        hypothesisId,
-        location,
-        message,
-        data: {
-          ...data,
-          isEditing: this.isEditing,
-          boundDenominationName: this.editDenomination?.name ?? null,
-          boundDioceseName: this.editArchdiocese?.name ?? null,
-        },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-  }
-
-  private scheduleSelectDomLog(hypothesisId: string, source: string): void {
-    requestAnimationFrame(() => {
-      const denomLabel = document.querySelector('.tenant-detail__denomination-select .ng-value-label')?.textContent?.trim() ?? null;
-      const dioceseLabel = document.querySelector('.tenant-detail__diocese-select .ng-value-label')?.textContent?.trim() ?? null;
-      const denomPlaceholder = document.querySelector('.tenant-detail__denomination-select .ng-placeholder')?.textContent?.trim() ?? null;
-      const diocesePlaceholder = document.querySelector('.tenant-detail__diocese-select .ng-placeholder')?.textContent?.trim() ?? null;
-      this.logSelectDebug(hypothesisId, 'tenant-detail.component.ts:selectDom', 'rendered select labels', {
-        source,
-        denomLabel,
-        dioceseLabel,
-        denomPlaceholder,
-        diocesePlaceholder,
-        editDenominationId: this.editDenominationId,
-        editArchdioceseId: this.editArchdioceseId,
-      });
-    });
-  }
-  // #endregion
 
   private normalizeWebsite(value: string | null | undefined): string | null {
     const website = (value ?? '').trim();
@@ -903,89 +778,20 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            this.availablePlans = response.data;
-            if ((response as any).currency) this.currency = (response as any).currency;
             if ((response as any).duration_options) {
               this.durationOptions = (response as any).duration_options;
               this.resetSubscriptionDuration();
             }
             this.plansLoadError = null;
           } else {
-            this.availablePlans = {};
             this.plansLoadError = (response as { message?: string }).message || 'Unable to load subscription plans.';
           }
           this.plansLoading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.availablePlans = {};
           this.plansLoadError = this.extractErrorMessage(err, 'Failed to load subscription plans');
           this.plansLoading = false;
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  openUpgradeModal(): void {
-    if (this.tenant) this.selectedPlan = this.tenant.plan;
-    this.subscriptionReason = '';
-    this.resetSubscriptionDuration();
-    this.showUpgradeModal = true;
-    if (!this.plansLoading && (this.plansLoadError || this.getAvailablePlanKeys().length === 0)) {
-      this.loadSubscriptionPlans();
-    }
-    this.cdr.markForCheck();
-  }
-
-  closeUpgradeModal(): void {
-    if (this.subscriptionActionSaving) return;
-    this.showUpgradeModal = false;
-    this.selectedPlan = '';
-    this.subscriptionReason = '';
-    this.cdr.markForCheck();
-  }
-
-  selectPlan(planKey: string): void {
-    if (!this.canSelectPlan(planKey) || this.subscriptionActionSaving) return;
-    this.selectedPlan = planKey;
-    this.cdr.markForCheck();
-  }
-
-  canConfirmPlanChange(): boolean {
-    return !!this.selectedPlan && !this.subscriptionActionSaving && !this.plansLoading
-      && this.getAvailablePlanKeys().length > 0 && this.durationOptions.length > 0
-      && this.canSelectPlan(this.selectedPlan) && this.selectedPlan !== this.tenant?.plan;
-  }
-
-  upgradeSubscription(): void {
-    if (!this.tenantId || !this.selectedPlan || this.subscriptionActionSaving) return;
-    if (!this.canConfirmPlanChange()) {
-      this.toastService.error('Choose a different plan to continue', 'Invalid selection');
-      return;
-    }
-
-    this.subscriptionActionSaving = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.upgradeSubscription(this.tenantId, this.selectedPlan, this.subscriptionDuration, this.normalizedReason())
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.subscriptionActionSaving = false;
-            this.closeUpgradeModal();
-            this.toastService.success('Subscription plan updated', 'Saved');
-            this.loadDetails();
-            this.loadSubscriptionAudits(true);
-          } else {
-            this.toastService.error(response.message || 'Failed to update subscription', 'Error');
-            this.subscriptionActionSaving = false;
-          }
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(this.extractErrorMessage(err, 'Failed to update subscription'), 'Error');
-          this.subscriptionActionSaving = false;
           this.cdr.markForCheck();
         },
       });
@@ -1111,44 +917,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  getPlanName(planKey: string): string { return this.availablePlans[planKey]?.name || planKey; }
-  getPlanPrice(planKey: string): number { return this.availablePlans[planKey]?.price || 0; }
-
-  formatPrice(price: number): string {
-    if (price === 0) return 'Free';
-    if (this.currency === 'INR') return `₹${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (this.currency === 'USD') return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    return `${this.getCurrencySymbol()}${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-
-  getCurrencySymbol(): string {
-    const map: Record<string, string> = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
-    return map[this.currency] || '₹';
-  }
-
-  getPlanRank(planKey: string): number {
-    const idx = PLAN_RANK_LADDER.indexOf(planKey as typeof PLAN_RANK_LADDER[number]);
-    if (idx >= 0) return idx;
-    const keys = this.getAvailablePlanKeys();
-    const i = keys.indexOf(planKey);
-    return i >= 0 ? PLAN_RANK_LADDER.length + i : 999;
-  }
-
-  canUpgradeTo(planKey: string): boolean {
-    if (!this.tenant) return false;
-    const currentIndex = this.getPlanRank(this.tenant.plan);
-    const targetIndex = this.getPlanRank(planKey);
-    return targetIndex > currentIndex || planKey === 'free';
-  }
-
-  canSelectPlan(planKey: string): boolean {
-    if (!this.tenant) return false;
-    if (this.tenant.plan === planKey) return true;
-    return this.canUpgradeTo(planKey);
-  }
-
-  getAvailablePlanKeys(): string[] { return Object.keys(this.availablePlans || {}); }
-
   private resetSubscriptionDuration(): void {
     if (this.durationOptions.length > 0) {
       const def = this.durationOptions.find(o => o.value === 12) || this.durationOptions[0];
@@ -1175,25 +943,10 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     return this.formatDate(current.toISOString());
   }
 
-  formatUsersLimit(value: number | null | undefined): string {
-    if (value == null) return '—';
-    return value >= 999999 ? 'Unlimited' : value.toLocaleString();
-  }
-
-  formatStorageLimit(value: number | null | undefined): string {
-    if (value == null) return '—';
-    if (value >= 1024) {
-      const gb = value / 1024;
-      return `${(gb >= 10 ? Math.round(gb) : Math.round(gb * 10) / 10).toLocaleString()} GB`;
-    }
-    return `${value.toLocaleString()} MB`;
-  }
-
-  confirmPlanActionLabel(): string {
-    if (!this.selectedPlan) return 'Update plan';
-    if (this.selectedPlan === 'free') return 'Switch to Free';
-    if (this.canUpgradeTo(this.selectedPlan)) return 'Change plan';
-    return 'Switch plan';
+  /** Plan changes happen in the Subscriptions panel; refresh lifecycle state and history afterwards. */
+  onPlanPanelChanged(): void {
+    this.loadDetails();
+    this.loadSubscriptionAudits(true);
   }
 
   private normalizedReason(): string | undefined {

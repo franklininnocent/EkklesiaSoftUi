@@ -214,7 +214,7 @@ describe('ChurchProfileComponent', () => {
         { provide: ChurchSocialMediaService, useValue: { getSocialMedia: jest.fn(() => of({ success: true, data: [] })) } },
         { provide: PopeDetailsService, useValue: { getPopeDetails: jest.fn(() => of({ success: true, data: null })) } },
         { provide: GeographyService, useValue: { getCountries: jest.fn(() => of([])) } },
-        { provide: PhoneCodeService, useValue: { getPhoneCodes: jest.fn(() => of([])), getPhoneCodeSync: jest.fn(() => '+91'), resetToDefault: jest.fn(), updatePhoneCodeByCountryId: jest.fn(() => of({ success: true })) } },
+        { provide: PhoneCodeService, useValue: { getPhoneCodes: jest.fn(() => of([])), getPhoneCodeSync: jest.fn(() => '+91'), resetToDefault: jest.fn(), updatePhoneCodeByCountryId: jest.fn(() => of({ success: true })), initializeFromApiOnce: jest.fn(() => of({ success: true, phoneCode: '+91' })), currentPhoneCode: jest.fn(() => '+91') } },
       ],
     });
 

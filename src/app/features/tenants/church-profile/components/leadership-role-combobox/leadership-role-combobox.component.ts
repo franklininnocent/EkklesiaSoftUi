@@ -147,7 +147,11 @@ export class LeadershipRoleComboboxComponent implements ControlValueAccessor, On
     if (this.disabled) {
       return;
     }
-    this.panelOpen ? this.closePanel() : this.openPanel();
+    if (this.panelOpen) {
+      this.closePanel();
+    } else {
+      this.openPanel();
+    }
   }
 
   openPanel(): void {

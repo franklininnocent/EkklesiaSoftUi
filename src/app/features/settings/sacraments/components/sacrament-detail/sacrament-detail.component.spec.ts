@@ -8,6 +8,7 @@ import { SacramentService } from '../../services/sacrament.service';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { ToastService } from '@core/services/toast.service';
 import { TenantService } from '@core/services/tenant.service';
+import { AuthService } from '@core/services/auth.service';
 import { SacramentCertificate } from '../../models/sacrament.model';
 
 describe('SacramentDetailComponent (SacramentView)', () => {
@@ -94,6 +95,13 @@ describe('SacramentDetailComponent (SacramentView)', () => {
           },
         },
         { provide: ToastService, useValue: toastStub },
+        {
+          provide: AuthService,
+          useValue: {
+            canViewTenantAuditLogs: jest.fn(() => true),
+            hasPermission: jest.fn(() => true),
+          },
+        },
         {
           provide: TenantService,
           useValue: {
