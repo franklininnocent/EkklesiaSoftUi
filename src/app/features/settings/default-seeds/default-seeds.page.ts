@@ -16,6 +16,7 @@ import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { DefaultSeedsService } from './default-seeds.service';
 import {
   DefaultSeedCatalogItem,
@@ -41,6 +42,7 @@ interface ModuleGroup {
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
     ConfirmationModalComponent,
+    DataTableComponent,
   ],
   templateUrl: './default-seeds.page.html',
   styleUrl: './default-seeds.page.scss',
@@ -61,12 +63,6 @@ export class DefaultSeedsPage implements OnInit, OnDestroy {
   readonly canRun = this.auth.hasTenantPermission('settings.default-seeds.run');
 
   seeders: DefaultSeedCatalogItem[] = [];
-  summary: DefaultSeedCatalogSummary = {
-    available: 0,
-    partially_initialized: 0,
-    initialized: 0,
-    total: 0,
-  };
 
   loading = false;
   loaded = false;
@@ -105,7 +101,6 @@ export class DefaultSeedsPage implements OnInit, OnDestroy {
     this.api.getCatalog().subscribe({
       next: (payload) => {
         this.seeders = payload.seeders ?? [];
-        this.summary = payload.summary ?? this.summary;
         this.loading = false;
         this.loaded = true;
         this.cdr.markForCheck();
@@ -157,6 +152,58 @@ export class DefaultSeedsPage implements OnInit, OnDestroy {
     return this.selectedIds.size;
   }
 
+  get displaySummary(): DefaultSeedCatalogSummary {
+    const items = this.visibleSeeders;
+
+    return {
+      available: items.filter((item) => item.status === 'available').length,
+      partially_initialized: items.filter((item) => item.status === 'partially_initialized').length,
+      initialized: items.filter((item) => item.status === 'initialized').length,
+      total: items.length,
+    };
+  }
+
+  get listsStillNeeded(): number {
+    return this.visibleSeeders.filter((item) => item.missing_count > 0).length;
+  }
+
+  get headerStatusLabel(): string | undefined {
+    if (!this.loaded || this.error || !this.visibleSeeders.length) {
+      return undefined;
+    }
+
+    if (this.allComplete) {
+      return 'Complete';
+    }
+
+    const count = this.listsStillNeeded;
+    return count === 1 ? '1 list still needed' : `${count} lists still needed`;
+  }
+
+  get headerStatusTone(): StatusBadgeTone {
+    return this.allComplete ? 'success' : 'warning';
+  }
+
+  get moduleFilterLabel(): string {
+    if (this.moduleFilter === 'donations') {
+      return 'Donations';
+    }
+    if (this.moduleFilter === 'ministries') {
+      return 'Ministries';
+    }
+
+    return '';
+  }
+
+  get chooseHint(): string {
+    if (!this.selectedCount) {
+      return 'Select the lists to add. Names your parish already uses stay as they are.';
+    }
+
+    const noun = this.selectedCount === 1 ? 'list' : 'lists';
+    return `${this.selectedCount} ${noun} selected. Names your parish already uses stay as they are.`;
+  }
+
   get decisionTitle(): string {
     if (this.moduleFilter === 'donations') {
       return 'Add recommended offering categories';
@@ -168,9 +215,7 @@ export class DefaultSeedsPage implements OnInit, OnDestroy {
     return 'Add recommended lists for your church';
   }
 
-  get decisionSubtitle(): string {
-    return 'This fills in the standard categories, types, and positions your parish does not have yet.';
-  }
+  readonly decisionSubtitle = 'This fills in the standard categories, types, and positions your parish does not have yet.';
 
   toggleChooseIndividually(): void {
     this.chooseIndividually = !this.chooseIndividually;
@@ -302,12 +347,48 @@ export class DefaultSeedsPage implements OnInit, OnDestroy {
     return `${listText} Existing parish lists will not be changed or deleted.`;
   }
 
-  statusLabel(status: DefaultSeedStatus, item: DefaultSeedCatalogItem): string {
+  moduleIntro(group: ModuleGroup): string {
+    const total = group.items.length;
+    const noun = total === 1 ? 'list' : 'lists';
+    const missing = group.items.filter((item) => item.missing_count > 0).length;
+
+    if (missing === 0) {
+      return `${total} ${noun} · all in place`;
+    }
+
+    const still = missing === 1 ? '1 still needs defaults' : `${missing} still need defaults`;
+    return `${total} ${noun} · ${still}`;
+  }
+
+  progressPercent(item: DefaultSeedCatalogItem): number {
+    if (!item.expected_count) {
+      return 0;
+    }
+
+    return Math.min(100, Math.round((item.matched_count / item.expected_count) * 100));
+  }
+
+  missingLine(item: DefaultSeedCatalogItem): string {
+    const names = item.missing_names ?? [];
+    if (!names.length) {
+      return '';
+    }
+
+    const shown = names.slice(0, 6).join(', ');
+    const extra = names.length > 6 ? `, and ${names.length - 6} more` : '';
+    return `Still to add: ${shown}${extra}.`;
+  }
+
+  canOpen(item: DefaultSeedCatalogItem): boolean {
+    return !!item.open_route && (item.status === 'initialized' || item.status === 'partially_initialized');
+  }
+
+  statusLabel(status: DefaultSeedStatus): string {
     if (status === 'available') {
       return 'Not added yet';
     }
     if (status === 'partially_initialized') {
-      return `Some added · ${item.matched_count} of ${item.expected_count}`;
+      return 'Some added';
     }
     if (status === 'initialized') {
       return 'Complete';

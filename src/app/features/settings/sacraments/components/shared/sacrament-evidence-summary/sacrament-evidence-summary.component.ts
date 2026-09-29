@@ -41,9 +41,7 @@ export class SacramentEvidenceSummaryComponent {
     return this.showCertificateAdvisory && this.isProfileEvidence;
   }
 
-  get advisoryMessage(): string {
-    return 'Parish register record not found — verify baptism certificate before marriage.';
-  }
+  readonly advisoryMessage = 'Parish register record not found — verify baptism certificate before marriage.';
 
   get baptismDate(): string | null {
     return this.evidence?.evidence?.date?.value ?? null;

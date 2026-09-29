@@ -11,10 +11,6 @@ export enum SacramentStatus {
   REGISTERED = 'registered',
   CONDITIONAL = 'conditional',
   VOIDED = 'voided',
-  /** @deprecated Use REGISTERED */
-  ACTIVE = 'registered',
-  /** @deprecated Use VOIDED */
-  CANCELLED = 'voided'
 }
 
 /**

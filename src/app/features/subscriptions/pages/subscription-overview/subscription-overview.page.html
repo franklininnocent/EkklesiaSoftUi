@@ -1,0 +1,148 @@
+<div class="sa-overview sa-stack">
+  <p class="sa-muted" *ngIf="!can.usage">You do not have access to the subscription overview.</p>
+
+  <ng-container *ngIf="can.usage">
+    <div *ngIf="loading && !overview" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <p class="cf-loading-block__label">Loading overview…</p>
+      <app-loading-skeleton type="card" [rows]="1"></app-loading-skeleton>
+      <app-loading-skeleton type="table" [rows]="4" [columns]="3"></app-loading-skeleton>
+    </div>
+
+    <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+      <div>
+        <strong>Could not load the overview</strong>
+        <p>{{ error }}</p>
+      </div>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+    </div>
+
+    <ng-container *ngIf="overview as o">
+      <div class="cf-decision-strip" *ngIf="showDecisionStrip" role="region" aria-label="Suggested next step">
+        <div class="cf-decision-strip__copy">
+          <strong>{{ decisionTitle }}</strong>
+          <span>{{ decisionDetail }}</span>
+        </div>
+        <div class="cf-decision-strip__actions">
+          <a
+            *ngIf="can.requests && o.open_requests > 0"
+            class="cf-btn cf-btn-primary"
+            routerLink="/settings/subscription/requests">
+            Review requests
+          </a>
+          <a
+            *ngIf="o.tenants_needing_attention > 0"
+            class="cf-btn"
+            routerLink="/settings/subscription/usage"
+            [queryParams]="{ attention: 1 }">
+            See churches
+          </a>
+        </div>
+      </div>
+
+      <div class="cf-kpi-grid sa-overview__snapshot" role="group" aria-label="Subscription snapshot">
+        <div class="cf-kpi">
+          <span>Churches</span>
+          <strong>{{ o.total_tenants | number }}</strong>
+          <p class="cf-meta sa-overview__kpi-note" *ngIf="unassigned > 0">
+            {{ unassigned | number }} not yet on a catalog plan
+          </p>
+        </div>
+        <div class="cf-kpi">
+          <span>On a catalog plan</span>
+          <strong>{{ o.assigned_tenants | number }}</strong>
+        </div>
+        <div class="cf-kpi" [class.cf-health--attention]="o.open_requests > 0">
+          <span>Plan requests waiting</span>
+          <strong>{{ o.open_requests | number }}</strong>
+        </div>
+        <div class="cf-kpi" [class.cf-health--risk]="o.tenants_needing_attention > 0">
+          <span>Churches near a limit</span>
+          <strong>{{ o.tenants_needing_attention | number }}</strong>
+          <p class="cf-meta sa-overview__kpi-note" *ngIf="o.usage_measured_on">
+            Measured {{ o.usage_measured_on | cfDate }}
+          </p>
+        </div>
+      </div>
+
+      <div
+        class="sa-overview__status-strip"
+        *ngIf="statusRows.length"
+        role="region"
+        aria-labelledby="sa-status-title">
+        <span id="sa-status-title" class="sa-overview__status-label">Access status</span>
+        <ul class="sa-overview__status-chips">
+          <li *ngFor="let s of statusRows">
+            <app-status-badge [label]="s.label" [tone]="statusTone(s.status)"></app-status-badge>
+            <span class="sa-overview__status-count">{{ s.count | number }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <div
+        class="sa-overview__detail-split"
+        [class.sa-overview__detail-split--plans-only]="!revenue">
+        <section class="cf-panel sa-section sa-overview__pricing" *ngIf="revenue as rev" aria-labelledby="sa-revenue-title">
+          <div class="sa-section__header sa-overview__section-header">
+            <h2 id="sa-revenue-title">{{ rev.label }}</h2>
+          </div>
+          <div class="cf-kpi-grid sa-overview__pricing-totals" *ngIf="rev.totals.length">
+            <div class="cf-kpi" *ngFor="let t of rev.totals">
+              <span>Per month ({{ t.currency_code }})</span>
+              <strong>{{ t.mrr | cfCurrency: t.currency_code }}</strong>
+              <p class="cf-meta sa-overview__kpi-note">Per year: {{ t.arr | cfCurrency: t.currency_code }}</p>
+            </div>
+          </div>
+          <p class="sa-muted sa-overview__pricing-lede" *ngIf="rev.totals.length">
+            Agreed prices for {{ rev.counted_tenants | number }} churches with active access. This is not money received.
+            Yearly and custom agreements are counted as one twelfth per month.
+          </p>
+          <p class="sa-muted" *ngIf="!rev.totals.length">No priced active subscriptions yet.</p>
+          <p class="cf-meta sa-overview__pricing-excluded">
+            Not counted: {{ rev.excluded.trial }} on trial, {{ rev.excluded.expired }} ended,
+            {{ rev.excluded.suspended }} suspended, {{ rev.excluded.unpriced }} without an agreed price.
+          </p>
+        </section>
+
+        <section class="cf-panel sa-section sa-overview__plans" aria-labelledby="sa-plan-dist-title">
+        <div class="sa-section__header sa-overview__section-header">
+          <div>
+            <h2 id="sa-plan-dist-title">Churches per plan</h2>
+            <p class="cf-meta sa-overview__plans-hint">Open a plan to review features and limits.</p>
+          </div>
+        </div>
+        <p class="sa-muted" *ngIf="!o.plans.length">No churches on a catalog plan yet.</p>
+        <div class="cf-table-responsive sa-overview__plan-table" *ngIf="o.plans.length">
+          <div class="sa-versions-table">
+            <app-data-table>
+              <caption class="sr-only">Churches per plan</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Plan</th>
+                  <th scope="col" class="sa-versions-table__num-col">Churches</th>
+                  <th scope="col" class="sa-versions-table__num-col" *ngIf="revenue">Per month</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let p of o.plans">
+                  <td>
+                    <a [routerLink]="['/settings/subscription/plans', p.plan_id]">{{ p.name }}</a>
+                    <span class="sa-chip" *ngIf="p.is_legacy">Older plan</span>
+                  </td>
+                  <td class="sa-versions-table__num-col">
+                    <span class="sa-versions-table__count">{{ p.tenant_count | number }}</span>
+                  </td>
+                  <td class="sa-versions-table__num-col" *ngIf="revenue">
+                    <ng-container *ngFor="let row of mrrRowsForPlan(p.plan_id)">
+                      <span class="sa-versions-table__count">{{ row.mrr | cfCurrency: row.currency_code }}</span>
+                    </ng-container>
+                  </td>
+                </tr>
+              </tbody>
+            </app-data-table>
+          </div>
+        </div>
+        </section>
+      </div>
+    </ng-container>
+  </ng-container>
+</div>

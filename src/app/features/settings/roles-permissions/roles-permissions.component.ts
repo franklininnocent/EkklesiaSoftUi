@@ -9,8 +9,9 @@ import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
 import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { User } from '@core/models/user.model';
-import { CardComponent, PaginationComponent } from '@shared/components';
+import { PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
@@ -21,6 +22,8 @@ import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/p
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { filter, take, takeUntil } from 'rxjs/operators';
@@ -36,7 +39,7 @@ interface AssignRoleTenantGroup {
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, UserAvatarComponent, ImageViewerComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, DataTableComponent, StatusBadgeComponent, UserAvatarComponent, ImageViewerComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -206,6 +209,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   selectedRoleIdsForUser: number[] = [];
   savingUserRoles = false;
   private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly entitlements = inject(EntitlementService);
 
   constructor(
     private rolesService: RolesService,
@@ -482,7 +486,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canCreateRole(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.create');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.create')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.create');
   }
@@ -492,7 +499,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canUpdateRole(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.update');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.update')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.update');
   }
@@ -502,7 +512,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canDeleteRole(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.delete');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.delete')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.delete');
   }
@@ -512,7 +525,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canAssignPermissions(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('permissions.assign');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('permissions.assign')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('permissions.assign');
   }
@@ -1570,6 +1586,14 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     return 'System';
   }
 
+  getRoleBadgeTone(role: Role): StatusBadgeTone {
+    const classification = this.getRoleClassification(role);
+    if (classification === 'protected') return 'critical';
+    if (classification === 'default') return 'warning';
+    if (classification === 'custom') return 'neutral';
+    return 'info';
+  }
+
   getRoleClassification(role: Role): 'protected' | 'default' | 'custom' | 'system' {
     if (role.role_classification === 'protected_system') {
       return 'protected';
@@ -1601,6 +1625,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   getStatusText(active: 0 | 1): string {
     return active === 1 ? 'Active' : 'Inactive';
+  }
+
+  getStatusBadgeTone(active: 0 | 1): StatusBadgeTone {
+    return active === 1 ? 'success' : 'neutral';
   }
 
   getRolesEmptyTitle(): string {

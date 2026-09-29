@@ -200,37 +200,6 @@
   gap: var(--cf-space-2);
 }
 
-.plans-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
-  gap: var(--cf-space-2);
-  margin: var(--cf-space-2) 0;
-}
-
-.plan-card {
-  border: 1px solid var(--cf-panel-border);
-  border-radius: var(--cf-radius-sm);
-  padding: var(--cf-space-2);
-  background: var(--cf-panel-bg);
-  text-align: left;
-  cursor: pointer;
-
-  &.selected {
-    border-color: var(--cf-forest, #1d6b4f);
-    box-shadow: 0 0 0 1px var(--cf-forest, #1d6b4f);
-  }
-
-  &:disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-  }
-
-  h3 {
-    margin: 0 0 0.25rem;
-    font-size: 0.95rem;
-  }
-}
-
 .sub-modal-body {
   display: grid;
   gap: var(--cf-space-3);

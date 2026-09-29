@@ -6,7 +6,6 @@ import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '../../../../../core/services/auth.service';
 import { ToastService } from '../../../../../core/services/toast.service';
 import { PageHeaderComponent } from '../../../../../shared/components/page-header/page-header.component';
-import { ButtonComponent } from '../../../../../shared/components/button/button.component';
 import { SacramentCreateRequest, SacramentType } from '../../models/sacrament.model';
 import { SacramentParticipantDraft } from '../../models/sacrament-definition.model';
 import { SacramentService } from '../../services/sacrament.service';
@@ -25,7 +24,6 @@ import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/
     CommonModule,
     FormsModule,
     PageHeaderComponent,
-    ButtonComponent,
     ParticipantSourceControlComponent,
     MinisterPickerComponent,
     SacramentReviewPanelComponent,

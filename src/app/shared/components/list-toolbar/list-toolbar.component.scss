@@ -26,10 +26,12 @@
   align-items: center;
   gap: var(--cf-space-1);
   position: relative;
-  box-sizing: border-box;
-  min-height: var(--cf-control-height);
-  padding: var(--cf-control-pad-y) var(--cf-btn-pad-x);
-  font-size: var(--cf-text-base);
+}
+
+.cf-list-toolbar__filters-icon {
+  width: var(--cf-icon-md);
+  height: var(--cf-icon-md);
+  flex-shrink: 0;
 }
 
 .cf-list-toolbar__filter-badge {

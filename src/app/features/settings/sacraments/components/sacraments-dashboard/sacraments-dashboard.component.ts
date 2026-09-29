@@ -322,6 +322,12 @@ export class SacramentsDashboardComponent implements OnInit {
     });
   }
 
+  openRegisterAll(): void {
+    this.openRegister(
+      this.selectedBccId ? { bcc_id: this.selectedBccId } : {}
+    );
+  }
+
   openRegisterMarriageCanonical(filter: MarriageRegisterFilterKey): void {
     const matrimonyTypeId = this.summary?.matrimony?.sacrament_type_id;
     if (!matrimonyTypeId) {

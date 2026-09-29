@@ -80,6 +80,7 @@
             [class.nav-item-parent__link--ancestor]="isAncestor()"
             [attr.data-nav]="depth === 0 ? node.id : null"
             [attr.aria-label]="node.label"
+            [attr.title]="node.label"
             [attr.aria-current]="isActive() ? 'page' : null"
           >
             @if (showIcon()) {
@@ -99,6 +100,7 @@
             [attr.aria-expanded]="isExpanded()"
             [attr.aria-controls]="submenuId"
             [attr.aria-label]="node.label"
+            [attr.title]="node.label"
           >
             @if (showMarker()) {
               <span class="nav-marker" aria-hidden="true"></span>
@@ -137,6 +139,7 @@
       [ngStyle]="depth > 0 ? navDepthStyle : null"
       [attr.data-nav]="node.id"
       [attr.aria-label]="node.label"
+      [attr.title]="node.label"
       [attr.aria-current]="isActive() ? 'page' : null"
     >
       @if (showIcon()) {

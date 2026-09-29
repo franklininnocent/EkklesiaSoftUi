@@ -14,7 +14,7 @@ export function mockCollectionHealth(overrides: Partial<CollectionHealthPayload>
     primary_reason: '12 families require follow-up',
     secondary_reason: 'Building Fund behind target',
     action_label: 'Review Issues',
-    action_route: '/donations/collection-health',
+    action_route: '/donations',
     factors: [
       { key: 'completion', label: 'Collection Completion Rate', score: 68, weight_pct: 35, status: 'attention', trend_pct: -2, trend_direction: 'down' },
       { key: 'participation', label: 'Family Participation Rate', score: 72, weight_pct: 35, status: 'attention', trend_pct: -8, trend_direction: 'down' },

@@ -1,4 +1,8 @@
-<nav class="cf-tab-strip" role="tablist" [attr.aria-label]="ariaLabel || null">
+<nav
+  class="cf-tab-strip"
+  [class.cf-tab-strip--compact]="density === 'compact'"
+  role="tablist"
+  [attr.aria-label]="ariaLabel || null">
   <ng-container *ngFor="let tab of tabs">
     <a
       *ngIf="mode === 'router'; else inpageTab"

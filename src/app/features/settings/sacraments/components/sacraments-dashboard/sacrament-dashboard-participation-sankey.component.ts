@@ -127,6 +127,7 @@ export class SacramentDashboardParticipationSankeyComponent implements AfterView
   private flowMeta: ParticipationFlowMeta[] = [];
   private labels: Record<string, string> = {};
   private columns: Record<string, number> = {};
+  private canvasWaitFrames = 0;
 
   get hasData(): boolean {
     return this.flows.length > 0;
@@ -205,14 +206,22 @@ export class SacramentDashboardParticipationSankeyComponent implements AfterView
     if (!this.hasData) {
       this.chart?.destroy();
       this.chart = undefined;
+      this.canvasWaitFrames = 0;
       return;
     }
 
     const canvas = this.canvas?.nativeElement;
     if (!canvas) {
-      queueMicrotask(() => this.renderChart());
+      // ViewChild may lag one change-detection cycle; never spin forever.
+      if (this.canvasWaitFrames >= 10) {
+        this.canvasWaitFrames = 0;
+        return;
+      }
+      this.canvasWaitFrames += 1;
+      requestAnimationFrame(() => this.renderChart());
       return;
     }
+    this.canvasWaitFrames = 0;
 
     try {
       if (!canvas.getContext('2d')) {

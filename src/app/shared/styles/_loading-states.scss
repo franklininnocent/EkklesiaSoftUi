@@ -111,12 +111,6 @@
   }
 }
 
-// Spinner Animation
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 // Accessibility: Reduce motion
 @media (prefers-reduced-motion: reduce) {

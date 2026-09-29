@@ -26,6 +26,8 @@ export interface SupportUserSummary {
   email?: string | null;
 }
 
+import type { ChurchCurrency } from '@core/models/church-currency.model';
+
 export interface SupportSession {
   id: string;
   support_user_id: number;
@@ -42,6 +44,7 @@ export interface SupportSession {
   ip_address?: string | null;
   tenant?: SupportTenantSummary | null;
   support_user?: SupportUserSummary | null;
+  currency?: ChurchCurrency | null;
 }
 
 export interface StartSupportSessionPayload {

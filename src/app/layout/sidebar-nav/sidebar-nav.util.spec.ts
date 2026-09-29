@@ -74,6 +74,19 @@ describe('sidebar-nav.util', () => {
       expect(activation.activeId).toBe('roles-permissions-roles');
     });
 
+    it('activates the sacrament register and expands sacraments', () => {
+      const activation = resolveNavActivation(forest, '/sacraments/register');
+      expect(activation.activeId).toBe('sacraments-register');
+      expect(activation.ancestorIds.has('sacraments')).toBe(true);
+      expect(activation.activeId).not.toBe('sacraments-dashboard');
+    });
+
+    it('keeps the sacrament register inactive on the dashboard', () => {
+      const activation = resolveNavActivation(forest, '/sacraments');
+      expect(activation.activeId).not.toBe('sacraments-register');
+      expect(activation.ancestorIds.has('sacraments-register')).toBe(false);
+    });
+
     it('selects ministries guests leaf without matching organizations', () => {
       const activation = resolveNavActivation(forest, '/ministries/guests');
       expect(activation.activeId).toBe('ministries-guests');
@@ -134,6 +147,14 @@ describe('sidebar-nav.util', () => {
 
   describe('collectAutoExpandIds', () => {
     const root = DONATIONS_SIDEBAR_TREE;
+
+    it('expands sacraments for the register', () => {
+      const ids = collectAutoExpandIdsForForest(
+        flattenForest(buildAppSidebarSections()),
+        '/sacraments/register'
+      );
+      expect(ids.has('sacraments')).toBe(true);
+    });
 
     it('expands donations and projects for campaigns', () => {
       const ids = collectAutoExpandIds(root, '/donations/campaigns');

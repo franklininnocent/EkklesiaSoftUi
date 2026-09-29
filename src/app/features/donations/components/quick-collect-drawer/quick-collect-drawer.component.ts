@@ -11,12 +11,16 @@ import { DonationsService } from '../../services/donations.service';
 import { QuickCollectRecentFamily, QuickCollectService } from '../../services/quick-collect.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
 import { localDateOnly, requiresGatewayReference } from '../../utils/local-date-only';
+import { formatPaymentDateTime } from '../../utils/payment-datetime';
 import {
   DonationFamilyFinancialProfile,
   DonationPayment,
   DonationReceiptPreview,
   UpiPaymentIntent
 } from '../../models/donation.model';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 
 type CollectPhase = 'collect' | 'success';
 type CollectType = 'general' | 'mandatory' | 'project' | 'offering';
@@ -41,7 +45,7 @@ interface ActivityRow {
 @Component({
   selector: 'app-quick-collect-drawer',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, CfCurrencyPipe, CfActionIconComponent],
   template: `
     <div class="qc-backdrop" *ngIf="isOpen" (click)="close()" aria-hidden="true"></div>
 
@@ -69,7 +73,7 @@ interface ActivityRow {
               <h3>Payment recorded successfully</h3>
               <dl class="qc-success__details">
                 <div><dt>Family</dt><dd>{{ lastSuccess.familyName }}</dd></div>
-                <div><dt>Amount</dt><dd>₹{{ lastSuccess.amount | number:'1.0-0' }}</dd></div>
+                <div><dt>Amount</dt><dd>{{ lastSuccess.amount | cfCurrency : null : 0 }}</dd></div>
                 <div><dt>Category</dt><dd>{{ lastSuccess.categoryLabel }}</dd></div>
                 <div *ngIf="lastSuccess.receiptNumber"><dt>Receipt #</dt><dd>{{ lastSuccess.receiptNumber }}</dd></div>
                 <div *ngIf="!lastSuccess.receiptNumber"><dt>Receipt</dt><dd>{{ lastSuccess.receiptGenerated ? 'Generating…' : 'Not requested' }}</dd></div>
@@ -78,10 +82,44 @@ interface ActivityRow {
                 Print a receipt for the payer now, or find it later under Stewardship → Receipts.
               </p>
               <div class="qc-success__actions">
-                <button type="button" class="cf-btn cf-btn-primary" *ngIf="lastPaymentId" (click)="printReceipt()">Print receipt</button>
-                <button type="button" class="cf-btn" *ngIf="lastPaymentId" (click)="viewReceipt()">Preview receipt</button>
-                <button type="button" class="cf-btn" (click)="collectAnother()">Collect another payment</button>
-                <a class="cf-btn" routerLink="/donations/receipts" (click)="close()">All receipts</a>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon cf-btn-primary"
+                  *ngIf="lastPaymentId"
+                  (click)="printReceipt()"
+                  aria-label="Print receipt"
+                  title="Print receipt"
+                >
+                  <app-cf-action-icon name="print" />
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon"
+                  *ngIf="lastPaymentId"
+                  (click)="viewReceipt()"
+                  aria-label="Preview receipt"
+                  title="Preview receipt"
+                >
+                  <app-cf-action-icon name="eye" />
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon"
+                  (click)="collectAnother()"
+                  aria-label="Collect another payment"
+                  title="Collect another payment"
+                >
+                  <app-cf-action-icon name="collect-payment" />
+                </button>
+                <a
+                  class="cf-btn cf-btn-icon"
+                  routerLink="/donations/receipts"
+                  (click)="close()"
+                  aria-label="All receipts"
+                  title="All receipts"
+                >
+                  <app-cf-action-icon name="book-open" />
+                </a>
               </div>
             </section>
 
@@ -150,11 +188,19 @@ interface ActivityRow {
                       <strong>{{ selectedFamily.family_name }}</strong>
                       <span>{{ selectedFamily.family_code }}</span>
                     </div>
-                    <button type="button" class="qc-link" (click)="clearFamily()">Change</button>
+                    <button
+                      type="button"
+                      class="cf-btn cf-btn-icon cf-btn--sm qc-link"
+                      (click)="clearFamily()"
+                      aria-label="Change family"
+                      title="Change family"
+                    >
+                      <app-cf-action-icon name="x" />
+                    </button>
                   </div>
                   <p *ngIf="familyProfile" class="qc-selected__meta">
-                    Outstanding ₹{{ familyProfile.totals.pending_due | number:'1.0-0' }}
-                    · Paid ₹{{ familyProfile.totals.total_paid | number:'1.0-0' }}
+                    Outstanding {{ familyProfile.totals.pending_due | cfCurrency : null : 0 }}
+                    · Paid {{ familyProfile.totals.total_paid | cfCurrency : null : 0 }}
                   </p>
                 </article>
 
@@ -168,7 +214,7 @@ interface ActivityRow {
                       [class.active]="selectedAllocation?.allocatable_id === option.allocatable_id"
                       (click)="applyAllocation(option)"
                     >
-                      {{ option.label }} · ₹{{ option.amount | number:'1.0-0' }}
+                      {{ option.label }} · {{ option.amount | cfCurrency : null : 0 }}
                     </button>
                   </div>
                 </div>
@@ -181,7 +227,7 @@ interface ActivityRow {
                   <label class="qc-field">
                     <span>Amount <span class="req" aria-hidden="true">*</span></span>
                     <div class="qc-amount" [class.is-invalid]="submitAttempted && (!amount || amount <= 0)">
-                      <span aria-hidden="true">₹</span>
+                      <span aria-hidden="true">{{ currencySymbol }}</span>
                       <input
                         #amountInput
                         type="number"
@@ -240,7 +286,7 @@ interface ActivityRow {
                   <p *ngIf="upiLoading" class="qc-upi__hint">Generating UPI QR…</p>
                   <ng-container *ngIf="!upiLoading && upiIntent?.available">
                     <img [src]="upiIntent!.qr_data_uri" alt="UPI payment QR code" width="180" height="180" />
-                    <p class="qc-upi__hint">{{ upiIntent!.payee_name }} · ₹{{ upiIntent!.amount | number:'1.0-0' }}</p>
+                    <p class="qc-upi__hint">{{ upiIntent!.payee_name }} · {{ upiIntent!.amount | cfCurrency : null : 0 }}</p>
                   </ng-container>
                   <p *ngIf="!upiLoading && upiIntent && !upiIntent.available" class="qc-upi__hint">
                     {{ upiIntent.message || 'Configure UPI in Donations Settings to enable QR collection.' }}
@@ -252,7 +298,7 @@ interface ActivityRow {
                 <h3 id="qc-receipt-heading" class="qc-section__title">Receipt</h3>
                 <p class="qc-meta">A receipt is issued automatically when the payment is recorded.</p>
                 <p class="qc-meta" *ngIf="familyCreditAmount > 0">
-                  ₹{{ familyCreditAmount | number:'1.2-2' }} beyond the selected due or project will be stored as family credit for the next collection.
+                  {{ familyCreditAmount | cfCurrency }} beyond the selected due or project will be stored as family credit for the next collection.
                 </p>
               </section>
             </ng-container>
@@ -267,7 +313,7 @@ interface ActivityRow {
               <li *ngFor="let row of activityRows">
                 <div class="qc-activity__row">
                   <strong>{{ row.family_name }}</strong>
-                  <span>₹{{ row.amount | number:'1.0-0' }}</span>
+                  <span>{{ row.amount | cfCurrency : null : 0 }}</span>
                 </div>
                 <div class="qc-activity__meta">
                   <span>{{ row.time_label }}</span>
@@ -285,20 +331,31 @@ interface ActivityRow {
           <span>Keep Quick Collect open</span>
         </label>
         <div class="qc-footer__actions">
-          <button type="button" class="cf-btn" (click)="close()">{{ phase === 'success' ? 'Close' : 'Cancel' }}</button>
           <button
             type="button"
-            class="cf-btn cf-btn-primary"
+            class="cf-btn cf-btn-icon"
+            (click)="close()"
+            [attr.aria-label]="phase === 'success' ? 'Close' : 'Cancel'"
+            [attr.title]="phase === 'success' ? 'Close' : 'Cancel'"
+          >
+            <app-cf-action-icon name="x" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon cf-btn-primary"
             *ngIf="phase === 'collect'"
             [disabled]="!canSubmit || saving"
             (click)="submit()"
+            [attr.aria-label]="submitLabel"
+            [attr.title]="submitLabel"
           >
-            {{ submitLabel }}
+            <app-cf-action-icon name="collect-payment" />
           </button>
         </div>
       </footer>
     </aside>
   `,
+  styleUrls: ['../../styles/stewardship-action-icons.scss'],
   styles: [`
     .sr-only {
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -327,7 +384,7 @@ interface ActivityRow {
       color: var(--cf-muted); padding: 0.15rem 0.45rem; cursor: pointer;
     }
     .qc-body { padding: 1rem 1.15rem; overflow: auto; flex: 1; }
-    .qc-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 1rem; align-items: start; }
+    .qc-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 1rem; align-items: start; }
     .qc-main { display: grid; gap: 1rem; min-width: 0; }
     .qc-section { display: grid; gap: 0.75rem; }
     .qc-section--compact { gap: 0.5rem; }
@@ -434,6 +491,7 @@ interface ActivityRow {
     .qc-activity__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
     .qc-activity__row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.84rem; }
     .qc-activity__meta { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; color: var(--cf-muted); margin-top: 0.1rem; }
+    .qc-activity__meta span { white-space: nowrap; }
     .qc-footer__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-left: auto; }
     .cf-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
     @media (max-width: 720px) {
@@ -448,7 +506,12 @@ export class QuickCollectDrawerComponent implements OnInit {
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
   @ViewChild('amountInput') amountInput?: ElementRef<HTMLInputElement>;
 
+  private readonly churchCurrency = inject(ChurchCurrencyService);
   private readonly quickCollectService = inject(QuickCollectService);
+
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? '';
+  }
   private readonly familyService = inject(FamilyService);
   private readonly donationsService = inject(DonationsService);
   private readonly receiptPrintService = inject(ReceiptPrintService);
@@ -942,8 +1005,7 @@ export class QuickCollectDrawerComponent implements OnInit {
   }
 
   private loadRecentActivity(): void {
-    const today = localDateOnly();
-    this.donationsService.getPayments({ payment_date_from: today, payment_date_to: today, per_page: '8' }).subscribe({
+    this.donationsService.getPayments({ today_only: '1', per_page: '8' }).subscribe({
       next: (res) => {
         const rows = res.data?.data ?? [];
         this.activityRows = rows.map((payment) => ({
@@ -951,7 +1013,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           family_name: payment.family?.family_name || payment.payer_name || 'Family',
           amount: payment.amount,
           method: payment.method,
-          time_label: this.formatTime(payment.created_at || payment.payment_date),
+          time_label: formatPaymentDateTime(payment.created_at || payment.payment_date),
           status: payment.status
         }));
       },
@@ -959,17 +1021,6 @@ export class QuickCollectDrawerComponent implements OnInit {
         this.activityRows = [];
       }
     });
-  }
-
-  private formatTime(value?: string): string {
-    if (!value) {
-      return 'Today';
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return 'Today';
-    }
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   private clearAutoReset(): void {

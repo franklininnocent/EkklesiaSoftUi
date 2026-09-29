@@ -1,0 +1,281 @@
+<section class="mass-intentions-list cf-page">
+  <app-page-header title="Office register" subtitle="Mass intentions recorded for your parish">
+    <app-list-toolbar
+      searchPlaceholder="Search name, intention, or description…"
+      [searchValue]="search()"
+      [filterCount]="drawerFilterCount()"
+      (searchChange)="onSearch($event)"
+      (filtersOpened)="openFilters()"
+    >
+      @if (canExport()) {
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          [disabled]="exportBusy()"
+          (click)="downloadList()"
+          aria-label="Download register"
+          title="Download register (PDF)"
+        >
+          <app-cf-action-icon name="download" />
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          [disabled]="exportBusy()"
+          (click)="printList()"
+          aria-label="Print register"
+          title="Print register"
+        >
+          <app-cf-action-icon name="print" />
+        </button>
+      }
+      @if (canCreate()) {
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary mass-intentions-list__create"
+          cfDisableWhenReadOnly
+          (click)="openCreate()"
+          aria-label="Create intention"
+          title="Create intention"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="16"
+            height="16"
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="16"></line>
+            <line x1="8" y1="12" x2="16" y2="12"></line>
+          </svg>
+          <span>Create intention</span>
+        </button>
+      }
+    </app-list-toolbar>
+  </app-page-header>
+
+  @if (getActiveFilters().length) {
+    <div class="mass-intentions-list__chips" role="region" aria-label="Active filters">
+      <span class="cf-meta">Active filters</span>
+      <div class="mass-intentions-list__chip-list">
+        @for (filter of getActiveFilters(); track filter.key) {
+          <span class="cf-badge cf-badge--info">
+            {{ filter.label }}: {{ filter.displayValue }}
+            <button
+              type="button"
+              class="mass-intentions-list__chip-remove"
+              (click)="removeFilter(filter)"
+              [attr.aria-label]="'Remove filter: ' + filter.label"
+            >
+              ×
+            </button>
+          </span>
+        }
+      </div>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllFilters()">Clear all</button>
+    </div>
+  }
+
+  @if (loading() && !loaded()) {
+    <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <p class="cf-loading-block__label">Loading intentions…</p>
+      <app-loading-skeleton type="table" [rows]="6" [columns]="6" />
+    </div>
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Try again</button>
+    </div>
+  } @else if (isEmptyRegister()) {
+    <app-cf-empty-state title="No intentions yet" description="Record the first Mass intention when someone visits the office.">
+      @if (canCreate()) {
+        <button type="button" class="cf-btn cf-btn-primary" cfDisableWhenReadOnly (click)="openCreate()">
+          Create intention
+        </button>
+      }
+    </app-cf-empty-state>
+  } @else if (items().length === 0) {
+    <app-cf-empty-state title="No matches" description="Try a different search or status filter.">
+      <button type="button" class="cf-btn" (click)="clearAllFilters()">Clear filters</button>
+    </app-cf-empty-state>
+  } @else {
+    <div class="cf-panel mass-intentions-list__panel">
+      <p class="mass-intentions-list__summary cf-meta" role="status">
+        {{ resultsSummary() }}
+      </p>
+
+      <app-data-table [clickableRows]="true" [ariaBusy]="loading()">
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              class="mass-intentions-list__sortable"
+              [attr.aria-sort]="sortAriaSort('requested_date')"
+              (click)="sortBy('requested_date')"
+            >
+              Scheduled day <span aria-hidden="true">{{ sortIcon('requested_date') }}</span>
+            </th>
+            <th
+              scope="col"
+              class="mass-intentions-list__sortable"
+              [attr.aria-sort]="sortAriaSort('beneficiary_name')"
+              (click)="sortBy('beneficiary_name')"
+            >
+              For <span aria-hidden="true">{{ sortIcon('beneficiary_name') }}</span>
+            </th>
+            <th
+              scope="col"
+              class="mass-intentions-list__sortable mass-intentions-list__col-intention"
+              [attr.aria-sort]="sortAriaSort('intention_text')"
+              (click)="sortBy('intention_text')"
+            >
+              Intention <span aria-hidden="true">{{ sortIcon('intention_text') }}</span>
+            </th>
+            <th
+              scope="col"
+              class="mass-intentions-list__sortable mass-intentions-list__col-desc"
+              [attr.aria-sort]="sortAriaSort('intention_description')"
+              (click)="sortBy('intention_description')"
+            >
+              Description <span aria-hidden="true">{{ sortIcon('intention_description') }}</span>
+            </th>
+            <th
+              scope="col"
+              class="mass-intentions-list__sortable"
+              [attr.aria-sort]="sortAriaSort('status')"
+              (click)="sortBy('status')"
+            >
+              Status <span aria-hidden="true">{{ sortIcon('status') }}</span>
+            </th>
+            <th scope="col" class="cf-table__actions-col">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+            @for (row of items(); track row.id) {
+              <tr
+                tabindex="0"
+                (click)="openView(row.id)"
+                (keydown.enter)="openView(row.id)"
+                [attr.aria-label]="'View intention for ' + row.beneficiary_name"
+              >
+                <td class="mass-intentions-list__day">
+                  <time [attr.datetime]="row.requested_date || undefined">{{ scheduledDay(row) }}</time>
+                </td>
+                <td class="mass-intentions-list__name">
+                  <strong>{{ row.beneficiary_name }}</strong>
+                  @if (beneficiaryIdentification(row); as identification) {
+                    <span class="mass-intentions-list__identification cf-meta">{{ identification }}</span>
+                  }
+                </td>
+                <td class="mass-intentions-list__intention">
+                  <div class="mass-intentions-list__intention-cell">
+                    <span
+                      class="mass-intentions-list__intention-label"
+                      [attr.title]="intentionType(row) !== '—' ? intentionType(row) : null"
+                    >
+                      {{ intentionType(row) }}
+                    </span>
+                    @if (needsCategory(row)) {
+                      <span class="cf-badge cf-badge--warning mass-intentions-list__legacy-badge">Pick type</span>
+                    }
+                  </div>
+                </td>
+                <td class="mass-intentions-list__desc">
+                  <span
+                    class="mass-intentions-list__desc-text"
+                    [attr.title]="intentionDescription(row) || undefined"
+                  >
+                    {{ intentionDescription(row) || '—' }}
+                  </span>
+                </td>
+                <td class="mass-intentions-list__status">
+                  <div class="mass-intentions-list__status-inner" [attr.title]="statusLabel(row)">
+                    @if (row.status === 'open') {
+                      <span class="mass-intentions-list__status-icon" aria-hidden="true">
+                        <app-cf-action-icon name="book-open" />
+                      </span>
+                    } @else if (row.status === 'closed') {
+                      <span class="mass-intentions-list__status-icon" aria-hidden="true">
+                        <app-cf-action-icon name="check" />
+                      </span>
+                    }
+                    <app-status-badge [label]="statusLabel(row)" [tone]="statusTone(row)" />
+                  </div>
+                </td>
+                <td
+                  class="cf-table__actions-col cf-table__actions-cell mass-intentions-list__actions"
+                  (click)="$event.stopPropagation()"
+                >
+                  <div class="cf-row-actions">
+                    <button
+                      type="button"
+                      class="cf-btn cf-btn-icon cf-btn--sm"
+                      (click)="openView(row.id)"
+                      aria-label="View"
+                      title="View"
+                    >
+                      <app-cf-action-icon name="eye" />
+                    </button>
+                    @if (row.status === 'open' && canCreate()) {
+                      <button
+                        type="button"
+                        class="cf-btn cf-btn-icon cf-btn--sm"
+                        (click)="openEdit(row.id)"
+                        aria-label="Edit"
+                        title="Edit"
+                      >
+                        <app-cf-action-icon name="pencil" />
+                      </button>
+                    }
+                  </div>
+                </td>
+              </tr>
+            }
+        </tbody>
+      </app-data-table>
+
+      @if (totalItems() > pageSize()) {
+        <app-pagination
+          [currentPage]="currentPage()"
+          [pageSize]="pageSize()"
+          [totalItems]="totalItems()"
+          [pageSizeOptions]="pageSizeOptions"
+          [showPageSizeSelector]="true"
+          [showPageInfo]="true"
+          (pageChange)="goToPage($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        />
+      }
+    </div>
+  }
+
+  <app-mass-intention-form-modal
+    [open]="showFormModal()"
+    [recordId]="editId()"
+    (closed)="closeFormModal()"
+    (saved)="onSaved()"
+  />
+
+  <app-mass-intention-view-modal
+    [open]="showViewModal()"
+    [requestId]="viewId()"
+    (closed)="closeViewModal()"
+    (editRequested)="onEditFromView($event)"
+    (recordClosed)="reload()"
+  />
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch()"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch.set(false)"
+  />
+</section>

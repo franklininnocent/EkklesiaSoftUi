@@ -1,6 +1,6 @@
 /**
- * Subscription Management Component
- * Platform catalog: access windows, duration options, and plans (no payments).
+ * Subscription access settings: grace/warning windows and renewal duration options.
+ * The plan catalog lives in features/subscriptions (database-driven plans and versions).
  */
 
 import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
@@ -13,7 +13,6 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
-import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
 import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
 import { Subject, takeUntil } from 'rxjs';
@@ -26,21 +25,7 @@ interface DurationOption {
   active: boolean;
 }
 
-interface SubscriptionPlan {
-  id?: number;
-  key: string;
-  name: string;
-  description?: string;
-  price: number;
-  max_users: number;
-  max_storage_mb: number;
-  features?: string[];
-  display_order: number;
-  active: boolean;
-  is_default: boolean;
-}
-
-type SubMgmtTab = 'settings' | 'duration' | 'plans';
+type SubMgmtTab = 'settings' | 'duration';
 
 @Component({
   selector: 'app-subscription-management',
@@ -48,7 +33,6 @@ type SubMgmtTab = 'settings' | 'duration' | 'plans';
   imports: [
     CommonModule,
     FormsModule,
-    PageHeaderComponent,
     TabStripComponent,
     LoadingSkeletonComponent,
     StatusBadgeComponent,
@@ -82,33 +66,12 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
   durationsLoading = false;
   durationsError: string | null = null;
 
-  plans: SubscriptionPlan[] = [];
-  plansLoading = false;
-  plansError: string | null = null;
-
-  availableFeatures: string[] = [
-    'events',
-    'donations',
-    'groups',
-    'messaging',
-    'custom_branding',
-    'api_access',
-    'dedicated_support',
-    'advanced_reporting',
-    'multi_location',
-    'volunteer_management',
-  ];
-
   /** True while a modal create/update/delete request is in flight */
   saving = false;
 
   showAddModal = false;
   showEditModal = false;
   showDeleteModal = false;
-
-  showAddPlanModal = false;
-  showEditPlanModal = false;
-  showDeletePlanModal = false;
 
   formData: DurationOption = {
     months: 1,
@@ -117,31 +80,13 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
     active: true
   };
 
-  planFormData: SubscriptionPlan = {
-    key: '',
-    name: '',
-    description: '',
-    price: 0,
-    max_users: 10,
-    max_storage_mb: 100,
-    features: [],
-    display_order: 0,
-    active: true,
-    is_default: false
-  };
-
   editingOption: DurationOption | null = null;
   deletingOption: DurationOption | null = null;
-  editingPlan: SubscriptionPlan | null = null;
-  deletingPlan: SubscriptionPlan | null = null;
 
   readonly tabs: { id: SubMgmtTab; label: string }[] = [
     { id: 'settings', label: 'Access settings' },
     { id: 'duration', label: 'Duration options' },
-    { id: 'plans', label: 'Subscription plans' },
   ];
-
-  private static readonly FEATURE_PREVIEW_COUNT = 3;
 
   get tabStripItems(): TabStripItem[] {
     return this.tabs.map((tab) => ({
@@ -155,7 +100,6 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.loadSettings();
     this.loadDurationOptions();
-    this.loadPlans();
   }
 
   ngOnDestroy(): void {
@@ -169,19 +113,12 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
   }
 
   onTabChange(tabId: string): void {
-    if (tabId === 'settings' || tabId === 'duration' || tabId === 'plans') {
+    if (tabId === 'settings' || tabId === 'duration') {
       this.setActiveTab(tabId);
     }
   }
 
   durationRowActions(): ActionBarItem[] {
-    return [
-      { id: 'edit', label: 'Edit', tier: 'secondary', disabled: this.saving },
-      { id: 'delete', label: 'Delete', tier: 'danger', disabled: this.saving },
-    ];
-  }
-
-  planRowActions(): ActionBarItem[] {
     return [
       { id: 'edit', label: 'Edit', tier: 'secondary', disabled: this.saving },
       { id: 'delete', label: 'Delete', tier: 'danger', disabled: this.saving },
@@ -196,26 +133,6 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
     if (actionId === 'delete') {
       this.openDeleteModal(option);
     }
-  }
-
-  onPlanRowAction(actionId: string, plan: SubscriptionPlan): void {
-    if (actionId === 'edit') {
-      this.openEditPlanModal(plan);
-      return;
-    }
-    if (actionId === 'delete') {
-      this.openDeletePlanModal(plan);
-    }
-  }
-
-  visibleFeatures(features?: string[]): string[] {
-    return (features || []).slice(0, SubscriptionManagementComponent.FEATURE_PREVIEW_COUNT);
-  }
-
-  extraFeatureCount(features?: string[]): number {
-    const len = features?.length ?? 0;
-    const preview = SubscriptionManagementComponent.FEATURE_PREVIEW_COUNT;
-    return len > preview ? len - preview : 0;
   }
 
   loadSettings(): void {
@@ -475,306 +392,12 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
     return true;
   }
 
-  loadPlans(): void {
-    this.plansLoading = true;
-    this.plansError = null;
-    this.cdr.markForCheck();
-
-    this.tenantService.getPlans()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success && Array.isArray(response.data)) {
-            this.plans = response.data;
-          } else {
-            this.plansError = this.friendlyError(response.message, 'Unable to load subscription plans.');
-          }
-          this.plansLoading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.plansError = this.friendlyError(this.extractErrorMessage(err), 'Unable to load subscription plans.');
-          this.plansLoading = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  openAddPlanModal(): void {
-    this.planFormData = {
-      key: '',
-      name: '',
-      description: '',
-      price: 0,
-      max_users: 10,
-      max_storage_mb: 100,
-      features: [],
-      display_order: this.plans.length > 0
-        ? Math.max(...this.plans.map(p => p.display_order)) + 1
-        : 0,
-      active: true,
-      is_default: false
-    };
-    this.showAddPlanModal = true;
-    this.cdr.markForCheck();
-  }
-
-  closeAddPlanModal(): void {
-    if (this.saving) {
-      return;
-    }
-    this.showAddPlanModal = false;
-    this.resetPlanForm();
-    this.cdr.markForCheck();
-  }
-
-  openEditPlanModal(plan: SubscriptionPlan): void {
-    this.editingPlan = plan;
-    this.planFormData = {
-      ...plan,
-      features: [...(plan.features || [])],
-    };
-    this.showEditPlanModal = true;
-    this.cdr.markForCheck();
-  }
-
-  closeEditPlanModal(): void {
-    if (this.saving) {
-      return;
-    }
-    this.showEditPlanModal = false;
-    this.editingPlan = null;
-    this.resetPlanForm();
-    this.cdr.markForCheck();
-  }
-
-  openDeletePlanModal(plan: SubscriptionPlan): void {
-    this.deletingPlan = plan;
-    this.showDeletePlanModal = true;
-    this.cdr.markForCheck();
-  }
-
-  closeDeletePlanModal(): void {
-    if (this.saving) {
-      return;
-    }
-    this.showDeletePlanModal = false;
-    this.deletingPlan = null;
-    this.cdr.markForCheck();
-  }
-
-  createPlan(): void {
-    if (!this.validatePlanForm() || this.saving) {
-      return;
-    }
-
-    this.saving = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.createPlan(this.planFormData)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Subscription plan created', 'Saved');
-            this.saving = false;
-            this.closeAddPlanModal();
-            this.loadPlans();
-          } else {
-            this.toastService.error(this.friendlyError(response.message, 'Unable to create plan.'), 'Error');
-            this.saving = false;
-          }
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(this.friendlyError(this.extractErrorMessage(err), 'Unable to create plan.'), 'Error');
-          this.saving = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  updatePlan(): void {
-    if (!this.editingPlan || !this.validatePlanForm() || this.saving) {
-      return;
-    }
-
-    this.saving = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.updatePlan(this.editingPlan.id!, this.planFormData)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Subscription plan updated', 'Saved');
-            this.saving = false;
-            this.closeEditPlanModal();
-            this.loadPlans();
-          } else {
-            this.toastService.error(this.friendlyError(response.message, 'Unable to update plan.'), 'Error');
-            this.saving = false;
-          }
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(this.friendlyError(this.extractErrorMessage(err), 'Unable to update plan.'), 'Error');
-          this.saving = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  deletePlan(): void {
-    if (!this.deletingPlan || this.saving) {
-      return;
-    }
-
-    if (this.deletingPlan.active) {
-      this.toastService.error(
-        'Deactivate this plan before deleting it.',
-        'Cannot delete'
-      );
-      return;
-    }
-
-    this.saving = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.deletePlan(this.deletingPlan.id!)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Subscription plan deleted', 'Deleted');
-            this.saving = false;
-            this.closeDeletePlanModal();
-            this.loadPlans();
-          } else {
-            this.toastService.error(this.friendlyError(response.message, 'Unable to delete plan.'), 'Error');
-            this.saving = false;
-          }
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(this.friendlyError(this.extractErrorMessage(err), 'Unable to delete plan.'), 'Error');
-          this.saving = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  validatePlanForm(): boolean {
-    if (!this.planFormData.key || this.planFormData.key.trim().length === 0) {
-      this.toastService.error('Plan key is required', 'Check your entries');
-      return false;
-    }
-
-    if (!this.planFormData.name || this.planFormData.name.trim().length === 0) {
-      this.toastService.error('Plan name is required', 'Check your entries');
-      return false;
-    }
-
-    if (this.planFormData.price < 0) {
-      this.toastService.error('Catalog price cannot be negative', 'Check your entries');
-      return false;
-    }
-
-    if (this.planFormData.max_users < 1) {
-      this.toastService.error('User limit must be at least 1', 'Check your entries');
-      return false;
-    }
-
-    if (this.planFormData.max_storage_mb < 1) {
-      this.toastService.error('Storage must be at least 1 MB', 'Check your entries');
-      return false;
-    }
-
-    const existingPlan = this.plans.find(
-      p => p.key === this.planFormData.key &&
-      (!this.editingPlan || p.id !== this.editingPlan.id)
-    );
-
-    if (existingPlan) {
-      this.toastService.error('A plan with this key already exists', 'Check your entries');
-      return false;
-    }
-
-    return true;
-  }
-
-  toggleFeature(feature: string): void {
-    if (!this.planFormData.features) {
-      this.planFormData.features = [];
-    }
-    const index = this.planFormData.features.indexOf(feature);
-    if (index > -1) {
-      this.planFormData.features.splice(index, 1);
-    } else {
-      this.planFormData.features.push(feature);
-    }
-    this.cdr.markForCheck();
-  }
-
-  isFeatureSelected(feature: string): boolean {
-    return this.planFormData.features?.includes(feature) || false;
-  }
-
-  featureLabel(feature: string): string {
-    const map: Record<string, string> = {
-      events: 'Events',
-      donations: 'Donations',
-      groups: 'Groups',
-      messaging: 'Messaging',
-      custom_branding: 'Custom branding',
-      api_access: 'API access',
-      dedicated_support: 'Dedicated support',
-      advanced_reporting: 'Advanced reporting',
-      multi_location: 'Multi-location',
-      volunteer_management: 'Volunteer management',
-      ministries_associations: 'Ministries & Associations',
-    };
-    return map[feature] || feature.replace(/_/g, ' ');
-  }
-
-  formatUsers(value: number): string {
-    return value >= 999999 ? 'Unlimited' : value.toLocaleString();
-  }
-
-  formatStorage(value: number): string {
-    if (value >= 1024) {
-      const gb = value / 1024;
-      const rounded = gb >= 10 ? Math.round(gb) : Math.round(gb * 10) / 10;
-      return `${rounded.toLocaleString()} GB`;
-    }
-    return `${value.toLocaleString()} MB`;
-  }
-
-  formatPrice(value: number): string {
-    return `₹${Number(value).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
-  }
-
   private resetDurationForm(): void {
     this.formData = {
       months: 1,
       label: '',
       display_order: 0,
       active: true
-    };
-  }
-
-  private resetPlanForm(): void {
-    this.planFormData = {
-      key: '',
-      name: '',
-      description: '',
-      price: 0,
-      max_users: 10,
-      max_storage_mb: 100,
-      features: [],
-      display_order: 0,
-      active: true,
-      is_default: false
     };
   }
 

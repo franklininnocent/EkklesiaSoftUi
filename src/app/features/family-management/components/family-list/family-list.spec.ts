@@ -4,6 +4,11 @@ import { ActivatedRoute, Router, convertToParamMap } from '@angular/router';
 import { FamilyListComponent } from './family-list';
 import { FamilyService } from '../../../../core/services/family.service';
 import { BCCService } from '../../../../core/services/bcc.service';
+import { AuthService } from '../../../../core/services/auth.service';
+import { ToastService } from '@core/services/toast.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 
 describe('FamilyListComponent (list + stats)', () => {
   const routerStub = { navigate: jest.fn() };
@@ -26,7 +31,19 @@ describe('FamilyListComponent (list + stats)', () => {
         { provide: FamilyService, useValue: mockFamilyService },
         { provide: BCCService, useValue: mockBccService },
         { provide: Router, useValue: routerStub },
-        { provide: ActivatedRoute, useValue: routeStub }
+        { provide: ActivatedRoute, useValue: routeStub },
+        {
+          provide: AuthService,
+          useValue: {
+            hasParishContext: jest.fn(() => true),
+            isTenantAdmin: jest.fn(() => false),
+            hasPermission: jest.fn(() => true),
+          },
+        },
+        { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } },
+        { provide: SubscriptionAccessService, useValue: { isReadOnly: jest.fn(() => false) } },
+        { provide: SupportSessionService, useValue: { session$: of(null), sessionId: null } },
+        { provide: ConfirmationDialogService, useValue: { confirm: jest.fn().mockResolvedValue(true) } },
       ]
     });
 

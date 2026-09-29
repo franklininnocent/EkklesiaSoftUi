@@ -63,6 +63,52 @@ describe('QuickCollectDrawerComponent', () => {
     expect(donationsService.getPayments).toHaveBeenCalled();
   });
 
+  it('shows recent payments with date and time labels', () => {
+    donationsService.getPayments.mockReturnValue(of({
+      success: true,
+      data: {
+        data: [
+          {
+            id: 'pay-1',
+            family: { family_name: 'Adam Hutchinson' },
+            amount: 100,
+            method: 'cash',
+            created_at: '2026-09-24T16:00:00',
+            status: 'completed'
+          },
+          {
+            id: 'pay-2',
+            family: { family_name: 'Smith Family' },
+            amount: 250,
+            method: 'upi',
+            created_at: '2026-09-23T09:05:00',
+            status: 'completed'
+          }
+        ],
+        current_page: 1,
+        last_page: 1,
+        total: 2
+      }
+    } as any));
+
+    const fixture = TestBed.createComponent(QuickCollectDrawerComponent);
+    fixture.detectChanges();
+    quickCollectService.open();
+    fixture.detectChanges();
+
+    expect(donationsService.getPayments).toHaveBeenCalledWith(expect.objectContaining({
+      today_only: '1',
+      per_page: '8'
+    }));
+
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('24 Sep 2026, 04:00 PM');
+    expect(text).toContain('23 Sep 2026, 09:05 AM');
+    expect(text).toContain('Cash');
+    expect(text).toContain('UPI');
+    expect(fixture.componentInstance.activityRows).toHaveLength(2);
+  });
+
   it('maps UPI to online_placeholder when recording payment', () => {
     component.selectedFamily = { id: 'f1', family_name: 'Smith Family', family_code: 'FAM001' } as any;
     component.payerName = 'John Smith';

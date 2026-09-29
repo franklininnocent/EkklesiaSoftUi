@@ -1,0 +1,97 @@
+<div class="sa-stack">
+  <div *ngIf="loading && !form" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+    <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <div>
+      <strong>Could not load tax configuration</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <p class="sa-muted" *ngIf="form && readonly">You can view this configuration. Only a Super Admin can change it.</p>
+
+  <section class="cf-panel sa-section" *ngIf="form && payload">
+    <div class="sa-section__header">
+      <div>
+        <h2>Tax configuration</h2>
+        <p class="sa-muted">Platform-wide tax used by subscription plans and pricing displays.</p>
+        <p class="sa-muted" *ngIf="metaLine() as meta">{{ meta }}</p>
+      </div>
+    </div>
+
+    <div class="sa-plan-details-form__columns">
+      <form class="sa-plan-details-form" (input)="onFormChange()" (change)="onFormChange()">
+        <div class="sa-form-grid sa-form-grid--3">
+          <div class="sa-field">
+            <label for="sa-tax-label">Tax name</label>
+            <input id="sa-tax-label" name="tax_label" maxlength="40" [(ngModel)]="form.label" [disabled]="readonly || saving" />
+          </div>
+          <div class="sa-field">
+            <label for="sa-tax-rate">Tax rate (%)</label>
+            <input id="sa-tax-rate" name="tax_rate_percent" inputmode="decimal" [(ngModel)]="form.rate_percent" [disabled]="readonly || saving" />
+          </div>
+          <label class="cf-switch-field">
+            <input type="checkbox" name="prices_include_tax" [(ngModel)]="form.prices_include_tax" [disabled]="readonly || saving" />
+            <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Prices include tax</span></span>
+          </label>
+          <div class="sa-field">
+            <label for="sa-tax-country">Country</label>
+            <input id="sa-tax-country" name="country_code" maxlength="2" [(ngModel)]="form.country_code" [disabled]="readonly || saving" />
+            <small>2-letter code (e.g. IN).</small>
+          </div>
+          <div class="sa-field">
+            <label for="sa-tax-system">Tax system</label>
+            <input id="sa-tax-system" name="tax_system" maxlength="40" [(ngModel)]="form.tax_system" [disabled]="readonly || saving" />
+          </div>
+        </div>
+        <p class="sa-muted" *ngIf="impactSummary() as summary">{{ summary }}</p>
+      </form>
+
+      <aside class="sa-plan-details-form__aside" aria-label="Tax preview">
+        <h3 class="sa-field__label">Tax preview</h3>
+        <div class="sa-field">
+          <label for="sa-tax-preview-amount">Sample amount</label>
+          <input
+            id="sa-tax-preview-amount"
+            name="preview_amount"
+            inputmode="decimal"
+            [(ngModel)]="previewAmount"
+            (ngModelChange)="onFormChange()"
+            [disabled]="readonly || saving" />
+        </div>
+        <div *ngIf="previewLoading" class="sa-muted">Calculating…</div>
+        <dl class="sa-tax-preview" *ngIf="preview && !previewLoading">
+          <ng-container *ngIf="!preview.inclusive">
+            <dt>Base price</dt>
+            <dd>{{ preview.net | cfCurrency: preview.currency_code }}</dd>
+            <dt>Tax ({{ preview.rate_percent }}%)</dt>
+            <dd>{{ preview.tax | cfCurrency: preview.currency_code }}</dd>
+            <dt>Customer price</dt>
+            <dd><strong>{{ preview.gross | cfCurrency: preview.currency_code }}</strong></dd>
+          </ng-container>
+          <ng-container *ngIf="preview.inclusive">
+            <dt>Customer price</dt>
+            <dd><strong>{{ preview.gross | cfCurrency: preview.currency_code }}</strong></dd>
+            <dt>Base price</dt>
+            <dd>{{ preview.net | cfCurrency: preview.currency_code }}</dd>
+            <dt>Tax ({{ preview.rate_percent }}%)</dt>
+            <dd>{{ preview.tax | cfCurrency: preview.currency_code }}</dd>
+          </ng-container>
+        </dl>
+      </aside>
+    </div>
+
+    <div class="sa-toolbar sa-field--full" *ngIf="!readonly">
+      <span class="sa-muted">{{ dirty ? 'You have unsaved changes.' : 'All changes saved.' }}</span>
+      <div class="sa-toolbar__filters">
+        <button type="button" class="cf-btn" (click)="discard()" [disabled]="!dirty || saving">Discard changes</button>
+        <button type="button" class="cf-btn cf-btn-primary" (click)="reviewAndSave()" [disabled]="saving || !dirty">
+          {{ saving ? 'Saving…' : 'Review and save' }}
+        </button>
+      </div>
+    </div>
+  </section>
+</div>

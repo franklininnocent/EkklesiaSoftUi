@@ -231,44 +231,57 @@
         </span>
 
         <div class="cf-split-identity__copy">
-          <p class="cf-split-identity__name">{{ getFullName(selectedMember) }}</p>
-          <p class="cf-split-identity__meta">
-            <span *ngIf="selectedMember.family?.family_code">{{ selectedMember.family?.family_code }}</span>
-            <span
-              class="cf-split-identity__sep"
-              *ngIf="selectedMember.family?.family_code && getBCCName(selectedMember) !== 'N/A'"
-              aria-hidden="true"
-              >·</span
-            >
-            <span *ngIf="getBCCName(selectedMember) !== 'N/A'">{{ getBCCName(selectedMember) }}</span>
-            <span
-              class="cf-split-identity__sep"
-              *ngIf="
-                (selectedMember.family?.family_code || getBCCName(selectedMember) !== 'N/A') &&
-                selectedMember.relationship_to_head
-              "
-              aria-hidden="true"
-              >·</span
-            >
-            <span *ngIf="selectedMember.relationship_to_head">
-              {{ isFamilyHead(selectedMember) ? 'Family head' : (selectedMember.relationship_to_head | titlecase) }}
-            </span>
+          <div class="member-detail-modal__role-row">
+            <p class="cf-split-identity__name">{{ getRelationshipLabel(selectedMember) | titlecase }}</p>
             <app-status-badge
               *ngIf="selectedMember.status"
               [label]="selectedMember.status | titlecase"
               [tone]="statusTone(selectedMember.status)"
             ></app-status-badge>
-          </p>
+          </div>
         </div>
       </div>
 
-      <section class="cf-split-section" aria-labelledby="member-section-personal">
+      <section
+        class="cf-split-section"
+        aria-labelledby="member-section-household"
+        *ngIf="selectedMember.family || getMemberAddressLines().length"
+      >
+        <h3 id="member-section-household" class="cf-split-section__title">Household</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field" *ngIf="selectedMember.family?.family_name">
+            <dt>Family name</dt>
+            <dd>{{ selectedMember.family?.family_name }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="selectedMember.family?.family_code">
+            <dt>Family code</dt>
+            <dd>{{ selectedMember.family?.family_code }}</dd>
+          </div>
+          <div class="cf-split-field" *ngIf="getBCCName(selectedMember) !== 'N/A'">
+            <dt>BCC</dt>
+            <dd>{{ getBCCName(selectedMember) }}</dd>
+          </div>
+          <div class="cf-split-field cf-split-field--full" *ngIf="getMemberAddressLines().length">
+            <dt>Address</dt>
+            <dd class="member-detail-modal__address">
+              <span *ngFor="let line of getMemberAddressLines()">{{ line }}</span>
+            </dd>
+          </div>
+        </dl>
+      </section>
+
+      <section
+        class="cf-split-section"
+        aria-labelledby="member-section-personal"
+        *ngIf="
+          selectedMember.date_of_birth ||
+          selectedMember.gender ||
+          selectedMember.marital_status ||
+          selectedMember.deceased_date
+        "
+      >
         <h3 id="member-section-personal" class="cf-split-section__title">Personal information</h3>
         <dl class="cf-split-grid">
-          <div class="cf-split-field">
-            <dt>Full name</dt>
-            <dd>{{ getFullName(selectedMember) }}</dd>
-          </div>
           <div class="cf-split-field" *ngIf="selectedMember.date_of_birth">
             <dt>Date of birth</dt>
             <dd>{{ formatDate(selectedMember.date_of_birth) }}</dd>
@@ -277,17 +290,13 @@
             <dt>Gender</dt>
             <dd>{{ selectedMember.gender | titlecase }}</dd>
           </div>
-          <div class="cf-split-field" *ngIf="selectedMember.relationship_to_head">
-            <dt>Relationship</dt>
-            <dd>{{ selectedMember.relationship_to_head | titlecase }}</dd>
-          </div>
           <div class="cf-split-field" *ngIf="selectedMember.marital_status">
             <dt>Marital status</dt>
             <dd>{{ selectedMember.marital_status | titlecase }}</dd>
           </div>
-          <div class="cf-split-field" *ngIf="isFamilyHead(selectedMember)">
-            <dt>Role</dt>
-            <dd>Family head</dd>
+          <div class="cf-split-field" *ngIf="selectedMember.deceased_date">
+            <dt>Date of death</dt>
+            <dd>{{ formatDate(selectedMember.deceased_date) }}</dd>
           </div>
         </dl>
       </section>
@@ -301,41 +310,15 @@
         <dl class="cf-split-grid">
           <div class="cf-split-field" *ngIf="selectedMember.phone">
             <dt>Phone</dt>
-            <dd>{{ selectedMember.phone }}</dd>
+            <dd><a class="cf-link" [href]="'tel:' + selectedMember.phone">{{ selectedMember.phone }}</a></dd>
           </div>
           <div class="cf-split-field" *ngIf="selectedMember.email">
             <dt>Email</dt>
-            <dd>{{ selectedMember.email }}</dd>
+            <dd><a class="cf-link" [href]="'mailto:' + selectedMember.email">{{ selectedMember.email }}</a></dd>
           </div>
           <div class="cf-split-field" *ngIf="selectedMember.is_primary_contact">
             <dt>Primary contact</dt>
             <dd>Yes</dd>
-          </div>
-        </dl>
-      </section>
-
-      <section
-        class="cf-split-section"
-        aria-labelledby="member-section-household"
-        *ngIf="selectedMember.family || getMemberAddress()"
-      >
-        <h3 id="member-section-household" class="cf-split-section__title">Household</h3>
-        <dl class="cf-split-grid">
-          <div class="cf-split-field" *ngIf="selectedMember.family?.family_code">
-            <dt>Family code</dt>
-            <dd>{{ selectedMember.family?.family_code }}</dd>
-          </div>
-          <div class="cf-split-field" *ngIf="selectedMember.family?.family_name">
-            <dt>Family name</dt>
-            <dd>{{ selectedMember.family?.family_name }}</dd>
-          </div>
-          <div class="cf-split-field" *ngIf="getBCCName(selectedMember) !== 'N/A'">
-            <dt>BCC</dt>
-            <dd>{{ getBCCName(selectedMember) }}</dd>
-          </div>
-          <div class="cf-split-field cf-split-field--full" *ngIf="getMemberAddress() as address">
-            <dt>Address</dt>
-            <dd>{{ address }}</dd>
           </div>
         </dl>
       </section>

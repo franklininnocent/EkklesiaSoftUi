@@ -4,7 +4,15 @@
     subtitle="Stewardship timeline — filter and scan recent parish activity side by side.">
     <ng-container *ngIf="activitiesLoaded && !loadError">
       <span class="history-count" *ngIf="totalCount">{{ visibleActivities.length }} of {{ totalCount }}</span>
-      <button type="button" class="cf-btn" (click)="reload()">Refresh</button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        (click)="reload()"
+        aria-label="Refresh"
+        title="Refresh"
+      >
+        <app-cf-action-icon name="refresh" />
+      </button>
     </ng-container>
   </app-page-header>
 
@@ -16,7 +24,11 @@
   <ng-container *ngIf="activitiesLoaded">
     <div class="cf-split-banner cf-split-banner--error" *ngIf="loadError" role="alert">
       <p class="history-load-error__text">{{ loadError }}</p>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Try again</button>
+      <button
+          aria-label="Refresh"
+          title="Refresh" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="reload()">
+          <app-cf-action-icon name="refresh" />
+      </button>
     </div>
 
     <div class="cf-split-workspace" *ngIf="!loadError">
@@ -113,7 +125,7 @@
                         <p class="timeline-summary">
                           {{ compactSummary(item) }}
                           <span class="timeline-amount" *ngIf="item.amount != null">
-                            • {{ item.amount | number:'1.2-2' }}<ng-container *ngIf="item.currency"> {{ item.currency }}</ng-container>
+                            • {{ item.amount | cfCurrency }}
                           </span>
                         </p>
                       </div>
@@ -130,9 +142,24 @@
                         <div class="timeline-menu" *ngIf="openMenuId === item.id">
                           <a [routerLink]="item.action_path!" class="timeline-menu__item">View</a>
                           <a [routerLink]="item.action_path!" class="timeline-menu__item">Open</a>
-                          <button type="button" class="timeline-menu__item" (click)="copyLink(item)">Copy link</button>
+                          <button
+                            type="button"
+                            class="timeline-menu__item cf-btn cf-btn-icon cf-btn--sm"
+                            (click)="copyLink(item)"
+                            aria-label="Copy link"
+                            title="Copy link"
+                          >
+                            <app-cf-action-icon name="link" />
+                          </button>
                         </div>
-                        <a [routerLink]="item.action_path!" class="timeline-view-link" [attr.aria-label]="'View ' + item.title">View</a>
+                        <a
+                          [routerLink]="item.action_path!"
+                          class="cf-btn cf-btn-icon cf-btn--sm timeline-view-link"
+                          [attr.aria-label]="'View ' + item.title"
+                          [attr.title]="'View ' + item.title"
+                        >
+                          <app-cf-action-icon name="eye" />
+                        </a>
                       </div>
                     </li>
                   </ol>
@@ -141,8 +168,15 @@
             </div>
 
             <div class="history-pagination" *ngIf="hasMore">
-              <button type="button" class="cf-btn" (click)="loadMore()" [disabled]="loadingMore">
-                {{ loadingMore ? 'Loading…' : 'Load more activity' }}
+              <button
+                type="button"
+                class="cf-btn cf-btn-icon"
+                (click)="loadMore()"
+                [disabled]="loadingMore"
+                [attr.aria-label]="loadingMore ? 'Loading…' : 'Load more activity'"
+                [attr.title]="loadingMore ? 'Loading…' : 'Load more activity'"
+              >
+                <app-cf-action-icon name="chevrons-down" />
               </button>
             </div>
 
@@ -151,7 +185,11 @@
                 <div class="history-empty__graphic" aria-hidden="true">◴</div>
                 <h3>No recent activity</h3>
                 <p>Contribution, donor, family, and stewardship activities will appear here.</p>
-                <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Refresh</button>
+                <button
+          aria-label="Refresh"
+          title="Refresh" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="reload()">
+          <app-cf-action-icon name="refresh" />
+                </button>
               </div>
             </div>
           </div>

@@ -1,0 +1,119 @@
+<app-modal-shell
+  *ngIf="open"
+  [title]="modalTitle()"
+  [description]="modalSubtitle()"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close intention details"
+  [isSubmitting]="closing()"
+  (closeRequested)="close()"
+>
+  @if (loading()) {
+    <p class="mass-intention-view-modal__loading">Loading…</p>
+  } @else if (record(); as r) {
+    <div class="cf-split-form-body mass-intention-view-modal">
+      <div class="cf-split-identity">
+        <div class="cf-split-identity__copy mass-intention-view-modal__identity">
+          <p class="cf-split-identity__name">{{ r.beneficiary_name }}</p>
+          @if (beneficiaryIdentification(r); as identification) {
+            <p class="cf-split-identity__meta">{{ identification }}</p>
+          }
+          <p class="cf-split-identity__meta">{{ scheduledDay(r) }}</p>
+        </div>
+        <div class="mass-intention-view-modal__status" [attr.title]="statusLabel(r)">
+          @if (r.status === 'open') {
+            <span aria-hidden="true"><app-cf-action-icon name="book-open" /></span>
+          } @else if (r.status === 'closed') {
+            <span aria-hidden="true"><app-cf-action-icon name="check" /></span>
+          }
+          <app-status-badge [label]="statusLabel(r)" [tone]="statusTone(r)" />
+        </div>
+      </div>
+
+      <section class="cf-split-section" aria-labelledby="mass-intention-view-section-intention">
+        <h3 id="mass-intention-view-section-intention" class="cf-split-section__title">Intention</h3>
+        <dl class="cf-split-grid">
+          <div class="cf-split-field">
+            <dt>Intention type</dt>
+            <dd>{{ intentionTypeLabel(r) }}</dd>
+          </div>
+          <div class="cf-split-field">
+            <dt>Scheduled day</dt>
+            <dd>
+              <time [attr.datetime]="r.requested_date || undefined">{{ scheduledDay(r) }}</time>
+            </dd>
+          </div>
+          @if (intentionDescriptionText(r); as description) {
+            <div class="cf-split-field cf-split-field--full">
+              <dt>Description</dt>
+              <dd class="cf-split-value--multiline mass-intention-view-modal__long-text">{{ description }}</dd>
+            </div>
+          }
+          <div class="cf-split-field">
+            <dt>Announce name</dt>
+            <dd>{{ r.announce_name ? 'Yes' : 'No' }}</dd>
+          </div>
+        </dl>
+      </section>
+
+      @if (r.requester_name || r.requester_phone) {
+        <section class="cf-split-section" aria-labelledby="mass-intention-view-section-requester">
+          <h3 id="mass-intention-view-section-requester" class="cf-split-section__title">Requester</h3>
+          <dl class="cf-split-grid">
+            @if (r.requester_name) {
+              <div class="cf-split-field">
+                <dt>Name</dt>
+                <dd>{{ r.requester_name }}</dd>
+              </div>
+            }
+            @if (r.requester_phone) {
+              <div class="cf-split-field">
+                <dt>Phone</dt>
+                <dd>
+                  <a class="cf-link" [href]="'tel:' + r.requester_phone">{{ r.requester_phone }}</a>
+                </dd>
+              </div>
+            }
+          </dl>
+        </section>
+      }
+
+      @if (r.notes) {
+        <section class="cf-split-section" aria-labelledby="mass-intention-view-section-notes">
+          <h3 id="mass-intention-view-section-notes" class="cf-split-section__title">Office note</h3>
+          <dl class="cf-split-grid">
+            <div class="cf-split-field cf-split-field--full">
+              <dt>Note</dt>
+              <dd class="cf-split-value--multiline mass-intention-view-modal__long-text">{{ r.notes }}</dd>
+            </div>
+          </dl>
+        </section>
+      }
+    </div>
+  } @else {
+    <p class="mass-intention-view-modal__loading">Could not load this intention.</p>
+  }
+
+  @if (record(); as r) {
+    <div modalFooter class="mass-intention-view-modal__footer">
+      @if (r.status === 'open' && canClose()) {
+        <button type="button" class="cf-btn" (click)="closeIntention()" [disabled]="closing()">
+          Close intention
+        </button>
+      }
+      @if (r.status === 'open' && canEdit()) {
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon cf-btn-primary"
+          (click)="editRequested.emit(r.id)"
+          aria-label="Edit"
+          title="Edit"
+        >
+          <app-cf-action-icon name="pencil" />
+        </button>
+      }
+      <button type="button" class="cf-btn cf-btn-ghost" (click)="close()">Done</button>
+    </div>
+  }
+</app-modal-shell>

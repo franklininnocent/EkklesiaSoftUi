@@ -91,14 +91,14 @@
     <span class="empty-icon">👥</span>
     <h3>No Leaders Added</h3>
     <p>Add church leaders, pastors, and ministry heads.</p>
-    <button *ngIf="canEdit" type="button" class="btn btn-primary" (click)="requestAdd()">Add First Leader</button>
+    <button *ngIf="canEdit" type="button" class="cf-btn cf-btn-primary" (click)="requestAdd()">Add First Leader</button>
   </div>
 
   <div *ngIf="!loading && hasLeaders && !hasFilteredResults" class="empty-state">
     <span class="empty-icon">🔎</span>
     <h3>No Matching Leaders</h3>
     <p>Try adjusting your search or filters.</p>
-    <button type="button" class="btn btn-secondary" (click)="clearAllFilters()">Reset filters</button>
+    <button type="button" class="cf-btn" (click)="clearAllFilters()">Reset filters</button>
   </div>
 
   <div *ngIf="!loading && hasFilteredResults" class="table-responsive">

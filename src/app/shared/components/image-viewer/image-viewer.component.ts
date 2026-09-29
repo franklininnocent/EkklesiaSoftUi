@@ -13,7 +13,6 @@ import {
   ViewChild,
   inject,
 } from '@angular/core';
-import { LoadingSpinnerComponent } from '@shared/components/loading-spinner/loading-spinner.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import {
   clampScale,
@@ -26,7 +25,7 @@ import {
 @Component({
   selector: 'app-image-viewer',
   standalone: true,
-  imports: [CommonModule, ModalShellComponent, LoadingSpinnerComponent],
+  imports: [CommonModule, ModalShellComponent],
   templateUrl: './image-viewer.component.html',
   styleUrl: './image-viewer.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

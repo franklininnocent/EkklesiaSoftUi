@@ -8,6 +8,9 @@ import { supportCenterGuard } from '@core/guards/support-center.guard';
 import { applicationAccessGuard } from '@core/guards/application-access.guard';
 import { donationsGuard } from '@core/guards/donations.guard';
 import { ministriesGuard } from '@core/guards/ministries.guard';
+import { massIntentionsGuard } from '@core/guards/mass-intentions.guard';
+import { massIntentionsUrlGuard } from '@core/guards/mass-intentions-url.guard';
+import { entitlementGuard } from '@core/guards/entitlement.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { FamilyListComponent } from './features/family-management/components/family-list/family-list';
 import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
@@ -42,6 +45,13 @@ export const routes: Routes = [
       {
         path: 'dashboard',
         loadChildren: () => import('./features/dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES)
+      },
+      {
+        path: 'feature-unavailable',
+        loadComponent: () =>
+          import('./features/subscriptions/pages/feature-unavailable/feature-unavailable.page').then(
+            (m) => m.FeatureUnavailablePageComponent
+          )
       },
       {
         path: 'notifications',
@@ -126,14 +136,23 @@ export const routes: Routes = [
       },
       {
         path: 'donations',
-        canActivate: [donationsGuard],
+        canActivate: [donationsGuard, entitlementGuard],
+        data: { feature: 'CONTRIBUTIONS' },
         loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
       },
       {
         path: 'ministries',
-        canActivate: [ministriesGuard],
+        canActivate: [ministriesGuard, entitlementGuard],
+        data: { feature: 'MINISTRIES' },
         loadChildren: () =>
           import('./features/ministries-associations/ministries.routes').then(m => m.MINISTRIES_ROUTES)
+      },
+      {
+        path: 'mass-intentions',
+        canActivate: [massIntentionsUrlGuard, massIntentionsGuard, entitlementGuard],
+        data: { feature: 'MASS_INTENTIONS' },
+        loadChildren: () =>
+          import('./features/mass-intentions/mass-intentions.routes').then((m) => m.MASS_INTENTIONS_ROUTES),
       },
       {
         path: 'support',
@@ -198,14 +217,23 @@ export const routes: Routes = [
       },
       {
         path: 'donations',
-        canActivate: [donationsGuard],
+        canActivate: [donationsGuard, entitlementGuard],
+        data: { feature: 'CONTRIBUTIONS' },
         loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
       },
       {
         path: 'ministries',
-        canActivate: [ministriesGuard],
+        canActivate: [ministriesGuard, entitlementGuard],
+        data: { feature: 'MINISTRIES' },
         loadChildren: () =>
           import('./features/ministries-associations/ministries.routes').then(m => m.MINISTRIES_ROUTES)
+      },
+      {
+        path: 'mass-intentions',
+        canActivate: [massIntentionsUrlGuard, massIntentionsGuard, entitlementGuard],
+        data: { feature: 'MASS_INTENTIONS' },
+        loadChildren: () =>
+          import('./features/mass-intentions/mass-intentions.routes').then((m) => m.MASS_INTENTIONS_ROUTES),
       }
     ]
   },

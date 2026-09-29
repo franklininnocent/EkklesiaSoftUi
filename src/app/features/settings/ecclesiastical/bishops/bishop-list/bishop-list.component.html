@@ -20,16 +20,16 @@
           ✕
         </button>
       </div>
-      <button class="btn btn-filters" (click)="showAdvancedSearch = true">
+      <button class="cf-btn filters-trigger" (click)="showAdvancedSearch = true">
         <span class="btn-icon">🔍</span>
         Filters
         <span *ngIf="getActiveFilterCount() > 0" class="filter-badge">{{ getActiveFilterCount() }}</span>
       </button>
-      <button class="btn btn-primary" (click)="onCreateBishop()">
+      <button class="cf-btn cf-btn-primary" (click)="onCreateBishop()">
         <span class="btn-icon">➕</span>
         Add Bishop
       </button>
-      <a routerLink="/settings/ecclesiastical/bishop-updates" class="btn btn-outline">Suggestions</a>
+      <a routerLink="/settings/ecclesiastical/bishop-updates" class="cf-btn">Suggestions</a>
     </div>
   </app-page-header>
 
@@ -102,14 +102,15 @@
   </div>
 
   <!-- Empty State -->
-  <app-empty-state
+  <app-cf-empty-state
     *ngIf="!loading && bishops.length === 0"
     icon="👤"
     [title]="searchTerm || selectedDiocese || selectedTitle ? 'No bishops match your filters' : 'No bishops found'"
-    [description]="searchTerm || selectedDiocese || selectedTitle ? 'Try adjusting your search or filters to find what you\'re looking for.' : 'Get started by adding your first bishop to the system.'"
-    [buttonText]="searchTerm || selectedDiocese || selectedTitle ? 'Clear Filters' : 'Add First Bishop'"
-    (action)="searchTerm || selectedDiocese || selectedTitle ? clearFilters() : onCreateBishop()">
-  </app-empty-state>
+    [description]="searchTerm || selectedDiocese || selectedTitle ? 'Try adjusting your search or filters to find what you\'re looking for.' : 'Get started by adding your first bishop to the system.'">
+    <button type="button" class="cf-btn cf-btn-primary" (click)="searchTerm || selectedDiocese || selectedTitle ? clearFilters() : onCreateBishop()">
+      {{ searchTerm || selectedDiocese || selectedTitle ? 'Clear Filters' : 'Add First Bishop' }}
+    </button>
+  </app-cf-empty-state>
 
   <!-- Table -->
   <div *ngIf="!loading && bishops.length > 0" class="table-container">

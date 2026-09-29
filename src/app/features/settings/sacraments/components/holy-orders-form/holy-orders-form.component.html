@@ -162,12 +162,15 @@
   <div class="ho-panel" *ngIf="step === 8">
     <h3 class="cf-subsection-title">Confirm and save</h3>
     <p>Everything looks ready. Save to add this Holy Orders record to the parish register.</p>
-    <app-button variant="save" [loading]="saving" (clicked)="save()">Save Holy Orders</app-button>
+    <button type="button" class="cf-btn cf-btn-primary" [disabled]="saving" [attr.aria-busy]="saving" (click)="save()">
+      <span *ngIf="saving" class="cf-spinner" aria-hidden="true"></span>
+      Save Holy Orders
+    </button>
   </div>
 
   <div class="ho-actions">
-    <app-button *ngIf="step > 1" variant="back" (clicked)="back()">Back</app-button>
-    <app-button *ngIf="step < totalSteps" variant="primary" (clicked)="next()">Continue</app-button>
+    <button *ngIf="step > 1" type="button" class="cf-btn" (click)="back()">Back</button>
+    <button *ngIf="step < totalSteps" type="button" class="cf-btn cf-btn-primary" (click)="next()">Continue</button>
   </div>
   </ng-container>
 </div>

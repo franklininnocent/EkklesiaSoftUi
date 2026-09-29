@@ -8,7 +8,7 @@
 .breadcrumb {
   background-color: transparent;
   padding: 0;
-  margin: 0 0 var(--cf-space-4, 1rem);
+  margin: 0;
   line-height: 1.2;
 }
 
@@ -37,7 +37,7 @@
   gap: var(--cf-space-1, 0.25rem);
   color: var(--cf-color-text-muted, var(--cf-muted, #64748b));
   text-decoration: none;
-  padding: 0.25rem 0.5rem;
+  padding: 0;
   border-radius: var(--cf-radius-sm, 8px);
   transition: color 0.15s ease, background-color 0.15s ease;
   cursor: pointer;
@@ -60,7 +60,7 @@
   gap: var(--cf-space-1, 0.25rem);
   color: var(--cf-color-text-primary, var(--cf-slate-900, #0f172a));
   font-weight: 600;
-  padding: 0.25rem 0.5rem;
+  padding: 0;
   background-color: var(--cf-slate-100, #f1f5f9);
   border-radius: var(--cf-radius-sm, 8px);
   max-width: 100%;
@@ -97,15 +97,6 @@
 }
 
 @media (max-width: 768px) {
-  .breadcrumb {
-    margin-bottom: var(--cf-space-3, 0.75rem);
-  }
-
-  .breadcrumb-link,
-  .breadcrumb-current {
-    padding: 0.2rem 0.4rem;
-  }
-
   .breadcrumb-label {
     max-width: 7.5rem;
   }

@@ -40,32 +40,20 @@
   gap: var(--cf-space-2);
 }
 
-/* Size/weight/color come from global .cf-hero h1 / --cf-text-page-title */
-.cf-page-header__title-row h1 {
+/* Page-level titles — h1 default and titleLevel=3 h3 share one visual scale */
+:host .cf-page-header.cf-hero .cf-page-header__title-row > .cf-page-header__title {
   margin: 0;
+  font-size: var(--cf-text-page-title) !important;
+  font-weight: var(--cf-font-weight-page-title);
   line-height: var(--cf-leading-page-title);
-}
-
-/* Collapse hero h1 default bottom margin — subtitle carries the gap. */
-.cf-page-header.cf-hero h1 {
-  margin: 0;
-}
-
-.cf-page-header__title-row h3 {
-  margin: 0;
-  font-size: var(--cf-text-section-title, var(--cf-text-lg));
-  font-weight: 600;
-  line-height: 1.3;
   color: var(--cf-color-text-primary, var(--cf-slate-900));
+  letter-spacing: -0.01em;
 }
 
-.cf-page-header.cf-hero h3 {
+/* In-page panel section headers */
+:host .cf-page-header:not(.cf-hero) .cf-page-header__title-row > .cf-page-header__title {
   margin: 0;
-}
-
-.cf-page-header__title-row h2 {
-  margin: 0;
-  font-size: var(--cf-text-section-title, var(--cf-text-lg));
+  font-size: var(--cf-text-section-title, var(--cf-text-lg)) !important;
   font-weight: 600;
   line-height: 1.3;
   color: var(--cf-color-text-primary, var(--cf-slate-900));

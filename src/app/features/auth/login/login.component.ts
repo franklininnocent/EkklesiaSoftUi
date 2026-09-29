@@ -13,7 +13,6 @@ import { Store } from '@ngrx/store';
 import { Observable, Subject } from 'rxjs';
 import { finalize, takeUntil } from 'rxjs/operators';
 
-import { ButtonComponent, InputComponent, CardComponent } from '@shared/components';
 import { AppState } from '@core/store';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import { selectAuthLoading, selectAuthError } from '@core/store/auth/auth.selectors';
@@ -29,9 +28,6 @@ import {
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
-    ButtonComponent,
-    InputComponent,
-    CardComponent,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
@@ -63,9 +59,6 @@ export class LoginComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'0c9b95'},body:JSON.stringify({sessionId:'0c9b95',location:'login.component.ts:ngOnInit',message:'login page mounted',data:{href:window.location.href},hypothesisId:'H9',runId:'post-sass-fix',timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
     this.loginForm = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
       password: ['', [Validators.required, Validators.minLength(8)]],

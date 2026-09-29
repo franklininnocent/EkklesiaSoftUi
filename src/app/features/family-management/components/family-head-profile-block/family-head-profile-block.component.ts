@@ -124,40 +124,6 @@ export class FamilyHeadProfileBlockComponent implements AfterViewInit {
             occupationStyle.lineHeight === fatherStyle.lineHeight
           : null;
 
-      // #region agent log
-      fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': '0dbccf' },
-        body: JSON.stringify({
-          sessionId: '0dbccf',
-          runId,
-          hypothesisId: 'H2',
-          location: 'family-head-profile-block.component.ts:logDetailColumnTypography',
-          message: 'Computed typography for overview detail columns',
-          data: {
-            samples,
-            occupationDd: occupationStyle
-              ? {
-                  fontSize: occupationStyle.fontSize,
-                  fontWeight: occupationStyle.fontWeight,
-                  lineHeight: occupationStyle.lineHeight,
-                }
-              : null,
-            fatherLink: fatherStyle
-              ? {
-                  fontSize: fatherStyle.fontSize,
-                  fontWeight: fatherStyle.fontWeight,
-                  lineHeight: fatherStyle.lineHeight,
-                  font: fatherStyle.font,
-                }
-              : null,
-            sizesMatch,
-            viewportWidth: window.innerWidth,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
     });
   }
 

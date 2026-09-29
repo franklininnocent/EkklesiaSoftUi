@@ -3,6 +3,7 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnIn
 import { NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, Subject, switchMap } from 'rxjs';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { CommandCenterDataService } from './services/command-center-data.service';
 import { FinancialCommandCenterPayload, DioceseRollupDashboard } from '../models/donation.model';
@@ -36,6 +37,7 @@ import { ParishExpenseRecord } from '../models/donation.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FinancialCommandCenterPageComponent implements OnInit {
+  private readonly churchCurrency = inject(ChurchCurrencyService);
   private readonly dataService = inject(CommandCenterDataService);
   private readonly quickCollectService = inject(QuickCollectService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -56,7 +58,12 @@ export class FinancialCommandCenterPageComponent implements OnInit {
   expenseForm: FocExpenseFormValue = this.createEmptyExpenseForm();
 
   get currencyCode(): string {
-    return this.data?.meta?.currency_code || this.data?.tenant_context?.currency_code || 'INR';
+    return (
+      this.churchCurrency.currencyCode()
+      ?? this.data?.meta?.currency_code
+      ?? this.data?.tenant_context?.currency_code
+      ?? 'INR'
+    );
   }
 
   get monthExpenses(): number {

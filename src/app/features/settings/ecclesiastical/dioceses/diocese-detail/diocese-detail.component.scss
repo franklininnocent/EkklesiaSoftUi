@@ -78,57 +78,6 @@
   color: #374151;
 }
 
-// Buttons
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 0.875rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
-
-.btn-secondary {
-  background: #f3f4f6;
-  color: #374151;
-
-  &:hover:not(:disabled) {
-    background: #e5e7eb;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  }
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-
-  &:hover:not(:disabled) {
-    filter: brightness(1.05);
-    transform: translateY(-2px);
-  }
-}
-
-.btn-danger {
-  background: #ef4444;
-  color: white;
-
-  &:hover:not(:disabled) {
-    background: #dc2626;
-    transform: translateY(-2px);
-  }
-}
-
 // Detail Grid
 .detail-grid {
   display: grid;
@@ -348,7 +297,7 @@
     width: 100%;
     flex-direction: column;
 
-    .btn {
+    .cf-btn {
       width: 100%;
       justify-content: center;
     }

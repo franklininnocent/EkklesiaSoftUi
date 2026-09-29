@@ -22,11 +22,12 @@ import {
   ParishActivityItem,
   TimelineDensity
 } from '../utils/activity-feed.utils';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LoadingSkeletonComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, RouterModule, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent],
   templateUrl: './donations-history.component.html',
   styleUrl: './donations-history.component.scss'
 })

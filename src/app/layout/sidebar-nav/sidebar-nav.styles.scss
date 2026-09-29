@@ -6,6 +6,7 @@
   text-overflow: ellipsis;
   font-size: inherit;
   line-height: inherit;
+  font-weight: inherit;
 }
 
 @mixin sidebar-nav-focus {
@@ -25,13 +26,15 @@
   color: var(--gray-300);
   text-decoration: none;
   transition: background-color var(--transition-fast), color var(--transition-fast);
+  font-family: var(--cf-font-sans, inherit);
+  font-style: normal;
+  font-weight: var(--font-medium);
   font-size: var(--sidebar-nav-font-size);
   line-height: var(--sidebar-nav-line-height);
   border-radius: var(--sidebar-nav-radius);
   border: none;
   background: none;
   cursor: pointer;
-  font: inherit;
   text-align: left;
 
   &:hover {
@@ -85,20 +88,25 @@
   }
 
   .nav-item--root {
+    font-size: var(--sidebar-nav-font-size);
     font-weight: var(--font-medium);
   }
 
-  .nav-depth-1 .nav-text,
+  /* L2 size/weight on the row so .nav-text inherit cannot undo them */
+  .nav-depth-1,
+  .nav-depth-1.nav-subitem,
   .nav-depth-1 .nav-item-parent__link {
     font-size: var(--sidebar-nav-font-size-l2);
     font-weight: var(--font-medium);
   }
 
-  .nav-depth-n .nav-text,
-  .nav-depth-n .nav-item-parent__link,
-  .nav-depth-n.nav-subitem {
+  /* L3+ size/weight on the row */
+  .nav-depth-n,
+  .nav-depth-n.nav-subitem,
+  .nav-depth-n .nav-item-parent__link {
     font-size: var(--sidebar-nav-font-size-l3);
     font-weight: var(--font-normal);
+    color: var(--gray-400);
   }
 
   .nav-depth-n .nav-marker {
@@ -113,6 +121,13 @@
   .nav-subitem.nav-item--active,
   .nav-item-parent__link--active {
     @include sidebar-nav-active-leaf;
+  }
+
+  /* Selected label follows the row weight (semibold) at every depth */
+  .nav-item--active .nav-text,
+  .nav-subitem.nav-item--active .nav-text,
+  .nav-item-parent__link--active .nav-text {
+    font-weight: inherit;
   }
 
   .nav-item--ancestor,

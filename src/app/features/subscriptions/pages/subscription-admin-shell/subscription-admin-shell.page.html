@@ -1,0 +1,35 @@
+<section
+  class="cf-page subscription-admin"
+  [class.subscription-admin--v2]="isLayoutV2"
+  [class.subscription-admin--plan-focus]="isLayoutV2 && planEditorFocus">
+  <!-- Layout v1: full page header + module tabs on every subscription page -->
+  <ng-container *ngIf="!isLayoutV2">
+    <app-page-header
+      title="Subscriptions"
+      subtitle="Plans, features and limits for every church. Prices are for invoicing reference; payments are not collected here."
+      backLink="/settings"
+      backLabel="Settings">
+    </app-page-header>
+
+    <div class="cf-nav-cluster">
+      <app-tab-strip mode="router" ariaLabel="Subscription administration" [tabs]="tabs"></app-tab-strip>
+    </div>
+  </ng-container>
+
+  <!-- Layout v2: compact module chrome on list pages; plan editor supplies its own chrome -->
+  <ng-container *ngIf="isLayoutV2 && !planEditorFocus">
+    <app-page-header
+      title="Subscriptions"
+      subtitle="Plans, features and limits for every church."
+      backLink="/settings"
+      backLabel="Settings"
+      [titleLevel]="3">
+    </app-page-header>
+
+    <div class="cf-nav-cluster subscription-admin__nav">
+      <app-tab-strip mode="router" density="compact" ariaLabel="Subscription administration" [tabs]="tabs"></app-tab-strip>
+    </div>
+  </ng-container>
+
+  <router-outlet></router-outlet>
+</section>

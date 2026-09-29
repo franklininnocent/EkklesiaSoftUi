@@ -26,12 +26,13 @@ class BCCServiceMock {
 describe('BccDetailPageComponent', () => {
   let component: BccDetailPageComponent;
   let fixture: ComponentFixture<BccDetailPageComponent>;
-  let auth: { hasPermission: jest.Mock };
+  let auth: { hasPermission: jest.Mock; canViewTenantAuditLogs: jest.Mock };
   let queryParams$: BehaviorSubject<Record<string, string | null>>;
   let router: Router;
 
   beforeEach(async () => {
-    auth = { hasPermission: jest.fn((permission: string) => permission === 'bcc.view') };
+    auth = {
+      canViewTenantAuditLogs: jest.fn(() => false), hasPermission: jest.fn((permission: string) => permission === 'bcc.view') };
     queryParams$ = new BehaviorSubject<Record<string, string | null>>({});
 
     await TestBed.configureTestingModule({

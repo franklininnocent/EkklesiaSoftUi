@@ -25,8 +25,9 @@
     (touchend)="onTouchEnd()"
     (touchcancel)="onTouchEnd()"
   >
-    <div *ngIf="loading" class="cf-image-viewer__loading">
-      <app-loading-spinner size="medium" color="primary" [centered]="true"></app-loading-spinner>
+    <div *ngIf="loading" class="cf-image-viewer__loading" role="status">
+      <span class="cf-spinner cf-image-viewer__spinner" aria-hidden="true"></span>
+      <span class="sr-only">Loading photo</span>
     </div>
 
     <div *ngIf="loadError" class="cf-image-viewer__error">

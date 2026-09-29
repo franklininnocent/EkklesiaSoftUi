@@ -12,6 +12,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ParishExpenseRecord } from '../../../models/donation.model';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { formatFocCurrency } from '../../utils/foc-format.util';
 import { localDateOnly } from '../../../utils/local-date-only';
 
@@ -54,11 +55,17 @@ export interface FocExpenseMethodOption {
 })
 export class FocExpenseModalComponent {
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly churchCurrency = inject(ChurchCurrencyService);
 
   @Input() open = false;
   @Input() saving = false;
   @Input({ required: true }) form!: FocExpenseFormValue;
   @Input() currencyCode = 'INR';
+
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? this.currencyCode;
+  }
+
   @Input() operatorName = 'Administrator';
   @Input() operatorRole = 'Administrator';
   @Input() financialYear: string | null = null;

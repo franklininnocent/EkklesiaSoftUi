@@ -18,7 +18,7 @@
   </div>
 
   <app-cf-empty-state
-    *ngIf="!loading && !rows.length"
+    *ngIf="!loading && !error && !rows.length"
     title="No request types yet"
     description="Add the types tenants will choose when they ask for help."
     actionLabel="Add request type"

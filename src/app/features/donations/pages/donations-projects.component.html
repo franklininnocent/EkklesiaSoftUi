@@ -1,8 +1,18 @@
 <section class="projects-page cf-page">
   <app-page-header [title]="pageTitle" [subtitle]="pageSubtitle">
-    <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
-    <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
-    <a routerLink="/donations/project-installments" class="cf-btn">Installments</a>
+    <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+    </button>
+    <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+    </button>
+    <a routerLink="/donations/project-installments" class="cf-btn cf-btn-icon" aria-label="Installments" title="Installments">
+      <app-cf-action-icon name="calendar-clock" />
+    </a>
   </app-page-header>
 
   <!-- Success / save error alerts -->
@@ -114,7 +124,7 @@
               {{ familyTargetLabel }} <span class="cf-split-req" aria-hidden="true">*</span>
             </label>
             <div class="cf-amount-input">
-              <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
+              <span class="cf-amount-input__prefix" aria-hidden="true">{{ currencySymbol }}</span>
               <input
                 id="project-family-target"
                 formControlName="default_family_target"
@@ -158,7 +168,7 @@
               >?</button>
             </label>
             <div class="cf-amount-input">
-              <span class="cf-amount-input__prefix" aria-hidden="true">₹</span>
+              <span class="cf-amount-input__prefix" aria-hidden="true">{{ currencySymbol }}</span>
               <input
                 id="project-target-amount"
                 formControlName="target_amount"
@@ -282,27 +292,29 @@
           <div class="cf-split-field">
             <input [(ngModel)]="assignmentEffectiveFrom" [ngModelOptions]="{standalone: true}" type="date" aria-label="Effective from" />
           </div>
-          <button type="button" class="cf-btn" (click)="addAssignment()">Add</button>
+          <button type="button" class="cf-btn cf-btn-icon" (click)="addAssignment()" aria-label="Add" title="Add"><app-cf-action-icon name="plus" /></button>
         </div>
         <table *ngIf="draftAssignments.length" class="table cf-table">
           <thead><tr><th>Family</th><th>Target</th><th>Exempt</th><th>From</th><th></th></tr></thead>
           <tbody>
             <tr *ngFor="let row of draftAssignments; let i = index">
               <td>{{ familyName(row.family_id) }}</td>
-              <td>{{ row.is_exempt ? '—' : (row.target_amount | number:'1.2-2') }}</td>
+              <td>{{ row.is_exempt ? '—' : (row.target_amount | cfCurrency) }}</td>
               <td>{{ row.is_exempt ? 'Yes' : 'No' }}</td>
               <td>{{ row.effective_from }}</td>
-              <td><button type="button" class="cf-btn" (click)="removeAssignment(i)">Remove</button></td>
+              <td><button type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="removeAssignment(i)" aria-label="Remove" title="Remove"><app-cf-action-icon name="trash" /></button></td>
             </tr>
           </tbody>
         </table>
       </section>
 
       <div class="cf-split-form-actions">
-        <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
-          {{ saving ? 'Saving…' : (editingProjectId ? 'Update Project' : 'Create Project') }}
+        <button
+          aria-label="Save"
+          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="saving">
+          <app-cf-action-icon name="save" />
         </button>
-        <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+        <button type="button" class="cf-btn cf-btn-icon" (click)="closeForm()" [disabled]="saving" aria-label="Cancel" title="Cancel"><app-cf-action-icon name="x" /></button>
       </div>
     </form>
   </app-modal-shell>
@@ -318,14 +330,22 @@
   <div class="proj-alert proj-alert--error" *ngIf="projectsLoaded && projectsLoadError" role="alert">
     <span class="proj-alert__icon" aria-hidden="true">!</span>
     <span>{{ projectsLoadError }}</span>
-    <button type="button" class="cf-btn proj-alert__retry" (click)="loadProjects()">Retry</button>
+    <button
+          aria-label="Try again"
+          title="Try again" type="button" class="cf-btn cf-btn-icon proj-alert__retry" (click)="loadProjects()">
+          <app-cf-action-icon name="refresh" />
+    </button>
   </div>
 
   <ng-container *ngIf="projectsLoaded && !projectsLoadError">
       <!-- Search -->
       <div class="proj-list-toolbar" *ngIf="projects.length">
         <input type="search" [(ngModel)]="tableSearch" placeholder="Search by name, code, or status…" aria-label="Search projects" />
-        <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
+        <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+        </button>
       </div>
 
       <!-- Project cards -->
@@ -349,11 +369,11 @@
           <div class="proj-card__metrics">
             <div class="proj-card__metric">
               <span>Family target</span>
-              <strong>{{ project.default_family_target | number:'1.0-0' }}</strong>
+              <strong>{{ project.default_family_target | cfCurrency : null : 0 }}</strong>
             </div>
             <div class="proj-card__metric">
               <span>Collected</span>
-              <strong>{{ project.raised_amount | number:'1.0-0' }}</strong>
+              <strong>{{ project.raised_amount | cfCurrency : null : 0 }}</strong>
             </div>
             <div class="proj-card__metric">
               <span>Mode</span>
@@ -372,9 +392,27 @@
           </div>
 
           <footer class="proj-card__actions">
-            <button type="button" class="cf-btn cf-btn-primary" (click)="viewDashboard(project)">Track</button>
-            <button type="button" class="cf-btn" *ngIf="canManage" (click)="editProject(project)">Edit</button>
-            <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateInstallments(project)">Installments</button>
+            <button
+              type="button"
+              class="cf-btn cf-btn-icon"
+              (click)="viewDashboard(project)"
+              aria-label="Track"
+              title="Track"
+            >
+              <app-cf-action-icon name="line-chart" />
+            </button>
+            <app-edit-icon-button
+              *ngIf="canManage"
+              size="sm"
+              [ariaLabel]="'Edit ' + project.name"
+              [title]="'Edit ' + project.name"
+              (clicked)="editProject(project)"
+            ></app-edit-icon-button>
+            <button
+          aria-label="Installments"
+          title="Installments" type="button" class="cf-btn cf-btn-icon cf-btn--sm" *ngIf="canManage" (click)="generateInstallments(project)">
+          <app-cf-action-icon name="calendar-clock" />
+            </button>
           </footer>
         </article>
       </div>
@@ -388,8 +426,16 @@
         title="No projects created yet."
         description="Create your first project to start tracking family contributions."
       >
-        <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create Project</button>
-        <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
+        <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+        </button>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
       </app-cf-empty-state>
   </ng-container>
 
@@ -398,17 +444,21 @@
     <header>
       <h2>{{ dashboard.project.name }} — Funding Progress</h2>
       <div class="dashboard-actions">
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect</button>
-        <button type="button" class="cf-btn" (click)="dashboard = null">Close</button>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
+        <button type="button" class="cf-btn cf-btn-icon" (click)="dashboard = null" aria-label="Close" title="Close"><app-cf-action-icon name="x" /></button>
       </div>
     </header>
     <div class="cf-attention-callout" *ngIf="dashboard.totals.collection_percentage < 50">
-      <p>{{ dashboard.totals.outstanding | number:'1.2-2' }} still needed — {{ 100 - dashboard.totals.collection_percentage }}% of target remaining.</p>
+      <p>{{ dashboard.totals.outstanding | cfCurrency }} still needed — {{ 100 - dashboard.totals.collection_percentage }}% of target remaining.</p>
     </div>
     <div class="stats cf-kpi-grid">
-      <article class="cf-kpi"><span>Overall Target</span><strong>{{ dashboard.totals.overall_target | number:'1.2-2' }}</strong></article>
-      <article class="cf-kpi"><span>Collected</span><strong>{{ dashboard.totals.collected | number:'1.2-2' }}</strong></article>
-      <article class="cf-kpi"><span>Outstanding</span><strong>{{ dashboard.totals.outstanding | number:'1.2-2' }}</strong></article>
+      <article class="cf-kpi"><span>Overall Target</span><strong>{{ dashboard.totals.overall_target | cfCurrency }}</strong></article>
+      <article class="cf-kpi"><span>Collected</span><strong>{{ dashboard.totals.collected | cfCurrency }}</strong></article>
+      <article class="cf-kpi"><span>Outstanding</span><strong>{{ dashboard.totals.outstanding | cfCurrency }}</strong></article>
       <article class="cf-kpi"><span>Collection %</span><strong>{{ dashboard.totals.collection_percentage }}%</strong></article>
     </div>
     <div class="stats cf-kpi-grid">
@@ -422,9 +472,9 @@
       <tbody>
         <tr *ngFor="let row of dashboard.family_progress">
           <td>{{ row.family_id }}</td>
-          <td>{{ row.target_amount | number:'1.2-2' }}</td>
-          <td>{{ row.amount_collected | number:'1.2-2' }}</td>
-          <td>{{ row.outstanding_amount | number:'1.2-2' }}</td>
+          <td>{{ row.target_amount | cfCurrency }}</td>
+          <td>{{ row.amount_collected | cfCurrency }}</td>
+          <td>{{ row.outstanding_amount | cfCurrency }}</td>
           <td>{{ row.completion_percentage }}%</td>
         </tr>
       </tbody>

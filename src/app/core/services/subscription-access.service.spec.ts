@@ -42,9 +42,11 @@ describe('SubscriptionAccessService', () => {
     expect(service.canViewGatedModules()).toBe(true);
   });
 
-  it('fail-closes writes when snapshot is missing for tenant user', () => {
+  it('fail-closes writes and gated navigation when snapshot is missing for tenant user', () => {
+    expect(service.canViewGatedModules()).toBe(false);
     tenantService.getSubscriptionAccess.mockReturnValue(throwError(() => new Error('network')));
     service.refresh().subscribe();
     expect(service.isReadOnly()).toBe(true);
+    expect(service.canViewGatedModules()).toBe(false);
   });
 });

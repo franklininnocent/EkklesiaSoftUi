@@ -1,4 +1,4 @@
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, BehaviorSubject, tap, map, catchError, throwError, of, timeout, finalize } from 'rxjs';
 import { Router } from '@angular/router';
@@ -8,6 +8,9 @@ import { PhoneCodeService } from '@core/services/phone-code.service';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 import { canViewMySubscription as canViewMySubscriptionAccess } from '@shared/utils/subscription-access.util';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { EntitlementService } from './entitlement.service';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
+import { ChurchCurrency } from '@core/models/church-currency.model';
 
 @Injectable({
   providedIn: 'root'
@@ -17,12 +20,19 @@ export class AuthService {
   private router = inject(Router);
   private phoneCodeService = inject(PhoneCodeService);
   private supportSessions = inject(SupportSessionService);
+  private injector = inject(Injector);
+  private churchCurrency = inject(ChurchCurrencyService);
   private readonly authEndpointPrefix = '/auth';
   
   private currentUserSubject = new BehaviorSubject<User | null>(this.getUserFromStorage());
   public currentUser$ = this.currentUserSubject.asObservable();
 
-  constructor() {}
+  constructor() {
+    const stored = this.getUserFromStorage();
+    if (stored?.tenant) {
+      this.churchCurrency.hydrate((stored.tenant as { currency?: ChurchCurrency | null }).currency);
+    }
+  }
 
   register(data: RegisterRequest): Observable<AuthResponse> {
     return this.postWithFallback<AuthResponse>('/register', data)
@@ -224,6 +234,7 @@ export class AuthService {
   private setUser(user: User): void {
     localStorage.setItem(environment.userKey, JSON.stringify(user));
     this.currentUserSubject.next(user);
+    this.churchCurrency.hydrate((user as { tenant?: { currency?: ChurchCurrency | null } }).tenant?.currency);
 
     // Update tenant country code cache and phone code globally
     try {
@@ -287,6 +298,13 @@ export class AuthService {
 
   private handleLogout(): void {
     this.supportSessions.clearSession();
+    this.churchCurrency.clear();
+    try {
+      localStorage.removeItem('tenant_country_code');
+      localStorage.removeItem('tenant_country_id');
+    } catch {
+      // ignore storage errors
+    }
     localStorage.removeItem(environment.tokenKey);
     localStorage.removeItem(environment.refreshTokenKey);
     localStorage.removeItem(environment.expiryTimeKey);
@@ -565,7 +583,16 @@ export class AuthService {
     const isPrimaryAdmin =
       primaryAdminRaw === true || primaryAdminRaw === 1 || primaryAdminRaw === '1';
 
-    return !!user.tenant_id && isPrimaryAdmin;
+    return !!user.tenant_id && isPrimaryAdmin && this.planIncludes('AUDIT_LOG');
+  }
+
+  /** Mirrors the API's plan check for audit viewing; resolved lazily (EntitlementService depends on AuthService). */
+  private planIncludes(featureCode: string): boolean {
+    try {
+      return this.injector.get(EntitlementService).hasFeature(featureCode);
+    } catch {
+      return true;
+    }
   }
 
   /** Complete platform audit trails (bishops, dioceses, cross-tenant insights, subscription history). */
@@ -900,6 +927,49 @@ export class AuthService {
       'ministries.manage_members',
       'ministries.manage_leadership',
       'ministries.configure',
+    ];
+
+    return permissionNames.some((permissionName) =>
+      (user.permissions || []).some((permission) => permission?.name === permissionName)
+    );
+  }
+
+  canAccessMassIntentions(
+    user: User | null = this.currentUserValue,
+    options: { hasActiveSupportSession?: boolean } = {}
+  ): boolean {
+    if (!user) {
+      return false;
+    }
+
+    if (this.isSuperAdmin() || this.isEkklesiaAdmin()) {
+      return !!user.tenant_id || !!options.hasActiveSupportSession;
+    }
+
+    if (!user.tenant_id) {
+      return false;
+    }
+
+    const tenantRoleNames = ['Administrator', 'Parish Priest'];
+    const hasRole = tenantRoleNames.some(
+      (roleName) =>
+        (user.roles || []).some((role) => role?.name === roleName) ||
+        user.role_name === roleName ||
+        user.role?.name === roleName
+    );
+
+    const primaryAdminRaw = (user as { is_primary_admin?: boolean | number | string }).is_primary_admin;
+    const isPrimaryAdmin = primaryAdminRaw === true || primaryAdminRaw === 1 || primaryAdminRaw === '1';
+    if (isPrimaryAdmin || hasRole) {
+      return true;
+    }
+
+    const permissionNames = [
+      'mass.intentions.view',
+      'mass.intentions.create',
+      'mass.intentions.review',
+      'mass.intentions.schedule',
+      'mass.intentions.fulfil',
     ];
 
     return permissionNames.some((permissionName) =>

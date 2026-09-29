@@ -51,13 +51,21 @@ export interface StewardshipConfirmResult {
         <p class="cf-state cf-state--error" *ngIf="error" role="alert">{{ error }}</p>
 
         <div class="cf-dialog__actions">
-          <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
           <button
             type="button"
-            class="cf-btn cf-btn-primary"
+            class="cf-btn cf-dialog__btn"
+            (click)="onCancel()"
+            [disabled]="saving"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-primary cf-dialog__btn cf-dialog__btn--confirm"
             [disabled]="!canConfirm"
             (click)="onConfirm()"
           >
+            <span *ngIf="saving" class="cf-spinner" aria-hidden="true"></span>
             {{ saving ? 'Working…' : confirmLabel }}
           </button>
         </div>
@@ -84,7 +92,25 @@ export interface StewardshipConfirmResult {
     .cf-field textarea, .cf-field input {
       width: 100%; border: 1px solid var(--cf-border, #cbd5e1); border-radius: 8px; padding: 0.5rem 0.65rem;
     }
-    .cf-dialog__actions { display: flex; justify-content: flex-end; gap: 0.5rem; }
+    .cf-dialog__actions {
+      display: flex;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .cf-dialog__btn {
+      width: auto;
+      min-width: 5.5rem;
+      min-height: var(--cf-control-height, 2.5rem);
+      height: auto;
+      padding: 0.45rem 1rem;
+    }
+    .cf-dialog__btn--confirm {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
     .req { color: var(--cf-critical, #b91c1c); }
   `]
 })

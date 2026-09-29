@@ -116,6 +116,31 @@ describe('DonationsService', () => {
       });
     });
 
+    it('sends today_only on the payments list request', () => {
+      service.getPayments({ today_only: '1', per_page: '20' }).subscribe((response) => {
+        expect(response.meta?.date_basis).toBe('payment_date');
+        expect(response.meta?.totals.payment_count).toBe(2);
+      });
+
+      const req = httpMock.expectOne((request) =>
+        request.url === `${environment.apiUrl}/tenant/donations/payments`
+        && request.params.get('today_only') === '1'
+        && request.params.get('per_page') === '20'
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush({
+        success: true,
+        data: { data: [], current_page: 1, last_page: 1, total: 2, per_page: 20 },
+        meta: {
+          totals: { payment_count: 2, collected_gross: 10, refunded_total: 0, net_collected: 10, families_count: 1, currency_code: 'INR' },
+          business_date: '2026-09-28',
+          timezone: 'Asia/Kolkata',
+          date_basis: 'payment_date',
+          date_mode: 'today'
+        }
+      });
+    });
+
     it('sends Idempotency-Key when recording a payment', () => {
       service.createPayment({ amount: 10, method: 'cash' }).subscribe((response) => {
         expect(response.success).toBe(true);

@@ -4,6 +4,7 @@ import { RouterModule } from '@angular/router';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { ToastService } from '@core/services/toast.service';
 import { NotificationApiService } from '../services/notification-api.service';
 import { NotificationPreference } from '../models/notification.model';
@@ -27,6 +28,7 @@ interface PreferenceGroup {
     PageHeaderComponent,
     LoadingSkeletonComponent,
     StatusBadgeComponent,
+    CfEmptyStateComponent,
   ],
   templateUrl: './notification-preferences.page.html',
   styleUrl: './notification-preferences.page.scss',

@@ -37,3 +37,14 @@
   border-bottom-color: var(--cf-primary);
   font-weight: 600;
 }
+
+.cf-tab-strip--compact {
+  gap: 0;
+  border-bottom-color: var(--cf-panel-border);
+
+  .cf-tab-strip__tab {
+    padding: var(--cf-space-1) var(--cf-space-2);
+    font-size: var(--cf-text-sm);
+    line-height: 1.25;
+  }
+}

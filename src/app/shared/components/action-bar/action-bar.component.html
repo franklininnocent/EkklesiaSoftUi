@@ -2,14 +2,18 @@
   class="cf-action-bar"
   [class.cf-action-bar--stacked]="layout === 'stacked'"
   [class.cf-action-bar--sm]="size === 'sm'"
+  [class.cf-action-bar--icon-only]="iconOnly"
 >
   <button
     *ngFor="let action of visibleActions"
     type="button"
     [ngClass]="buttonClass(action)"
     [disabled]="action.disabled"
+    [attr.title]="iconOnly ? action.label : null"
+    [attr.aria-label]="iconOnly ? action.label : null"
     (click)="onClick(action)"
   >
-    {{ action.label }}
+    <app-action-bar-icon *ngIf="action.icon" [icon]="action.icon"></app-action-bar-icon>
+    <span *ngIf="!iconOnly" class="cf-action-bar__label">{{ action.label }}</span>
   </button>
 </div>

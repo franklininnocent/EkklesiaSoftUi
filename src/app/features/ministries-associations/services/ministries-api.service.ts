@@ -38,34 +38,34 @@ import {
   UpdateOrganizationStatusPayload,
 } from '../models/ministries.model';
 
-type TaxonomyListParams = {
+interface TaxonomyListParams {
   page?: number;
   per_page?: number;
   search?: string;
   is_active?: boolean;
-};
+}
 
-type GuestMemberListParams = {
+interface GuestMemberListParams {
   page?: number;
   per_page?: number;
   search?: string;
   guest_type?: string;
   has_linked_parishioner?: boolean;
-};
+}
 
-type ParishionerLookupParams = {
+interface ParishionerLookupParams {
   search?: string;
   exclude_organization_id?: string;
   page?: number;
   per_page?: number;
-};
+}
 
-type LeadershipTimelineParams = {
+interface LeadershipTimelineParams {
   page?: number;
   per_page?: number;
   position_id?: string;
   status?: LeadershipTerm['status'];
-};
+}
 
 type CreateOrganizationCategoryPayload = Pick<OrganizationCategory, 'code' | 'name'> &
   Partial<Pick<OrganizationCategory, 'description' | 'display_order' | 'is_active'>>;
@@ -90,10 +90,10 @@ type UpdatePositionPayload = Partial<
   Pick<Position, 'name' | 'description' | 'single_occupancy' | 'display_order' | 'is_active'>
 >;
 
-type LeadershipHandoverResult = {
+interface LeadershipHandoverResult {
   outgoing_term: LeadershipTerm;
   incoming_term: LeadershipTerm;
-};
+}
 
 @Injectable({ providedIn: 'root' })
 export class MinistriesApiService {

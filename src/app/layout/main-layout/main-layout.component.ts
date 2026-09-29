@@ -22,6 +22,7 @@ import { SupportSessionBannerComponent } from '@features/support-center/componen
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { SubscriptionStatusBannerComponent } from '@shared/components/subscription-status-banner/subscription-status-banner.component';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
 import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
 import { SidebarNavForestComponent } from '../sidebar-nav/sidebar-nav-forest.component';
@@ -66,6 +67,7 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   private quickCollectService = inject(QuickCollectService);
   private supportSessions = inject(SupportSessionService);
   private subscriptionAccess = inject(SubscriptionAccessService);
+  private entitlements = inject(EntitlementService);
 
   currentUser$: Observable<User | null>;
   currentTenant$: Observable<Tenant | null>;
@@ -85,6 +87,21 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'ae66ec' },
+      body: JSON.stringify({
+        sessionId: 'ae66ec',
+        runId: 'pre-fix',
+        hypothesisId: 'C',
+        location: 'main-layout.component.ts:ngOnInit',
+        message: 'MainLayout ngOnInit',
+        data: { href: location.href, authenticated: this.authService.isAuthenticated() },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
     // Soft refresh of profile on layout entry. loadUserFailure no longer wipes the
     // session on transient errors, so this is safe after post-login navigation.
     if (this.authService.isAuthenticated()) {
@@ -93,19 +110,24 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
 
     this.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
       this.currentUser = user;
-      this.visibleSidebarSections = filterSidebarSections(
-        this.sidebarSections,
-        (menuId) => this.navMenu.isVisible(menuId as NavMenuId, user)
-      );
+      this.refreshVisibleSidebar();
       if (this.appContext.hasParishResourceContext(user)) {
         this.subscriptionAccess.ensureLoaded();
+        this.entitlements.load().pipe(takeUntil(this.destroy$)).subscribe();
       } else {
         this.subscriptionAccess.clear();
+        this.entitlements.clear();
       }
       this.cdr.markForCheck();
     });
 
     this.subscriptionAccess.snapshot$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.refreshVisibleSidebar();
+      this.cdr.markForCheck();
+    });
+
+    this.entitlements.entitlements$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.refreshVisibleSidebar();
       this.cdr.markForCheck();
     });
 
@@ -189,6 +211,14 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }
     this.isMobileNavOpen = false;
     this.cdr.markForCheck();
+  }
+
+  private refreshVisibleSidebar(): void {
+    this.visibleSidebarSections = filterSidebarSections(
+      this.sidebarSections,
+      (menuId) => this.navMenu.isVisible(menuId as NavMenuId, this.currentUser),
+      (route) => this.navMenu.isRouteAllowed(route)
+    );
   }
 
   private updateViewportState(): void {

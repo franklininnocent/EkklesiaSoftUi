@@ -9,7 +9,7 @@
     <button
       *ngIf="diocese"
       type="button"
-      class="btn btn-primary hover-lift transition-all focus-ring"
+      class="cf-btn cf-btn-primary hover-lift transition-all focus-ring"
       (click)="onEdit()"
       aria-label="Edit diocese">
       ✏️ Edit
@@ -17,7 +17,7 @@
     <button
       *ngIf="diocese"
       type="button"
-      class="btn btn-danger hover-lift transition-all focus-ring"
+      class="cf-btn cf-btn-danger hover-lift transition-all focus-ring"
       (click)="onDelete()"
       aria-label="Delete diocese">
       🗑️ Delete
@@ -131,7 +131,7 @@
         <button
           *ngIf="canManageAppointments"
           type="button"
-          class="btn btn-primary"
+          class="cf-btn cf-btn-primary"
           (click)="openSuccessorModal()">
           Appoint Successor
         </button>
@@ -141,13 +141,13 @@
         <app-loading-skeleton type="list" [rows]="2"></app-loading-skeleton>
       </div>
 
-      <app-empty-state
+      <app-cf-empty-state
         *ngIf="!loadingLeadership && isVacant()"
         icon="👤"
         title="Seat vacant"
         description="No bishop is currently serving as the diocesan ordinary."
-        [showButton]="false">
-      </app-empty-state>
+        [hasActions]="false">
+      </app-cf-empty-state>
 
       <div
         *ngIf="!loadingLeadership && currentOrdinary as ordinary"
@@ -185,13 +185,13 @@
         <span class="badge-count">{{ appointmentHistory.length }}</span>
       </div>
 
-      <app-empty-state
+      <app-cf-empty-state
         *ngIf="appointmentHistory.length === 0"
         icon="📜"
         title="No appointment history"
         description="Historical bishop assignments will appear here after appointments are recorded."
-        [showButton]="false">
-      </app-empty-state>
+        [hasActions]="false">
+      </app-cf-empty-state>
 
       <div *ngIf="appointmentHistory.length > 0" class="history-table-wrapper">
         <table class="history-table">

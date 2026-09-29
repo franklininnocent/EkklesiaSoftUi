@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { tenantAuditGuard } from '@core/guards/tenant-audit.guard';
+import { entitlementGuard } from '@core/guards/entitlement.guard';
 import { OrganizationBreadcrumbResolver } from './resolvers/organization-breadcrumb.resolver';
 
 export const MINISTRIES_ROUTES: Routes = [
@@ -28,10 +29,10 @@ export const MINISTRIES_ROUTES: Routes = [
   },
   {
     path: 'audit',
-    canActivate: [tenantAuditGuard],
+    canActivate: [tenantAuditGuard, entitlementGuard],
     loadComponent: () =>
       import('./pages/audit-log.page').then(m => m.AuditLogPageComponent),
-    data: { breadcrumbLabel: 'Audit log' },
+    data: { breadcrumbLabel: 'Audit log', feature: 'AUDIT_LOG' },
   },
   {
     path: ':id',

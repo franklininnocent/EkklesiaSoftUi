@@ -100,6 +100,55 @@ describe('MemberListComponent (list photos)', () => {
     expect(component.photoViewer?.nested).toBe(true);
   });
 
+  it('shows each member fact once and splits a messy address into lines', () => {
+    configure();
+    const fixture = TestBed.createComponent(MemberListComponent);
+    const component = fixture.componentInstance;
+    const member = {
+      ...childMember(),
+      first_name: 'Fausto',
+      middle_name: 'B',
+      last_name: 'Konen',
+      marital_status: 'single',
+      baptism_date: '2026-02-02',
+      display_father_name: 'Harold Konen',
+      display_mother_name: 'Maria Konen',
+      family: {
+        ...childMember().family,
+        family_code: 'FAM000002',
+        family_name: "Harold's Family",
+        address_line_1: '4413 Oak Ave,',
+        address_line_2: 'LPR Appartment, Fourth Floor',
+        city: 'Kadayal',
+        postal_code: '629101',
+        bcc: { name: "St.Joseph's BCC" },
+      },
+    } as FamilyMember;
+
+    component.selectedMember = member;
+    component.showDetailModal = true;
+    fixture.detectChanges();
+
+    const text = fixture.nativeElement.textContent as string;
+    expect(text.match(/Fausto B Konen/g)?.length).toBe(1);
+    expect(fixture.nativeElement.querySelector('#member-section-household')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('#member-section-personal')).toBeTruthy();
+    expect(text).not.toContain('Full name');
+    expect(component.getMemberAddressLines(member)).toEqual([
+      '4413 Oak Ave',
+      'LPR Appartment, Fourth Floor',
+      'Kadayal 629101',
+    ]);
+    expect(component.getParentInfo()).toEqual({
+      father: 'Harold Konen',
+      mother: 'Maria Konen',
+    });
+    expect(fixture.nativeElement.querySelector('.member-detail-modal__address')?.textContent).toContain(
+      '4413 Oak Ave',
+    );
+    expect(fixture.nativeElement.querySelector('.member-detail-modal__address')?.textContent).not.toContain(',,');
+  });
+
   it('falls back to initials after a broken image', () => {
     configure();
     const fixture = TestBed.createComponent(MemberListComponent);

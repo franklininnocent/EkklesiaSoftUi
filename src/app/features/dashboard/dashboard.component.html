@@ -18,7 +18,33 @@
 
   <!-- Real church registry (live API counts) — shared above tabs -->
   <section class="cd-registry" aria-label="Church registry summary">
+    <p *ngIf="platformStatsState === 'loading'" class="cd-loading" role="status">Loading church totals…</p>
+    <div *ngIf="platformStatsState === 'error'" class="cd-registry__error" role="alert">
+      <p>Couldn’t load church totals.</p>
+      <button type="button" class="cd-link-btn" (click)="retryPlatformStatistics()">Try again</button>
+    </div>
+    <ng-container *ngIf="platformStatsState === 'ready' && platformStats as stats">
+      <button type="button" class="cd-registry__card" (click)="navigateTo('/tenants')">
+        <span class="cd-registry__label">Churches</span>
+        <span class="cd-registry__value">{{ stats.total_tenants | number }}</span>
+        <span class="cd-registry__hint">All churches · tenants</span>
+      </button>
+      <button type="button" class="cd-registry__card" (click)="navigateTo('/tenants')">
+        <span class="cd-registry__label">Active churches</span>
+        <span class="cd-registry__value">{{ stats.active_tenants | number }}</span>
+        <span class="cd-registry__hint">{{ stats.inactive_tenants | number }} inactive</span>
+      </button>
+      <button type="button" class="cd-registry__card" (click)="navigateTo('/tenants')">
+        <span class="cd-registry__label">In trial</span>
+        <span class="cd-registry__value">{{ stats.in_trial | number }}</span>
+        <span class="cd-registry__hint">{{ stats.subscribed | number }} subscribed</span>
+      </button>
+    </ng-container>
     <p *ngIf="registryState === 'loading'" class="cd-loading" role="status">Loading parish counts…</p>
+    <p *ngIf="registryState === 'idle' && platformStatsState === 'idle'" class="cd-registry__empty">
+      Parish counts appear when you open a church.
+      <button type="button" class="cd-link-btn" (click)="navigateTo('/tenants')">Go to Tenants</button>
+    </p>
     <div *ngIf="registryState === 'error'" class="cd-registry__error" role="alert">
       <p>Couldn’t load parish counts.</p>
       <button type="button" class="cd-link-btn" (click)="retryRegistry()">Try again</button>
@@ -209,7 +235,15 @@
         <header class="cd-panel__head">
           <h3>Growth Vectors</h3>
         </header>
+        <p *ngIf="platformStatsState === 'loading'" class="cd-loading" role="status">Loading church totals…</p>
+        <dl class="cd-stat-row" *ngIf="platformStatsState === 'ready' && platformStats as stats">
+          <div class="cd-stat-row__item" *ngFor="let row of planBreakdown(stats.tenants_by_plan)">
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.count | number }}</dd>
+          </div>
+        </dl>
         <p *ngIf="registryState === 'loading'" class="cd-loading" role="status">Loading growth metrics…</p>
+        <p *ngIf="registryState === 'idle' && platformStatsState === 'idle'" class="cd-panel__desc">Open a church to see growth numbers.</p>
         <div *ngIf="registryState === 'error'" class="cd-panel__desc" role="alert">
           <p>Couldn’t load growth metrics.</p>
           <button type="button" class="cd-panel__link" (click)="retryRegistry()">Try again</button>
@@ -231,7 +265,26 @@
           <h3>Life Groups</h3>
           <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">View groups</button>
         </header>
+        <p *ngIf="platformStatsState === 'loading'" class="cd-loading" role="status">Loading church totals…</p>
+        <div class="cd-groups-grid" *ngIf="platformStatsState === 'ready' && platformStats as stats">
+          <div class="cd-groups-item">
+            <span class="cd-groups-item__value">{{ stats.subscribed | number }}</span>
+            <span class="cd-groups-item__label">Subscribed</span>
+            <span class="cd-groups-item__detail">Churches on a paid plan</span>
+          </div>
+          <div class="cd-groups-item">
+            <span class="cd-groups-item__value">{{ stats.in_trial | number }}</span>
+            <span class="cd-groups-item__label">In trial</span>
+            <span class="cd-groups-item__detail">Churches still in trial</span>
+          </div>
+          <div class="cd-groups-item">
+            <span class="cd-groups-item__value">{{ stats.inactive_tenants | number }}</span>
+            <span class="cd-groups-item__label">Inactive</span>
+            <span class="cd-groups-item__detail">Churches turned off</span>
+          </div>
+        </div>
         <p *ngIf="bccStatsState === 'loading'" class="cd-loading" role="status">Loading Life Group metrics…</p>
+        <p *ngIf="bccStatsState === 'idle' && platformStatsState === 'idle'" class="cd-panel__desc">Open a church to see Life Group numbers.</p>
         <div *ngIf="bccStatsState === 'error'" class="cd-panel__desc" role="alert">
           <p>Couldn’t load Life Group metrics.</p>
           <button type="button" class="cd-panel__link" (click)="retryBccStats()">Try again</button>
@@ -507,7 +560,7 @@
           <li *ngFor="let family of operationsSummary?.families_requiring_attention ?? []">
             <button type="button" (click)="navigateToFamily(family.family_id)">
               <strong>{{ family.family_name }}</strong>
-              <span>{{ family.overdue_amount | number:'1.2-2' }} overdue · {{ family.days_overdue }} days</span>
+              <span>{{ family.overdue_amount | cfCurrency }} overdue · {{ family.days_overdue }} days</span>
             </button>
           </li>
         </ul>

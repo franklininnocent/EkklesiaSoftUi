@@ -2,8 +2,11 @@
   <header>
     <h2>{{ rollup.root?.name }} Diocese Overview</h2>
     <p>{{ rollup.scope?.parish_count || 0 }} parishes under this scope</p>
+    <p class="foc-rollup__notice" *ngIf="rollup.money_comparable === false">
+      Parishes use different currencies ({{ rollup.currencies?.join(', ') }}). Totals below are not combined — compare each parish individually.
+    </p>
   </header>
-  <div class="foc-executive-grid">
+  <div class="foc-executive-grid" *ngIf="rollup.money_comparable !== false && rollup.consolidated">
     <article class="foc-exec-card">
       <span class="foc-exec-card__label">Total Collected</span>
       <strong>{{ formatCurrency(rollup.consolidated?.total_collected) }}</strong>

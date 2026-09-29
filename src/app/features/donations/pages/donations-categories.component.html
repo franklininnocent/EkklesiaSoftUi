@@ -3,8 +3,14 @@
     title="Offering Categories"
     subtitle="Define gift types for voluntary collections — create and manage categories side by side.">
     <ng-container *ngIf="canManage && categoriesLoaded && !showForm">
-      <a routerLink="/donations/register" class="cf-btn">Today's Register</a>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Add category</button>
+      <a routerLink="/donations/register" class="cf-btn cf-btn-icon" aria-label="Today's Register" title="Today's Register">
+        <app-cf-action-icon name="book-open" />
+      </a>
+      <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+      </button>
     </ng-container>
   </app-page-header>
 
@@ -16,7 +22,11 @@
   <ng-container *ngIf="categoriesLoaded">
     <div class="cf-split-banner cf-split-banner--error" *ngIf="categoriesLoadError" role="alert">
       <p class="category-load-error__text">{{ categoriesLoadError }}</p>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+      <button
+          aria-label="Try again"
+          title="Try again" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="load()">
+          <app-cf-action-icon name="refresh" />
+      </button>
     </div>
 
     <div class="cf-split-workspace" *ngIf="!categoriesLoadError" [class.cf-split-workspace--single]="!canManage">
@@ -27,14 +37,27 @@
               <h2>{{ editingCategoryId ? 'Edit category' : 'Add category' }}</h2>
               <p *ngIf="!showForm">Sunday, charity, building fund, and other gift types.</p>
             </div>
-            <button type="button" class="cf-btn cf-split-card__close" *ngIf="showForm" (click)="closeForm()" aria-label="Close">×</button>
+            <button
+              type="button"
+              class="cf-btn cf-btn-icon cf-split-card__close"
+              *ngIf="showForm"
+              (click)="closeForm()"
+              aria-label="Close"
+              title="Close"
+            >
+              <app-cf-action-icon name="x" />
+            </button>
           </header>
 
           <div class="cf-split-form-cta" *ngIf="!showForm">
             <div class="cf-split-form-cta__icon" aria-hidden="true">▤</div>
             <p class="cf-split-form-cta__title">Add an offering category</p>
             <p class="cf-split-form-cta__text">Categories help volunteers pick the right gift type during Quick Collect.</p>
-            <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Add category</button>
+            <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+            </button>
           </div>
 
           <form *ngIf="showForm" [formGroup]="form" (ngSubmit)="save()" class="cf-split-form-body" novalidate>
@@ -76,10 +99,12 @@
             </section>
 
             <div class="cf-split-form-actions">
-              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
-                {{ saving ? 'Saving…' : (editingCategoryId ? 'Save changes' : 'Add category') }}
+              <button
+          aria-label="Save"
+          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="form.invalid || saving">
+          <app-cf-action-icon name="save" />
               </button>
-              <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+              <button type="button" class="cf-btn cf-btn-icon" (click)="closeForm()" [disabled]="saving" aria-label="Cancel" title="Cancel"><app-cf-action-icon name="x" /></button>
             </div>
           </form>
         </article>
@@ -125,17 +150,13 @@
                         ></app-edit-icon-button>
                         <button
                           type="button"
-                          class="category-row-actions__delete"
+                          class="cf-btn cf-btn-icon cf-btn--sm category-row-actions__delete"
                           (click)="deleteCategory(cat)"
                           [disabled]="deletingId === cat.id"
                           [attr.aria-label]="'Delete ' + cat.name"
+                          [attr.title]="'Delete ' + cat.name"
                         >
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-icon" aria-hidden="true">
-                            <polyline points="3 6 5 6 21 6"></polyline>
-                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            <line x1="10" y1="11" x2="10" y2="17"></line>
-                            <line x1="14" y1="11" x2="14" y2="17"></line>
-                          </svg>
+                          <app-cf-action-icon name="trash" />
                         </button>
                       </div>
                     </td>
@@ -156,10 +177,12 @@
                 <a
                   routerLink="/settings/default-seeds"
                   [queryParams]="{ module: 'donations' }"
-                  class="cf-btn cf-btn-primary"
+                  class="cf-btn cf-btn-icon cf-btn-primary"
                   *ngIf="canManage"
+                  aria-label="Load default categories"
+                  title="Load default categories"
                 >
-                  Add recommended defaults
+                  <app-cf-action-icon name="download" />
                 </a>
               </app-cf-empty-state>
             </div>

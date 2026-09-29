@@ -56,6 +56,7 @@
     <li
       *ngFor="let person of results; let i = index"
       role="option"
+      aria-selected="false"
       [id]="listboxId + '_opt_' + i"
       (mousedown)="selectPerson(person)"
     >

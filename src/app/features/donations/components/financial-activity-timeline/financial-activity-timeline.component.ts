@@ -2,11 +2,11 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, Input, OnChanges, SimpleChanges, inject } from '@angular/core';
 import { DonationsService } from '../../services/donations.service';
 import { FinancialTimelineEvent } from '../../models/donation.model';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 @Component({
   selector: 'app-financial-activity-timeline',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CfCurrencyPipe],
   template: `
     <section class="fat-timeline cf-panel" *ngIf="subjectId">
       <header *ngIf="title">
@@ -28,7 +28,7 @@ import { FinancialTimelineEvent } from '../../models/donation.model';
             <small *ngIf="event.reference">Ref: {{ event.reference }}</small>
           </div>
           <strong class="fat-timeline__amount" *ngIf="event.amount != null">
-            {{ event.amount | number:'1.2-2' }}
+            {{ event.amount | cfCurrency }}
           </strong>
         </li>
       </ul>

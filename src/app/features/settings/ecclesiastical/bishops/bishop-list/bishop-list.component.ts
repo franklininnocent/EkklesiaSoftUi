@@ -15,7 +15,7 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { BishopFormModalComponent } from '../bishop-form-modal/bishop-form-modal.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
-import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
@@ -31,7 +31,7 @@ import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-a
     ConfirmationModalComponent, 
     BishopFormModalComponent,
     LoadingSkeletonComponent,
-    EmptyStateComponent,
+    CfEmptyStateComponent,
     AdvancedSearchPanelComponent,
     PageHeaderComponent,
     BishopAvatarComponent,

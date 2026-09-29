@@ -35,6 +35,7 @@
         <li
           *ngFor="let result of results"
           role="option"
+          aria-selected="false"
           [attr.aria-disabled]="!result.eligible"
           [class.parishioner-lookup__result--disabled]="!result.eligible"
           (mousedown)="selectResult(result)"

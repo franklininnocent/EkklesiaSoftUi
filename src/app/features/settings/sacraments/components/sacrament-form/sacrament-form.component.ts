@@ -10,13 +10,12 @@ import { AppState } from '@core/store';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { take } from 'rxjs';
 import { SacramentStatus } from '../../constants/sacrament.constants';
-import { ButtonComponent } from '@shared/components';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-sacrament-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, ButtonComponent, ModalShellComponent],
+  imports: [CommonModule, FormsModule, ModalShellComponent],
   templateUrl: './sacrament-form.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './sacrament-form.component.scss'

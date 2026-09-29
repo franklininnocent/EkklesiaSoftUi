@@ -3,6 +3,7 @@ import { inject } from '@angular/core';
 import { rbacGuard } from '@core/guards/rbac.guard';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
 import { subscriptionViewGuard } from '@core/guards/subscription-view.guard';
+import { entitlementGuard } from '@core/guards/entitlement.guard';
 
 function redirectLegacyRegisterQuery(route: ActivatedRouteSnapshot): boolean | UrlTree {
   const router = inject(Router);
@@ -65,7 +66,7 @@ export const SETTINGS_ROUTES: Routes = [
   {
     path: 'subscription',
     canActivate: [tenantAdminGuard],
-    loadComponent: () => import('./subscription/subscription-management.component').then(m => m.SubscriptionManagementComponent)
+    loadChildren: () => import('@features/subscriptions/subscriptions.routes').then(m => m.SUBSCRIPTION_ADMIN_ROUTES)
   },
   {
     path: 'my-subscription',
@@ -88,12 +89,14 @@ export const SETTINGS_ROUTES: Routes = [
   },
   {
     path: 'data-export',
+    canActivate: [entitlementGuard],
+    data: { feature: 'IMPORT_EXPORT' },
     loadComponent: () =>
       import('./data-export/data-export.page').then((m) => m.DataExportPage),
   },
   {
     path: 'default-seeds',
-    data: { breadcrumbLabel: 'Default Seeds' },
+    data: { breadcrumbLabel: 'Recommended defaults' },
     loadComponent: () =>
       import('./default-seeds/default-seeds.page').then((m) => m.DefaultSeedsPage),
   },

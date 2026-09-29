@@ -273,58 +273,6 @@
   }
 }
 
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: none;
-  
-  &.btn-primary {
-    background: #4299e1;
-    color: #fff;
-    
-    &:hover {
-      background: #3182ce;
-    }
-  }
-  
-  &.btn-secondary {
-    background: #edf2f7;
-    color: #2d3748;
-    
-    &:hover {
-      background: #e2e8f0;
-    }
-  }
-  
-  &.btn-danger {
-    background: #fc8181;
-    color: #fff;
-    
-    &:hover {
-      background: #f56565;
-    }
-  }
-  
-  &.btn-link {
-    background: transparent;
-    color: #4299e1;
-    padding: 0.5rem 1rem;
-    
-    &:hover {
-      color: #3182ce;
-      background: #ebf8ff;
-    }
-  }
-  
-  .btn-icon {
-    margin-right: 0.5rem;
-  }
-}
-
 // Modal styles
 .modal-overlay {
   position: fixed;
@@ -413,7 +361,7 @@
     align-items: stretch;
     width: 100%;
 
-    .btn {
+    .cf-btn {
       width: 100%;
       justify-content: center;
     }

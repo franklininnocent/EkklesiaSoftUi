@@ -1,0 +1,220 @@
+<div class="sa-stack sa-entitlements">
+  <div *ngIf="errors.length" class="cf-inline-alert" role="alert">
+    <div>
+      <strong>Please fix these before saving</strong>
+      <ul>
+        <li *ngFor="let e of errors">{{ e }}</li>
+      </ul>
+    </div>
+  </div>
+
+  <p class="sa-muted" *ngIf="!rows.length">No features are available for this version.</p>
+
+  <div class="sa-entitlements-chrome" *ngIf="rows.length">
+    <p class="sa-entitlements-chrome__notice cf-meta" *ngIf="readonly" role="status">
+      Read-only version — start a new draft to edit features or limits.
+    </p>
+
+    <div class="sa-entitlements-chrome__toolbar" role="region" aria-label="Feature list controls">
+      <div class="sa-entitlements-chrome__version">
+        <ng-content></ng-content>
+      </div>
+
+      <div class="sa-entitlements-toolbar">
+        <app-list-toolbar
+          searchPlaceholder="Search features and limits"
+          [searchValue]="search"
+          [showFilters]="true"
+          [filterCount]="activeFilterCount"
+          (searchChange)="onSearchFromToolbar($event)"
+          (filtersOpened)="showFilters = true">
+        </app-list-toolbar>
+      </div>
+
+      <label class="cf-switch-field sa-entitlements-chrome__codes">
+        <input
+          type="checkbox"
+          [(ngModel)]="showCodes"
+          (ngModelChange)="onShowCodesChange()"
+          [disabled]="saving" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">Feature codes</span>
+        </span>
+      </label>
+    </div>
+
+    <p class="sa-entitlements-chrome__summary cf-meta" [attr.aria-label]="overviewSummaryLabel">
+      {{ overviewSummary }}
+    </p>
+
+    <app-advanced-search-panel
+      mode="sidepanel"
+      [fields]="filterFields"
+      [isExpanded]="showFilters"
+      (search)="onFiltersApplied($event)"
+      (clear)="onFiltersCleared()"
+      (close)="showFilters = false">
+    </app-advanced-search-panel>
+  </div>
+
+  <div class="sa-entitlements-layout" *ngIf="rows.length">
+    <div class="sa-entitlements-main">
+      <p class="sa-muted" *ngIf="searchHasNoMatches">No features or limits match.</p>
+
+      <section class="sa-entitlements-capabilities" *ngIf="visibleCapabilityGroups.length" aria-labelledby="sa-capabilities-title">
+        <h4 id="sa-capabilities-title" class="sa-entitlements-section__title">Capabilities</h4>
+        <p class="sa-muted sa-entitlements-capabilities__intro">Features churches on this plan can use.</p>
+
+        <div *ngFor="let group of visibleCapabilityGroups; trackBy: trackGroup" class="sa-entitlements-group">
+          <h5 class="sa-entitlements-group__title">
+            {{ group.label }}
+            <span class="sa-muted">{{ groupCountLabel(group) }}</span>
+          </h5>
+
+          <dl class="sa-entitlements-capacity__list" *ngIf="group.includedRows.length">
+            <ng-container *ngFor="let view of group.includedRows; trackBy: trackRow">
+              <ng-container *ngTemplateOutlet="capabilityItem; context: { $implicit: view }"></ng-container>
+            </ng-container>
+          </dl>
+
+          <p class="sa-entitlements-group__divider" *ngIf="group.includedRows.length && group.excludedRows.length">Not included</p>
+
+          <dl class="sa-entitlements-capacity__list" *ngIf="group.excludedRows.length">
+            <ng-container *ngFor="let view of group.excludedRows; trackBy: trackRow">
+              <ng-container *ngTemplateOutlet="capabilityItem; context: { $implicit: view }"></ng-container>
+            </ng-container>
+          </dl>
+        </div>
+      </section>
+
+      <p class="sa-muted" *ngIf="!searchHasNoMatches && !visibleCapabilityGroups.length && statusFilter !== 'all'">
+        No capabilities match this status filter.
+      </p>
+    </div>
+
+    <aside class="sa-entitlements-capacity" aria-labelledby="sa-capacity-title">
+      <h4 id="sa-capacity-title" class="sa-entitlements-section__title">Usage capacity</h4>
+      <p class="sa-muted sa-entitlements-capacity__intro">How much this plan allows churches to store and use.</p>
+
+      <dl class="sa-entitlements-capacity__list" *ngIf="visibleLimitViews.length; else capacityEmpty">
+        <div class="sa-entitlements-capacity__item" *ngFor="let view of visibleLimitViews; trackBy: trackRow">
+          <dt>{{ view.row.feature.name }}</dt>
+          <dd>
+            <ng-container *ngIf="readonly || !isIncluded(view.row) || view.row.unlimited || view.figure === null; else limitEdit">
+              <span class="sa-entitlements-capacity__phrase">{{ view.phrase }}</span>
+            </ng-container>
+            <ng-template #limitEdit>
+              <div class="sa-entitlements-capacity__edit">
+                <span class="sa-entitlements-capacity__prefix sa-muted">Up to</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="1"
+                  [(ngModel)]="view.row.value"
+                  (ngModelChange)="markDirty()"
+                  [disabled]="saving"
+                  [attr.aria-label]="view.row.feature.name + ' limit' + (view.row.feature.unit ? ' in ' + view.row.feature.unit : '')" />
+                <span class="sa-muted" *ngIf="view.row.feature.unit === 'MB'">MB</span>
+                <span class="sa-muted" *ngIf="view.row.feature.unit && view.row.feature.unit !== 'MB'">{{ view.row.feature.unit }}</span>
+                <span class="sa-muted sa-entitlements-capacity__hint" *ngIf="view.storageHint">{{ view.storageHint }}</span>
+              </div>
+            </ng-template>
+
+            <div class="sa-entitlements-capacity__controls" *ngIf="!readonly && !view.row.feature.is_core">
+              <label class="cf-switch-field sa-entitlements-capacity__switch">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="view.row.enabled"
+                  (ngModelChange)="markDirty()"
+                  [disabled]="saving"
+                  [attr.aria-label]="'Include ' + view.row.feature.name" />
+                <span class="cf-switch-field__copy">
+                  <span class="cf-switch-field__label">{{ isIncluded(view.row) ? 'Included' : 'Not included' }}</span>
+                </span>
+              </label>
+              <label class="cf-switch-field sa-entitlements-capacity__switch" *ngIf="isIncluded(view.row)">
+                <input
+                  type="checkbox"
+                  [(ngModel)]="view.row.unlimited"
+                  (ngModelChange)="toggleUnlimited(view.row)"
+                  [disabled]="saving"
+                  [attr.aria-label]="view.row.feature.name + ' unlimited'" />
+                <span class="cf-switch-field__copy">
+                  <span class="cf-switch-field__label">Unlimited</span>
+                </span>
+              </label>
+            </div>
+
+            <p class="sa-muted sa-entitlements-capacity__meta" *ngIf="showCodes">
+              <span class="sa-code">{{ view.row.feature.code }}</span>
+            </p>
+          </dd>
+        </div>
+      </dl>
+      <ng-template #capacityEmpty>
+        <p class="sa-muted">No usage limits match your filters.</p>
+      </ng-template>
+    </aside>
+  </div>
+
+  <ng-template #capabilityItem let-view>
+    <div class="sa-entitlements-capacity__item">
+      <dt>{{ view.row.feature.name }}</dt>
+      <dd>
+        <span class="sa-muted sa-entitlements-capacity__desc" *ngIf="view.description">{{ view.description }}</span>
+
+        <ng-container *ngIf="readonly || view.row.feature.is_core; else capabilityControls">
+          <span class="sa-muted sa-entitlements-capacity__meta" *ngIf="view.dependencyLabel">Requires {{ view.dependencyLabel }}</span>
+          <span class="sa-muted sa-entitlements-capacity__meta" *ngIf="view.inactiveLabel">No longer offered</span>
+          <span class="sa-entitlements-capacity__phrase">
+            {{ view.row.feature.is_core ? 'Always included' : (view.included ? 'Included' : 'Not included') }}
+          </span>
+        </ng-container>
+
+        <ng-template #capabilityControls>
+          <span class="sa-muted sa-entitlements-capacity__meta" *ngIf="view.dependencyLabel">Requires {{ view.dependencyLabel }}</span>
+          <span class="sa-muted sa-entitlements-capacity__meta" *ngIf="view.inactiveLabel">No longer offered</span>
+
+          <select
+            *ngIf="view.row.feature.feature_type === 'TIER' && view.included"
+            class="sa-entitlements-capacity__tier"
+            [(ngModel)]="view.row.tier"
+            (ngModelChange)="markDirty()"
+            [disabled]="saving"
+            [attr.aria-label]="view.row.feature.name + ' level'">
+            <option [ngValue]="null">Choose level</option>
+            <option *ngFor="let t of view.row.feature.tier_options || []" [ngValue]="t">{{ t }}</option>
+          </select>
+
+          <div class="sa-entitlements-capacity__controls">
+            <label class="cf-switch-field sa-entitlements-capacity__switch">
+              <input
+                type="checkbox"
+                [(ngModel)]="view.row.enabled"
+                (ngModelChange)="markDirty()"
+                [disabled]="saving"
+                [attr.aria-label]="'Include ' + view.row.feature.name" />
+              <span class="cf-switch-field__copy">
+                <span class="cf-switch-field__label">{{ view.included ? 'Included' : 'Not included' }}</span>
+              </span>
+            </label>
+          </div>
+        </ng-template>
+
+        <p class="sa-muted sa-entitlements-capacity__meta" *ngIf="showCodes">
+          <span class="sa-code">{{ view.row.feature.code }}</span>
+        </p>
+      </dd>
+    </div>
+  </ng-template>
+
+  <div class="sa-entitlements-save sa-toolbar" *ngIf="!readonly">
+    <span class="sa-muted">{{ dirty ? 'You have unsaved changes.' : 'All changes saved.' }}</span>
+    <div class="sa-toolbar__filters">
+      <button type="button" class="cf-btn" (click)="reset()" [disabled]="!dirty || saving">Discard changes</button>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="save()" [disabled]="!dirty || saving">
+        {{ saving ? 'Saving…' : 'Save features & limits' }}
+      </button>
+    </div>
+  </div>
+</div>

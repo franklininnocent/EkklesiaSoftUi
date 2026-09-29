@@ -1,3 +1,11 @@
+export interface DonationDashboardDateQuery {
+  date_from?: string;
+  date_to?: string;
+  preset?: string;
+  bcc_id?: string | null;
+  project_id?: string | null;
+}
+
 export interface DonationDashboardSummary {
   totals: {
     collected: number;
@@ -10,6 +18,8 @@ export interface DonationDashboardSummary {
     voluntary_entries?: number;
     anonymous_donations?: number;
     active_recurring_schedules?: number;
+    pending_project_installments?: number;
+    future_dated_payments?: { count: number; amount: number };
   };
   collections_by_method: Record<string, number>;
   voluntary_by_category?: Array<{ category_id?: string | null; category_name: string; collected: number }>;
@@ -30,7 +40,32 @@ export interface DonationDashboardSummary {
     previous_month_collected: number;
     annual_collected: number;
   };
-  collection_trend?: Array<{ period: string; label: string; collected: number }>;
+  collection_trend?: CollectionTrendPoint[];
+  snapshot?: DonationDashboardSnapshot;
+  applied_range?: {
+    date_from: string;
+    date_to: string;
+    collection_end: string;
+    as_of: string;
+    parish_today: string;
+    timezone: string;
+    preset: string;
+    comparison_start: string;
+    comparison_end: string;
+    comparison_mode: string;
+    inclusive: boolean;
+  };
+  applied_bcc?: {
+    id: string | null;
+    name: string;
+    unassigned: boolean;
+  };
+  applied_project?: {
+    id: string;
+    name: string;
+  };
+  metric_basis?: Record<string, string>;
+  preset_windows?: Record<string, { date_from: string; date_to: string }>;
   families_requiring_attention?: Array<{
     family_id: string;
     family_name?: string;
@@ -230,6 +265,88 @@ export interface CollectionTrendPoint {
   period: string;
   label: string;
   collected: number;
+  start?: string;
+  end?: string;
+  is_current?: boolean;
+}
+
+export interface DonationDashboardGivingMixBucket {
+  key: string;
+  label: string;
+  amount: number;
+}
+
+export interface DonationDashboardSnapshot {
+  as_of: string;
+  timezone: string;
+  due_next_14_days_basis?: string;
+  applied_range?: DonationDashboardSummary['applied_range'];
+  metric_basis?: Record<string, string>;
+  financial_year: string;
+  financial_year_key?: string;
+  financial_year_start: string;
+  financial_year_end?: string;
+  month: {
+    collected: number;
+    comparison_start: string;
+    comparison_end: string;
+    comparison_collected: number;
+    growth_pct: number | null;
+  };
+  fiscal_year_collected: number;
+  outstanding_contributions: number;
+  overdue_amount: number;
+  overdue_families: number;
+  due_next_14_days_amount: number;
+  due_next_14_days_families: number;
+  participation: {
+    participating: number;
+    active: number;
+    rate: number;
+    window_start: string;
+    window_end: string;
+    not_participating: number;
+    net_change_vs_prior_window: number;
+  };
+  giving_mix: {
+    buckets: DonationDashboardGivingMixBucket[];
+    unallocated: number;
+    reconciled: boolean;
+  };
+  project_installments: {
+    overdue: number;
+    not_yet_due: number;
+    open: number;
+  };
+  active_project_count: number;
+  projects: Array<{
+    project_id: string;
+    name: string;
+    code?: string;
+    target_amount: number;
+    has_target: boolean;
+    collected: number;
+    remaining: number | null;
+    funding_percentage: number | null;
+  }>;
+  attention_families: Array<{
+    family_id: string;
+    family_name?: string;
+    family_code?: string;
+    overdue_amount: number;
+    overdue_count?: number;
+    days_overdue: number;
+    oldest_due_label?: string;
+  }>;
+  recent_payments: Array<{
+    id: string;
+    family_id?: string;
+    family_name?: string;
+    payer_name?: string;
+    amount: number;
+    method?: string;
+    date?: string;
+  }>;
 }
 
 export interface OperationsDashboardPeriod {
@@ -274,13 +391,222 @@ export interface FinancialActivityTimeline {
   events: FinancialTimelineEvent[];
 }
 
+export interface ExecutiveReportHealthFactor {
+  key: string;
+  label: string;
+  score: number;
+  weight_pct?: number;
+  not_applicable?: boolean;
+}
+
+export interface ExecutiveReportHealthStoryItem {
+  key: string;
+  label: string;
+  value: number;
+  value_kind: 'money' | 'percent' | 'count';
+}
+
+export type ReportDrillDownGraphId =
+  | 'outstanding_overdue'
+  | 'collections'
+  | 'collection_snapshot'
+  | 'collection_trend'
+  | 'family_participation'
+  | 'financial_health'
+  | 'month_end_forecast';
+
+export interface ReportDrillDownRequestPayload {
+  graph_id: ReportDrillDownGraphId;
+  data_element_id: string;
+  slice_id: string;
+  date_from?: string;
+  date_to?: string;
+  preset?: string;
+  bcc_id?: string | null;
+  project_id?: string | null;
+}
+
+export interface ReportDrillDownContext {
+  graph_id: string;
+  data_element_id: string;
+  slice_id: string;
+  dimension: string;
+  record_kind?: 'family' | 'payment' | 'project' | 'none';
+  point_kind?: 'actual' | 'forecast' | 'kpi';
+  value_kind?: 'money' | 'score' | 'count';
+  clock?: string;
+  as_of?: string;
+  title: string;
+  why_this_number: string;
+  business_date: string;
+  timezone: string;
+  expected_amount: number;
+  expected_count: number;
+  amount_expression?: 'raw' | 'floored';
+  workspace_path: string;
+  workspace_query: Record<string, string>;
+  columns: Array<{ key: string; label: string }>;
+  supported_actions: string[];
+  supported_sorts?: string[];
+  methodology?: Record<string, unknown> | null;
+  diagnostics?: Record<string, number>;
+}
+
+export interface ReportDrillDownPaymentRow {
+  payment_id: string;
+  payment_number?: string;
+  payment_date?: string;
+  amount: number;
+  method?: string;
+  family_id?: string | null;
+  family_name?: string;
+  head_of_family?: string | null;
+  family_code?: string | null;
+  payer_name?: string;
+  is_anonymous?: boolean;
+}
+
+export interface ReportDrillDownProjectRow {
+  project_id: string;
+  name: string;
+  code?: string;
+  collected: number;
+  target_amount: number;
+  funding_percentage: number;
+}
+
+export interface ReportDrillDownFamilyRow {
+  family_id: string;
+  family_name: string;
+  head_of_family?: string | null;
+  family_code?: string | null;
+  bcc_id?: string | null;
+  bcc_name?: string;
+  outstanding_amount: number;
+  due_count: number;
+  oldest_due_date?: string | null;
+  days_overdue?: number | null;
+}
+
+export interface ReportDrillDownResponse {
+  context: ReportDrillDownContext;
+  summary: { family_count: number; record_count?: number; due_count: number; amount_total: number };
+  filter_options: {
+    bccs?: Array<{ id: string | null; name: string }>;
+    methods?: Array<{ value: string; label: string }>;
+  };
+  data: {
+    current_page: number;
+    per_page: number;
+    total: number;
+    last_page: number;
+    data: Array<ReportDrillDownFamilyRow | ReportDrillDownPaymentRow | ReportDrillDownProjectRow | Record<string, unknown>>;
+  };
+}
+
+export interface ExecutiveReportCollectionSnapshot {
+  expected: number;
+  collected: number;
+  outstanding: number;
+  collection_rate_pct: number | null;
+  has_assessment: boolean;
+  collected_label: string;
+}
+
+export interface ExecutiveReportVisuals {
+  health: {
+    score: number;
+    label: string;
+    status: 'healthy' | 'attention' | 'risk';
+    story?: {
+      performing: ExecutiveReportHealthStoryItem[];
+      attention: ExecutiveReportHealthStoryItem[];
+      pending: ExecutiveReportHealthStoryItem[];
+      opportunity: ExecutiveReportHealthStoryItem[];
+    };
+    factors: ExecutiveReportHealthFactor[];
+  };
+  collections: {
+    current_month_collected: number;
+    previous_month_collected: number;
+    previous_month_full_collected?: number;
+    collection_growth_pct: number;
+    period_label?: string;
+    comparison_label?: string;
+  };
+  collection_snapshot?: ExecutiveReportCollectionSnapshot;
+  outstanding: {
+    pending_dues: number;
+    overdue_amount: number;
+    remaining_collectable: number;
+    overdue_family_count: number;
+    next_14_days_amount?: number;
+    next_14_days_family_count?: number;
+    later_remaining_amount?: number;
+    later_remaining_family_count?: number;
+  };
+  projects?: Array<{
+    project_id: string;
+    name: string;
+    code?: string;
+    target_amount: number;
+    collected: number;
+    remaining: number;
+    funding_percentage: number;
+  }> | null;
+  expenses_vs_collections?: {
+    month_collected: number;
+    month_expenses: number;
+  } | null;
+  participation: {
+    active_families: number;
+    participating_families: number;
+    participation_rate: number;
+    window_days: number;
+    window_start?: string | null;
+    window_end?: string | null;
+  };
+  collection_trend: Array<{ period: string; label: string; collected: number }>;
+  forecast: {
+    history: Array<{ period: string; label: string; collected: number }>;
+    current_month_collected: number;
+    current_month_projection: number;
+    daily_pace: number;
+    collection_growth_pct: number;
+    method?: string;
+  };
+}
+
+export interface ExecutiveReportMetrics {
+  health_score: number | null;
+  health_status: string | null;
+  current_month_collected: number;
+  pending_dues: number;
+  participation_rate: number;
+  forecast_projection: number;
+  overdue_family_count?: number;
+  overdue_amount?: number;
+  previous_month_collected?: number;
+  collection_growth_pct?: number;
+  active_families?: number;
+  participating_families?: number;
+}
+
 export interface ExecutiveReportSummary {
   title: string;
   narrative: string;
   highlights: string[];
   recommended_actions: string[];
-  metrics: Record<string, number | string | null>;
+  metrics: ExecutiveReportMetrics;
   forecast_narrative?: string;
+  visuals?: ExecutiveReportVisuals & {
+    health?: ExecutiveReportVisuals['health'] & {
+      related_metrics?: Array<{ key: string; label: string; score: number }>;
+    };
+    outstanding?: ExecutiveReportVisuals['outstanding'] & {
+      remaining_collectable_residual?: number;
+    };
+  };
 }
 
 export interface ParishComparisonReport {
@@ -289,6 +615,7 @@ export interface ParishComparisonReport {
   title?: string;
   narrative?: string;
   highlights?: string[];
+  money_comparable?: boolean;
   consolidated?: Record<string, number>;
   financial_health?: FinancialHealthScore;
   parishes?: Array<{
@@ -531,6 +858,24 @@ export interface PaginatedResponse<T> {
   current_page: number;
   last_page: number;
   total: number;
+  per_page?: number;
+}
+
+export interface DonationPaymentListTotals {
+  payment_count: number;
+  collected_gross: number;
+  refunded_total: number;
+  net_collected: number;
+  families_count: number;
+  currency_code: string;
+}
+
+export interface DonationPaymentListMeta {
+  totals: DonationPaymentListTotals;
+  business_date: string | null;
+  timezone: string;
+  date_basis: 'payment_date';
+  date_mode: 'today' | 'collection_date' | 'paid_range' | 'unscoped';
 }
 
 export interface ContributionPlan {
@@ -864,14 +1209,52 @@ export interface DonationPayment {
   refunded_amount?: number;
   refundable_remaining?: number;
   gateway_reference?: string;
+  receipt?: { id?: string; receipt_number?: string | null } | null;
 }
+
+export type DonationReportExportFormat = 'csv' | 'xlsx' | 'pdf';
 
 export interface DonationReportExport {
   id: string;
   report_type: string;
+  export_format?: DonationReportExportFormat;
+  filters?: Record<string, unknown>;
   status: string;
   file_path?: string;
   created_at: string;
+  completed_at?: string | null;
+  requested_by_name?: string | null;
+  downloadable?: boolean;
+  row_count?: number;
+  file_size?: number;
+  expires_at?: string;
+}
+
+export interface DonationReportCatalogItem {
+  key: string;
+  label: string;
+  category: string;
+  date_semantic: string;
+  supported_filters: string[];
+  preview: boolean;
+  export: boolean;
+  print: boolean;
+  requires_advanced: boolean;
+  default_preset?: string;
+}
+
+export interface DonationReportPreviewColumn {
+  key: string;
+  label: string;
+}
+
+export interface DonationReportPreview {
+  columns: DonationReportPreviewColumn[];
+  rows: Record<string, unknown>[];
+  totals: Record<string, unknown>;
+  footer?: Record<string, unknown>;
+  meta: Record<string, unknown>;
+  pagination: { page: number; per_page: number; total: number };
 }
 
 export interface DonationCategory {
@@ -908,9 +1291,22 @@ export interface DonationEntry {
   donor?: Donor;
 }
 
+export interface DonationFinancialYearResolved {
+  source: string;
+  start_month: string;
+  start_day: string;
+  current_label: string;
+  current_start: string;
+  current_end: string;
+}
+
 export interface DonationSettings {
   id: string;
   default_currency: string;
+  financial_year_source?: 'country' | 'tenant';
+  financial_year_start_month?: string;
+  financial_year_start_day?: string;
+  financial_year_resolved?: DonationFinancialYearResolved;
   tax_registration_number?: string;
   tax_acknowledgement_note?: string;
   receipt_prefix: string;
@@ -958,6 +1354,8 @@ export interface DonationAuditLog {
 
 export interface DioceseRollupDashboard {
   available: boolean;
+  money_comparable?: boolean;
+  currencies?: string[];
   message?: string;
   root?: {
     tenant_id: number;
@@ -973,15 +1371,15 @@ export interface DioceseRollupDashboard {
   };
   financial_health?: FinancialHealthScore;
   consolidated?: {
-    total_collected: number;
-    pending_dues: number;
-    overdue_amount: number;
-    current_month_collected: number;
+    total_collected: number | null;
+    pending_dues: number | null;
+    overdue_amount: number | null;
+    current_month_collected: number | null;
     collection_growth_pct: number;
     active_families: number;
     participating_families: number;
     active_projects: number;
-  };
+  } | null;
   collection_trend?: Array<{ period: string; label: string; collected: number }>;
   parishes?: Array<{
     tenant_id: number;

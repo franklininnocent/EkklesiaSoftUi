@@ -1,3 +1,5 @@
+@use '../auth-form';
+
 .auth-container {
   min-height: 100vh;
   display: flex;
@@ -77,24 +79,6 @@
 .forgot-password-row {
   margin-bottom: var(--spacing-md);
   text-align: right;
-}
-
-.auth-field-label {
-  display: block;
-  margin-bottom: var(--spacing-sm);
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--text-primary, #1f2937);
-}
-
-.auth-native-input,
-.auth-otp-input {
-  width: 100%;
-  padding: var(--spacing-md);
-  border: 1px solid #d1d5db;
-  border-radius: var(--radius-md);
-  font-size: 1rem;
-  box-sizing: border-box;
 }
 
 .auth-otp-input {

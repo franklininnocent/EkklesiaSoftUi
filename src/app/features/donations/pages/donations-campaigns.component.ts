@@ -10,7 +10,8 @@ import { DonationProject } from '../models/donation.model';
 import { FinancialActivityTimelineComponent } from '../components/financial-activity-timeline/financial-activity-timeline.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-campaigns',
   standalone: true,
@@ -21,8 +22,9 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
     RouterModule,
     FinancialActivityTimelineComponent,
     CfEmptyStateComponent,
-    ModalShellComponent
-  ],
+    ModalShellComponent,
+    CfCurrencyPipe,
+    CfActionIconComponent],
   template: `
     <section class="campaigns-page cf-page">
       <header class="cf-hero">
@@ -32,12 +34,24 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
 
       <div class="cf-decision-strip" role="region" aria-label="Suggested next step" *ngIf="!loading && campaigns.length">
         <div class="cf-decision-strip__copy">
-          <strong>{{ activeCampaignCount }} active · {{ fundingGap | number:'1.2-2' }} still to raise</strong>
+          <strong>{{ activeCampaignCount }} active · {{ fundingGap | cfCurrency }} still to raise</strong>
           <span>{{ campaignDecisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-          <button type="button" class="cf-btn" (click)="toggleForm()">{{ showForm ? 'Close setup' : 'New campaign' }}</button>
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="toggleForm()"
+            [attr.aria-label]="showForm ? 'Close setup' : 'New campaign'"
+            [attr.title]="showForm ? 'Close setup' : 'New campaign'"
+          >
+            <app-cf-action-icon [name]="showForm ? 'x' : 'plus'" />
+          </button>
         </div>
       </div>
 
@@ -88,10 +102,12 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
           </section>
 
           <div class="cf-split-form-actions">
-            <button type="submit" class="cf-btn cf-btn-primary" [disabled]="campaignForm.invalid || saving">
-              {{ saving ? 'Saving…' : 'Create Campaign' }}
+            <button
+          aria-label="Save"
+          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="campaignForm.invalid || saving">
+          <app-cf-action-icon name="save" />
             </button>
-            <button type="button" class="cf-btn" (click)="toggleForm()" [disabled]="saving">Cancel</button>
+            <button type="button" class="cf-btn cf-btn-icon" (click)="toggleForm()" [disabled]="saving" aria-label="Cancel" title="Cancel"><app-cf-action-icon name="x" /></button>
           </div>
         </form>
       </app-modal-shell>
@@ -119,7 +135,7 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
             </span>
           </div>
           <p>{{ campaign.code }} · {{ campaign.status }}</p>
-          <p>{{ campaign.raised_amount | number:'1.2-2' }} of {{ campaign.target_amount | number:'1.2-2' }}</p>
+          <p>{{ campaign.raised_amount | cfCurrency }} of {{ campaign.target_amount | cfCurrency }}</p>
           <p *ngIf="daysRemaining(campaign) !== null" class="campaign-deadline">
             {{ daysRemaining(campaign)! <= 0 ? 'Ended' : daysRemaining(campaign) + ' days left' }}
           </p>
@@ -133,12 +149,16 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
         <header>
           <h2>{{ campaign.name }}</h2>
           <div class="detail-actions">
-            <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect</button>
-            <button type="button" class="cf-btn" (click)="selectedCampaignId = null">Close</button>
+            <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+            </button>
+            <button type="button" class="cf-btn cf-btn-icon" (click)="selectedCampaignId = null" aria-label="Close" title="Close"><app-cf-action-icon name="x" /></button>
           </div>
         </header>
         <div class="cf-attention-callout" *ngIf="isCampaignAtRisk(campaign)">
-          <p>{{ campaignGap(campaign) | number:'1.2-2' }} still needed · {{ campaign.collection_percentage || 0 }}% funded.</p>
+          <p>{{ campaignGap(campaign) | cfCurrency }} still needed · {{ campaign.collection_percentage || 0 }}% funded.</p>
         </div>
         <app-financial-activity-timeline
           subjectType="campaign"
@@ -153,8 +173,16 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
         title="No campaigns running"
         description="Launch a time-bound drive for building funds, charity events, or special appeals."
       >
-        <button type="button" class="cf-btn cf-btn-primary" (click)="toggleForm()">Create campaign</button>
-        <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
+        <button
+          aria-label="Add"
+          title="Add" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="toggleForm()">
+          <app-cf-action-icon name="plus" />
+        </button>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
       </app-cf-empty-state>
     </section>
   `,

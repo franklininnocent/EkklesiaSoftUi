@@ -19,7 +19,7 @@ module.exports = defineConfig([
         "error",
         {
           type: "attribute",
-          prefix: "app",
+          prefix: ["app", "cf"],
           style: "camelCase",
         },
       ],
@@ -50,6 +50,39 @@ module.exports = defineConfig([
       "@angular-eslint/no-output-native": "off",
       "@angular-eslint/no-empty-lifecycle-method": "off",
       "no-restricted-globals": ["error", "confirm", "alert"],
+      // Retired UI primitives; see docs/design-system/migration-guide.md.
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/shared/components/button/**",
+                "**/shared/components/input/**",
+                "**/shared/components/card/**",
+                "**/shared/components/empty-state/**",
+                "**/shared/components/loading-spinner/**",
+                "@shared/components/button/**",
+                "@shared/components/input/**",
+                "@shared/components/card/**",
+                "@shared/components/empty-state/**",
+                "@shared/components/loading-spinner/**",
+              ],
+              message:
+                "Retired primitive. Use cf-btn, native inputs with cf-form-field, cf-panel, app-cf-empty-state or cf-spinner.",
+            },
+          ],
+        },
+      ],
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector:
+            "Property[key.name='selector'] > Literal[value=/^app-(button|input|card|empty-state|loading-spinner)$/]",
+          message:
+            "This selector belonged to a retired primitive. Use cf-btn, native inputs with cf-form-field, cf-panel, app-cf-empty-state or cf-spinner.",
+        },
+      ],
     },
   },
   {

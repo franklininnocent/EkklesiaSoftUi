@@ -9,7 +9,7 @@
 
 .my-sub-loading {
   display: grid;
-  gap: 0.75rem;
+  gap: var(--cf-space-3);
 }
 
 .my-sub-alert {
@@ -19,14 +19,14 @@
   background: var(--cf-slate-50, var(--gray-50));
 
   &--error {
-    background: color-mix(in srgb, var(--cf-critical, #b42318) 6%, white);
-    border-color: color-mix(in srgb, var(--cf-critical, #b42318) 28%, white);
+    background: color-mix(in srgb, var(--cf-critical) 6%, white);
+    border-color: color-mix(in srgb, var(--cf-critical) 28%, white);
   }
 }
 
 .my-sub-alert__copy {
   display: grid;
-  gap: 0.25rem;
+  gap: var(--cf-space-1);
 
   strong {
     color: var(--cf-slate-900, var(--text-primary));
@@ -49,24 +49,24 @@
   padding: var(--cf-space-3, var(--spacing-md)) var(--cf-space-4, var(--spacing-lg));
   border: 1px solid var(--cf-panel-border, var(--gray-200));
   border-radius: var(--cf-radius, var(--radius-md));
-  background: color-mix(in srgb, var(--cf-amber, #d97706) 10%, white);
+  background: color-mix(in srgb, var(--cf-amber) 10%, white);
 
   &[data-tone='EXPIRED'],
   &[data-tone='SUSPENDED'] {
-    background: color-mix(in srgb, var(--cf-critical, #b42318) 8%, white);
-    border-color: color-mix(in srgb, var(--cf-critical, #b42318) 28%, white);
+    background: color-mix(in srgb, var(--cf-critical) 8%, white);
+    border-color: color-mix(in srgb, var(--cf-critical) 28%, white);
   }
 
   &[data-tone='GRACE_PERIOD'],
   &[data-tone='EXPIRING'] {
-    background: color-mix(in srgb, var(--cf-amber, #d97706) 10%, white);
-    border-color: color-mix(in srgb, var(--cf-amber, #d97706) 35%, white);
+    background: color-mix(in srgb, var(--cf-amber) 10%, white);
+    border-color: color-mix(in srgb, var(--cf-amber) 35%, white);
   }
 }
 
 .my-sub-notice__copy {
   display: grid;
-  gap: 0.25rem;
+  gap: var(--cf-space-1);
   min-width: min(100%, 16rem);
   flex: 1 1 16rem;
 
@@ -85,7 +85,7 @@
 .my-sub-panel {
   border: 1px solid var(--cf-panel-border, var(--gray-200));
   border-radius: var(--cf-radius, var(--radius-md));
-  background: var(--cf-panel-bg, var(--surface-elevated, #fff));
+  background: var(--cf-panel-bg, var(--surface-elevated));
   padding: var(--cf-space-4, var(--spacing-lg));
 }
 
@@ -105,7 +105,7 @@
   }
 
   p {
-    margin: 0.2rem 0 0;
+    margin: var(--cf-space-1) 0 0;
     color: var(--cf-muted, var(--text-secondary));
     font-size: var(--cf-text-base, var(--font-size-sm));
   }
@@ -126,7 +126,7 @@
   min-width: 0;
 
   dt {
-    margin: 0 0 0.35rem;
+    margin: 0 0 var(--cf-space-1);
     font-size: var(--font-size-sm);
     font-weight: 500;
     color: var(--cf-muted, var(--text-secondary));
@@ -156,13 +156,13 @@
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: var(--cf-space-2);
 }
 
 .my-sub-features li {
   display: inline-flex;
   align-items: center;
-  padding: 0.35rem 0.7rem;
+  padding: var(--cf-space-1) var(--cf-space-3);
   border-radius: var(--radius-sm, 6px);
   background: var(--cf-slate-50, var(--gray-50));
   border: 1px solid var(--cf-panel-border, var(--gray-200));
@@ -171,9 +171,155 @@
   font-weight: 500;
 }
 
+.my-sub-muted {
+  color: var(--cf-muted, var(--text-secondary));
+  font-size: var(--font-size-sm);
+  font-weight: 400;
+}
+
+.my-sub-usage,
+.my-sub-requests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--spacing-md);
+}
+
+.my-sub-usage__row {
+  display: grid;
+  grid-template-columns: minmax(10rem, 1fr) minmax(8rem, 2fr) auto;
+  align-items: center;
+  gap: var(--spacing-sm) var(--spacing-md);
+
+  --usage-color: var(--cf-color-success);
+
+  &[data-level='notice'] {
+    --usage-color: var(--cf-primary);
+  }
+
+  &[data-level='warning'] {
+    --usage-color: var(--cf-amber);
+  }
+
+  &[data-level='critical'],
+  &[data-level='at_limit'],
+  &[data-level='over_limit'] {
+    --usage-color: var(--cf-critical);
+  }
+}
+
+.my-sub-usage__label {
+  display: grid;
+  gap: var(--cf-space-1);
+
+  span {
+    color: var(--cf-muted, var(--text-secondary));
+    font-size: var(--font-size-sm);
+  }
+}
+
+.my-sub-usage__bar {
+  height: 0.6rem;
+  border-radius: 999px;
+  background: var(--cf-slate-100, var(--gray-100));
+  overflow: hidden;
+
+  span {
+    display: block;
+    height: 100%;
+    background: var(--usage-color);
+  }
+}
+
+.my-sub-usage__level {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--usage-color);
+}
+
+.my-sub-requests li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--spacing-sm);
+
+  p {
+    margin: var(--cf-space-1) 0 0;
+  }
+}
+
+.my-sub-panel > .my-sub-alert {
+  margin-bottom: var(--spacing-md);
+}
+
+.my-sub-request-form {
+  display: grid;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-lg);
+  padding-top: var(--spacing-md);
+  border-top: 1px solid var(--cf-panel-border, var(--gray-200));
+
+  h3 {
+    margin: 0;
+    font-size: var(--cf-text-md, var(--font-size-lg));
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.my-sub-request-form__intervals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  border: 0;
+  margin: 0;
+  padding: 0;
+
+  legend {
+    width: 100%;
+    margin-bottom: var(--cf-space-1);
+    font-weight: 500;
+  }
+
+  label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cf-space-1);
+  }
+}
+
+.my-sub-request-form__message {
+  display: grid;
+  gap: var(--cf-space-1);
+  font-weight: 500;
+
+  textarea {
+    width: 100%;
+    font: inherit;
+    padding: var(--cf-space-2);
+    border: 1px solid var(--cf-panel-border, var(--gray-300));
+    border-radius: var(--radius-sm, 6px);
+  }
+}
+
+.my-sub-request-form__error {
+  color: var(--cf-critical);
+  font-weight: 500;
+}
+
+.my-sub-request-form__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-sm);
+}
+
 .my-sub-footnote {
   display: grid;
-  gap: 0.35rem;
+  gap: var(--cf-space-1);
   color: var(--cf-muted, var(--text-secondary));
   font-size: var(--font-size-sm);
   line-height: 1.5;
@@ -188,7 +334,7 @@
   width: 1px;
   height: 1px;
   padding: 0;
-  margin: -1px;
+  margin: 0;
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
@@ -206,6 +352,15 @@
 
   .my-sub-notice {
     flex-direction: column;
+  }
+
+  .my-sub-usage__row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .my-sub-usage__bar {
+    grid-column: 1 / -1;
+    grid-row: 2;
   }
 }
 

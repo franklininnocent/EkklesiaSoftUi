@@ -9,11 +9,12 @@ import {
 } from '../components/stewardship-confirm-dialog/stewardship-confirm-dialog.component';
 import { DonationsService } from '../services/donations.service';
 import { DonationApproval } from '../models/donation.model';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 
 @Component({
   selector: 'app-donations-approvals',
   standalone: true,
-  imports: [CommonModule, CfEmptyStateComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent],
+  imports: [CommonModule, CfEmptyStateComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent, CfActionIconComponent],
   template: `
     <section class="approvals cf-page">
       <header class="cf-hero">
@@ -52,8 +53,16 @@ import { DonationApproval } from '../models/donation.model';
               <td>{{ approval.reason || '—' }}</td>
               <td>
                 <ng-container *ngIf="approval.status === 'pending'">
-                  <button type="button" class="cf-btn cf-btn-primary" (click)="openDecision(approval, 'approved')">Approve</button>
-                  <button type="button" class="cf-btn" (click)="openDecision(approval, 'rejected')">Decline</button>
+                  <button
+          aria-label="Approve"
+          title="Approve" type="button" class="cf-btn cf-btn-icon cf-btn-primary cf-btn--sm" (click)="openDecision(approval, 'approved')">
+          <app-cf-action-icon name="check" />
+                  </button>
+                  <button
+          aria-label="Decline"
+          title="Decline" type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="openDecision(approval, 'rejected')">
+          <app-cf-action-icon name="x-circle" />
+                  </button>
                 </ng-container>
               </td>
             </tr>

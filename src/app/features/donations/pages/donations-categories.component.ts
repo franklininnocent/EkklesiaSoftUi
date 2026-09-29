@@ -12,11 +12,12 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { DonationCategory } from '../models/donation.model';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 
 @Component({
   selector: 'app-donations-categories',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, EditIconButtonComponent, LoadingSkeletonComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, EditIconButtonComponent, LoadingSkeletonComponent, PageHeaderComponent, CfActionIconComponent],
   templateUrl: './donations-categories.component.html',
   styleUrl: './donations-categories.component.scss'
 })

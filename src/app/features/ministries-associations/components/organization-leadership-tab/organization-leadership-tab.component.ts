@@ -16,6 +16,7 @@ import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { ToastService } from '@core/services/toast.service';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
@@ -71,6 +72,7 @@ export class OrganizationLeadershipTabComponent implements OnInit, OnChanges, On
   private readonly destroy$ = new Subject<void>();
   private readonly api = inject(MinistriesApiService);
   private readonly authService = inject(AuthService);
+  private readonly entitlements = inject(EntitlementService);
   private readonly toastService = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
 
@@ -131,16 +133,24 @@ export class OrganizationLeadershipTabComponent implements OnInit, OnChanges, On
     return this.organizationStatus === 'inactive' || this.isArchived;
   }
 
+  private get canChangeLeadership(): boolean {
+    return (
+      this.canManageLeadership &&
+      !this.isInactiveOrganization &&
+      this.entitlements.hasFeature('ADVANCED_MINISTRY_MANAGEMENT')
+    );
+  }
+
   get canAssign(): boolean {
-    return this.canManageLeadership && !this.isInactiveOrganization;
+    return this.canChangeLeadership;
   }
 
   get canHandover(): boolean {
-    return this.canManageLeadership && !this.isInactiveOrganization;
+    return this.canChangeLeadership;
   }
 
   get canTerminate(): boolean {
-    return this.canManageLeadership && !this.isInactiveOrganization;
+    return this.canChangeLeadership;
   }
 
   get hasTimelineFilters(): boolean {

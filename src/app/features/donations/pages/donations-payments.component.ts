@@ -1,7 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { NavigationEnd, Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
@@ -17,11 +17,12 @@ import {
   StewardshipConfirmResult
 } from '../components/stewardship-confirm-dialog/stewardship-confirm-dialog.component';
 import { localDateOnly, requiresGatewayReference } from '../utils/local-date-only';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-payments',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, FinancialActivityTimelineComponent, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, FinancialActivityTimelineComponent, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent, CfCurrencyPipe, CfActionIconComponent],
   template: `
     <section class="payments cf-page">
       <header class="cf-hero">
@@ -37,12 +38,19 @@ import { localDateOnly, requiresGatewayReference } from '../utils/local-date-onl
       <ng-container *ngIf="paymentsLoaded">
       <div class="cf-decision-strip" role="region" aria-label="Suggested next step">
         <div class="cf-decision-strip__copy">
-          <strong>{{ todayCount }} payment{{ todayCount === 1 ? '' : 's' }} today · {{ todayTotal | number:'1.2-2' }} collected</strong>
+          <strong *ngIf="!paidFrom && !paidTo">{{ todayCount }} payment{{ todayCount === 1 ? '' : 's' }} today · {{ todayTotal | cfCurrency }} collected</strong>
+          <strong *ngIf="paidFrom || paidTo">Payments from {{ paidFrom || 'any date' }} through {{ paidTo || 'any date' }}</strong>
           <span>{{ decisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-          <a routerLink="/donations/collection-day" class="cf-btn">Collection Day</a>
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+          </button>
+          <a routerLink="/donations/collection-day" class="cf-btn cf-btn-icon" aria-label="Collection Day" title="Collection Day">
+            <app-cf-action-icon name="calendar-check" />
+          </a>
         </div>
       </div>
 
@@ -64,8 +72,16 @@ import { localDateOnly, requiresGatewayReference } from '../utils/local-date-onl
           </select>
           <input formControlName="gateway_reference" placeholder="Cheque / transfer reference" *ngIf="needsReference" />
           <input formControlName="payment_date" type="date" />
-          <button type="button" class="cf-btn" (click)="addAllocation()">+ Allocation</button>
-          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="paymentForm.invalid || saving">{{ saving ? 'Saving...' : 'Add Payment' }}</button>
+          <button
+          aria-label="Add Allocation"
+          title="Add Allocation" type="button" class="cf-btn cf-btn-icon" (click)="addAllocation()">
+          <app-cf-action-icon name="plus" />
+          </button>
+          <button
+          aria-label="Add"
+          title="Add" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="paymentForm.invalid || saving">
+          <app-cf-action-icon name="plus" />
+          </button>
         </div>
 
         <div formArrayName="allocations" class="allocations cf-panel" *ngIf="allocations.length">
@@ -80,7 +96,9 @@ import { localDateOnly, requiresGatewayReference } from '../utils/local-date-onl
             </select>
             <input formControlName="allocatable_id" placeholder="Target UUID" />
             <input formControlName="amount" type="number" placeholder="Amount" />
-            <button type="button" class="cf-btn" (click)="removeAllocation(i)">Remove</button>
+            <button type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="removeAllocation(i)" aria-label="Remove" title="Remove">
+              <app-cf-action-icon name="trash" />
+            </button>
           </div>
         </div>
       </form>
@@ -114,7 +132,7 @@ import { localDateOnly, requiresGatewayReference } from '../utils/local-date-onl
             <td>{{ payment.payment_date | date }}</td>
             <td>{{ payment.method }}</td>
             <td>{{ payment.status }}</td>
-            <td>{{ payment.amount | number:'1.2-2' }}</td>
+            <td>{{ payment.amount | cfCurrency }}</td>
             <td class="cf-table__actions-cell">
               <div class="cf-row-actions">
                 <app-cf-icon-action-button
@@ -126,17 +144,25 @@ import { localDateOnly, requiresGatewayReference } from '../utils/local-date-onl
                 ></app-cf-icon-action-button>
                 <button
                   type="button"
-                  class="cf-btn"
+                  class="cf-btn cf-btn-icon cf-btn--sm"
                   *ngIf="canReverse && payment.status === 'succeeded'"
                   (click)="openReverse(payment)"
-                >Reverse</button>
+                
+          aria-label="Reverse"
+          title="Reverse">
+          <app-cf-action-icon name="undo-2" />
+                </button>
                 <button
                   type="button"
-                  class="cf-btn"
+                  class="cf-btn cf-btn-icon cf-btn--sm"
                   *ngIf="canRefund && (payment.status === 'succeeded' || payment.status === 'partially_refunded')"
                   [disabled]="(payment.refundable_remaining ?? payment.amount) <= 0"
                   (click)="openRefund(payment)"
-                >Refund</button>
+                
+          aria-label="Refund"
+          title="Refund">
+          <app-cf-action-icon name="corner-down-left" />
+                </button>
               </div>
             </td>
           </tr>
@@ -145,19 +171,29 @@ import { localDateOnly, requiresGatewayReference } from '../utils/local-date-onl
 
       <app-cf-empty-state
         *ngIf="!paymentsLoadError && !payments.length"
-        icon="₹"
+        icon="💳"
         title="No payments recorded yet"
         description="Start collecting with Quick Collect or Collection Day mode for high-volume Sundays."
       >
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-        <a routerLink="/donations/collection-day" class="cf-btn">Collection Day</a>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
+        <a routerLink="/donations/collection-day" class="cf-btn cf-btn-icon" aria-label="Collection Day" title="Collection Day">
+          <app-cf-action-icon name="calendar-check" />
+        </a>
       </app-cf-empty-state>
 
       <p *ngIf="payments.length && !displayPayments.length" class="cf-state">No payments match your filter.</p>
 
       <div class="payments-load-error cf-panel" *ngIf="paymentsLoadError" role="alert">
         <p class="payments-load-error__text">{{ paymentsLoadError }}</p>
-        <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+        <button
+          aria-label="Try again"
+          title="Try again" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="load()">
+          <app-cf-action-icon name="refresh" />
+        </button>
       </div>
       </ng-container>
 
@@ -229,6 +265,7 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     private quickCollectService: QuickCollectService,
     private receiptPrintService: ReceiptPrintService,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -281,6 +318,14 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     return localDateOnly();
   }
 
+  get paidFrom(): string | null {
+    return this.route.snapshot.queryParamMap.get('paid_from');
+  }
+
+  get paidTo(): string | null {
+    return this.route.snapshot.queryParamMap.get('paid_to');
+  }
+
   get todayPayments(): DonationPayment[] {
     return this.payments.filter((payment) => (payment.payment_date || '').slice(0, 10) === this.todayIso);
   }
@@ -330,7 +375,17 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     const seq = ++this.loadPaymentsSeq;
     this.paymentsLoaded = false;
     this.paymentsLoadError = null;
-    this.donationsService.getPaymentsLegacy().subscribe({
+    const filters: Record<string, string> = {};
+    if (this.paidFrom) {
+      filters['paid_from'] = this.paidFrom;
+    }
+    if (this.paidTo) {
+      filters['paid_to'] = this.paidTo;
+    }
+    if (this.paidFrom || this.paidTo) {
+      filters['per_page'] = '100';
+    }
+    this.donationsService.getPayments(filters).subscribe({
       next: (res) => {
         if (seq !== this.loadPaymentsSeq) {
           return;

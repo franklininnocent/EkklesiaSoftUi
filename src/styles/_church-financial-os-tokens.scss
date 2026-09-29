@@ -6,8 +6,11 @@
   --cf-font-serif: Georgia, "Times New Roman", serif;
 
   --cf-slate-900: #0f172a;
+  --cf-slate-800: #1e293b;
   --cf-slate-700: #334155;
+  --cf-slate-600: #475569;
   --cf-slate-500: #64748b;
+  --cf-slate-400: #94a3b8;
   --cf-slate-300: #cbd5e1;
   --cf-slate-200: #e2e8f0;
   --cf-slate-100: #f1f5f9;
@@ -36,8 +39,36 @@
   --cf-panel-border: var(--cf-slate-200);
   --cf-muted: var(--cf-slate-500);
   --cf-primary: #2563eb;
+  --cf-primary-hover: #1d4ed8;
+  --cf-primary-active: #1e40af;
   --cf-primary-soft: var(--cf-indigo-soft);
+  --cf-primary-subtle: #eff6ff;
   --cf-overlay-bg: rgba(15, 23, 42, 0.45);
+
+  --cf-focus-ring: var(--cf-primary);
+  --cf-focus-ring-width: 2px;
+  --cf-focus-ring-offset: 2px;
+
+  --cf-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --cf-shadow-sm: var(--cf-shadow);
+  --cf-shadow-md: 0 4px 6px rgba(15, 23, 42, 0.07);
+
+  --cf-duration-fast: 150ms;
+  --cf-duration-base: 200ms;
+  --cf-duration-slow: 300ms;
+  --cf-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --cf-bp-sm: 480px;
+  --cf-bp-md: 768px;
+  --cf-bp-lg: 1024px;
+
+  --cf-shell-sidebar-width: 16.5rem;
+  --cf-shell-sidebar-width-collapsed: 4.5rem;
+  --cf-shell-topbar-height: 52px;
+  --cf-shell-topbar-height-tablet: 48px;
+  --cf-shell-topbar-height-mobile: 44px;
+
+  --cf-color-text-on-dark: #ffffff;
 
   /*
    * Popup / modal system — single source of truth for centered dialogs.
@@ -108,9 +139,9 @@
    * Semantic typography roles
    * Page Title is a dedicated token (not --cf-text-2xl) so the enterprise H1
    * scale can change without resizing compact chrome that uses 2xl.
-   * Mobile-first: 1.5rem → tablet 1.75rem → desktop 2rem (see media queries below).
+   * Compact page headers: 1.125rem (18px) at all breakpoints.
    */
-  --cf-text-page-title: 1.5rem;
+  --cf-text-page-title: 1.125rem;
   --cf-font-weight-page-title: 700;
   --cf-leading-page-title: 1.25;
   --cf-text-section-title: var(--cf-text-lg);
@@ -147,6 +178,7 @@
   --cf-panel-pad: var(--cf-space-4);
 
   --cf-control-height: 2.25rem;
+  --cf-touch-target: 44px;
   --cf-control-pad-y: 0.35rem;
   --cf-control-pad-x: 0.6rem;
 
@@ -175,13 +207,13 @@
 
 @media (min-width: $cf-bp-md) {
   :root {
-    --cf-text-page-title: 1.75rem;
+    --cf-text-page-title: 1.125rem;
   }
 }
 
 @media (min-width: $cf-bp-lg) {
   :root {
-    --cf-text-page-title: 2rem;
+    --cf-text-page-title: 1.125rem;
   }
 }
 
@@ -279,6 +311,19 @@
   }
 }
 
+/* Inline busy indicator, sized to the surrounding font. In a button, pair with
+   [disabled] and aria-busy while the action runs. */
+.cf-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
 .cf-btn-primary {
   border-color: transparent;
   background: var(--cf-primary);
@@ -287,6 +332,11 @@
   &:hover:not(:disabled) {
     filter: brightness(0.95);
     background: var(--cf-primary);
+  }
+
+  /* `.cf-btn:disabled` mutes the label, which is unreadable on the filled background. */
+  &:disabled {
+    color: #fff;
   }
 }
 
@@ -321,9 +371,11 @@
 /* Official Page Title / H1 — single source of truth for top-level page headings.
    Prefer <app-page-header> (renders h1 inside .cf-hero) or class .cf-page-title. */
 .cf-hero h1,
-.cf-page-title {
+.cf-page-title,
+.cf-page-header.cf-hero .cf-page-header__title,
+.cf-page-header__title-row > h1 {
   margin: 0 0 var(--cf-space-1);
-  font-size: var(--cf-text-page-title);
+  font-size: var(--cf-text-page-title) !important;
   font-weight: var(--cf-font-weight-page-title);
   line-height: var(--cf-leading-page-title);
   color: var(--cf-color-text-primary);
@@ -331,7 +383,7 @@
   letter-spacing: -0.01em;
 }
 
-.cf-hero h3 {
+.cf-hero h3:not(.cf-page-header__title) {
   margin: 0 0 var(--cf-space-1);
   font-size: var(--cf-text-section-title);
   font-weight: 600;
@@ -1745,6 +1797,7 @@
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+    color: #fff;
   }
 }
 
@@ -1897,5 +1950,25 @@ button.cf-btn-link,
 .cf-table__cell--truncate {
   @include cf-truncate;
   max-width: 0;
+}
+
+/* Phone touch targets. Compact (`--sm`, and the misspelt `cf-btn-sm` still in
+   some templates) and filter-bar buttons keep the control height so they stay
+   aligned with the inputs beside them. */
+@media (max-width: 768px) {
+  .cf-btn:not(.cf-btn--sm, .cf-btn-sm) {
+    min-height: var(--cf-touch-target);
+  }
+
+  .cf-btn-icon:not(.cf-btn--sm, .cf-btn-sm) {
+    width: var(--cf-touch-target);
+    height: var(--cf-touch-target);
+    min-height: var(--cf-touch-target);
+  }
+
+  .cf-filters .cf-btn,
+  .cf-filters .cf-btn-primary {
+    min-height: var(--cf-control-height);
+  }
 }
 

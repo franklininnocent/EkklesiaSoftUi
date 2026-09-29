@@ -22,6 +22,7 @@ export class NotificationInboxService {
   readonly isPopoverOpen = signal(false);
   readonly recentItems = signal<UserNotification[]>([]);
   readonly loadingRecent = signal(false);
+  readonly recentLoadError = signal<string | null>(null);
 
   private pollSub: Subscription | null = null;
   private broadcast: BroadcastChannel | null = null;
@@ -67,6 +68,7 @@ export class NotificationInboxService {
 
   loadRecent(): void {
     this.loadingRecent.set(true);
+    this.recentLoadError.set(null);
     this.api
       .list({ view: 'all', per_page: 12 })
       .pipe(catchError(() => of(null)))
@@ -74,7 +76,10 @@ export class NotificationInboxService {
         this.loadingRecent.set(false);
         if (res?.success) {
           this.recentItems.set(res.data);
+          return;
         }
+        this.recentItems.set([]);
+        this.recentLoadError.set('Could not load notifications.');
       });
   }
 
@@ -130,6 +135,7 @@ export class NotificationInboxService {
   clear(): void {
     this.unreadCount.set(0);
     this.recentItems.set([]);
+    this.recentLoadError.set(null);
     this.isPopoverOpen.set(false);
     this.userId = null;
     this.pollSub?.unsubscribe();

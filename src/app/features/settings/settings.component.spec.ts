@@ -6,6 +6,12 @@ import { Store } from '@ngrx/store';
 import { AuthService } from '@core/services';
 import { ApplicationContextService } from '@core/services/application-context.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { EntitlementService } from '@core/services/entitlement.service';
+
+const entitlementServiceStub = {
+  entitlements$: of(null),
+  hasAllFeatures: () => true,
+};
 
 describe('SettingsComponent (role-based visibility)', () => {
   let component: SettingsComponent;
@@ -70,6 +76,7 @@ describe('SettingsComponent (role-based visibility)', () => {
           provide: SupportSessionService,
           useValue: { isSessionLive: false, sessionId: null },
         },
+        { provide: EntitlementService, useValue: entitlementServiceStub },
       ]
     });
     const fixture = TestBed.createComponent(SettingsComponent);
@@ -237,6 +244,8 @@ describe('SettingsComponent (role-based visibility)', () => {
       hasEkklesiaRole: jest.fn().mockReturnValue(true),
       isPlatformActor: jest.fn().mockReturnValue(true),
       hasTenantPermission: jest.fn().mockReturnValue(true),
+      isSuperAdmin: jest.fn().mockReturnValue(false),
+      canViewPasswordRecoveryRequests: jest.fn().mockReturnValue(false),
     };
 
     TestBed.configureTestingModule({
@@ -253,6 +262,7 @@ describe('SettingsComponent (role-based visibility)', () => {
           provide: SupportSessionService,
           useValue: { isSessionLive: true, sessionId: 'sess-1' },
         },
+        { provide: EntitlementService, useValue: entitlementServiceStub },
       ],
     });
 

@@ -331,9 +331,6 @@ textarea.form-control {
   100% { box-shadow: 0 4px 16px rgba(239,68,68,0.15), 0 0 0 3px rgba(239,68,68,0.1); }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 .sacrament-form-container {
   max-width: 1000px;
   margin: 0 auto;
@@ -484,9 +481,6 @@ textarea.form-control {
   }
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
 
 .sacrament-form {
   display: flex;

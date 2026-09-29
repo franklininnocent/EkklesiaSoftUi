@@ -3,6 +3,8 @@ import { User } from '@core/models';
 import { ApplicationContextService } from '@core/services/application-context.service';
 import { AuthService } from '@core/services/auth.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { EntitlementService } from '@core/services/entitlement.service';
+import { featuresForRoute } from '@core/config/feature-requirements';
 import {
   hasSettingsNavPermission,
   isSettingsNavItemVisible,
@@ -25,6 +27,7 @@ export type NavMenuId =
   | 'roles-permissions'
   | 'roles-permissions-assignments'
   | 'sacraments'
+  | 'mass-intentions'
   | 'users'
   | 'support'
   | 'support-center'
@@ -59,14 +62,38 @@ export class NavMenuService {
     { id: 'donations', label: 'Donations', route: '/donations' },
     { id: 'ministries', label: 'Ministries', route: '/ministries' },
     { id: 'sacraments', label: 'Sacraments', route: '/sacraments' },
+    { id: 'mass-intentions', label: 'Mass intentions', route: '/mass-intentions' },
     { id: 'users', label: 'Users', route: '/users' },
     { id: 'roles-permissions', label: 'Roles & Permissions', route: '/settings/roles-permissions' },
   ];
+  /** Plan feature each menu item needs (hidden when the church's plan does not include it). */
+  static readonly MENU_FEATURE_REQUIREMENTS: Readonly<Partial<Record<NavMenuId, string>>> = {
+    donations: 'CONTRIBUTIONS',
+    ministries: 'MINISTRIES',
+    'mass-intentions': 'MASS_INTENTIONS',
+    'ministries-audit': 'AUDIT_LOG',
+    'settings-data-export': 'IMPORT_EXPORT',
+  };
+
   private readonly auth = inject(AuthService);
   private readonly appContext = inject(ApplicationContextService);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly entitlements = inject(EntitlementService);
 
   isVisible(id: NavMenuId, user: User | null): boolean {
+    if (!this.isVisibleForRole(id, user)) {
+      return false;
+    }
+    const feature = NavMenuService.MENU_FEATURE_REQUIREMENTS[id];
+    return !feature || this.entitlements.hasFeature(feature);
+  }
+
+  /** Whether a link's target is part of the church's plan (see ROUTE_FEATURE_REQUIREMENTS). */
+  isRouteAllowed(route: string): boolean {
+    return this.entitlements.hasAllFeatures(featuresForRoute(route));
+  }
+
+  private isVisibleForRole(id: NavMenuId, user: User | null): boolean {
     if (!user) {
       return id === 'dashboard';
     }
@@ -74,11 +101,6 @@ export class NavMenuService {
     const settingsKey = this.settingsVisibilityKey(id);
     if (settingsKey) {
       const settingsVisible = isSettingsNavItemVisible(settingsKey, user, this.auth);
-      if (id === 'settings-forgot-password-requests') {
-        // #region agent log
-        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b84b28'},body:JSON.stringify({sessionId:'b84b28',location:'nav-menu.service.ts:isVisible',message:'forgot-password settings gate',data:{id,settingsKey,settingsVisible,userId:user.id,isSuperAdmin:user.is_super_admin,roleName:user.role_name},timestamp:Date.now(),hypothesisId:'H3-H4'})}).catch(()=>{});
-        // #endregion
-      }
       if (!settingsVisible) {
         return false;
       }
@@ -205,6 +227,7 @@ export class NavMenuService {
       case 'ministries-audit':
       case 'support':
       case 'sacraments':
+      case 'mass-intentions':
       case 'users':
       case 'roles-permissions-assignments':
       case 'settings-my-subscription':
@@ -251,6 +274,8 @@ export class NavMenuService {
       case 'sacraments':
       case 'users':
         return true;
+      case 'mass-intentions':
+        return this.canAccessMassIntentions(user, hasActiveSupportSession);
       default:
         return false;
     }
@@ -283,6 +308,18 @@ export class NavMenuService {
 
   private canAccessMinistries(user: User, hasActiveSupportSession = false): boolean {
     if (!this.auth.canAccessMinistries(user, { hasActiveSupportSession })) {
+      return false;
+    }
+
+    if (user.tenant_id && !this.auth.isSuperAdmin() && !this.auth.isEkklesiaAdmin()) {
+      return this.subscriptionAccess.canViewGatedModules();
+    }
+
+    return true;
+  }
+
+  private canAccessMassIntentions(user: User, hasActiveSupportSession = false): boolean {
+    if (!this.auth.canAccessMassIntentions(user, { hasActiveSupportSession })) {
       return false;
     }
 

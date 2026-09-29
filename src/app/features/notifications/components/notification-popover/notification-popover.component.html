@@ -37,6 +37,11 @@
         <div class="cf-loading-block notification-popover__loading">
           <app-loading-skeleton type="list" [rows]="4"></app-loading-skeleton>
         </div>
+      } @else if (inbox.recentLoadError()) {
+        <div class="cf-inline-alert notification-popover__error" role="alert">
+          <p>{{ inbox.recentLoadError() }}</p>
+          <button type="button" class="cf-btn cf-btn-ghost" (click)="retryRecent()">Try again</button>
+        </div>
       } @else if (!inbox.recentItems().length) {
         <div class="notification-popover__empty">
           <app-cf-empty-state

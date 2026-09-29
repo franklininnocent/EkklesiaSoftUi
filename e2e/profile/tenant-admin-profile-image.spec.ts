@@ -21,10 +21,9 @@ test.describe('Tenant administrator self-service profile image', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page.getByRole('heading', { name: 'Profile' })).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Profile photo' })).toBeVisible();
+    await expect(page.getByText('Change photo', { exact: true })).toBeVisible();
 
     await page.locator('#profile_photo').setInputFiles(testJpeg);
-    await page.getByRole('button', { name: 'Save photo' }).click();
 
     await expect(page.getByText(/profile photo updated|uploaded successfully/i)).toBeVisible({ timeout: 15000 });
 
@@ -47,7 +46,6 @@ test.describe('Tenant administrator self-service profile image', () => {
     const fileInput = page.locator('#profile_photo');
     if (await fileInput.count()) {
       await fileInput.setInputFiles(testJpeg);
-      await page.getByRole('button', { name: 'Save photo' }).click();
       await expect(page.getByText(/profile photo updated|uploaded successfully/i)).toBeVisible({ timeout: 15000 });
     }
 

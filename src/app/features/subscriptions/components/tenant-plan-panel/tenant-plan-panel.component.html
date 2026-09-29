@@ -1,0 +1,158 @@
+<div class="sa-stack" *ngIf="can.usage">
+  <div *ngIf="loading && !data" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-loading-block__label">Loading plan…</p>
+    <app-loading-skeleton type="card" [rows]="3"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <div>
+      <strong>Could not load the plan</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <ng-container *ngIf="data">
+    <section class="cf-panel sa-section" aria-label="Current plan">
+      <div class="sa-section__header">
+        <div>
+          <h3>{{ data.plan?.name || 'No plan' }}<ng-container *ngIf="data.plan?.version_number"> · v{{ data.plan?.version_number }}</ng-container></h3>
+          <p class="sa-muted" *ngIf="data.terms as t">
+            {{ intervalLabel(t.billing_interval) }}
+            <ng-container *ngIf="t.contracted_price !== null"> · {{ t.contracted_price | cfCurrency: t.currency_code }} agreed</ng-container>
+            <ng-container *ngIf="t.starts_at"> · since {{ t.starts_at | date: 'mediumDate' }}</ng-container>
+          </p>
+          <p class="sa-muted" *ngIf="data.plan?.is_legacy">This church is on an older plan kept for existing customers.</p>
+        </div>
+        <button *ngIf="can.tenants" type="button" class="cf-btn cf-btn-primary" (click)="openChange()">Change plan</button>
+      </div>
+
+      <div class="cf-inline-alert" *ngIf="data.pending_change as p" role="status">
+        <div>
+          <strong>Scheduled change</strong>
+          <p>Moves to {{ p.plan_name }} on {{ p.scheduled_for | date: 'medium' }}.</p>
+        </div>
+        <button *ngIf="can.tenants" type="button" class="cf-btn" (click)="cancelPending()">Cancel change</button>
+      </div>
+
+      <div *ngIf="limitedUsage.length">
+        <h4 class="sa-category">Usage</h4>
+        <dl class="sa-kv">
+          <ng-container *ngFor="let u of limitedUsage">
+            <dt>{{ u.name }}</dt>
+            <dd>
+              <app-status-badge [label]="usageLabel(u)" [tone]="usageTone(u)"></app-status-badge>
+              <progress
+                *ngIf="!u.unlimited"
+                class="sa-usage-bar"
+                max="100"
+                [value]="usagePercent(u)"
+                [attr.aria-label]="u.name + ' ' + usagePercent(u) + '% used'"></progress>
+            </dd>
+          </ng-container>
+        </dl>
+      </div>
+    </section>
+
+    <section class="cf-panel sa-section" aria-label="Exceptions for this church">
+      <div class="sa-section__header">
+        <div>
+          <h3>Exceptions</h3>
+          <p class="sa-muted">Extra features or different limits for this church only, on top of its plan.</p>
+        </div>
+        <button *ngIf="can.overrides" type="button" class="cf-btn" (click)="openGrant()">Add exception</button>
+      </div>
+
+      <p class="sa-muted" *ngIf="!activeOverrides.length">No active exceptions.</p>
+      <ul class="sa-stack" *ngIf="activeOverrides.length">
+        <li *ngFor="let o of activeOverrides" class="sa-toolbar">
+          <div>
+            <strong>{{ o.feature_name || o.feature_code }}</strong> · {{ overrideLabel(o) }}
+            <div class="sa-muted">
+              {{ o.reason }}
+              <ng-container *ngIf="o.effective_until"> · until {{ o.effective_until | date: 'mediumDate' }}</ng-container>
+            </div>
+          </div>
+          <button *ngIf="can.overrides" type="button" class="cf-btn cf-btn-danger" (click)="revoke(o)">End</button>
+        </li>
+      </ul>
+
+      <details *ngIf="pastOverrides.length">
+        <summary class="sa-muted">Past exceptions ({{ pastOverrides.length }})</summary>
+        <ul>
+          <li *ngFor="let o of pastOverrides" class="sa-muted">
+            {{ o.feature_name || o.feature_code }} · {{ overrideLabel(o) }}
+            <ng-container *ngIf="o.revoked_at"> · ended {{ o.revoked_at | date: 'mediumDate' }}<ng-container *ngIf="o.revoke_reason"> ({{ o.revoke_reason }})</ng-container></ng-container>
+            <ng-container *ngIf="!o.revoked_at && o.effective_until"> · expired {{ o.effective_until | date: 'mediumDate' }}</ng-container>
+          </li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="cf-panel sa-section" aria-label="Plan history" *ngIf="data.history.length">
+      <details>
+        <summary><strong>Plan history</strong> <span class="sa-muted">({{ data.history.length }})</span></summary>
+        <ul class="sa-stack">
+          <li *ngFor="let h of data.history">
+            <strong>{{ h.plan_name }}</strong> v{{ h.version_number }} · {{ h.record_status | titlecase }}
+            <span class="sa-muted">
+              · {{ (h.starts_at || h.scheduled_for || h.created_at) | date: 'mediumDate' }}
+              <ng-container *ngIf="h.reason"> · {{ h.reason }}</ng-container>
+            </span>
+          </li>
+        </ul>
+      </details>
+    </section>
+  </ng-container>
+</div>
+
+<app-change-plan-dialog
+  *ngIf="changeOpen && data"
+  [tenantId]="tenantId"
+  [current]="data"
+  (closed)="changeOpen = false"
+  (changed)="onPlanChanged($event)">
+</app-change-plan-dialog>
+
+<app-modal-shell *ngIf="grantOpen" title="Add exception" size="md" [isSubmitting]="grantSaving" (closeRequested)="closeGrant()">
+  <form class="sa-form-grid" id="sa-grant-form" (ngSubmit)="submitGrant()">
+    <div class="sa-field sa-field--full">
+      <label for="sa-grant-feature">Feature <span class="required" aria-hidden="true">*</span></label>
+      <select id="sa-grant-feature" name="feature" [(ngModel)]="grant.feature_code" (ngModelChange)="onFeatureChosen()" [disabled]="grantSaving">
+        <option value="">Choose a feature</option>
+        <option *ngFor="let f of features" [value]="f.code">{{ f.name }}</option>
+      </select>
+    </div>
+    <div class="sa-field" *ngIf="selectedFeature">
+      <label for="sa-grant-mode">Change</label>
+      <select id="sa-grant-mode" name="mode" [(ngModel)]="grant.mode" [disabled]="grantSaving">
+        <option *ngFor="let m of modeOptions" [ngValue]="m.value">{{ m.label }}</option>
+      </select>
+    </div>
+    <div class="sa-field" *ngIf="grant.mode === 'SET_LIMIT'">
+      <label for="sa-grant-limit">New limit</label>
+      <input id="sa-grant-limit" name="limit" type="number" min="0" step="1" [(ngModel)]="grant.numeric_value" [disabled]="grantSaving" />
+    </div>
+    <div class="sa-field" *ngIf="grant.mode === 'SET_TIER'">
+      <label for="sa-grant-tier">Level</label>
+      <select id="sa-grant-tier" name="tier" [(ngModel)]="grant.tier_value" [disabled]="grantSaving">
+        <option [ngValue]="null">Choose level</option>
+        <option *ngFor="let t of selectedFeature?.tier_options || []" [ngValue]="t">{{ t }}</option>
+      </select>
+    </div>
+    <div class="sa-field">
+      <label for="sa-grant-until">Ends on (optional)</label>
+      <input id="sa-grant-until" name="until" type="datetime-local" [(ngModel)]="grant.effective_until" [disabled]="grantSaving" />
+    </div>
+    <div class="sa-field sa-field--full">
+      <label for="sa-grant-reason">Reason <span class="required" aria-hidden="true">*</span></label>
+      <textarea id="sa-grant-reason" name="reason" rows="2" maxlength="500" [(ngModel)]="grant.reason" [disabled]="grantSaving"></textarea>
+    </div>
+  </form>
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="closeGrant()" [disabled]="grantSaving">Cancel</button>
+    <button type="submit" form="sa-grant-form" class="cf-btn cf-btn-primary" [disabled]="grantSaving">
+      {{ grantSaving ? 'Saving…' : 'Add exception' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

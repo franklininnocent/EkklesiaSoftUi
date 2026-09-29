@@ -26,11 +26,10 @@ import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status
 import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { TenantPlanPanelComponent } from '@features/subscriptions/components/tenant-plan-panel/tenant-plan-panel.component';
 import { Subject, takeUntil } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { environment } from '@environments/environment';
-
-const PLAN_RANK_LADDER = ['free', 'basic', 'premium', 'enterprise'] as const;
 
 type TenantDetailTab =
   | 'overview'
@@ -58,6 +57,7 @@ type TenantDetailTab =
     DataTableComponent,
     UserAvatarComponent,
     ImageViewerComponent,
+    TenantPlanPanelComponent,
   ],
   templateUrl: './tenant-detail.component.html',
   styleUrls: ['./tenant-detail.component.scss'],
@@ -75,6 +75,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
+  private archdioceseLoadSeq = 0;
 
   details: TenantDetailsSnapshot | null = null;
   photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
@@ -107,6 +108,8 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   editForm: Partial<Tenant> = {};
   editDenominationId: number | null = null;
   editArchdioceseId: number | null = null;
+  editDenomination: Denomination | null = null;
+  editArchdiocese: Archdiocese | null = null;
   editWebsite = '';
   denominations: Denomination[] = [];
   denominationOptions: Denomination[] | null = null;
@@ -114,21 +117,20 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   archdioceses: Archdiocese[] = [];
   archdioceseOptions: Archdiocese[] | null = null;
   loadingArchdioceses = false;
-  compareSelectIds = (left: number | string | null, right: number | string | null): boolean => {
-    if (left == null || right == null) {
+  compareSelectItems = (
+    left: Denomination | Archdiocese | null,
+    right: Denomination | Archdiocese | null,
+  ): boolean => {
+    if (!left || !right) {
       return left === right;
     }
-    return Number(left) === Number(right);
+    return Number(left.id) === Number(right.id);
   };
   logoFile: File | null = null;
   logoPreview: string | null = null;
 
-  availablePlans: Record<string, any> = {};
-  currency = 'INR';
   durationOptions: Array<{ value: number; label: string }> = [];
-  selectedPlan = '';
   subscriptionDuration = 12;
-  showUpgradeModal = false;
   showRenewModal = false;
   showSuspendModal = false;
   showReactivateModal = false;
@@ -202,11 +204,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
             this.details = response.data;
             this.syncTenantShim(response.data);
             this.editForm = { ...this.tenant };
-            // #region agent log
-            if (typeof fetch === 'function') {
-              fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H4',location:'tenant-detail.component.ts:loadDetails',message:'tenant details loaded',data:{denominationId:response.data.identity?.denomination_id,denominationName:response.data.identity?.denomination_name,dioceseId:response.data.identity?.diocese_id,isEditing:this.isEditing},timestamp:Date.now()})}).catch(()=>{});
-            }
-            // #endregion
           } else {
             this.error = response.message || 'Failed to load tenant details';
           }
@@ -236,7 +233,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       slogan: snapshot.identity.slogan ?? null,
       slug: snapshot.identity.slug,
       domain: snapshot.identity.domain ?? null,
-      plan: (sub.plan_key as Tenant['plan']) || 'free',
+      plan: sub.plan_key ?? '',
       max_users: sub.max_users ?? snapshot.administration.max_users,
       max_storage_mb: sub.max_storage_mb ?? 0,
       trial_ends_at: sub.trial_ends_at ?? null,
@@ -343,11 +340,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
           this.denominations = this.denominationOptions ?? [];
           this.syncEditSelectValues();
           this.loadingDenominations = false;
-          // #region agent log
-          if (typeof fetch === 'function') {
-            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadDenominations',message:'denominations loaded for tenant edit',data:{success:response.success,count:this.denominationOptions?.length??0,isEditing:this.isEditing},timestamp:Date.now()})}).catch(()=>{});
-          }
-          // #endregion
           this.cdr.markForCheck();
         },
         error: () => {
@@ -368,39 +360,42 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       denominationId ?? (this.isEditing ? this.editDenominationId : null),
     );
     const filters = filterId ? { denomination_id: filterId } : undefined;
+    const seq = ++this.archdioceseLoadSeq;
+    const selectedBefore = this.editArchdioceseId;
 
     this.archdioceseService.getArchdioceses(filters)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           const rows = Array.isArray(response.data) ? response.data : [];
+          const stale = seq !== this.archdioceseLoadSeq;
           this.applyArchdioceseOptions(response.success ? rows : []);
           this.loadingArchdioceses = false;
-          // #region agent log
-          if (typeof fetch === 'function') {
-            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadArchdioceses',message:'archdioceses loaded for tenant edit',data:{success:response.success,count:this.archdioceseOptions?.length??0,filterDenominationId:filterId},timestamp:Date.now()})}).catch(()=>{});
-          }
-          // #endregion
           this.cdr.markForCheck();
         },
         error: (err) => {
           this.archdioceseOptions = [];
           this.archdioceses = [];
           this.loadingArchdioceses = false;
-          // #region agent log
-          if (typeof fetch === 'function') {
-            fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H3',location:'tenant-detail.component.ts:loadArchdioceses:error',message:'archdioceses load failed',data:{error:err?.message||'unknown'},timestamp:Date.now()})}).catch(()=>{});
-          }
-          // #endregion
           this.toastService.error('Could not load dioceses for editing.', 'Error');
           this.cdr.markForCheck();
         },
       });
   }
 
-  onEditDenominationChange(value: number | null): void {
-    this.editDenominationId = this.coerceOptionalId(value);
+  onEditDenominationChange(value: Denomination | null): void {
+    const previous = this.editDenominationId;
+    this.editDenomination = value;
+    this.editDenominationId = this.coerceOptionalId(value?.id);
+    if (previous === this.editDenominationId) {
+      return;
+    }
     this.loadArchdioceses(this.editDenominationId);
+  }
+
+  onEditArchdioceseChange(value: Archdiocese | null): void {
+    this.editArchdiocese = value;
+    this.editArchdioceseId = this.coerceOptionalId(value?.id);
   }
 
   toggleEdit(): void {
@@ -412,11 +407,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       this.editWebsite = this.details?.contact.website ?? '';
       this.syncEditSelectValues();
       this.loadArchdioceses(this.editDenominationId);
-      // #region agent log
-      if (typeof fetch === 'function') {
-        fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'6b21fc'},body:JSON.stringify({sessionId:'6b21fc',runId:'pre-fix',hypothesisId:'H1-H2',location:'tenant-detail.component.ts:toggleEdit',message:'edit mode enabled',data:{isEditing:this.isEditing,editDenominationId:this.editDenominationId,editArchdioceseId:this.editArchdioceseId,denominationOptionCount:this.denominationOptions?.length??null,loadingDenominations:this.loadingDenominations},timestamp:Date.now()})}).catch(()=>{});
-      }
-      // #endregion
     }
     this.cdr.markForCheck();
   }
@@ -463,6 +453,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     if (this.tenant) this.editForm = { ...this.tenant };
     this.editDenominationId = this.coerceOptionalId(this.details?.identity.denomination_id);
     this.editArchdioceseId = this.coerceOptionalId(this.details?.identity.diocese_id);
+    this.syncEditSelectValues();
     this.editWebsite = this.details?.contact.website ?? '';
     this.cdr.markForCheck();
   }
@@ -478,6 +469,40 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
   private syncEditSelectValues(): void {
     this.editDenominationId = this.coerceOptionalId(this.editDenominationId);
     this.editArchdioceseId = this.coerceOptionalId(this.editArchdioceseId);
+    this.editDenomination = this.resolveDenominationSelection(this.editDenominationId);
+    this.editArchdiocese = this.resolveArchdioceseSelection(this.editArchdioceseId);
+  }
+
+  private resolveDenominationSelection(id: number | null): Denomination | null {
+    if (id == null) {
+      return null;
+    }
+    return this.denominationOptions?.find(d => Number(d.id) === id)
+      ?? this.fallbackDenomination(id);
+  }
+
+  private resolveArchdioceseSelection(id: number | null): Archdiocese | null {
+    if (id == null) {
+      return null;
+    }
+    return this.archdioceseOptions?.find(a => Number(a.id) === id)
+      ?? this.fallbackArchdiocese(id);
+  }
+
+  private fallbackDenomination(id: number): Denomination | null {
+    const name = this.details?.identity.denomination_name;
+    if (!name) {
+      return null;
+    }
+    return { id, name, code: '', active: 1, display_order: 0 };
+  }
+
+  private fallbackArchdiocese(id: number): Archdiocese | null {
+    const name = this.details?.identity.diocese_name;
+    if (!name) {
+      return null;
+    }
+    return { id, name, country: '', active: 1 };
   }
 
   private applyArchdioceseOptions(rows: Archdiocese[]): void {
@@ -489,6 +514,7 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     ) {
       this.editArchdioceseId = null;
     }
+    this.editArchdiocese = this.resolveArchdioceseSelection(this.editArchdioceseId);
   }
 
   private normalizeWebsite(value: string | null | undefined): string | null {
@@ -752,89 +778,20 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            this.availablePlans = response.data;
-            if ((response as any).currency) this.currency = (response as any).currency;
             if ((response as any).duration_options) {
               this.durationOptions = (response as any).duration_options;
               this.resetSubscriptionDuration();
             }
             this.plansLoadError = null;
           } else {
-            this.availablePlans = {};
             this.plansLoadError = (response as { message?: string }).message || 'Unable to load subscription plans.';
           }
           this.plansLoading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.availablePlans = {};
           this.plansLoadError = this.extractErrorMessage(err, 'Failed to load subscription plans');
           this.plansLoading = false;
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  openUpgradeModal(): void {
-    if (this.tenant) this.selectedPlan = this.tenant.plan;
-    this.subscriptionReason = '';
-    this.resetSubscriptionDuration();
-    this.showUpgradeModal = true;
-    if (!this.plansLoading && (this.plansLoadError || this.getAvailablePlanKeys().length === 0)) {
-      this.loadSubscriptionPlans();
-    }
-    this.cdr.markForCheck();
-  }
-
-  closeUpgradeModal(): void {
-    if (this.subscriptionActionSaving) return;
-    this.showUpgradeModal = false;
-    this.selectedPlan = '';
-    this.subscriptionReason = '';
-    this.cdr.markForCheck();
-  }
-
-  selectPlan(planKey: string): void {
-    if (!this.canSelectPlan(planKey) || this.subscriptionActionSaving) return;
-    this.selectedPlan = planKey;
-    this.cdr.markForCheck();
-  }
-
-  canConfirmPlanChange(): boolean {
-    return !!this.selectedPlan && !this.subscriptionActionSaving && !this.plansLoading
-      && this.getAvailablePlanKeys().length > 0 && this.durationOptions.length > 0
-      && this.canSelectPlan(this.selectedPlan) && this.selectedPlan !== this.tenant?.plan;
-  }
-
-  upgradeSubscription(): void {
-    if (!this.tenantId || !this.selectedPlan || this.subscriptionActionSaving) return;
-    if (!this.canConfirmPlanChange()) {
-      this.toastService.error('Choose a different plan to continue', 'Invalid selection');
-      return;
-    }
-
-    this.subscriptionActionSaving = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.upgradeSubscription(this.tenantId, this.selectedPlan, this.subscriptionDuration, this.normalizedReason())
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.subscriptionActionSaving = false;
-            this.closeUpgradeModal();
-            this.toastService.success('Subscription plan updated', 'Saved');
-            this.loadDetails();
-            this.loadSubscriptionAudits(true);
-          } else {
-            this.toastService.error(response.message || 'Failed to update subscription', 'Error');
-            this.subscriptionActionSaving = false;
-          }
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(this.extractErrorMessage(err, 'Failed to update subscription'), 'Error');
-          this.subscriptionActionSaving = false;
           this.cdr.markForCheck();
         },
       });
@@ -960,44 +917,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       });
   }
 
-  getPlanName(planKey: string): string { return this.availablePlans[planKey]?.name || planKey; }
-  getPlanPrice(planKey: string): number { return this.availablePlans[planKey]?.price || 0; }
-
-  formatPrice(price: number): string {
-    if (price === 0) return 'Free';
-    if (this.currency === 'INR') return `₹${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    if (this.currency === 'USD') return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    return `${this.getCurrencySymbol()}${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-
-  getCurrencySymbol(): string {
-    const map: Record<string, string> = { INR: '₹', USD: '$', EUR: '€', GBP: '£' };
-    return map[this.currency] || '₹';
-  }
-
-  getPlanRank(planKey: string): number {
-    const idx = PLAN_RANK_LADDER.indexOf(planKey as typeof PLAN_RANK_LADDER[number]);
-    if (idx >= 0) return idx;
-    const keys = this.getAvailablePlanKeys();
-    const i = keys.indexOf(planKey);
-    return i >= 0 ? PLAN_RANK_LADDER.length + i : 999;
-  }
-
-  canUpgradeTo(planKey: string): boolean {
-    if (!this.tenant) return false;
-    const currentIndex = this.getPlanRank(this.tenant.plan);
-    const targetIndex = this.getPlanRank(planKey);
-    return targetIndex > currentIndex || planKey === 'free';
-  }
-
-  canSelectPlan(planKey: string): boolean {
-    if (!this.tenant) return false;
-    if (this.tenant.plan === planKey) return true;
-    return this.canUpgradeTo(planKey);
-  }
-
-  getAvailablePlanKeys(): string[] { return Object.keys(this.availablePlans || {}); }
-
   private resetSubscriptionDuration(): void {
     if (this.durationOptions.length > 0) {
       const def = this.durationOptions.find(o => o.value === 12) || this.durationOptions[0];
@@ -1024,25 +943,10 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     return this.formatDate(current.toISOString());
   }
 
-  formatUsersLimit(value: number | null | undefined): string {
-    if (value == null) return '—';
-    return value >= 999999 ? 'Unlimited' : value.toLocaleString();
-  }
-
-  formatStorageLimit(value: number | null | undefined): string {
-    if (value == null) return '—';
-    if (value >= 1024) {
-      const gb = value / 1024;
-      return `${(gb >= 10 ? Math.round(gb) : Math.round(gb * 10) / 10).toLocaleString()} GB`;
-    }
-    return `${value.toLocaleString()} MB`;
-  }
-
-  confirmPlanActionLabel(): string {
-    if (!this.selectedPlan) return 'Update plan';
-    if (this.selectedPlan === 'free') return 'Switch to Free';
-    if (this.canUpgradeTo(this.selectedPlan)) return 'Change plan';
-    return 'Switch plan';
+  /** Plan changes happen in the Subscriptions panel; refresh lifecycle state and history afterwards. */
+  onPlanPanelChanged(): void {
+    this.loadDetails();
+    this.loadSubscriptionAudits(true);
   }
 
   private normalizedReason(): string | undefined {

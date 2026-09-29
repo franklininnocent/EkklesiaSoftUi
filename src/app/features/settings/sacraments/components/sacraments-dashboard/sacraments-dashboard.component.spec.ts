@@ -8,6 +8,7 @@ import { of, NEVER } from 'rxjs';
 import { SacramentsDashboardComponent } from './sacraments-dashboard.component';
 import { SacramentService } from '../../services/sacrament.service';
 import { BCCService } from '@core/services/bcc.service';
+import { AuthService } from '@core/services/auth.service';
 import { SacramentDashboardSummary } from '../../models/sacrament-dashboard.model';
 
 function buildSummary(overrides: Partial<SacramentDashboardSummary> = {}): SacramentDashboardSummary {
@@ -128,6 +129,13 @@ describe('SacramentsDashboardComponent', () => {
       providers: [
         provideRouter([]),
         {
+          provide: AuthService,
+          useValue: {
+            hasParishContext: jest.fn(() => true),
+            currentUserValue: { id: 1, tenant_id: 1 },
+          },
+        },
+        {
           provide: SacramentService,
           useValue: { getDashboardSummary },
         },
@@ -157,7 +165,7 @@ describe('SacramentsDashboardComponent', () => {
     fixture.detectChanges();
 
     expect(getDashboardSummary).toHaveBeenCalled();
-    expect(fixture.nativeElement.textContent).toContain('Total in period');
+    expect(fixture.nativeElement.textContent).toContain('In period');
     expect(fixture.nativeElement.textContent).toContain('3');
   });
 
@@ -262,6 +270,39 @@ describe('SacramentsDashboardComponent', () => {
         bcc_id: 'bcc-1',
       },
     });
+  });
+
+  it('navigates to the full parish register without period filters', () => {
+    fixture.detectChanges();
+    component.openRegisterAll();
+
+    expect(router.navigate).toHaveBeenCalledWith(['/sacraments/register'], {
+      queryParams: {},
+    });
+  });
+
+  it('shows register access when the selected period is empty but records exist', () => {
+    getDashboardSummary.mockReturnValueOnce(
+      of({
+        success: true,
+        data: buildSummary({
+          kpis: {
+            total_period: 0,
+            total_all_time: 12,
+            this_month: 0,
+            monthly_average: 0,
+            yoy_growth_pct: 0,
+            by_type: [],
+          },
+          recent: [],
+        }),
+      })
+    );
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.textContent).toContain('All records');
+    expect(fixture.nativeElement.textContent).toContain('Open parish register');
+    expect(fixture.nativeElement.textContent).toContain('12 sacraments on record');
   });
 
   it('navigates to families with missing sacrament filter', () => {

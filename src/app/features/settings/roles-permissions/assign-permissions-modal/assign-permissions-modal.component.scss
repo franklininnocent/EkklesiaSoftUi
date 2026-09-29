@@ -45,11 +45,6 @@
   animation: spin 1s linear infinite;
 }
 
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
 
 .error-banner {
   display: flex;
@@ -196,35 +191,6 @@
     background: linear-gradient(135deg, #4facfe15 0%, #00f2fe15 100%);
     color: #00a8cc;
     border: 1px solid #00a8cc;
-  }
-}
-
-.btn-back {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.35rem;
-  padding: 0.45rem;
-  min-width: 2.25rem;
-  min-height: 2.25rem;
-  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
-  color: white;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  flex-shrink: 0;
-
-  svg {
-    width: 18px;
-    height: 18px;
-  }
-
-  span {
-    display: none;
-  }
-
-  &:hover:not(:disabled) {
-    background: linear-gradient(135deg, #0891b2 0%, #0e7490 100%);
   }
 }
 
@@ -610,32 +576,6 @@
   padding: 0.75rem 0 0;
   border-top: 1px solid var(--gray-200);
   margin-top: 0.75rem;
-}
-
-.btn-secondary,
-.btn-primary {
-  border-radius: var(--radius-sm);
-  padding: 0.5rem 1rem;
-  font-size: var(--font-size-sm);
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.btn-secondary {
-  border: 1px solid var(--gray-300);
-  background: #fff;
-  color: var(--text-primary);
-}
-
-.btn-primary {
-  border: 1px solid var(--primary-color);
-  background: var(--primary-color);
-  color: #fff;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
 }
 
 .btn-spinner {

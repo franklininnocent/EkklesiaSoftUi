@@ -8,7 +8,7 @@
         <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="openCreate()">
           + Sacrament
         </button>
-        <a routerLink="/sacraments/register" class="cf-btn cf-btn--sm">Register</a>
+        <a routerLink="/sacraments/register" class="cf-btn cf-btn--sm">Parish register</a>
         <button
           type="button"
           class="cf-btn cf-btn-icon cf-btn--sm"
@@ -97,41 +97,70 @@
     </div>
   </app-page-header>
 
-  <section class="bcc-kpi-rail cf-panel sacraments-dashboard__kpi-rail" aria-label="Key metrics" *ngIf="summary">
-    <div class="bcc-kpi-rail__item bcc-kpi-rail__item--emphasis">
-      <span class="bcc-kpi-rail__label">Total in period</span>
-      <span class="bcc-kpi-rail__value">{{ summary.kpis.total_period }}</span>
-    </div>
-    <div class="bcc-kpi-rail__item">
-      <span class="bcc-kpi-rail__label">This month</span>
-      <span class="bcc-kpi-rail__value">{{ summary.kpis.this_month }}</span>
-    </div>
-    <div class="bcc-kpi-rail__item">
-      <span class="bcc-kpi-rail__label">Monthly avg</span>
-      <span class="bcc-kpi-rail__value bcc-kpi-rail__value--sm">{{ summary.kpis.monthly_average }}</span>
-    </div>
-    <div class="bcc-kpi-rail__item">
-      <span class="bcc-kpi-rail__label">All time</span>
-      <span class="bcc-kpi-rail__value">{{ summary.kpis.total_all_time }}</span>
-    </div>
-    <div class="bcc-kpi-rail__item">
-      <span class="bcc-kpi-rail__label">Year-over-year</span>
-      <span
-        class="bcc-kpi-rail__value bcc-kpi-rail__value--sm"
-        [ngClass]="yoyRailClass(summary.kpis.yoy_growth_pct)"
-      >{{ yoyLabel(summary.kpis.yoy_growth_pct) }}</span>
+  <section
+    class="cf-panel sacraments-dashboard__summary-bar"
+    *ngIf="summary"
+    aria-label="Sacrament summary and register access"
+  >
+    <div class="sacraments-dashboard__summary-metrics" aria-label="Key metrics">
+      <div class="sacraments-dashboard__summary-metric sacraments-dashboard__summary-metric--emphasis">
+        <span class="sacraments-dashboard__summary-metric__label">In period</span>
+        <span class="sacraments-dashboard__summary-metric__value">{{ summary.kpis.total_period }}</span>
+      </div>
+      <div class="sacraments-dashboard__summary-metric">
+        <span class="sacraments-dashboard__summary-metric__label">This month</span>
+        <span class="sacraments-dashboard__summary-metric__value">{{ summary.kpis.this_month }}</span>
+      </div>
+      <div class="sacraments-dashboard__summary-metric">
+        <span class="sacraments-dashboard__summary-metric__label">Avg/mo</span>
+        <span class="sacraments-dashboard__summary-metric__value">{{ summary.kpis.monthly_average }}</span>
+      </div>
+      <div class="sacraments-dashboard__summary-metric">
+        <span class="sacraments-dashboard__summary-metric__label">All time</span>
+        <span class="sacraments-dashboard__summary-metric__value">{{ summary.kpis.total_all_time }}</span>
+      </div>
+      <div class="sacraments-dashboard__summary-metric">
+        <span class="sacraments-dashboard__summary-metric__label">YoY</span>
+        <span
+          class="sacraments-dashboard__summary-metric__value"
+          [ngClass]="yoyRailClass(summary.kpis.yoy_growth_pct)"
+        >{{ yoyLabel(summary.kpis.yoy_growth_pct) }}</span>
+      </div>
+
+      <div
+        class="sacraments-dashboard__summary-types"
+        *ngIf="topTypeKpis.length"
+        aria-label="Sacrament activity breakdown"
+      >
+        <span
+          class="sacraments-dashboard__breakdown-item"
+          *ngFor="let row of topTypeKpis"
+          [ngClass]="typeAccentClass(row.code)"
+        >
+          <span class="sacraments-dashboard__breakdown-dot" aria-hidden="true"></span>
+          <span>{{ row.label }}</span>
+          <strong>{{ row.period }}</strong>
+        </span>
+      </div>
     </div>
 
-    <div class="sacraments-dashboard__breakdown" *ngIf="topTypeKpis.length" aria-label="Sacrament activity breakdown">
-      <span
-        class="sacraments-dashboard__breakdown-item"
-        *ngFor="let row of topTypeKpis"
-        [ngClass]="typeAccentClass(row.code)"
+    <div class="sacraments-dashboard__summary-actions">
+      <button
+        type="button"
+        class="cf-btn cf-btn-primary cf-btn--sm"
+        (click)="openRegisterAll()"
+        title="Search, filter, and open full sacrament details"
       >
-        <span class="sacraments-dashboard__breakdown-dot" aria-hidden="true"></span>
-        <span>{{ row.label }}</span>
-        <strong>{{ row.period }}</strong>
-      </span>
+        All records
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-btn--sm"
+        *ngIf="summary.kpis.total_period > 0"
+        (click)="openRegister({ date_from: summary.period.date_from, date_to: summary.period.date_to })"
+      >
+        This period
+      </button>
     </div>
   </section>
 
@@ -300,8 +329,11 @@
       </ng-container>
     </section>
 
-    <div class="sacraments-dashboard__panels" *ngIf="summary.kpis.total_period > 0; else emptyDashboard">
-      <section class="cf-panel sacraments-dashboard__panel sacraments-dashboard__panel--wide sacraments-dashboard__demographics-analytics">
+    <div class="sacraments-dashboard__panels" *ngIf="summary.kpis.total_all_time > 0; else emptyDashboard">
+      <section
+        class="cf-panel sacraments-dashboard__panel sacraments-dashboard__panel--wide sacraments-dashboard__demographics-analytics"
+        *ngIf="summary.kpis.total_period > 0"
+      >
         <div class="sacraments-dashboard__panel-head" *ngIf="demographicsTypeOptions.length">
           <div>
             <h2 class="cf-section-title">Demographics</h2>
@@ -369,15 +401,26 @@
         </div>
       </section>
 
-      <section class="cf-panel sacraments-dashboard__panel">
+      <section class="cf-panel sacraments-dashboard__panel sacraments-dashboard__panel--wide">
         <div class="sacraments-dashboard__panel-head">
           <div>
-            <h2 class="cf-section-title">Recent records</h2>
-            <p class="cf-meta">Latest sacraments in this period</p>
+            <h2 class="cf-section-title">Sacrament records</h2>
+            <p class="cf-meta" *ngIf="summary.kpis.total_period > 0">Latest sacraments in {{ summary.period.label || 'this period' }}</p>
+            <p class="cf-meta" *ngIf="summary.kpis.total_period === 0">No sacraments in {{ summary.period.label || 'this period' }}. Open the parish register to browse all records.</p>
           </div>
-          <button type="button" class="cf-btn cf-btn--sm" (click)="openRegister({ date_from: summary.period.date_from, date_to: summary.period.date_to })">
-            View all
-          </button>
+          <div class="sacraments-dashboard__panel-actions">
+            <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="openRegisterAll()">
+              Open parish register
+            </button>
+            <button
+              type="button"
+              class="cf-btn cf-btn--sm"
+              *ngIf="summary.kpis.total_period > 0"
+              (click)="openRegister({ date_from: summary.period.date_from, date_to: summary.period.date_to })"
+            >
+              View this period
+            </button>
+          </div>
         </div>
 
         <div class="cf-table-responsive" *ngIf="summary.recent.length; else noRecent">
@@ -396,24 +439,36 @@
                 <td>{{ record.recipient_name }}</td>
                 <td>{{ record.date_administered | date:'mediumDate' }}</td>
                 <td>
-                  <button type="button" class="cf-btn cf-btn--sm" (click)="openRecord(record.id)">Open</button>
+                  <button type="button" class="cf-btn cf-btn--sm" (click)="openRecord(record.id)">View details</button>
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
         <ng-template #noRecent>
-          <p class="cf-meta">No recent records in this period.</p>
+          <p class="cf-meta">
+            <ng-container *ngIf="summary.kpis.total_period > 0">No recent records in this period.</ng-container>
+            <ng-container *ngIf="summary.kpis.total_period === 0">
+              {{ summary.kpis.total_all_time }} sacrament{{ summary.kpis.total_all_time === 1 ? '' : 's' }} on record.
+              Open the parish register to search and view full details.
+            </ng-container>
+          </p>
         </ng-template>
       </section>
     </div>
 
+    <nav class="sacraments-dashboard__quick-links" *ngIf="summary.kpis.total_all_time > 0" aria-label="Sacrament shortcuts">
+      <a routerLink="/sacraments/register">Parish register</a>
+      <button type="button" class="sacraments-dashboard__quick-link" (click)="openCreate()">Record sacrament</button>
+    </nav>
+
     <ng-template #emptyDashboard>
       <app-cf-empty-state
-        title="No sacraments in this period"
+        title="No sacraments recorded yet"
         description="When you record baptisms, marriages, and other sacraments, they will appear here with trends and breakdowns."
       >
         <button type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">Record sacrament</button>
+        <a routerLink="/sacraments/register" class="cf-btn">Open parish register</a>
       </app-cf-empty-state>
     </ng-template>
   </ng-container>

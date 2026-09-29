@@ -1,82 +1,97 @@
 .migration-queue {
-  &__actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-  }
-
-  &__report {
+  &__progress {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
-    gap: 0.75rem;
-    margin: 1rem 0 1.25rem;
+    gap: var(--cf-space-2);
   }
 
-  &__stat {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
+  &__kpi-btn {
+    text-align: left;
+    cursor: pointer;
+    border: 1px solid var(--cf-slate-100);
+    background: var(--cf-slate-50);
+    font: inherit;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-    span {
-      font-size: 0.8rem;
-      color: #555;
-    }
-
-    strong {
-      font-size: 1.25rem;
+    &:hover,
+    &:focus-visible {
+      border-color: var(--cf-primary);
+      box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.12);
+      outline: none;
     }
   }
 
-  &__filters {
+  &__affiliation-note {
+    margin: 0;
+  }
+
+  &__scan-result {
+    display: grid;
+    gap: var(--cf-space-2);
+
+    p {
+      margin: 0;
+    }
+  }
+
+  &__scan-stats {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: var(--cf-space-1);
+    font-size: var(--cf-text-sm);
+    color: var(--cf-color-text-primary);
+  }
+
+  &__queue {
+    display: grid;
+    gap: var(--cf-space-3);
+  }
+
+  &__queue-head {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
     align-items: end;
-    margin-bottom: 1rem;
-
-    label {
-      display: flex;
-      flex-direction: column;
-      gap: 0.25rem;
-      font-size: 0.85rem;
-    }
-
-    input,
-    select {
-      min-width: 12rem;
-      padding: 0.4rem 0.5rem;
-    }
+    justify-content: space-between;
+    gap: var(--cf-space-3);
   }
 
-  &__table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 0.9rem;
+  &__status-filter {
+    display: grid;
+    gap: var(--cf-space-1);
+    min-width: min(14rem, 100%);
+  }
 
-    th,
-    td {
-      text-align: left;
-      padding: 0.5rem 0.4rem;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  &__sacrament-link {
+    font-size: var(--cf-text-sm);
+    color: var(--cf-primary);
+    text-decoration: none;
+
+    &:hover,
+    &:focus-visible {
+      text-decoration: underline;
     }
   }
 
-  &__drawer {
-    position: fixed;
-    top: 0;
-    right: 0;
-    width: min(28rem, 100%);
-    height: 100%;
-    padding: 1.25rem;
-    background: #fff;
-    box-shadow: -8px 0 24px rgba(0, 0, 0, 0.12);
-    overflow: auto;
-    z-index: 40;
+  &__decision-context {
+    margin-bottom: var(--cf-space-3);
+
+    p {
+      margin: 0;
+    }
+
+    p + p {
+      margin-top: var(--cf-space-1);
+    }
   }
 
-  &__drawer-actions {
-    display: flex;
-    gap: 0.5rem;
-    margin-top: 1rem;
+  &__decision-helper {
+    margin: var(--cf-space-3) 0 0;
+  }
+}
+
+@media (max-width: 767px) {
+  .migration-queue__queue-head {
+    flex-direction: column;
+    align-items: stretch;
   }
 }

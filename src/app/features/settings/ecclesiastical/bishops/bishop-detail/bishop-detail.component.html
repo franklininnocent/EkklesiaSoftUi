@@ -7,8 +7,8 @@
     [statusLabel]="bishop ? (bishop.status || 'Unknown') : undefined"
     [statusTone]="bishopStatusTone">
     <a routerLink="/settings/ecclesiastical/bishop-updates" class="cf-btn">Suggestions</a>
-    <button *ngIf="bishop" type="button" class="btn btn-primary" (click)="onEdit()">Edit</button>
-    <button *ngIf="bishop" type="button" class="btn btn-danger" (click)="onDelete()">Delete</button>
+    <button *ngIf="bishop" type="button" class="cf-btn cf-btn-primary" (click)="onEdit()">Edit</button>
+    <button *ngIf="bishop" type="button" class="cf-btn cf-btn-danger" (click)="onDelete()">Delete</button>
   </app-page-header>
 
   <app-loading-skeleton *ngIf="loading" type="card" [rows]="8"></app-loading-skeleton>
@@ -68,7 +68,7 @@
           <div class="detail-card" *ngIf="bishop.archdiocese">
             <h2 class="card-title">Legacy Diocese Link</h2>
             <p class="cf-meta">Canonical assignments live under Appointments.</p>
-            <button type="button" class="btn btn-outline" (click)="viewDiocese(bishop.archdiocese!.id)">View {{ bishop.archdiocese.name }}</button>
+            <button type="button" class="cf-btn" (click)="viewDiocese(bishop.archdiocese!.id)">View {{ bishop.archdiocese.name }}</button>
           </div>
 
           <div class="detail-card full-width" *ngIf="bishop.biography">

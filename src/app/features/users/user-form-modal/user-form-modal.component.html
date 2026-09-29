@@ -40,16 +40,16 @@
           <label for="clergy_search">Search parish leaders</label>
 
           <div
-            class="cf-participant-source__selected user-form-modal__leader-selected"
+            class="user-form-modal__leader-selected"
             *ngIf="selectedClergy; else clergySearchField"
             role="status"
           >
-            <div>
+            <div class="user-form-modal__leader-copy">
               <strong>{{ selectedClergy.person_name }}</strong>
-              <p class="cf-split-field__hint" *ngIf="selectedClergy.role_title">
+              <p class="user-form-modal__leader-role" *ngIf="selectedClergy.role_title">
                 {{ selectedClergy.role_title }}
               </p>
-              <p class="cf-split-field__hint">Linked parish leader.</p>
+              <p class="user-form-modal__leader-status">Linked parish leader.</p>
             </div>
             <button type="button" class="cf-btn" (click)="clearSelectedClergy()">Change</button>
           </div>
@@ -68,7 +68,7 @@
             />
             <p class="cf-split-field__hint" *ngIf="clergySearching">Searching…</p>
             <ul
-              class="cf-participant-source__results user-form-modal__leader-results"
+              class="user-form-modal__leader-results"
               *ngIf="showClergyResults && clergyResults.length"
             >
               <li
@@ -96,25 +96,27 @@
     <section class="cf-split-section" aria-labelledby="user-section-account">
       <h3 id="user-section-account" class="cf-split-section__title">Account information</h3>
 
-      <div class="user-form-modal__profile-image" *ngIf="canEditProfileImage || displayProfileImageUrl">
-        <app-cf-media-upload
-          #profileMediaUpload
-          label="Profile image"
-          hint="JPG, PNG, or WebP up to 3 MB."
-          inputId="profile_image"
-          [accept]="profileImageAccept"
-          [canManage]="canEditProfileImage"
-          [previewUrl]="existingProfileImagePreviewUrl"
-          [previewClickable]="!!existingProfileImagePreviewUrl && !selectedProfileImage"
-          (previewClick)="openSavedProfilePhotoViewer()"
-          (fileSelected)="onCfProfileImageSelected($event)"
-          (removeRequested)="removeSelectedProfileImage()"
-          (validationError)="onProfileImageValidationError($event)"
-        ></app-cf-media-upload>
-        <p class="cf-split-field__error" *ngIf="profileImageError" role="alert">{{ profileImageError }}</p>
-      </div>
-
       <div class="cf-split-grid">
+        <div
+          class="cf-split-field cf-split-field--full"
+          *ngIf="canEditProfileImage || displayProfileImageUrl"
+        >
+          <app-cf-media-upload
+            #profileMediaUpload
+            label="Profile image"
+            hint="JPG, PNG, or WebP up to 3 MB."
+            inputId="profile_image"
+            [accept]="profileImageAccept"
+            [canManage]="canEditProfileImage"
+            [previewUrl]="existingProfileImagePreviewUrl"
+            [previewClickable]="!!existingProfileImagePreviewUrl && !selectedProfileImage"
+            (previewClick)="openSavedProfilePhotoViewer()"
+            (fileSelected)="onCfProfileImageSelected($event)"
+            (removeRequested)="removeSelectedProfileImage()"
+            (validationError)="onProfileImageValidationError($event)"
+          ></app-cf-media-upload>
+          <p class="cf-split-field__error" *ngIf="profileImageError" role="alert">{{ profileImageError }}</p>
+        </div>
         <div class="cf-split-field">
           <label for="name">
             Full name <span class="cf-split-req" aria-hidden="true">*</span>

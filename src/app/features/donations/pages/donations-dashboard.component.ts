@@ -8,160 +8,312 @@ import {
   inject
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { NavigationEnd, Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, ParamMap, Router, RouterModule } from '@angular/router';
 import { Subject, of } from 'rxjs';
-import { catchError, filter, switchMap } from 'rxjs/operators';
+import { catchError, switchMap } from 'rxjs/operators';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { EntitlementService } from '@core/services/entitlement.service';
+import { DashboardCollectedTrendComponent } from '../dashboard/dashboard-collected-trend.component';
+import {
+  DashboardDateRangeComponent,
+  DashboardDateRangeValue,
+  DashboardPeriodPreset
+} from '../dashboard/dashboard-date-range.component';
+import { DonationsDashboardFilterDrawerComponent } from '../dashboard/donations-dashboard-filter-drawer.component';
+import {
+  CollectionTrendPoint,
+  DonationDashboardDateQuery,
+  DonationDashboardSnapshot,
+  DonationDashboardSummary,
+  ExecutiveReportSummary,
+  ReportDrillDownRequestPayload
+} from '../models/donation.model';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
-import { DonationDashboardSummary } from '../models/donation.model';
+import { ExecutiveSummaryVisualsComponent } from './reports/executive-summary-visuals.component';
+import { ReportDrillDownModalComponent } from './reports/report-drill-down-modal.component';
+
+interface MixRow {
+  key: string;
+  label: string;
+  amount: number;
+}
+
+interface DashboardActiveFilterChip {
+  key: 'ytd' | 'custom' | 'bcc' | 'project';
+  label: string;
+  removeAriaLabel: string;
+}
 
 @Component({
   selector: 'app-donations-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, PageHeaderComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    PageHeaderComponent,
+    CfCurrencyPipe,
+    CfActionIconComponent,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    DashboardCollectedTrendComponent,
+    DashboardDateRangeComponent,
+    DonationsDashboardFilterDrawerComponent,
+    ExecutiveSummaryVisualsComponent,
+    ReportDrillDownModalComponent
+  ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    <section class="donations-dashboard cf-page cf-financial-dashboard">
+    <section class="donations-dashboard cf-page cf-financial-dashboard" [attr.aria-busy]="loading">
       <app-page-header
         title="Financial Dashboard"
-        [titleLevel]="3"
-        subtitle="Church financial health, collections, and families requiring attention."
+        [subtitle]="pageSubtitle"
       >
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">+ Quick Collect</button>
-        <button type="button" class="cf-btn" (click)="reload()">Refresh</button>
+        <app-dashboard-date-range
+          [preset]="activePreset"
+          (rangeChange)="onRangeChange($event)"
+        />
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon dashboard-header__filters"
+          (click)="openFilters()"
+          aria-label="Filters"
+          title="Filters"
+        >
+          <app-cf-action-icon name="filter" />
+          <span *ngIf="dashboardFilterCount > 0" class="dashboard-header__filter-badge">{{ dashboardFilterCount }}</span>
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon cf-btn-primary"
+          (click)="openQuickCollect()"
+          aria-label="Quick Collect"
+          title="Quick Collect"
+        >
+          <app-cf-action-icon name="collect-payment" />
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          (click)="reload()"
+          aria-label="Refresh"
+          title="Refresh"
+        >
+          <app-cf-action-icon name="refresh" />
+        </button>
       </app-page-header>
 
       <div
-        *ngIf="loading"
-        class="cf-loading-block cf-panel"
-        role="status"
-        aria-live="polite"
-        aria-busy="true"
+        class="dashboard-active-filters"
+        *ngIf="activeFilterChips.length"
+        role="region"
+        aria-label="Active filters"
       >
-        <p class="cf-loading-block__label">Loading financial dashboard…</p>
+        <span class="cf-meta">Active filters</span>
+        <div class="dashboard-active-filters__list">
+          <span class="cf-badge cf-badge--info" *ngFor="let chip of activeFilterChips">
+            {{ chip.label }}
+            <button
+              type="button"
+              class="dashboard-active-filters__remove"
+              (click)="removeActiveFilter(chip)"
+              [attr.aria-label]="chip.removeAriaLabel"
+            >
+              ×
+            </button>
+          </span>
+        </div>
       </div>
 
-      <div *ngIf="!loading && error" class="cf-inline-alert cf-panel" role="alert">
+      <app-donations-dashboard-filter-drawer
+        [isOpen]="filtersOpen"
+        [appliedPreset]="activePreset"
+        [appliedCustomFrom]="customFrom"
+        [appliedCustomTo]="customTo"
+        [appliedBccId]="activeBccId"
+        [appliedBccName]="activeBccName"
+        [appliedProjectId]="activeProjectId"
+        [appliedProjectName]="activeProjectName"
+        (close)="closeFilters()"
+        (apply)="onRangeChange($event)"
+        (reset)="onFilterReset()"
+      />
+
+      <div *ngIf="loading && !summary" class="cf-loading-block cf-panel" role="status" aria-live="polite">
+        <p class="cf-loading-block__label">Loading financial dashboard…</p>
+        <app-loading-skeleton type="card" [rows]="1"></app-loading-skeleton>
+        <app-loading-skeleton type="rectangle" [rows]="3"></app-loading-skeleton>
+      </div>
+
+      <div *ngIf="error" class="cf-inline-alert cf-panel" role="alert">
         {{ error }}
       </div>
 
-      <ng-container *ngIf="!loading && summary">
-        <article
-          class="health-banner cf-panel"
-          [attr.data-status]="healthStatus"
-        >
-          <div class="cf-health-gauge" [attr.data-status]="healthStatus">
-            <div
-              class="health-score-chip"
-              [class.health-score-chip--healthy]="healthStatus === 'healthy'"
-              [class.health-score-chip--attention]="healthStatus === 'attention'"
-              [class.health-score-chip--risk]="healthStatus === 'risk'"
+      <ng-container *ngIf="snapshot as snap">
+        <div class="cf-kpi-strip" aria-label="Financial snapshot">
+          <a
+            class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--collected-month"
+            routerLink="payments"
+            [queryParams]="monthPaymentQuery"
+            title="Succeeded payments in the selected date range."
+            [attr.aria-label]="collectedPeriodAriaLabel"
+          >
+            <span class="dashboard-kpi-collected__head">
+              <span class="dashboard-kpi-collected__icon" aria-hidden="true">
+                <app-cf-action-icon name="wallet" />
+              </span>
+              <span class="cf-kpi-card__label dashboard-kpi-collected__label">{{ collectedPeriodLabel }}</span>
+            </span>
+            <strong class="cf-kpi-card__value dashboard-kpi-collected__value">{{ snap.month.collected | cfCurrency }}</strong>
+            <span class="dashboard-kpi-collected__hint">{{ collectedPeriodHint }}</span>
+            <span
+              class="dashboard-kpi__compare dashboard-kpi-collected__compare"
+              [class.cf-kpi-card__trend--up]="growthDirection === 'up'"
+              [class.cf-kpi-card__trend--down]="growthDirection === 'down'"
+              [class.dashboard-kpi-collected__compare--neutral]="growthDirection === 'flat' || growthDirection === 'none'"
             >
-              <span class="health-score-chip__value">{{ summary.financial_health?.score || 0 }}</span>
-              <span class="health-score-chip__label">{{ summary.financial_health?.label || 'Calculating' }}</span>
-            </div>
-          </div>
-          <div class="health-copy">
-            <h2 class="cf-section-title">Financial Health Score</h2>
-            <p class="cf-meta">{{ summary.financial_health?.summary || 'Track collections, outstanding balances, and family participation from one place.' }}</p>
-          </div>
-          <div class="health-meta cf-meta">
-            <span>Families active: {{ summary.families?.active || 0 }}</span>
-            <span>Participation (90d): {{ summary.families?.participation_rate || 0 }}%</span>
-          </div>
-        </article>
+              {{ monthComparison }}
+            </span>
+          </a>
 
-        <div class="cf-kpi-grid">
-          <article class="cf-kpi"><span>Total Collected</span><strong>{{ summary.totals.collected | number:'1.2-2' }}</strong></article>
-          <article class="cf-kpi"><span>This Month</span><strong>{{ summary.period_collections?.current_month_collected || 0 | number:'1.2-2' }}</strong></article>
-          <article class="cf-kpi"><span>Annual (FY)</span><strong>{{ summary.period_collections?.annual_collected || 0 | number:'1.2-2' }}</strong></article>
-          <article class="cf-kpi cf-kpi--warn"><span>Outstanding</span><strong>{{ summary.totals.pending_dues | number:'1.2-2' }}</strong></article>
-          <article class="cf-kpi"><span>Voluntary Gifts</span><strong>{{ summary.totals.voluntary_collected || 0 | number:'1.2-2' }}</strong></article>
-          <article class="cf-kpi"><span>Active Projects</span><strong>{{ summary.totals.active_projects || 0 }}</strong></article>
-          <article class="cf-kpi"><span>Active Families</span><strong>{{ summary.families?.active || 0 }}</strong></article>
-          <article class="cf-kpi"><span>Net Position</span><strong>{{ summary.totals.net | number:'1.2-2' }}</strong></article>
+          <a
+            class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--collected-fy"
+            routerLink="payments"
+            [queryParams]="comparisonPaymentQuery"
+            [title]="comparisonCardTitle"
+            [attr.aria-label]="comparisonCardAriaLabel"
+          >
+            <span class="dashboard-kpi-collected__head">
+              <span class="dashboard-kpi-collected__icon" aria-hidden="true">
+                <app-cf-action-icon name="collect-payment" />
+              </span>
+              <span class="cf-kpi-card__label dashboard-kpi-collected__label">{{ comparisonPeriodLabel }}</span>
+            </span>
+            <strong class="cf-kpi-card__value dashboard-kpi-collected__value">{{ snap.month.comparison_collected | cfCurrency }}</strong>
+            <span class="dashboard-kpi-collected__hint">{{ comparisonPeriodHint }}</span>
+          </a>
+
+          <a
+            class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--outstanding"
+            routerLink="dues"
+            [title]="outstandingKpiTitle"
+          >
+            <span class="dashboard-kpi-outstanding__head">
+              <span class="dashboard-kpi-outstanding__icon" aria-hidden="true">
+                <app-cf-action-icon name="clipboard-list" />
+              </span>
+              <span class="cf-kpi-card__label dashboard-kpi-outstanding__label">Outstanding contributions</span>
+            </span>
+            <strong class="cf-kpi-card__value dashboard-kpi-outstanding__value">{{ snap.outstanding_contributions | cfCurrency }}</strong>
+            <span class="dashboard-kpi-outstanding__hint">Collectable open balances</span>
+            <span class="dashboard-badge cf-health--attention">Collectable</span>
+          </a>
+
+          <a
+            class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--overdue"
+            routerLink="dues"
+            [queryParams]="duesOverdueQuery"
+            title="Open contribution dues with a due date before the range end date."
+          >
+            <span class="dashboard-kpi-overdue__head">
+              <span class="dashboard-kpi-overdue__icon" aria-hidden="true">
+                <app-cf-action-icon name="calendar-clock" />
+              </span>
+              <span class="cf-kpi-card__label dashboard-kpi-overdue__label">Overdue</span>
+            </span>
+            <strong class="cf-kpi-card__value dashboard-kpi-overdue__value">{{ snap.overdue_amount | cfCurrency }}</strong>
+            <span class="dashboard-kpi-overdue__hint">Past due date</span>
+            <span class="dashboard-badge cf-health--risk">Overdue</span>
+            <span class="dashboard-kpi-overdue__meta cf-meta">{{ familyCountLabel(snap.overdue_families) }}</span>
+          </a>
+
+          <article class="cf-kpi-card--executive dashboard-kpi" [title]="participationTitle">
+            <span class="cf-kpi-card__label">Family participation</span>
+            <strong class="cf-kpi-card__value">{{ snap.participation.rate }}%</strong>
+            <span class="cf-meta">{{ snap.participation.participating }} of {{ snap.participation.active }} active families</span>
+            <span class="cf-meta">{{ participationChange }}</span>
+          </article>
         </div>
 
-        <div class="panels">
-          <section class="cf-panel">
-            <div class="panel-head">
-              <h3 class="cf-section-title">Collection Trend</h3>
-              <span class="cf-meta">Last 12 months</span>
-            </div>
-            <div class="trend-chart" *ngIf="summary.collection_trend?.length; else noTrend">
-              <div class="trend-bar" *ngFor="let row of summary.collection_trend">
-                <div class="bar" [style.height.%]="barHeight(row.collected)"></div>
-                <label class="cf-chart-panel__label">{{ row.label }}</label>
-                <strong class="cf-chart-panel__label">{{ row.collected | number:'1.0-0' }}</strong>
-              </div>
-            </div>
-            <ng-template #noTrend><p class="cf-meta">No collection trend data yet.</p></ng-template>
-          </section>
-
-          <section class="cf-panel">
-            <div class="panel-head">
-              <h3 class="cf-section-title">Families Requiring Attention</h3>
-              <span class="cf-meta">{{ summary.attention_summary?.count || 0 }} families · {{ summary.attention_summary?.total_overdue_amount || 0 | number:'1.2-2' }} overdue</span>
-            </div>
-            <div class="cf-table-responsive" *ngIf="summary.families_requiring_attention?.length; else noAttention">
-              <table class="cf-table">
-                <thead><tr><th>Family</th><th>Overdue</th><th>Days</th><th></th></tr></thead>
-                <tbody>
-                  <tr *ngFor="let row of summary.families_requiring_attention">
-                    <td>
-                      <strong>{{ row.family_name }}</strong>
-                      <small class="cf-meta">{{ row.family_code }}</small>
-                    </td>
-                    <td>{{ row.overdue_amount | number:'1.2-2' }}</td>
-                    <td>{{ row.days_overdue }}</td>
-                    <td><a class="donations-dashboard__view" [routerLink]="['/families', row.family_id]">View</a></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
-            <ng-template #noAttention><p class="cf-meta">No overdue families right now.</p></ng-template>
-          </section>
+        <div
+          *ngIf="advancedReports && executiveLoading && !executiveSummary"
+          class="cf-loading-block cf-panel"
+          role="status"
+          aria-live="polite"
+        >
+          <p class="cf-loading-block__label">Loading stewardship overview…</p>
         </div>
 
-        <div class="panels">
-          <section class="cf-panel">
-            <div class="panel-head">
-              <h3 class="cf-section-title">Recent Activity</h3>
-            </div>
-            <ul class="activity-list" *ngIf="summary.recent_activity?.length; else noActivity">
-              <li *ngFor="let item of summary.recent_activity">
-                <div>
-                  <strong>{{ item.family_name || item.payer_name }}</strong>
-                  <span class="cf-meta">{{ item.date | date }} · {{ item.method }}</span>
-                </div>
-                <strong>{{ item.amount | number:'1.2-2' }}</strong>
-              </li>
+        <div *ngIf="advancedReports && executiveError" class="cf-inline-alert cf-panel" role="alert">
+          {{ executiveError }}
+          <button type="button" class="cf-btn cf-btn--sm" (click)="loadExecutiveSummary()">Try again</button>
+        </div>
+
+        <app-executive-summary-visuals
+          *ngIf="advancedReports && executiveSummary?.visuals && !executiveLoading"
+          [summary]="executiveSummary!"
+          visualScope="dashboard"
+          (drillDownRequested)="openDrillDown($event)"
+        />
+
+        <app-report-drill-down-modal
+          *ngIf="drillDownRequest"
+          [request]="drillDownRequest"
+          (closeRequested)="closeDrillDown()"
+        />
+
+        <div class="dashboard-split dashboard-split--trend">
+          <section class="cf-panel" aria-labelledby="collection-trend-heading">
+            <h2 id="collection-trend-heading" class="cf-section-title">Collection</h2>
+            <p class="cf-meta">Succeeded payments in the selected range, grouped by month.</p>
+            <ul class="sr-only" *ngIf="hasCollections">
+              <li *ngFor="let row of collectionTrend">{{ row.is_current ? row.label + ' month to date' : row.label }} {{ row.collected | cfCurrency }}</li>
             </ul>
-            <ng-template #noActivity><p class="cf-meta">No recent payments recorded.</p></ng-template>
+            <app-dashboard-collected-trend
+              *ngIf="hasCollections"
+              [points]="collectionTrend"
+              [chartAriaLabel]="collectionTrendAriaLabel"
+              (monthSelected)="openTrendMonth($event)"
+            ></app-dashboard-collected-trend>
+            <app-cf-empty-state
+              *ngIf="!hasCollections"
+              title="No collections yet"
+              description="Succeeded payments will appear here by month."
+              [hasActions]="false"
+            ></app-cf-empty-state>
           </section>
 
-          <section class="cf-panel">
-            <div class="panel-head">
-              <h3 class="cf-section-title">Active Projects</h3>
-            </div>
-            <div class="project-list" *ngIf="summary.active_project_summaries?.length; else noProjects">
-              <article *ngFor="let project of summary.active_project_summaries">
-                <div class="project-top">
-                  <strong>{{ project.name }}</strong>
-                  <span class="cf-meta">{{ project.funding_percentage }}%</span>
-                </div>
-                <div class="progress" aria-hidden="true">
-                  <span [style.width.%]="project.funding_percentage"></span>
-                </div>
-                <small class="cf-meta">{{ project.collected | number:'1.2-2' }} of {{ project.target_amount | number:'1.2-2' }}</small>
-              </article>
-            </div>
-            <ng-template #noProjects><p class="cf-meta">No active fundraising projects.</p></ng-template>
+          <section class="cf-panel" aria-labelledby="giving-mix-heading">
+            <h2 id="giving-mix-heading" class="cf-section-title">Giving mix</h2>
+            <p class="cf-meta">Where succeeded payments in this period were allocated. Unallocated payments are shown separately.</p>
+            <ng-container *ngIf="showMix; else mixHidden">
+              <p class="dashboard-mix__single" *ngIf="mixRows.length === 1">
+                <span>{{ mixRows[0].label }}</span>
+                <strong>{{ mixRows[0].amount | cfCurrency }}</strong>
+              </p>
+              <ul class="dashboard-mix" *ngIf="mixRows.length > 1">
+                <li *ngFor="let row of mixRows">
+                  <span class="dashboard-mix__label">{{ row.label }}</span>
+                  <span class="dashboard-mix__track" aria-hidden="true">
+                    <span class="dashboard-mix__bar" [style.width.%]="mixWidth(row.amount)"></span>
+                  </span>
+                  <strong>{{ row.amount | cfCurrency }}</strong>
+                </li>
+              </ul>
+              <a class="dashboard-link" routerLink="payments" [queryParams]="monthPaymentQuery">View payments in this period</a>
+            </ng-container>
+            <ng-template #mixHidden>
+              <p class="cf-meta" *ngIf="snap.month.collected > 0 && !snap.giving_mix.reconciled">Giving mix is hidden because the allocation totals do not match collections in this period.</p>
+              <p class="cf-meta" *ngIf="snap.month.collected === 0">No succeeded payments in this period yet.</p>
+            </ng-template>
           </section>
         </div>
 
-        <nav class="quick-links" aria-label="Financial shortcuts">
+        <nav class="dashboard-footer" aria-label="Financial shortcuts">
           <a routerLink="plans">Contribution Plans</a>
           <a routerLink="dues">Outstanding Dues</a>
           <a routerLink="projects">Projects</a>
@@ -174,236 +326,945 @@ import { DonationDashboardSummary } from '../models/donation.model';
     </section>
   `,
   styles: [`
-    :host { display: block; }
-
-    .health-banner {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: var(--cf-space-3);
+    .donations-dashboard { display: grid; gap: 0.65rem; }
+    .dashboard-header__filters {
+      position: relative;
+      display: inline-flex;
       align-items: center;
-      border-left: 3px solid var(--cf-primary);
     }
-
-    .health-banner[data-status='healthy'] { border-left-color: var(--cf-forest); }
-    .health-banner[data-status='attention'] { border-left-color: var(--cf-amber); }
-    .health-banner[data-status='risk'] { border-left-color: var(--cf-critical); }
-
-    .health-score-chip {
-      width: 3.75rem;
-      height: 3.75rem;
+    .dashboard-header__filter-badge {
+      position: absolute;
+      top: -0.2rem;
+      right: -0.2rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 1.15rem;
+      height: 1.15rem;
+      padding: 0 0.25rem;
       border-radius: var(--cf-radius-pill);
-      display: grid;
-      place-content: center;
-      text-align: center;
-      color: #fff;
       background: var(--cf-primary);
-    }
-
-    .health-score-chip--healthy { background: var(--cf-forest); }
-    .health-score-chip--attention { background: var(--cf-amber); }
-    .health-score-chip--risk { background: var(--cf-critical); }
-
-    .health-score-chip__value {
-      font-size: 1rem;
-      font-weight: 700;
+      color: #fff;
+      font-size: var(--cf-text-xs, 0.68rem);
+      font-weight: 600;
       line-height: 1;
-      font-variant-numeric: tabular-nums;
     }
-
-    .health-score-chip__label {
-      font-size: var(--cf-text-xs);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      line-height: 1.2;
-      margin-top: 0.15rem;
-    }
-
-    .health-copy .cf-section-title { margin: 0 0 0.2rem; }
-    .health-copy .cf-meta { margin: 0; }
-    .health-meta { display: grid; gap: 0.2rem; text-align: right; }
-
-    .cf-kpi--warn strong { color: var(--cf-amber); }
-
-    .panels {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: var(--cf-page-gap);
-    }
-
-    .panel-head {
+    .dashboard-active-filters {
       display: flex;
-      justify-content: space-between;
-      gap: 0.75rem;
-      align-items: baseline;
-      margin-bottom: 0.75rem;
       flex-wrap: wrap;
+      align-items: center;
+      gap: var(--cf-space-2);
     }
-
-    .panel-head .cf-section-title { margin: 0; }
-
-    .trend-chart {
-      display: grid;
-      grid-template-columns: repeat(6, 1fr);
-      gap: 0.5rem;
-      overflow-x: auto;
-      align-items: end;
-      min-height: 8rem;
+    .dashboard-active-filters__list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--cf-space-1);
+      align-items: center;
+      flex: 1;
+      min-width: 0;
     }
-
-    .trend-bar {
-      display: grid;
-      grid-template-rows: 1fr auto auto;
-      gap: 0.2rem;
-      justify-items: center;
-      min-width: 4.5rem;
-      height: 100%;
+    .dashboard-active-filters__remove {
+      margin-left: 0.25rem;
+      border: 0;
+      background: transparent;
+      color: inherit;
+      cursor: pointer;
+      font-size: 1rem;
+      line-height: 1;
+      padding: 0 0.1rem;
     }
-
-    .trend-bar .bar {
-      width: 100%;
-      min-height: 8px;
-      background: var(--cf-primary-soft, #dbeafe);
-      border-radius: var(--cf-radius-pill) var(--cf-radius-pill) 4px 4px;
-      align-self: end;
-    }
-
-    .cf-table small.cf-meta { display: block; }
-
-    .donations-dashboard__view {
-      color: var(--cf-primary);
-      font-size: var(--cf-text-sm);
+    .dashboard-kpi {
+      color: inherit;
       text-decoration: none;
+      min-height: 44px;
     }
-
-    .activity-list {
+    .dashboard-kpi:focus-visible {
+      outline: var(--cf-focus-ring-width) solid var(--cf-focus-ring);
+      outline-offset: var(--cf-focus-ring-offset);
+    }
+    .dashboard-kpi--collected-month,
+    .dashboard-kpi--collected-fy {
+      position: relative;
+      border-color: color-mix(in srgb, var(--cf-forest) 28%, var(--cf-panel-border));
+      background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--cf-forest-soft) 92%, var(--cf-panel-bg)) 0%,
+        var(--cf-panel-bg) 72%
+      );
+      box-shadow: var(--cf-shadow-xs);
+      min-width: 10.5rem;
+      padding: 0.75rem 0.85rem;
+    }
+    .dashboard-kpi-collected__head {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+    .dashboard-kpi-collected__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: var(--cf-radius-pill);
+      background: color-mix(in srgb, var(--cf-forest) 14%, var(--cf-forest-soft));
+      color: var(--cf-forest);
+    }
+    .dashboard-kpi-collected__icon .cf-action-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+    .dashboard-kpi-collected__label {
+      color: var(--cf-forest);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .dashboard-kpi-collected__value {
+      margin-top: 0.35rem;
+      font-size: clamp(1.45rem, 2.8vw, 1.65rem);
+      font-weight: 700;
+      line-height: 1.05;
+      color: var(--cf-color-success);
+    }
+    .dashboard-kpi-collected__hint {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: color-mix(in srgb, var(--cf-forest) 55%, var(--cf-muted));
+    }
+    .dashboard-kpi__compare { display: block; margin-top: 0.35rem; }
+    .dashboard-kpi-collected__compare {
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: color-mix(in srgb, var(--cf-forest) 40%, var(--cf-muted));
+    }
+      .dashboard-kpi-collected__compare--neutral {
+        display: inline-block;
+        margin-top: 0.35rem;
+        padding: 0.1rem 0.4rem;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--cf-forest-soft) 65%, var(--cf-panel-bg));
+        color: color-mix(in srgb, var(--cf-forest) 70%, var(--cf-slate-700));
+      }
+    .dashboard-kpi--outstanding,
+    .dashboard-kpi--overdue {
+      position: relative;
+      box-shadow: var(--cf-shadow-xs);
+      min-width: 10.5rem;
+      padding: 0.75rem 0.85rem;
+    }
+    .dashboard-kpi--outstanding {
+      border-color: color-mix(in srgb, var(--cf-amber) 32%, var(--cf-panel-border));
+      background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--cf-amber-soft) 92%, var(--cf-panel-bg)) 0%,
+        var(--cf-panel-bg) 72%
+      );
+    }
+    .dashboard-kpi--overdue {
+      border-color: color-mix(in srgb, var(--cf-critical) 32%, var(--cf-panel-border));
+      background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--cf-critical-soft) 92%, var(--cf-panel-bg)) 0%,
+        var(--cf-panel-bg) 72%
+      );
+    }
+    .dashboard-kpi-outstanding__head,
+    .dashboard-kpi-overdue__head {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+    .dashboard-kpi-outstanding__icon,
+    .dashboard-kpi-overdue__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: var(--cf-radius-pill);
+    }
+    .dashboard-kpi-outstanding__icon {
+      background: color-mix(in srgb, var(--cf-amber) 16%, var(--cf-amber-soft));
+      color: var(--cf-amber);
+    }
+    .dashboard-kpi-overdue__icon {
+      background: color-mix(in srgb, var(--cf-critical) 14%, var(--cf-critical-soft));
+      color: var(--cf-critical);
+    }
+    .dashboard-kpi-outstanding__icon .cf-action-icon,
+    .dashboard-kpi-overdue__icon .cf-action-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+    .dashboard-kpi-outstanding__label {
+      color: var(--cf-amber);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .dashboard-kpi-overdue__label {
+      color: var(--cf-critical);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .dashboard-kpi-outstanding__value {
+      margin-top: 0.35rem;
+      font-size: clamp(1.45rem, 2.8vw, 1.65rem);
+      font-weight: 700;
+      line-height: 1.05;
+      color: var(--cf-color-warning);
+    }
+    .dashboard-kpi-overdue__value {
+      margin-top: 0.35rem;
+      font-size: clamp(1.45rem, 2.8vw, 1.65rem);
+      font-weight: 700;
+      line-height: 1.05;
+      color: var(--cf-color-danger);
+    }
+    .dashboard-kpi-outstanding__hint,
+    .dashboard-kpi-overdue__hint {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.72rem;
+      line-height: 1.35;
+    }
+    .dashboard-kpi-outstanding__hint {
+      color: color-mix(in srgb, var(--cf-amber) 55%, var(--cf-muted));
+    }
+    .dashboard-kpi-overdue__hint {
+      color: color-mix(in srgb, var(--cf-critical) 50%, var(--cf-muted));
+    }
+    .dashboard-kpi-overdue__meta {
+      display: block;
+      margin-top: 0.15rem;
+      color: color-mix(in srgb, var(--cf-critical) 45%, var(--cf-muted));
+    }
+    @media (prefers-color-scheme: dark) {
+      .dashboard-kpi--collected-month,
+      .dashboard-kpi--collected-fy {
+        border-color: color-mix(in srgb, var(--cf-forest) 42%, var(--cf-panel-border));
+        background: linear-gradient(
+          145deg,
+          color-mix(in srgb, var(--cf-forest) 22%, var(--cf-panel-bg)) 0%,
+          var(--cf-panel-bg) 78%
+        );
+        box-shadow: none;
+      }
+      .dashboard-kpi-collected__icon {
+        background: color-mix(in srgb, var(--cf-forest) 35%, var(--cf-slate-800));
+        color: color-mix(in srgb, var(--cf-forest-soft) 88%, #fff);
+      }
+      .dashboard-kpi-collected__label {
+        color: color-mix(in srgb, var(--cf-forest-soft) 75%, #fff);
+      }
+      .dashboard-kpi-collected__value {
+        color: color-mix(in srgb, var(--cf-forest-soft) 92%, #fff);
+      }
+      .dashboard-kpi-collected__hint,
+      .dashboard-kpi-collected__compare {
+        color: var(--cf-slate-300);
+      }
+      .dashboard-kpi-collected__compare--neutral {
+        background: color-mix(in srgb, var(--cf-forest) 28%, var(--cf-slate-800));
+        color: var(--cf-slate-200);
+      }
+      .dashboard-kpi--outstanding {
+        border-color: color-mix(in srgb, var(--cf-amber) 45%, var(--cf-panel-border));
+        background: linear-gradient(
+          145deg,
+          color-mix(in srgb, var(--cf-amber) 22%, var(--cf-panel-bg)) 0%,
+          var(--cf-panel-bg) 78%
+        );
+        box-shadow: none;
+      }
+      .dashboard-kpi--overdue {
+        border-color: color-mix(in srgb, var(--cf-critical) 45%, var(--cf-panel-border));
+        background: linear-gradient(
+          145deg,
+          color-mix(in srgb, var(--cf-critical) 20%, var(--cf-panel-bg)) 0%,
+          var(--cf-panel-bg) 78%
+        );
+        box-shadow: none;
+      }
+      .dashboard-kpi-outstanding__icon {
+        background: color-mix(in srgb, var(--cf-amber) 35%, var(--cf-slate-800));
+        color: color-mix(in srgb, var(--cf-amber-soft) 88%, #fff);
+      }
+      .dashboard-kpi-overdue__icon {
+        background: color-mix(in srgb, var(--cf-critical) 32%, var(--cf-slate-800));
+        color: color-mix(in srgb, var(--cf-critical-soft) 90%, #fff);
+      }
+      .dashboard-kpi-outstanding__label {
+        color: color-mix(in srgb, var(--cf-amber-soft) 35%, #fff);
+      }
+      .dashboard-kpi-overdue__label {
+        color: color-mix(in srgb, var(--cf-critical-soft) 35%, #fff);
+      }
+      .dashboard-kpi-outstanding__value {
+        color: color-mix(in srgb, var(--cf-amber-soft) 88%, #fff);
+      }
+      .dashboard-kpi-overdue__value {
+        color: color-mix(in srgb, var(--cf-critical-soft) 90%, #fff);
+      }
+      .dashboard-kpi-outstanding__hint {
+        color: var(--cf-slate-300);
+      }
+      .dashboard-kpi-overdue__hint,
+      .dashboard-kpi-overdue__meta {
+        color: var(--cf-slate-300);
+      }
+    }
+    .dashboard-badge {
+      display: inline-flex;
+      width: fit-content;
+      margin-top: 0.35rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      font-weight: 600;
+    }
+    .dashboard-split { display: grid; gap: 0.65rem; }
+    .dashboard-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      color: var(--cf-forest);
+    }
+    .dashboard-mix {
       list-style: none;
-      margin: 0;
+      margin: 0.5rem 0 0;
       padding: 0;
       display: grid;
       gap: 0.55rem;
     }
-
-    .activity-list li {
-      display: flex;
-      justify-content: space-between;
-      gap: 0.75rem;
-      padding-bottom: 0.55rem;
-      border-bottom: 1px solid var(--cf-panel-border);
+    .dashboard-mix li {
+      display: grid;
+      grid-template-columns: minmax(7rem, 1.2fr) minmax(4rem, 1fr) auto;
+      gap: 0.45rem;
+      align-items: center;
     }
-
-    .activity-list .cf-meta { display: block; }
-
-    .project-list { display: grid; gap: 0.75rem; }
-
-    .project-top {
-      display: flex;
-      justify-content: space-between;
-      gap: 0.5rem;
-    }
-
-    .progress {
-      height: 8px;
+    .dashboard-mix__track {
+      display: block;
+      height: 0.45rem;
       background: var(--cf-slate-100);
-      border-radius: var(--cf-radius-pill);
+      border-radius: 999px;
       overflow: hidden;
-      margin: 0.35rem 0;
     }
-
-    .progress span {
+    .dashboard-mix__bar {
       display: block;
       height: 100%;
-      background: var(--cf-primary);
+      background: var(--cf-forest);
+      min-width: 2px;
     }
-
-    .quick-links {
+    .dashboard-mix__single {
+      display: flex;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin: 0.5rem 0;
+    }
+    .dashboard-footer {
       display: flex;
       flex-wrap: wrap;
-      gap: 0.75rem;
+      gap: 0.35rem 1rem;
     }
-
-    .quick-links a {
-      color: var(--cf-primary);
-      text-decoration: none;
-      font-size: var(--cf-text-base);
+    .dashboard-footer a {
+      display: inline-flex;
+      align-items: center;
+      min-height: 44px;
+      color: var(--cf-forest);
     }
-
-    @media (max-width: 768px) {
-      .health-banner {
-        grid-template-columns: 1fr;
-        justify-items: start;
-      }
-
-      .health-meta { text-align: left; }
+    @media (min-width: 1024px) {
+      .dashboard-split--trend { grid-template-columns: minmax(0, 8fr) minmax(0, 4fr); }
     }
   `]
 })
 export class DonationsDashboardComponent implements OnInit {
   private readonly donationsService = inject(DonationsService);
   private readonly quickCollectService = inject(QuickCollectService);
+  private readonly entitlements = inject(EntitlementService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
   private readonly destroyRef = inject(DestroyRef);
   private readonly reload$ = new Subject<void>();
-  private maxTrend = 1;
 
   summary: DonationDashboardSummary | null = null;
+  executiveSummary: ExecutiveReportSummary | null = null;
   loading = true;
+  executiveLoading = false;
   error: string | null = null;
+  executiveError: string | null = null;
+  advancedReports = false;
+  drillDownRequest: ReportDrillDownRequestPayload | null = null;
+  activePreset: DashboardPeriodPreset = 'this_month';
+  customFrom = '';
+  customTo = '';
+  activeBccId = '';
+  activeBccName = '';
+  activeProjectId = '';
+  activeProjectName = '';
+  filtersOpen = false;
 
-  get healthStatus(): 'healthy' | 'attention' | 'risk' {
-    const status = this.summary?.financial_health?.status;
-    if (status === 'healthy' || status === 'risk') {
-      return status;
+  private readonly projectLabelCache = new Map<string, string>();
+  private projectLabelCacheLoaded = false;
+
+  get dashboardFilterCount(): number {
+    return this.activeFilterChips.length;
+  }
+
+  get activeFilterChips(): DashboardActiveFilterChip[] {
+    const chips: DashboardActiveFilterChip[] = [];
+    if (this.activePreset === 'ytd') {
+      const applied = this.summary?.applied_range;
+      const rangeLabel =
+        applied?.date_from && applied?.collection_end
+          ? `${this.formatDay(applied.date_from, false)} – ${this.formatDay(applied.collection_end, false)}`
+          : null;
+      chips.push({
+        key: 'ytd',
+        label: rangeLabel ? `Year to date · ${rangeLabel}` : 'Year to date',
+        removeAriaLabel: 'Remove filter: Year to date'
+      });
     }
-    return 'attention';
+    if (this.activePreset === 'custom') {
+      const rangeLabel =
+        this.customFrom && this.customTo
+          ? `${this.formatDay(this.customFrom, false)} – ${this.formatDay(this.customTo, false)}`
+          : 'Custom range';
+      chips.push({
+        key: 'custom',
+        label: rangeLabel,
+        removeAriaLabel: 'Remove filter: Custom date range'
+      });
+    }
+    if (this.activeBccId) {
+      chips.push({
+        key: 'bcc',
+        label: `BCC: ${this.activeBccName || this.summary?.applied_bcc?.name || 'Selected community'}`,
+        removeAriaLabel: 'Remove filter: BCC'
+      });
+    }
+    if (this.activeProjectId) {
+      const projectName = this.resolvedProjectFilterName() || 'Selected project';
+      chips.push({
+        key: 'project',
+        label: `Project: ${projectName}`,
+        removeAriaLabel: `Remove filter: ${projectName}`
+      });
+    }
+    return chips;
+  }
+
+  private resolvedProjectFilterName(): string {
+    if (!this.activeProjectId) {
+      return '';
+    }
+    return (
+      this.activeProjectName ||
+      this.summary?.applied_project?.name ||
+      this.projectLabelCache.get(this.activeProjectId) ||
+      ''
+    );
+  }
+
+  private hydrateProjectLabelCache(): void {
+    if (this.projectLabelCacheLoaded) {
+      this.syncProjectNameFromCache();
+      return;
+    }
+    this.projectLabelCacheLoaded = true;
+    this.donationsService
+      .getProjects()
+      .pipe(catchError(() => of({ data: [] })))
+      .subscribe((res) => {
+        for (const project of res.data ?? []) {
+          this.projectLabelCache.set(String(project.id), project.name);
+        }
+        this.syncProjectNameFromCache();
+        this.cdr.markForCheck();
+      });
+  }
+
+  private syncProjectNameFromCache(): void {
+    if (!this.activeProjectId || this.activeProjectName) {
+      return;
+    }
+    const cached = this.projectLabelCache.get(this.activeProjectId);
+    if (cached) {
+      this.activeProjectName = cached;
+    }
+  }
+
+  removeActiveFilter(chip: DashboardActiveFilterChip): void {
+    if (chip.key === 'bcc') {
+      this.onRangeChange(this.rangePayload({ bcc_id: null }));
+      return;
+    }
+    if (chip.key === 'project') {
+      this.onRangeChange(this.rangePayload({ project_id: null }));
+      return;
+    }
+    if (chip.key === 'ytd' && this.activePreset === 'ytd') {
+      this.onRangeChange(this.rangePayload({ preset: 'this_month' }));
+      return;
+    }
+    if (chip.key === 'custom' && this.activePreset === 'custom') {
+      this.onRangeChange(this.rangePayload({ preset: 'this_month' }));
+    }
+  }
+
+  private rangePayload(overrides: Partial<DashboardDateRangeValue>): DashboardDateRangeValue {
+    const preset = overrides.preset ?? this.activePreset;
+    const payload: DashboardDateRangeValue = {
+      preset,
+      bcc_id: overrides.bcc_id !== undefined ? overrides.bcc_id : (this.activeBccId || null),
+      project_id: overrides.project_id !== undefined ? overrides.project_id : (this.activeProjectId || null)
+    };
+    if (preset === 'custom') {
+      payload.date_from = overrides.date_from ?? this.customFrom;
+      payload.date_to = overrides.date_to ?? this.customTo;
+    }
+    return payload;
+  }
+
+  private currentRangeQuery(): DonationDashboardDateQuery {
+    const query: DonationDashboardDateQuery =
+      this.activePreset === 'custom'
+        ? {
+            preset: 'custom',
+            date_from: this.customFrom,
+            date_to: this.customTo
+          }
+        : { preset: this.activePreset };
+    if (this.activeBccId) {
+      query.bcc_id = this.activeBccId;
+    }
+    if (this.activeProjectId) {
+      query.project_id = this.activeProjectId;
+    }
+    return query;
+  }
+
+  get snapshot(): DonationDashboardSnapshot | null {
+    return this.summary?.snapshot ?? null;
+  }
+
+  get pageSubtitle(): string {
+    const snap = this.snapshot;
+    if (!snap) {
+      return 'Collections, dues, and families for this parish.';
+    }
+    const applied = this.summary?.applied_range ?? snap.applied_range;
+    if (applied) {
+      return `${this.formatDay(applied.date_from, true)} – ${this.formatDay(applied.collection_end, true)} · ${applied.timezone} · Fiscal year ${snap.financial_year}`;
+    }
+    return `As of ${this.formatDay(snap.as_of, true)} · Fiscal year ${snap.financial_year}`;
+  }
+
+  get collectionTrend(): CollectionTrendPoint[] {
+    return this.summary?.collection_trend ?? [];
+  }
+
+  get hasCollections(): boolean {
+    return this.collectionTrend.some((row) => row.collected > 0);
+  }
+
+  get collectedPeriodLabel(): string {
+    return this.activePreset === 'this_month' ? 'Collected this month' : 'Collected';
+  }
+
+  get collectedPeriodHint(): string {
+    const applied = this.summary?.applied_range;
+    if (this.activePreset === 'this_month') {
+      return 'Succeeded payments · month to date';
+    }
+    if (applied) {
+      return `Succeeded payments · ${this.formatDay(applied.date_from, false)}–${this.formatDay(applied.collection_end, false)}`;
+    }
+    return 'Succeeded payments in the selected period';
+  }
+
+  get collectedPeriodAriaLabel(): string {
+    const snap = this.snapshot;
+    if (!snap) {
+      return this.collectedPeriodLabel;
+    }
+    return `${this.collectedPeriodLabel}, ${snap.month.collected}. ${this.collectedPeriodHint}. ${this.monthComparison}`;
+  }
+
+  get comparisonPeriodLabel(): string {
+    return this.activePreset === 'this_month' ? 'Same days last month' : 'Previous period';
+  }
+
+  get comparisonPeriodHint(): string {
+    const month = this.snapshot?.month;
+    if (!month) {
+      return '';
+    }
+    return this.formatRange(month.comparison_start, month.comparison_end);
+  }
+
+  get comparisonCardTitle(): string {
+    const month = this.snapshot?.month;
+    if (!month) {
+      return '';
+    }
+    return `Succeeded payments from ${month.comparison_start} through ${month.comparison_end}.`;
+  }
+
+  get comparisonCardAriaLabel(): string {
+    const snap = this.snapshot;
+    if (!snap) {
+      return this.comparisonPeriodLabel;
+    }
+    return `${this.comparisonPeriodLabel}, ${snap.month.comparison_collected}.`;
+  }
+
+  get growthDirection(): 'up' | 'down' | 'flat' | 'none' {
+    const growth = this.snapshot?.month.growth_pct;
+    if (growth === null || growth === undefined) {
+      return 'none';
+    }
+    if (growth > 0) {
+      return 'up';
+    }
+    if (growth < 0) {
+      return 'down';
+    }
+    return 'flat';
+  }
+
+  get monthComparison(): string {
+    const month = this.snapshot?.month;
+    if (!month) {
+      return '';
+    }
+    const range = this.formatRange(month.comparison_start, month.comparison_end);
+    if (month.growth_pct === null) {
+      return `No comparable period last month (${range})`;
+    }
+    const word = month.growth_pct > 0 ? 'Up' : month.growth_pct < 0 ? 'Down' : 'Flat';
+    return `${word} ${Math.abs(month.growth_pct)}% versus ${range}`;
+  }
+
+  get participationChange(): string {
+    const delta = this.snapshot?.participation.net_change_vs_prior_window ?? 0;
+    if (delta > 0) {
+      return `${delta} more than the previous period`;
+    }
+    if (delta < 0) {
+      return `${Math.abs(delta)} fewer than the previous period`;
+    }
+    return 'Same number as the previous period';
+  }
+
+  get participationTitle(): string {
+    const snap = this.snapshot;
+    if (!snap) {
+      return '';
+    }
+    return `Active families with a succeeded payment from ${snap.participation.window_start} through ${snap.participation.window_end}.`;
+  }
+
+  get outstandingKpiTitle(): string {
+    if (this.activeProjectId) {
+      return 'Open project installment balances collectable as of the range end.';
+    }
+    return 'Contribution dues whose period has started and are not paid, waived, or cancelled, as of the range end. Does not include project installments.';
+  }
+
+  get duesOverdueQuery(): Record<string, string> {
+    const query: Record<string, string> = { overdue_only: '1' };
+    if (this.activeBccId) {
+      query['bcc_id'] = this.activeBccId;
+    }
+    if (this.activeProjectId) {
+      query['project_id'] = this.activeProjectId;
+    }
+    return query;
+  }
+
+  get collectionTrendAriaLabel(): string {
+    const applied = this.summary?.applied_range;
+    if (applied) {
+      return `Collected payments from ${applied.date_from} through ${applied.collection_end}, grouped by month.`;
+    }
+    return 'Collected payments in the selected range, grouped by month.';
+  }
+
+  private scopeQueryParams(): Record<string, string> {
+    const params: Record<string, string> = {};
+    if (this.activeBccId) {
+      params['bcc_id'] = this.activeBccId;
+    }
+    if (this.activeProjectId) {
+      params['project_id'] = this.activeProjectId;
+    }
+    return params;
+  }
+
+  get monthPaymentQuery(): Record<string, string> | null {
+    const applied = this.summary?.applied_range;
+    const snap = this.snapshot;
+    if (applied) {
+      return { paid_from: applied.date_from, paid_to: applied.collection_end, ...this.scopeQueryParams() };
+    }
+    if (!snap) {
+      return null;
+    }
+    return { paid_from: `${snap.as_of.slice(0, 8)}01`, paid_to: snap.as_of, ...this.scopeQueryParams() };
+  }
+
+  get comparisonPaymentQuery(): Record<string, string> | null {
+    const snap = this.snapshot;
+    if (!snap) {
+      return null;
+    }
+    return {
+      paid_from: snap.month.comparison_start,
+      paid_to: snap.month.comparison_end,
+      ...this.scopeQueryParams()
+    };
+  }
+
+  get mixRows(): MixRow[] {
+    const mix = this.snapshot?.giving_mix;
+    if (!mix?.reconciled) {
+      return [];
+    }
+    const rows = mix.buckets.filter((bucket: { amount: number }) => bucket.amount > 0);
+    if (mix.unallocated !== 0) {
+      rows.push({ key: 'unallocated', label: 'Unallocated', amount: mix.unallocated });
+    }
+    return rows;
+  }
+
+  get showMix(): boolean {
+    return this.mixRows.length > 0;
   }
 
   ngOnInit(): void {
+    this.entitlements.load().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
+      this.advancedReports = this.entitlements.hasFeature('ADVANCED_FINANCIAL_REPORTING');
+      if (this.advancedReports) {
+        this.loadExecutiveSummary();
+      }
+      this.cdr.markForCheck();
+    });
+
     this.reload$.pipe(
       switchMap(() => {
         this.loading = true;
         this.error = null;
-        this.summary = null;
         this.cdr.markForCheck();
-        return this.donationsService.getDashboardSummary().pipe(catchError(() => of(null)));
+        return this.donationsService.getDashboardSummary(this.currentRangeQuery()).pipe(catchError(() => of(null)));
       }),
       takeUntilDestroyed(this.destroyRef)
     ).subscribe((res) => {
-      if (res?.data) {
+      if (res?.data?.snapshot) {
         this.summary = res.data;
-        this.maxTrend = Math.max(1, ...(res.data.collection_trend ?? []).map((row) => row.collected));
+        if (res.data.applied_bcc?.name) {
+          this.activeBccName = res.data.applied_bcc.name;
+        }
+        if (
+          this.activeProjectId &&
+          res.data.applied_project?.id === this.activeProjectId &&
+          res.data.applied_project.name
+        ) {
+          this.activeProjectName = res.data.applied_project.name;
+        }
         this.error = null;
-      } else {
-        this.summary = null;
+        const windows = res.data.preset_windows?.['this_month'];
+        if (this.activePreset === 'custom' && windows && !this.customFrom) {
+          this.customFrom = windows.date_from;
+          this.customTo = windows.date_to;
+        }
+      } else if (!this.summary) {
         this.error = 'Failed to load financial dashboard.';
+      } else {
+        this.error = 'Failed to refresh financial dashboard.';
       }
       this.loading = false;
       this.cdr.markForCheck();
     });
 
-    this.reload$.next();
-
-    this.router.events.pipe(
-      filter((event): event is NavigationEnd => event instanceof NavigationEnd),
-      filter((event) => this.isDonationsDashboardRoute(event.urlAfterRedirects)),
-      takeUntilDestroyed(this.destroyRef)
-    ).subscribe(() => this.reload$.next());
+    this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.applyQueryParams(params);
+      this.reload$.next();
+      if (this.advancedReports) {
+        this.loadExecutiveSummary();
+      }
+    });
   }
 
   reload(): void {
     this.reload$.next();
+    if (this.advancedReports) {
+      this.loadExecutiveSummary();
+    }
+  }
+
+  loadExecutiveSummary(): void {
+    this.executiveLoading = true;
+    this.executiveError = null;
+    this.cdr.markForCheck();
+    this.donationsService.getExecutiveReportSummary(this.currentRangeQuery()).pipe(catchError(() => of(null))).subscribe((res) => {
+      if (res?.data?.visuals) {
+        this.executiveSummary = res.data;
+        this.executiveError = null;
+      } else if (!this.executiveSummary) {
+        this.executiveError = 'Could not load stewardship health. Check your connection and try again.';
+      } else {
+        this.executiveError = 'Could not refresh stewardship health.';
+      }
+      this.executiveLoading = false;
+      this.cdr.markForCheck();
+    });
+  }
+
+  openFilters(): void {
+    this.filtersOpen = true;
+    this.cdr.markForCheck();
+  }
+
+  closeFilters(): void {
+    this.filtersOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  onFilterReset(): void {
+    this.onRangeChange({ preset: 'this_month', bcc_id: null, project_id: null });
+  }
+
+  onRangeChange(value: DashboardDateRangeValue): void {
+    if (value.preset === 'custom') {
+      this.activePreset = 'custom';
+      this.customFrom = value.date_from ?? '';
+      this.customTo = value.date_to ?? '';
+    } else if (value.preset) {
+      this.activePreset = value.preset;
+      this.customFrom = '';
+      this.customTo = '';
+    }
+    if (value.bcc_id !== undefined) {
+      this.activeBccId = value.bcc_id ?? '';
+      if (!this.activeBccId) {
+        this.activeBccName = '';
+      }
+    }
+    if (value.project_id !== undefined) {
+      this.activeProjectId = value.project_id ?? '';
+      if (!this.activeProjectId) {
+        this.activeProjectName = '';
+      } else if (value.project_name) {
+        this.activeProjectName = value.project_name;
+      } else {
+        this.syncProjectNameFromCache();
+        if (!this.activeProjectName) {
+          this.hydrateProjectLabelCache();
+        }
+      }
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: {
+        preset: value.preset ?? this.activePreset,
+        date_from: (value.preset ?? this.activePreset) === 'custom' ? (value.date_from ?? null) : null,
+        date_to: (value.preset ?? this.activePreset) === 'custom' ? (value.date_to ?? null) : null,
+        bcc_id: value.bcc_id !== undefined ? (value.bcc_id || null) : (this.activeBccId || null),
+        project_id: value.project_id !== undefined ? (value.project_id || null) : (this.activeProjectId || null)
+      },
+      queryParamsHandling: 'merge'
+    });
+  }
+
+  private applyQueryParams(params: ParamMap): void {
+    const preset = params.get('preset');
+    const allowed: DashboardPeriodPreset[] = ['this_month', 'this_fy', 'last_90', 'ytd', 'custom'];
+    this.activePreset = allowed.includes(preset as DashboardPeriodPreset)
+      ? (preset as DashboardPeriodPreset)
+      : 'this_month';
+    if (this.activePreset === 'custom') {
+      this.customFrom = params.get('date_from') ?? '';
+      this.customTo = params.get('date_to') ?? '';
+    } else {
+      this.customFrom = '';
+      this.customTo = '';
+    }
+    this.activeBccId = params.get('bcc_id') ?? '';
+    if (!this.activeBccId) {
+      this.activeBccName = '';
+    }
+    this.activeProjectId = params.get('project_id') ?? '';
+    if (!this.activeProjectId) {
+      this.activeProjectName = '';
+    } else {
+      this.syncProjectNameFromCache();
+      if (!this.activeProjectName) {
+        this.hydrateProjectLabelCache();
+      }
+    }
+  }
+
+  openDrillDown(payload: ReportDrillDownRequestPayload): void {
+    this.drillDownRequest = { ...payload, ...this.currentRangeQuery() };
+    this.cdr.markForCheck();
+  }
+
+  closeDrillDown(): void {
+    this.drillDownRequest = null;
+    this.cdr.markForCheck();
   }
 
   openQuickCollect(): void {
     this.quickCollectService.open();
   }
 
-  barHeight(value: number): number {
-    return Math.max(8, Math.round((value / this.maxTrend) * 100));
+  openTrendMonth(point: CollectionTrendPoint): void {
+    if (!point.start || !point.end) {
+      return;
+    }
+    this.router.navigate(['payments'], {
+      relativeTo: this.route.parent ?? this.route,
+      queryParams: { paid_from: point.start, paid_to: point.end, ...this.scopeQueryParams() }
+    });
   }
 
-  private isDonationsDashboardRoute(url: string): boolean {
-    const path = url.split('?')[0].replace(/\/$/, '');
-    return path.endsWith('/donations');
+  familyCountLabel(count: number): string {
+    return count === 1 ? '1 family' : `${count} families`;
+  }
+
+  mixWidth(amount: number): number {
+    const max = Math.max(...this.mixRows.map((row) => Math.abs(row.amount)), 1);
+    return Math.max(2, Math.round((Math.abs(amount) / max) * 100));
+  }
+
+  private formatRange(start: string, end: string): string {
+    const startLabel = this.formatDay(start, false);
+    const endLabel = this.formatDay(end, false);
+    if (start.slice(0, 7) === end.slice(0, 7)) {
+      return `${start.slice(8).replace(/^0/, '')}–${endLabel}`;
+    }
+    return `${startLabel}–${endLabel}`;
+  }
+
+  private formatDay(iso: string, withYear: boolean): string {
+    const [year, month, day] = iso.split('-').map((part) => Number(part));
+    if (!year || !month || !day) {
+      return iso;
+    }
+    const date = new Date(Date.UTC(year, month - 1, day));
+    return new Intl.DateTimeFormat('en-GB', {
+      day: 'numeric',
+      month: 'short',
+      year: withYear ? 'numeric' : undefined,
+      timeZone: 'UTC'
+    }).format(date);
   }
 }

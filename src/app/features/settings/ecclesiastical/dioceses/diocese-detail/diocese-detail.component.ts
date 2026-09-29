@@ -10,7 +10,7 @@ import {
 } from '@core/models/ecclesiastical';
 import { AuthService, ToastService } from '@core/services';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
-import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { AppointSuccessorModalComponent } from '../appoint-successor-modal/appoint-successor-modal.component';
@@ -23,7 +23,7 @@ import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-a
     CommonModule,
     RouterModule,
     LoadingSkeletonComponent,
-    EmptyStateComponent,
+    CfEmptyStateComponent,
     ConfirmationModalComponent,
     PageHeaderComponent,
     BishopAvatarComponent,

@@ -9,6 +9,13 @@
   flex-wrap: nowrap;
   gap: var(--cf-space-1);
   white-space: nowrap;
+
+  button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--cf-space-1);
+  }
 }
 
 .cf-action-bar--stacked {
@@ -26,6 +33,7 @@
 
   .cf-btn,
   .cf-btn-primary,
+  .cf-btn-ghost,
   .cf-btn-danger,
   .cf-btn-text {
     box-sizing: border-box;
@@ -37,5 +45,15 @@
 
   .cf-btn-text {
     padding: var(--cf-btn-sm-pad-y) var(--cf-space-1);
+  }
+}
+
+.cf-action-bar--icon-only {
+  flex-wrap: nowrap;
+  gap: var(--cf-toolbar-gap);
+
+  .cf-btn-icon ::ng-deep svg {
+    width: var(--cf-icon-sm);
+    height: var(--cf-icon-sm);
   }
 }

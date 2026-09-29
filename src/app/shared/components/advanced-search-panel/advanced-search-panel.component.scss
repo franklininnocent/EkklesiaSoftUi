@@ -683,45 +683,6 @@
   border-top: 1px solid #e5e7eb;
 }
 
-.btn {
-  padding: 0.625rem 1.5rem;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 0.938rem;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-
-  &:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-  }
-}
-
-.btn-secondary {
-  background: white;
-  color: #6b7280;
-  border: 2px solid #d1d5db;
-
-  &:hover:not(:disabled) {
-    background: #f9fafb;
-    border-color: #9ca3af;
-  }
-}
-
-.btn-primary {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-  }
-}
-
 // ============================================================================
 // RESPONSIVE
 // ============================================================================
@@ -763,7 +724,7 @@
   .search-actions {
     flex-direction: column-reverse;
 
-    .btn {
+    .cf-btn {
       width: 100%;
       justify-content: center;
     }
