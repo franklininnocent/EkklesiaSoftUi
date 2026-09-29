@@ -1,0 +1,70 @@
+.application-access {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.application-access__section-hint {
+  margin: 0 0 0.75rem;
+  color: var(--cf-muted, #667085);
+  font-size: 0.875rem;
+}
+
+.application-access__kpis {
+  margin-top: 0.5rem;
+}
+
+.application-access__kpi--attention strong {
+  color: var(--cf-critical, #b42318);
+}
+
+.application-access__attention {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.application-access__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin: 1rem 0;
+}
+
+.application-access__export {
+  margin-left: auto;
+}
+
+.application-access__row-clickable {
+  cursor: pointer;
+}
+
+.application-access__meta {
+  margin: 0 0 0.75rem;
+  color: var(--cf-muted, #667085);
+  font-size: 0.875rem;
+}
+
+.application-access__subtle {
+  color: var(--cf-muted, #667085);
+  font-size: 0.8125rem;
+}
+
+.application-access__table {
+  margin-top: 0.5rem;
+}
+
+@media (max-width: 900px) {
+  .application-access__col-desktop {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .application-access__col-actions .cf-btn-secondary {
+    display: none;
+  }
+}

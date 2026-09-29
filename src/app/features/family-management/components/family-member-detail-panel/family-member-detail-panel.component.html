@@ -8,7 +8,7 @@
   <section class="head-empty-card" aria-label="Family head" *ngIf="showHeadWithoutMember && !selectedMember">
     <header class="head-empty-card__banner">
       <h2 class="head-empty-card__title">Family Head</h2>
-      <button type="button" class="btn btn--primary" (click)="addHead.emit()">Add family head</button>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="addHead.emit()">Add family head</button>
     </header>
     <div class="head-empty-card__body">
       <p class="head-empty-card__message">No family head member is linked to this family yet.</p>
@@ -16,20 +16,29 @@
     </div>
   </section>
 
-  <app-family-head-profile-block
-    *ngIf="selectedMember as m"
-    [member]="m"
-    [relationshipEyebrow]="getProfileEyebrow(m)"
-    [isFamilyHead]="isHeadSelected"
-    [avatarImageUrl]="avatarUrl"
-    [sacramentTypesDisplay]="sacramentTypesDisplay"
-    [sacramentsExpanded]="sacramentsExpandedForSelected"
-    [editingHeadImage]="editingHeadImage"
-    (editProfile)="onEditClick()"
-    (toggleSacraments)="toggleSacramentsSection()"
-    (toggleHeadImageEdit)="toggleHeadImageEdit.emit()"
-    (headProfileImageSelected)="headProfileImageSelected.emit($event)"
-    (deleteHeadProfileImage)="deleteHeadProfileImage.emit()"
-    (editSacrament)="onSacramentEdit($event)"
-  />
+  <ng-container *ngIf="selectedMember as m">
+    <app-family-head-profile-block
+      [member]="m"
+      [relationshipEyebrow]="getProfileEyebrow(m)"
+      [isFamilyHead]="isHeadSelected"
+      [avatarImageUrl]="avatarUrl"
+      [sacramentTypesDisplay]="sacramentTypesDisplay"
+      [sacramentsExpanded]="sacramentsExpandedForSelected"
+      [editingHeadImage]="editingHeadImage"
+      [memberRegisterSacraments]="memberRegisterSacraments"
+      [canViewRegisterSacraments]="canViewRegisterSacraments"
+      (editProfile)="onEditClick()"
+      (toggleSacraments)="toggleSacramentsSection()"
+      (toggleHeadImageEdit)="toggleHeadImageEdit.emit()"
+      (headProfileImageSelected)="headProfileImageSelected.emit($event)"
+      (deleteHeadProfileImage)="deleteHeadProfileImage.emit()"
+      (editSacrament)="onSacramentEdit($event)"
+      (linkedParentSelected)="linkedParentSelected.emit($event)"
+    />
+
+    <app-family-affiliations-panel
+      *ngIf="m.id"
+      [familyMemberId]="m.id"
+    ></app-family-affiliations-panel>
+  </ng-container>
 </div>

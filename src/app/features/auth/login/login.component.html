@@ -1,61 +1,136 @@
 <div class="auth-container">
   <div class="auth-box">
     <div class="auth-header">
-      <h1 class="auth-title">Welcome to Ekklesia Soft</h1>
-      <p class="auth-subtitle">Sign in to your account to continue</p>
+      <h1 class="auth-title">Welcome to EkklesiaSoft</h1>
+      <p class="auth-subtitle" *ngIf="viewState === 'LOGIN'">Sign in to your account to continue</p>
+      <p class="auth-subtitle" *ngIf="viewState === 'FORGOT_EMAIL'">Forgot Password</p>
+      <p class="auth-subtitle" *ngIf="viewState === 'FORGOT_SUCCESS'">Request Submitted</p>
     </div>
 
-    <app-card>
-      <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
-        <div class="form-group">
-          <app-input
-            type="email"
-            label="Email Address"
-            placeholder="Enter your email"
-            formControlName="email"
-            [error]="getErrorMessage('email')"
-            [required]="true"
-            aria-label="Email address"
-            aria-describedby="email-error"
-          ></app-input>
-        </div>
+    <div class="auth-card">
+      <ng-container *ngIf="viewState === 'LOGIN'">
+        <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+          <div class="form-group cf-form-field">
+            <label class="cf-form-field__label" for="login-email">
+              <span>Email Address</span>
+              <span class="cf-form-field__required" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="login-email"
+              type="email"
+              class="auth-native-input"
+              placeholder="Enter your email"
+              formControlName="email"
+              autocomplete="username"
+              aria-required="true"
+              [class.cf-form-field__control--invalid]="!!getErrorMessage('email')"
+              [attr.aria-invalid]="getErrorMessage('email') ? 'true' : null"
+              [attr.aria-describedby]="getErrorMessage('email') ? 'login-email-error' : null"
+            />
+            <p *ngIf="getErrorMessage('email') as message" id="login-email-error" class="cf-form-field__error">{{ message }}</p>
+          </div>
 
-        <div class="form-group">
-          <app-input
-            type="password"
-            label="Password"
-            placeholder="Enter your password"
-            formControlName="password"
-            [error]="getErrorMessage('password')"
-            [required]="true"
-            aria-label="Password"
-            aria-describedby="password-error"
-          ></app-input>
-        </div>
+          <div class="form-group cf-form-field">
+            <label class="cf-form-field__label" for="login-password">
+              <span>Password</span>
+              <span class="cf-form-field__required" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="login-password"
+              type="password"
+              class="auth-native-input"
+              placeholder="Enter your password"
+              formControlName="password"
+              autocomplete="current-password"
+              aria-required="true"
+              [class.cf-form-field__control--invalid]="!!getErrorMessage('password')"
+              [attr.aria-invalid]="getErrorMessage('password') ? 'true' : null"
+              [attr.aria-describedby]="getErrorMessage('password') ? 'login-password-error' : null"
+            />
+            <p *ngIf="getErrorMessage('password') as message" id="login-password-error" class="cf-form-field__error">{{ message }}</p>
+          </div>
 
-        <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
-          {{ error }}
-        </div>
+          <div class="forgot-password-row">
+            <button type="button" class="auth-link auth-link-button" (click)="showForgotPassword()">
+              Forgot Password?
+            </button>
+          </div>
 
-        <app-button
-          type="submit"
-          variant="primary"
-          size="lg"
-          [fullWidth]="true"
-          [loading]="(loading$ | async) ?? false"
-          aria-label="Sign in to your account"
-        >
-          Sign In
-        </app-button>
+          <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
+            {{ error }}
+          </div>
 
-        <!--<div class="auth-footer">
-          <p>
-            Don't have an account?
-            <a routerLink="/auth/register" class="auth-link">Sign up</a>
+          <ng-container *ngIf="{ busy: (loading$ | async) ?? false } as state">
+            <button
+              type="submit"
+              class="cf-btn cf-btn-primary auth-submit"
+              [disabled]="state.busy"
+              [attr.aria-busy]="state.busy"
+            >
+              <span *ngIf="state.busy" class="cf-spinner" aria-hidden="true"></span>
+              Sign In
+            </button>
+          </ng-container>
+        </form>
+      </ng-container>
+
+      <ng-container *ngIf="viewState === 'FORGOT_EMAIL'">
+        <form [formGroup]="forgotEmailForm" (ngSubmit)="submitForgotEmail()">
+          <p class="auth-description">
+            Enter the email address associated with your account.
           </p>
-        </div>-->
-      </form>
-    </app-card>
+
+          <div class="form-group cf-form-field">
+            <label class="cf-form-field__label" for="recovery-email">
+              <span>Email Address</span>
+              <span class="cf-form-field__required" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="recovery-email"
+              type="email"
+              class="auth-native-input"
+              placeholder="Enter your email"
+              formControlName="email"
+              autocomplete="email"
+              aria-required="true"
+              [class.cf-form-field__control--invalid]="!!getForgotEmailError()"
+              [attr.aria-invalid]="getForgotEmailError() ? 'true' : null"
+              [attr.aria-describedby]="getForgotEmailError() ? 'recovery-email-error' : null"
+            />
+            <p *ngIf="getForgotEmailError() as message" id="recovery-email-error" class="cf-form-field__error">{{ message }}</p>
+          </div>
+
+          <div *ngIf="recoveryError" class="error-banner" role="alert" aria-live="polite">
+            {{ recoveryError }}
+          </div>
+
+          <button
+            type="submit"
+            class="cf-btn cf-btn-primary auth-submit"
+            [disabled]="recoveryLoading"
+            [attr.aria-busy]="recoveryLoading"
+          >
+            <span *ngIf="recoveryLoading" class="cf-spinner" aria-hidden="true"></span>
+            Submit Request
+          </button>
+
+          <div class="auth-footer">
+            <button type="button" class="auth-link auth-link-button" (click)="backToLogin()">
+              Back to Login
+            </button>
+          </div>
+        </form>
+      </ng-container>
+
+      <ng-container *ngIf="viewState === 'FORGOT_SUCCESS'">
+        <p class="auth-description" role="status">
+          {{ recoveryMessage }}
+        </p>
+
+        <button type="button" class="cf-btn cf-btn-primary auth-submit" (click)="backToLogin()">
+          Back to Login
+        </button>
+      </ng-container>
+    </div>
   </div>
 </div>
-

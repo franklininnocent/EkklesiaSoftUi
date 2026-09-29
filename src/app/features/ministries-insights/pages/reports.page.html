@@ -1,0 +1,91 @@
+<div class="insights-reports" *ngIf="loadingCatalog">
+  <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+</div>
+
+<app-cf-empty-state
+  *ngIf="!loadingCatalog && error && !report"
+  [title]="unauthorized ? 'Access denied' : 'Something went wrong'"
+  [description]="error"
+  [hasActions]="false"
+></app-cf-empty-state>
+
+<ng-container *ngIf="!loadingCatalog && catalog.length">
+  <div class="insights-reports__layout">
+    <aside class="insights-reports__nav" aria-label="Report catalog">
+      <button
+        type="button"
+        class="insights-reports__nav-item"
+        *ngFor="let item of catalog"
+        [class.is-active]="selectedType === item.type"
+        (click)="selectReport(item.type)"
+      >
+        <strong>{{ item.title }}</strong>
+      </button>
+    </aside>
+
+    <div class="insights-reports__main">
+      <div class="insights-reports__toolbar">
+        <div>
+          <h2 class="insights-reports__title">{{ selectedMeta()?.title || 'Report' }}</h2>
+          <p class="insights-reports__desc">{{ selectedMeta()?.description }}</p>
+        </div>
+        <div class="insights-reports__actions">
+          <div class="insights-reports__windows" *ngIf="selectedMeta()?.windowed" role="group" aria-label="Activity window">
+            <button
+              type="button"
+              class="cf-btn cf-btn-sm"
+              *ngFor="let w of windows"
+              [class.cf-btn-primary]="windowDays === w.days"
+              (click)="setWindow(w.days)"
+            >
+              {{ w.label }}
+            </button>
+          </div>
+          <button type="button" class="cf-btn cf-btn-secondary" (click)="exportCsv()" [disabled]="exporting || !selectedType">
+            {{ exporting ? 'Exporting…' : 'Export CSV' }}
+          </button>
+        </div>
+      </div>
+
+      <app-loading-skeleton *ngIf="loadingReport" type="card" [rows]="3"></app-loading-skeleton>
+
+      <div class="cf-inline-alert cf-panel" *ngIf="!loadingReport && error" role="alert">
+        <p>{{ error }}</p>
+      </div>
+
+      <ng-container *ngIf="!loadingReport && report as r">
+        <section class="cf-kpi-grid" aria-label="Report summary" *ngIf="summaryEntries().length">
+          <article class="cf-kpi" *ngFor="let entry of summaryEntries()">
+            <span>{{ entry.key }}</span>
+            <strong>{{ entry.value }}</strong>
+          </article>
+        </section>
+
+        <app-section-card title="Preview" *ngIf="previewRows().length; else emptyPreview">
+          <p class="insights-reports__hint" *ngIf="r.preview_truncated">Showing first rows. Export CSV for the full dataset (capped).</p>
+          <app-data-table>
+            <table>
+              <thead>
+                <tr>
+                  <th *ngFor="let key of previewKeys()">{{ headerLabel(key) }}</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of previewRows()">
+                  <td *ngFor="let key of previewKeys()">{{ cellValue(row, key) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </app-data-table>
+        </app-section-card>
+        <ng-template #emptyPreview>
+          <app-cf-empty-state
+            title="No rows in preview"
+            description="Summary metrics are available above. Export CSV if you need the full export."
+            [hasActions]="false"
+          ></app-cf-empty-state>
+        </ng-template>
+      </ng-container>
+    </div>
+  </div>
+</ng-container>

@@ -1,0 +1,51 @@
+<div
+  class="cf-datetime-field"
+  [class.cf-datetime-field--invalid]="invalid"
+  [class.cf-datetime-field--disabled]="disabled"
+  role="group"
+  [attr.aria-labelledby]="labelledById || null"
+>
+  <span class="sr-only" *ngIf="displaySummary">{{ displaySummary }}</span>
+
+  <div class="cf-datetime-field__date">
+    <span class="cf-datetime-field__icon" aria-hidden="true">📅</span>
+    <input
+      type="date"
+      class="cf-datetime-field__control"
+      [id]="dateInputId"
+      [value]="dateValue"
+      [min]="minDate"
+      [disabled]="disabled"
+      [attr.aria-label]="dateAriaLabel"
+      [attr.aria-invalid]="invalid"
+      (input)="onDateInput($event)"
+      (blur)="onBlur()"
+    />
+  </div>
+
+  <div class="cf-datetime-field__time">
+    <span class="cf-datetime-field__icon" aria-hidden="true">🕐</span>
+    <input
+      type="time"
+      class="cf-datetime-field__control"
+      [id]="timeInputId"
+      [value]="timeValue"
+      [min]="minTime"
+      [disabled]="disabled"
+      [attr.aria-label]="timeAriaLabel"
+      [attr.aria-invalid]="invalid"
+      (input)="onTimeInput($event)"
+      (blur)="onBlur()"
+    />
+  </div>
+
+  <button
+    type="button"
+    class="cf-datetime-field__clear"
+    *ngIf="(dateValue || timeValue) && !disabled"
+    (click)="clear()"
+    aria-label="Clear date and time"
+  >
+    Clear
+  </button>
+</div>

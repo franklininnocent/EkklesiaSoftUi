@@ -33,6 +33,7 @@
           [focusedMemberIndex]="focusedMemberIndex"
           (expandedChange)="onGroupExpandedChange(group.key, $event)"
           (selectMember)="onMemberSelect($event)"
+          (previewPhoto)="openPhotoViewer($event)"
         />
       </ng-container>
       <p *ngIf="groups.length === 0" class="family-relationship-navigator__empty">No members match your search.</p>
@@ -86,6 +87,7 @@
             [focused]="focusedMemberIndex === row.vm.memberIndex"
             [optionId]="'nav-member-' + row.vm.memberIndex"
             (selectMember)="onMemberSelect($event)"
+            (previewPhoto)="openPhotoViewer($event)"
           />
         </ng-container>
         <div [style.height.px]="virtualPaddingBottom"></div>
@@ -94,3 +96,12 @@
     </ng-template>
   </div>
 </nav>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>

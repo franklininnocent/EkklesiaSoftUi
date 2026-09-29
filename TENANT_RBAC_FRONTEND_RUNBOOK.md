@@ -125,8 +125,10 @@ If Jest reports missing `jest-environment-jsdom`, install/restore frontend test 
 Install Playwright dependencies (once):
 
 ```bash
-npx playwright install --with-deps chromium
+npx playwright install --with-deps chromium webkit
 ```
+
+Tablet and mobile sacrament smoke tests use WebKit (iPad / iPhone device profiles). Core marriage and baptism tests run on Chromium only.
 
 Run RBAC smoke suite (requires authenticated storage state files):
 
@@ -138,7 +140,148 @@ RBAC_TENANT_MEMBER_STORAGE_STATE=.auth/tenant-member.json \
 npm run e2e:rbac
 ```
 
-## 12) Release sign-off checklist
+## 12) Sacrament E2E suite
+
+Prerequisites:
+
+1. Laravel API running and reachable from the Angular dev server proxy.
+2. Angular app running (`npm start`).
+3. Authenticated tenant-admin Playwright storage state for the target parish tenant.
+
+### Create tenant-admin auth file (one-time)
+
+From `EkklesiaSoftUi`, with Angular running:
+
+```bash
+mkdir -p .auth
+npx playwright codegen http://localhost:4200 --save-storage=.auth/tenant-admin.json
+```
+
+Log in as a **tenant admin** for the parish you will seed (`SACRAMENT_E2E_TENANT_ID`). Close the codegen browser when done — the file is saved automatically.
+
+### Linux browser dependencies (tablet/mobile WebKit)
+
+If Playwright reports missing host dependencies:
+
+```bash
+sudo npx playwright install-deps
+```
+
+Environment:
+
+```bash
+export RBAC_E2E_BASE_URL=http://localhost:4200
+export RBAC_TENANT_ADMIN_STORAGE_STATE=.auth/tenant-admin.json
+export SACRAMENT_E2E_TENANT_ID=2
+```
+
+Use the numeric tenant id (or uuid) that matches the parish in `RBAC_TENANT_ADMIN_STORAGE_STATE`. Example above uses tenant `2` from local dev.
+
+Seed deterministic sacrament E2E members (idempotent; safe to re-run):
+
+```bash
+cd ../EkklesiaSoftApi
+SACRAMENT_E2E_TENANT_ID=2 php artisan db:seed --class=Modules\\Family\\Database\\Seeders\\SacramentE2eSeeder
+```
+
+Replace `2` with your parish tenant id (must match the tenant in `RBAC_TENANT_ADMIN_STORAGE_STATE`). Do **not** type angle brackets — those are documentation placeholders only.
+
+Run sacrament Playwright suite:
+
+```bash
+cd EkklesiaSoftUi
+npx playwright test e2e/sacraments
+```
+
+Core marriage/baptism tests run on Chromium only. Responsive smoke runs on desktop, tablet, and mobile projects.
+
+## 13) Bishop workflow E2E suite
+
+Prerequisites:
+
+1. Laravel API running and reachable from the Angular dev server proxy.
+2. Angular app running (`npm start`).
+3. Authenticated Playwright storage states:
+   - `.auth/tenant-admin.json` (parish tenant admin)
+   - `.auth/platform-admin.json` (Ekklesia reviewer with bishop approve permissions)
+4. Optional for member permission test: `.auth/tenant-member.json`
+
+Seed deterministic bishop fixtures for the parish tenant (idempotent):
+
+```bash
+cd ../EkklesiaSoftApi
+BISHOP_E2E_TENANT_ID=2 php artisan db:seed --class=Modules\\EcclesiasticalData\\Database\\Seeders\\BishopE2eSeeder
+```
+
+Replace `2` with the tenant id that matches `RBAC_TENANT_ADMIN_STORAGE_STATE`.
+
+Run bishop Playwright suite:
+
+```bash
+cd EkklesiaSoftUi
+RBAC_E2E_BASE_URL=http://localhost:4200 \
+RBAC_TENANT_ADMIN_STORAGE_STATE=.auth/tenant-admin.json \
+RBAC_PLATFORM_ADMIN_STORAGE_STATE=.auth/platform-admin.json \
+RBAC_TENANT_MEMBER_STORAGE_STATE=.auth/tenant-member.json \
+npm run e2e:bishops
+```
+
+Coverage:
+
+- Church **Diocesan Bishop** tab (leadership card + report wizard)
+- Church submission appears in **Your update requests**
+- Platform **Bishop Update Queue** review and approve
+- Tenant member without bishop permissions does not see the tab
+
+## 14) Subscription expired read-only E2E suite
+
+Prerequisites:
+
+1. Laravel API running with `TENANT_SUBSCRIPTION_WRITE_POLICY=read_only_when_expired` (default).
+2. Angular app running (`npm start`).
+3. **Do not** use the RBAC parish tenant — this suite uses isolated `e2e-expired-parish` / `e2e-grace-parish`.
+
+Seed deterministic fixtures (idempotent; safe to re-run before each suite, especially after renewal tests):
+
+```bash
+cd ../EkklesiaSoftApi
+php artisan db:seed --class=Modules\\Tenants\\Database\\Seeders\\SubscriptionExpiredE2eSeeder
+```
+
+Note the printed tenant ids. Admins: `e2e-expired-admin@example.test` / `e2e-grace-admin@example.test` (password: `password`).
+
+Create Playwright storage states (one-time per environment):
+
+```bash
+cd EkklesiaSoftUi
+mkdir -p .auth
+npx playwright codegen http://localhost:4200 --save-storage=.auth/expired-tenant-admin.json
+# Log in as e2e-expired-admin@example.test
+
+npx playwright codegen http://localhost:4200 --save-storage=.auth/grace-tenant-admin.json
+# Log in as e2e-grace-admin@example.test
+```
+
+Run:
+
+```bash
+export RBAC_E2E_BASE_URL=http://localhost:4200
+export SUBSCRIPTION_EXPIRED_E2E_TENANT_ID=<id-from-seeder>
+export SUBSCRIPTION_EXPIRED_E2E_STORAGE_STATE=.auth/expired-tenant-admin.json
+export SUBSCRIPTION_GRACE_E2E_STORAGE_STATE=.auth/grace-tenant-admin.json
+npm run e2e:subscription-expired
+```
+
+Renewal scenario (optional; requires platform admin storage):
+
+```bash
+export RBAC_PLATFORM_ADMIN_STORAGE_STATE=.auth/platform-admin.json
+npm run e2e:subscription-expired
+```
+
+Re-run the seeder after renewal tests to restore expired dates.
+
+## 15) Release sign-off checklist
 
 - [ ] Guard and route access validated for all user contexts
 - [ ] Roles/Permissions/Assign/User tabs validated in tenant mode

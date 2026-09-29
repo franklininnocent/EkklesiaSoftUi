@@ -1,0 +1,90 @@
+<div class="sa-stack sa-plan-tenants">
+  <header class="sa-plan-tenants-chrome">
+    <div class="sa-plan-tenants-chrome__identity">
+      <h3 class="sa-plan-tenants-chrome__title">Churches</h3>
+      <p class="sa-muted">Churches currently assigned to this plan.</p>
+      <p class="cf-meta" *ngIf="meta" role="status" aria-live="polite">
+        {{ meta.total }} {{ meta.total === 1 ? 'church' : 'churches' }}
+        <ng-container *ngIf="hasActiveFilters"> matching filters</ng-container>
+      </p>
+    </div>
+
+    <div class="sa-plan-tenants-chrome__controls">
+      <div class="sa-plan-tenants-toolbar">
+        <app-list-toolbar
+          searchPlaceholder="Search church name"
+          [searchValue]="search"
+          [filterCount]="activeFilterCount"
+          (searchChange)="onSearchFromToolbar($event)"
+          (filtersOpened)="showFilters = true">
+        </app-list-toolbar>
+      </div>
+
+      <app-advanced-search-panel
+        mode="sidepanel"
+        [fields]="filterFields"
+        [isExpanded]="showFilters"
+        (search)="onFiltersApplied($event)"
+        (clear)="onFiltersCleared()"
+        (close)="showFilters = false">
+      </app-advanced-search-panel>
+    </div>
+  </header>
+
+  <div *ngIf="loading && rows.length === 0" class="cf-loading-block" role="status" aria-live="polite" aria-busy="true">
+    <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert" role="alert">
+    <div>
+      <strong>Could not load churches</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <app-cf-empty-state
+    *ngIf="!loading && !error && rows.length === 0"
+    [title]="hasActiveFilters ? 'No churches match your filters' : 'No churches found'"
+    [description]="hasActiveFilters ? 'Try adjusting your search or filters to find what you\'re looking for.' : 'No church is on this plan yet.'"
+    icon="⌂"
+    [hasActions]="hasActiveFilters">
+    <button *ngIf="hasActiveFilters" type="button" class="cf-btn cf-btn-primary" (click)="clearAllFilters()">
+      Clear filters
+    </button>
+  </app-cf-empty-state>
+
+  <app-data-table *ngIf="rows.length > 0" [ariaBusy]="loading">
+    <caption class="sr-only">Churches on {{ plan.name }}</caption>
+    <thead>
+      <tr>
+        <th scope="col">Church</th>
+        <th scope="col">Version</th>
+        <th scope="col">Billing</th>
+        <th scope="col">Agreed price</th>
+        <th scope="col">Access</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let row of rows">
+        <td>
+          <a [routerLink]="['/tenants', row.tenant_id]">{{ row.tenant_name }}</a>
+          <div class="sa-muted" *ngIf="row.tenant_tier">{{ row.tenant_tier }}</div>
+        </td>
+        <td>v{{ row.version_number }}</td>
+        <td>{{ row.billing_interval === 'ANNUAL' ? 'Yearly' : row.billing_interval === 'MONTHLY' ? 'Monthly' : 'Custom' }}</td>
+        <td>
+          <ng-container *ngIf="row.contracted_price !== null; else listPrice">{{ row.contracted_price | cfCurrency: row.currency_code }}</ng-container>
+          <ng-template #listPrice><span class="sa-muted">List price</span></ng-template>
+        </td>
+        <td><app-status-badge [label]="lifecycleLabel(row.lifecycle_status)" [tone]="lifecycleTone(row.lifecycle_status)"></app-status-badge></td>
+      </tr>
+    </tbody>
+  </app-data-table>
+
+  <nav class="sa-pager" *ngIf="meta && meta.last_page > 1" aria-label="Pages">
+    <button type="button" class="cf-btn" (click)="goTo(page - 1)" [disabled]="loading || page <= 1">Previous</button>
+    <span>Page {{ meta.current_page }} of {{ meta.last_page }}</span>
+    <button type="button" class="cf-btn" (click)="goTo(page + 1)" [disabled]="loading || page >= meta.last_page">Next</button>
+  </nav>
+</div>

@@ -1,23 +1,47 @@
+/**
+ * Dashboard version 2.0 — two-tab architecture (Overview | Operations).
+ * Phase 2: Overview hierarchy. Phase 3: Operations workspace. Phase 4: lazy-load Operations APIs.
+ * Restore Version 1.0 from: ./v1.0/ (see v1.0/VERSION.md).
+ */
 import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
-import { Observable, Subject } from 'rxjs';
-import { take, takeUntil } from 'rxjs/operators';
+import { Observable, Subject, of } from 'rxjs';
+import { catchError, distinctUntilChanged, filter, map, switchMap, take, takeUntil } from 'rxjs/operators';
 
 import { AppState } from '@core/store';
 import { User } from '@core/models';
-import { BCC, BCCStatistics, FamilyMember } from '@core/models/family.model';
+import { BCC, BCCStatistics, FamilyStatistics } from '@core/models/family.model';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { FamilyService } from '@core/services/family.service';
 import { BCCService } from '@core/services/bcc.service';
 import { MemberService } from '@features/members/services/member.service';
 import { SacramentService } from '@features/settings/sacraments/services/sacrament.service';
-import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 import { AuthService } from '@core/services/auth.service';
 import { DonationsService } from '@features/donations/services/donations.service';
 import { OperationsDashboardSummary } from '@features/donations/models/donation.model';
+import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
+import {
+  MinistriesAuditLogEntry,
+  MinistriesDashboardSummary,
+} from '@features/ministries-associations/models/ministries.model';
+import { TenantService } from '@core/services/tenant.service';
+import { TenantStatisticsResponse } from '@core/models/tenant.model';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { cfFormatMoney } from '@shared/utils/cf-intl.util';
+import { PastoralCareService } from '@features/pastoral-care/services/pastoral-care.service';
+import {
+  PastoralCareAlert,
+  PastoralCareRequest,
+  PastoralCareStaff,
+} from '@features/pastoral-care/models/pastoral-care.model';
+
+export type DashboardTab = 'overview' | 'operations';
 
 interface HeroKpi {
   id: string;
@@ -30,63 +54,28 @@ interface HeroKpi {
   sparkline: number[];
 }
 
-interface ScheduleItem {
-  time: string;
-  title: string;
-  detail: string;
-  status: 'confirmed' | 'pending' | 'action';
-  category: 'service' | 'volunteer' | 'facility';
-}
-
-interface VolunteerShift {
-  team: string;
-  filled: number;
-  required: number;
-  status: 'healthy' | 'watch' | 'critical';
-}
-
-interface CareAlert {
-  id: string;
-  title: string;
-  count: number;
-  priority: 'urgent' | 'normal';
-  action: string;
-}
-
-interface PastoralTask {
-  id: string;
-  title: string;
-  assignee: string;
-  due: string;
-  status: 'open' | 'assigned';
-}
-
 interface LifeGroupMetric {
   label: string;
   value: string;
   detail: string;
 }
 
-interface GivingChannel {
+export type FinancialHubState = 'unauthorized' | 'loading' | 'ready' | 'error';
+export type DataLoadState = 'idle' | 'loading' | 'ready' | 'error';
+
+interface GivingChannelRow {
   channel: string;
   amount: string;
   share: number;
 }
 
-interface GivingSummary {
-  weekly: string;
-  monthly: string;
-  budgetGoal: string;
-  budgetPercent: number;
-  recurringEnrollment: string;
-  recurringTrend: 'up' | 'down';
-}
-
-interface ChartMonth {
-  month: string;
-  attendance: number;
-  giving: number;
-}
+const PAYMENT_METHOD_LABELS: Record<string, string> = {
+  cash: 'Cash',
+  bank_transfer: 'Bank transfer',
+  cheque: 'Cheque',
+  online_placeholder: 'Online',
+  adjustment: 'Adjustment',
+};
 
 interface BccHighlight {
   id: string;
@@ -122,7 +111,7 @@ interface CelebrationItem {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CfCurrencyPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -134,7 +123,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
   private memberService = inject(MemberService);
   private sacramentService = inject(SacramentService);
   private authService = inject(AuthService);
+  private supportSessions = inject(SupportSessionService);
   private donationsService = inject(DonationsService);
+  private pastoralCare = inject(PastoralCareService);
+  private ministriesApi = inject(MinistriesApiService);
+  private subscriptionAccess = inject(SubscriptionAccessService);
+  private entitlements = inject(EntitlementService);
+  private tenantService = inject(TenantService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
@@ -142,164 +137,41 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   currentUser$: Observable<User | null>;
   today = new Date();
-  searchQuery = '';
-  readonly maxAttendance = 1350;
-  readonly maxGiving = 180;
   readonly chartBarMaxHeightPx = 140;
 
-  heroKpis: HeroKpi[] = [
-    {
-      id: 'attendance',
-      label: 'Active Attendance',
-      value: '1,284',
-      sublabel: 'Last Sunday · In-person + Online',
-      change: '+4.2%',
-      trend: 'up',
-      accent: 'forest',
-      sparkline: [1180, 1210, 1195, 1240, 1268, 1275, 1284]
-    },
-    {
-      id: 'visitors',
-      label: 'New Visitors',
-      value: '47',
-      sublabel: 'This month · 68% assimilation rate',
-      change: '+12%',
-      trend: 'up',
-      accent: 'indigo',
-      sparkline: [28, 31, 35, 38, 41, 44, 47]
-    },
-    {
-      id: 'volunteers',
-      label: 'Sunday Volunteer Readiness',
-      value: '78%',
-      sublabel: 'Next service · 9:00 AM',
-      change: '-6%',
-      trend: 'down',
-      accent: 'amber',
-      sparkline: [92, 88, 85, 84, 82, 80, 78]
-    },
-    {
-      id: 'tithes',
-      label: 'Weekly Tithes',
-      value: '$42,850',
-      sublabel: 'vs. $45,000 budget goal',
-      change: '+3.8%',
-      trend: 'up',
-      accent: 'slate',
-      sparkline: [38200, 39500, 40100, 41200, 41800, 42100, 42850]
-    }
-  ];
-
-  attendanceBreakdown = {
-    inPerson: 892,
-    online: 392,
-    inPersonChange: '+3.1%',
-    onlineChange: '+6.4%'
-  };
-
-  growthMetrics = {
-    newMembers: 34,
-    assimilationRate: 68,
-    visitorsToActive: 23
-  };
+  heroKpis: HeroKpi[] = [];
+  registryState: DataLoadState = 'idle';
+  bccStatsState: DataLoadState = 'idle';
+  platformStatsState: DataLoadState = 'idle';
+  platformStats: TenantStatisticsResponse['data'] | null = null;
+  private platformStatsUserId: number | null = null;
+  familyStats: FamilyStatistics | null = null;
+  activeFamilies = 0;
+  activeMembers = 0;
+  membersCreatedThisMonth = 0;
+  familiesWithoutBcc = 0;
 
   lifeGroups: LifeGroupMetric[] = [
-    { label: 'Active BCCs', value: '—', detail: 'Loading group count...' },
-    { label: 'Utilization', value: '—', detail: 'Families placed in BCCs' },
-    { label: 'BCC Leaders', value: '—', detail: 'Leaders serving groups' }
+    { label: 'Active BCCs', value: '—', detail: 'Loading group count…' },
+    { label: 'Family coverage', value: '—', detail: 'Families assigned to a Life Group' },
+    { label: 'BCC Leaders', value: '—', detail: 'Active BCC leaders across parish' }
   ];
 
-  todaySchedule: ScheduleItem[] = [
-    {
-      time: '7:30 AM',
-      title: 'Media Team Check-in',
-      detail: 'Main Sanctuary · Lead: David Okonkwo',
-      status: 'confirmed',
-      category: 'volunteer'
-    },
-    {
-      time: '8:15 AM',
-      title: 'Kids Ministry Briefing',
-      detail: 'Building B · 4 volunteers still unconfirmed',
-      status: 'action',
-      category: 'volunteer'
-    },
-    {
-      time: '9:00 AM',
-      title: 'Sunday Morning Service',
-      detail: 'Main Sanctuary · Worship + Message',
-      status: 'confirmed',
-      category: 'service'
-    },
-    {
-      time: '10:45 AM',
-      title: 'Second Service Overflow',
-      detail: 'Fellowship Hall streaming feed',
-      status: 'pending',
-      category: 'service'
-    },
-    {
-      time: '12:30 PM',
-      title: 'Youth Wing Booking',
-      detail: 'New Members Lunch · 86 registered',
-      status: 'confirmed',
-      category: 'facility'
-    },
-    {
-      time: '4:00 PM',
-      title: 'Evening Prayer Gathering',
-      detail: 'Chapel · Pastor Elena Ramirez',
-      status: 'confirmed',
-      category: 'service'
-    }
-  ];
+  careAlerts: PastoralCareAlert[] = [];
+  pastoralTasks: PastoralCareRequest[] = [];
+  pastoralStaff: PastoralCareStaff[] = [];
+  assigningTaskId: string | null = null;
+  selectedAssigneeId: number | null = null;
+  assigningBusy = false;
+  canViewPastoral = false;
+  canAssignPastoral = false;
+  pastoralLoaded = false;
+  loadingPastoral = false;
+  pastoralError = false;
 
-  volunteerShifts: VolunteerShift[] = [
-    { team: 'Ushers & Greeters', filled: 18, required: 20, status: 'healthy' },
-    { team: 'Worship & Production', filled: 14, required: 14, status: 'healthy' },
-    { team: 'Kids Ministry', filled: 9, required: 15, status: 'critical' },
-    { team: 'Coffee & Hospitality', filled: 7, required: 10, status: 'watch' },
-    { team: 'Parking & Security', filled: 6, required: 8, status: 'watch' }
-  ];
-
-  careAlerts: CareAlert[] = [
-    { id: '1', title: 'Hospital visit requests', count: 3, priority: 'urgent', action: 'Assign pastoral team' },
-    { id: '2', title: 'Member follow-ups pending', count: 2, priority: 'urgent', action: 'Review care queue' },
-    { id: '3', title: 'Prayer chain responses due', count: 5, priority: 'normal', action: 'Send updates' },
-    { id: '4', title: 'New believer discipleship', count: 4, priority: 'normal', action: 'Match mentors' }
-  ];
-
-  pastoralTasks: PastoralTask[] = [
-    { id: 't1', title: 'Call Maria Santos — surgery recovery', assignee: 'Pastor James', due: 'Today', status: 'assigned' },
-    { id: 't2', title: 'Home visit — Wilson family (new baby)', assignee: 'Unassigned', due: 'Tomorrow', status: 'open' },
-    { id: 't3', title: 'Bereavement follow-up — Thompson family', assignee: 'Care Team Lead', due: 'Jun 7', status: 'assigned' },
-    { id: 't4', title: 'Membership class check-in — April cohort', assignee: 'Executive Pastor', due: 'Jun 8', status: 'open' }
-  ];
-
-  givingSummary: GivingSummary = {
-    weekly: '$42,850',
-    monthly: '$168,400',
-    budgetGoal: '$180,000',
-    budgetPercent: 94,
-    recurringEnrollment: '+18 new enrollments',
-    recurringTrend: 'up'
-  };
-
-  givingChannels: GivingChannel[] = [
-    { channel: 'Mobile App', amount: '$18,240', share: 43 },
-    { channel: 'Web Portal', amount: '$11,620', share: 27 },
-    { channel: 'Text-to-Give', amount: '$6,480', share: 15 },
-    { channel: 'Physical Plate', amount: '$6,510', share: 15 }
-  ];
-
-  attendanceGivingChart: ChartMonth[] = [
-    { month: 'Jan', attendance: 1120, giving: 148 },
-    { month: 'Feb', attendance: 1155, giving: 152 },
-    { month: 'Mar', attendance: 1188, giving: 158 },
-    { month: 'Apr', attendance: 1210, giving: 161 },
-    { month: 'May', attendance: 1245, giving: 165 },
-    { month: 'Jun', attendance: 1284, giving: 168 }
-  ];
+  financialHubState: FinancialHubState = 'unauthorized';
+  operationsSummary: OperationsDashboardSummary | null = null;
+  loadingFinancial = false;
 
   totalBCCs = 0;
   totalMembers = 0;
@@ -316,30 +188,144 @@ export class DashboardComponent implements OnInit, OnDestroy {
   loadingBccDetails = false;
   loadingSacraments = false;
   loadingCelebrations = false;
-  operationsSummary: OperationsDashboardSummary | null = null;
-  loadingFinancial = false;
   canViewFinancial = false;
+
+  private readonly financialLoad$ = new Subject<void>();
+
+  showMinistriesSection = false;
+  loadingMinistries = false;
+  ministriesSummary: MinistriesDashboardSummary | null = null;
+  ministriesActivity: MinistriesAuditLogEntry[] = [];
+  canCreateOrganization = false;
+  canManageMembers = false;
+  canManageLeadership = false;
+  canConfigureTaxonomies = false;
+  canViewTenantAuditLogs = false;
+
+  /** Dashboard v2.0 tab state — default Overview. */
+  activeTab: DashboardTab = 'overview';
+  /** True after Operations is opened once; keeps panel mounted for the session. */
+  operationsVisited = false;
+  readonly dashboardTabs: DashboardTab[] = ['overview', 'operations'];
+  readonly dashboardTabLabels: Record<DashboardTab, string> = {
+    overview: 'Overview',
+    operations: 'Operations',
+  };
+
+  /** Session cache — set true only after a successful Operations-scoped response. */
+  private bccHighlightsLoaded = false;
+  private celebrationsLoaded = false;
+  private sacramentsLoaded = false;
+  private ministriesActivityLoaded = false;
+
+  loadingMinistriesActivity = false;
+  bccHighlightsError = false;
+  celebrationsError = false;
+  celebrationsUnauthorized = false;
+  sacramentsError = false;
+  ministriesActivityError = false;
+
+  private readonly ministriesActionLabels: Record<string, string> = {
+    'organization.created': 'Organization created',
+    'organization.updated': 'Organization updated',
+    'organization.status_changed': 'Organization status changed',
+    'organization.deleted': 'Organization deleted',
+    'organization.restored': 'Organization restored',
+    'membership.enrolled': 'Member enrolled',
+    'membership.status_changed': 'Membership status changed',
+    'membership.re_enrolled': 'Member re-enrolled',
+    'guest_member.created': 'Guest created',
+    'guest_member.updated': 'Guest updated',
+    'guest_member.linked_to_parishioner': 'Guest linked',
+    'leadership.assigned': 'Leadership assigned',
+    'leadership.terminated': 'Leadership terminated',
+    'leadership.handover': 'Leadership handed over',
+  };
 
   constructor() {
     this.currentUser$ = this.store.select(selectCurrentUser);
   }
 
   ngOnInit(): void {
-    this.weekRangeLabel = this.formatWeekRangeLabel();
-    this.loadFamilyStatistics();
-    this.loadBCCDetails();
-    this.store.select(selectCurrentUser).pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
-      if (user?.tenant_id) {
-        this.tenantId = Number(user.tenant_id);
-        this.loadSacramentDetails();
-      }
-      this.canViewFinancial = this.authService.canAccessDonations(user);
-      if (this.canViewFinancial) {
-        this.loadOperationsDashboard();
-      }
-      this.cdr.markForCheck();
-    });
-    this.loadMemberCelebrations();
+    this.weekRangeLabel = 'This week';
+    this.setupFinancialHubLoader();
+
+    this.supportSessions.session$
+      .pipe(
+        map((session) => session?.id ?? null),
+        distinctUntilChanged(),
+        filter((id) => id !== null),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        this.store.select(selectCurrentUser).pipe(take(1)).subscribe((user) => {
+          this.refreshDashboardAccess(user);
+        });
+      });
+
+    // Wait for auth user (post-login store is briefly null until loadUserSuccess).
+    // Keep listening so late user hydration still triggers data loads without refresh.
+    this.store
+      .select(selectCurrentUser)
+      .pipe(
+        distinctUntilChanged(
+          (a, b) => a?.id === b?.id && a?.tenant_id === b?.tenant_id
+        ),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((user) => {
+        // Wait for hydrated user — a null emission must not wipe in-flight/loaded dashboard data.
+        if (!user) {
+          return;
+        }
+        if (user.tenant_id) {
+          this.tenantId = Number(user.tenant_id);
+        }
+        this.refreshDashboardAccess(user);
+        this.cdr.markForCheck();
+      });
+  }
+
+  private refreshDashboardAccess(user: User | null): void {
+    const isTenantActor = !!user?.tenant_id && !this.authService.isPlatformActor(user);
+    const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
+    const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
+
+    if (hasTenantContext) {
+      this.platformStats = null;
+      this.platformStatsState = 'idle';
+      this.platformStatsUserId = null;
+      this.loadFamilyStatistics();
+      this.loadBccStatistics();
+    } else if (user && this.authService.canManageTenants(user)) {
+      this.registryState = 'idle';
+      this.bccStatsState = 'idle';
+      this.loadPlatformStatistics(user.id);
+    } else {
+      this.platformStats = null;
+      this.platformStatsState = 'idle';
+      this.platformStatsUserId = null;
+      this.registryState = 'idle';
+      this.bccStatsState = 'idle';
+      this.rebuildHeroKpis();
+    }
+
+    this.canViewFinancial = hasTenantContext && this.authService.canAccessDonations(user, { hasActiveSupportSession });
+    if (this.canViewFinancial) {
+      this.loadOperationsDashboard();
+    } else {
+      this.financialHubState = 'unauthorized';
+      this.operationsSummary = null;
+      this.loadingFinancial = false;
+      this.rebuildHeroKpis();
+    }
+    this.canViewPastoral = isTenantActor && this.authService.canAccessPastoral(user);
+    this.canAssignPastoral = this.authService.hasPermission('pastoral.care.assign');
+    this.resolveMinistriesAccess(user);
+    if (this.operationsVisited) {
+      this.loadOperationsScopedData();
+    }
+    this.cdr.markForCheck();
   }
 
   ngOnDestroy(): void {
@@ -347,81 +333,708 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  selectTab(tab: DashboardTab): void {
+    if (this.activeTab === tab) {
+      return;
+    }
+    this.activeTab = tab;
+    if (tab === 'operations') {
+      this.operationsVisited = true;
+      this.ensureOperationsDataLoaded();
+    }
+    this.cdr.markForCheck();
+  }
+
+  onDashboardTabKeydown(event: KeyboardEvent): void {
+    const key = event.key;
+    if (key !== 'ArrowLeft' && key !== 'ArrowRight' && key !== 'Home' && key !== 'End') {
+      return;
+    }
+
+    event.preventDefault();
+    const tabs = this.dashboardTabs;
+    const currentIndex = tabs.indexOf(this.activeTab);
+    let nextIndex = currentIndex;
+
+    if (key === 'ArrowLeft') {
+      nextIndex = currentIndex <= 0 ? tabs.length - 1 : currentIndex - 1;
+    } else if (key === 'ArrowRight') {
+      nextIndex = currentIndex >= tabs.length - 1 ? 0 : currentIndex + 1;
+    } else if (key === 'Home') {
+      nextIndex = 0;
+    } else {
+      nextIndex = tabs.length - 1;
+    }
+
+    const nextTab = tabs[nextIndex];
+    this.selectTab(nextTab);
+    queueMicrotask(() => {
+      document.getElementById(this.dashboardTabId(nextTab))?.focus();
+    });
+  }
+
+  /** Fetch Operations-only APIs when needed; skip payloads already cached this session. */
+  private ensureOperationsDataLoaded(): void {
+    this.loadOperationsScopedData();
+  }
+
+  private loadOperationsScopedData(): void {
+    if (!this.bccHighlightsLoaded && !this.loadingBccDetails) {
+      this.loadBccHighlights();
+    }
+
+    if (!this.celebrationsLoaded && !this.loadingCelebrations) {
+      this.loadMemberCelebrations();
+    }
+
+    if (!this.sacramentsLoaded && !this.loadingSacraments && this.tenantId) {
+      this.loadSacramentDetails();
+    }
+
+    if (
+      this.showMinistriesSection &&
+      this.canViewTenantAuditLogs &&
+      !this.ministriesActivityLoaded &&
+      !this.loadingMinistriesActivity
+    ) {
+      this.loadMinistriesActivity();
+    }
+
+    if (this.canViewPastoral && !this.pastoralLoaded && !this.loadingPastoral) {
+      this.loadPastoralWorkflow();
+    }
+  }
+
+  retryBccHighlights(): void {
+    this.loadBccHighlights();
+  }
+
+  retryMemberCelebrations(): void {
+    this.celebrationsLoaded = false;
+    this.loadMemberCelebrations();
+  }
+
+  retryPastoralWorkflow(): void {
+    this.pastoralLoaded = false;
+    this.loadPastoralWorkflow();
+  }
+
+  retrySacramentDetails(): void {
+    this.loadSacramentDetails();
+  }
+
+  retryMinistriesActivity(): void {
+    this.loadMinistriesActivity();
+  }
+
+  dashboardTabId(tab: DashboardTab): string {
+    return `cd-dashboard-tab-${tab}`;
+  }
+
+  dashboardPanelId(tab: DashboardTab): string {
+    return `cd-dashboard-panel-${tab}`;
+  }
+
   loadFamilyStatistics(): void {
+    this.registryState = 'loading';
+    this.rebuildHeroKpis();
+    this.cdr.markForCheck();
+
     this.familyService.getStatistics()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            this.totalFamilies = response.data.total_families || 0;
-            this.totalMembers = response.data.total_members || 0;
-            if (this.totalMembers > 0) {
-              const assimilation = Math.min(95, Math.round((this.totalMembers / Math.max(this.totalMembers, 200)) * 68));
-              this.growthMetrics.newMembers = Math.max(this.growthMetrics.newMembers, Math.round(this.totalMembers * 0.024));
-              this.growthMetrics.assimilationRate = assimilation;
-              this.heroKpis[1].sublabel = `This month · ${assimilation}% assimilation rate`;
-            }
+            this.familyStats = response.data;
+            this.totalFamilies = response.data.total_families ?? 0;
+            this.totalMembers = response.data.total_members ?? 0;
+            this.activeFamilies = response.data.active_families ?? 0;
+            this.activeMembers = response.data.active_members ?? 0;
+            this.membersCreatedThisMonth = response.data.members_created_this_month ?? 0;
+            this.familiesWithoutBcc = response.data.families_without_bcc ?? 0;
+            this.registryState = 'ready';
+            this.updateLifeGroupCoverage();
+          } else {
+            this.registryState = 'error';
           }
+          this.rebuildHeroKpis();
           this.cdr.markForCheck();
         },
-        error: () => this.cdr.markForCheck()
+        error: (err) => {
+          this.registryState = 'error';
+          this.rebuildHeroKpis();
+          this.cdr.markForCheck();
+        }
       });
   }
 
-  loadOperationsDashboard(): void {
-    this.loadingFinancial = true;
-    this.donationsService.getOperationsDashboard().pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        this.operationsSummary = response.data ?? null;
-        this.applyFinancialSnapshot(this.operationsSummary);
-        this.loadingFinancial = false;
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.loadingFinancial = false;
-        this.cdr.markForCheck();
-      }
-    });
+  retryRegistry(): void {
+    this.loadFamilyStatistics();
   }
 
-  private applyFinancialSnapshot(summary: OperationsDashboardSummary | null): void {
-    if (!summary?.financial) {
+  retryPlatformStatistics(): void {
+    const userId = this.platformStatsUserId;
+    this.platformStatsUserId = null;
+    this.platformStatsState = 'idle';
+    if (userId != null) {
+      this.loadPlatformStatistics(userId);
+    }
+  }
+
+  private loadPlatformStatistics(userId: number): void {
+    if (
+      this.platformStatsUserId === userId
+      && (this.platformStatsState === 'loading' || this.platformStatsState === 'ready')
+    ) {
       return;
     }
 
-    const monthCollected = summary.financial.totals?.current_month_collected ?? 0;
-    const outstanding = summary.financial.totals?.pending_dues ?? 0;
-    const health = summary.financial.health;
+    this.platformStatsUserId = userId;
+    this.platformStatsState = 'loading';
+    this.rebuildHeroKpis();
+    this.cdr.markForCheck();
 
-    this.heroKpis[3] = {
-      ...this.heroKpis[3],
-      label: 'Collections This Month',
-      value: this.formatCurrency(monthCollected),
-      sublabel: `${summary.financial.families?.participation_rate ?? 0}% family participation`,
-      change: health?.label ?? 'Live',
-      trend: health?.status === 'risk' ? 'down' : 'up'
-    };
+    this.tenantService.getStatistics()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.platformStats = response.data;
+            this.platformStatsState = 'ready';
+          } else {
+            this.platformStats = null;
+            this.platformStatsState = 'error';
+          }
+          this.rebuildHeroKpis();
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.platformStats = null;
+          this.platformStatsState = 'error';
+          this.rebuildHeroKpis();
+          this.cdr.markForCheck();
+        },
+      });
+  }
 
-    this.givingSummary = {
-      weekly: this.formatCurrency(monthCollected * 0.25),
-      monthly: this.formatCurrency(monthCollected),
-      budgetGoal: this.formatCurrency(Math.max(monthCollected, outstanding + monthCollected)),
-      budgetPercent: monthCollected > 0 ? Math.min(100, Math.round((monthCollected / Math.max(outstanding + monthCollected, 1)) * 100)) : 0,
-      recurringEnrollment: `${summary.financial.attention_summary?.count ?? 0} families need follow-up`,
-      recurringTrend: (summary.financial.attention_summary?.count ?? 0) > 0 ? 'down' : 'up'
+  private setupFinancialHubLoader(): void {
+    this.financialLoad$.pipe(
+      switchMap(() => {
+        this.loadingFinancial = true;
+        this.financialHubState = 'loading';
+        this.operationsSummary = null;
+        this.rebuildHeroKpis();
+        this.cdr.markForCheck();
+
+        return this.donationsService.getOperationsDashboard().pipe(
+          map((response) => ({ ok: true as const, data: response.data ?? null })),
+          catchError((error) => of({
+            ok: false as const,
+            status: error?.status ?? 0,
+          }))
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe((result) => {
+      this.loadingFinancial = false;
+
+      if (!result.ok) {
+        this.operationsSummary = null;
+        this.financialHubState = result.status === 403 ? 'unauthorized' : 'error';
+        this.rebuildHeroKpis();
+        this.cdr.markForCheck();
+        return;
+      }
+
+      if (!result.data?.financial) {
+        this.operationsSummary = null;
+        this.financialHubState = 'error';
+        this.rebuildHeroKpis();
+        this.cdr.markForCheck();
+        return;
+      }
+
+      this.operationsSummary = result.data;
+      this.financialHubState = 'ready';
+      this.applyFinancialSnapshot(result.data);
+      this.rebuildHeroKpis();
+      this.cdr.markForCheck();
+    });
+  }
+
+  loadOperationsDashboard(): void {
+    if (!this.canViewFinancial) {
+      this.financialHubState = 'unauthorized';
+      return;
+    }
+    this.financialLoad$.next();
+  }
+
+  retryFinancialHub(): void {
+    this.loadOperationsDashboard();
+  }
+
+  private applyFinancialSnapshot(_summary: OperationsDashboardSummary): void {
+    // Hero KPIs rebuilt in rebuildHeroKpis() from operationsSummary.
+  }
+
+  private rebuildHeroKpis(): void {
+    const kpis: HeroKpi[] = [];
+
+    if (this.platformStatsState === 'loading') {
+      kpis.push(this.buildPlaceholderKpi('active-churches', 'Active churches', 'indigo'));
+      kpis.push(this.buildPlaceholderKpi('churches', 'Churches', 'amber'));
+    } else if (this.platformStatsState === 'ready' && this.platformStats) {
+      kpis.push({
+        id: 'active-churches',
+        label: 'Active churches',
+        value: this.formatCompactNumber(this.platformStats.active_tenants),
+        sublabel: `${this.formatCompactNumber(this.platformStats.total_tenants)} churches`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'indigo',
+        sparkline: [],
+      });
+      kpis.push({
+        id: 'churches-trial',
+        label: 'In trial',
+        value: this.formatCompactNumber(this.platformStats.in_trial),
+        sublabel: `${this.formatCompactNumber(this.platformStats.subscribed)} subscribed`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'amber',
+        sparkline: [],
+      });
+    } else if (this.platformStatsState === 'error') {
+      kpis.push(this.buildErrorKpi('active-churches', 'Active churches', 'indigo'));
+      kpis.push(this.buildErrorKpi('churches', 'Churches', 'amber'));
+    } else if (this.registryState === 'loading') {
+      kpis.push(this.buildPlaceholderKpi('active-families', 'Active Families', 'indigo'));
+      kpis.push(this.buildPlaceholderKpi('active-members', 'Active Members', 'amber'));
+    } else if (this.registryState === 'idle') {
+      kpis.push(this.buildIdleKpi('active-families', 'Active Families', 'indigo'));
+      kpis.push(this.buildIdleKpi('active-members', 'Active Members', 'amber'));
+    } else if (this.registryState === 'error') {
+      kpis.push(this.buildErrorKpi('active-families', 'Active Families', 'indigo'));
+      kpis.push(this.buildErrorKpi('active-members', 'Active Members', 'amber'));
+    } else {
+      kpis.push({
+        id: 'active-families',
+        label: 'Active Families',
+        value: this.formatCompactNumber(this.activeFamilies),
+        sublabel: `${this.formatCompactNumber(this.totalFamilies)} total families`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'indigo',
+        sparkline: [],
+      });
+      kpis.push({
+        id: 'active-members',
+        label: 'Active Members',
+        value: this.formatCompactNumber(this.activeMembers),
+        sublabel: `${this.formatCompactNumber(this.totalMembers)} total members`,
+        change: '—',
+        trend: 'neutral',
+        accent: 'amber',
+        sparkline: [],
+      });
+    }
+
+    if (this.canViewFinancial) {
+      if (this.financialHubState === 'loading') {
+        kpis.push(this.buildPlaceholderKpi('collections', 'Collections This Month', 'forest'));
+      } else if (this.financialHubState === 'ready' && this.operationsSummary?.financial) {
+        const financial = this.operationsSummary.financial;
+        const monthCollected = financial.totals?.current_month_collected ?? 0;
+        const mom = this.collectionTrendMom();
+        kpis.push({
+          id: 'collections',
+          label: 'Collections This Month',
+          value: this.formatCurrency(monthCollected),
+          sublabel: `${financial.families?.participation_rate ?? 0}% family participation`,
+          change: mom.change,
+          trend: mom.trend,
+          accent: 'forest',
+          sparkline: [],
+        });
+      }
+    }
+
+    this.heroKpis = kpis;
+  }
+
+  private buildIdleKpi(
+    id: string,
+    label: string,
+    accent: HeroKpi['accent']
+  ): HeroKpi {
+    return {
+      id,
+      label,
+      value: '—',
+      sublabel: 'Open a church to see counts',
+      change: '—',
+      trend: 'neutral',
+      accent,
+      sparkline: [],
     };
   }
 
-  formatCurrency(value: number): string {
-    return new Intl.NumberFormat(undefined, { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(value);
+  private buildPlaceholderKpi(
+    id: string,
+    label: string,
+    accent: HeroKpi['accent']
+  ): HeroKpi {
+    return {
+      id,
+      label,
+      value: '—',
+      sublabel: 'Loading…',
+      change: '—',
+      trend: 'neutral',
+      accent,
+      sparkline: [],
+    };
+  }
+
+  private buildErrorKpi(
+    id: string,
+    label: string,
+    accent: HeroKpi['accent']
+  ): HeroKpi {
+    return {
+      id,
+      label,
+      value: '—',
+      sublabel: 'Could not load',
+      change: '—',
+      trend: 'neutral',
+      accent,
+      sparkline: [],
+    };
+  }
+
+  private collectionTrendMom(): { change: string; trend: 'up' | 'down' | 'neutral' } {
+    const points = this.operationsSummary?.collection_trend ?? [];
+    if (points.length < 2) {
+      return { change: '—', trend: 'neutral' };
+    }
+
+    const current = Number(points[points.length - 1]?.collected ?? 0);
+    const previous = Number(points[points.length - 2]?.collected ?? 0);
+
+    if (previous === 0 && current === 0) {
+      return { change: '—', trend: 'neutral' };
+    }
+    if (previous === 0 && current > 0) {
+      return { change: '+100%', trend: 'up' };
+    }
+
+    const pct = ((current - previous) / previous) * 100;
+    const rounded = Math.round(pct);
+    return {
+      change: `${rounded >= 0 ? '+' : ''}${rounded}%`,
+      trend: rounded > 0 ? 'up' : rounded < 0 ? 'down' : 'neutral',
+    };
+  }
+
+  familyCoveragePercent(): number | null {
+    if (this.registryState !== 'ready' || !this.familyStats) {
+      return null;
+    }
+    const total = this.familyStats.total_families ?? 0;
+    if (total <= 0) {
+      return null;
+    }
+    const withBcc = this.familyStats.families_with_bcc ?? 0;
+    return Math.round((withBcc / total) * 100);
+  }
+
+  private updateLifeGroupCoverage(): void {
+    if (this.bccStatsState !== 'ready' || this.registryState !== 'ready') {
+      return;
+    }
+
+    const coverage = this.familyCoveragePercent();
+    if (coverage !== null) {
+      const assigned = this.familyStats?.families_with_bcc ?? 0;
+      const total = this.familyStats?.total_families ?? 0;
+      this.lifeGroups[1].value = `${coverage}%`;
+      this.lifeGroups[1].detail = `${assigned} of ${total} families assigned`;
+    }
+  }
+
+  isSubscriptionReadOnly(): boolean {
+    return this.subscriptionAccess.isReadOnly();
+  }
+
+  stewardshipCurrencyCode(): string {
+    return this.operationsSummary?.tenant_context?.currency_code || 'INR';
+  }
+
+  formatCurrency(value: number | null | undefined, currencyCode?: string): string {
+    const code = currencyCode ?? this.stewardshipCurrencyCode();
+    if (!code) {
+      return '';
+    }
+    return cfFormatMoney(value, code, 0);
+  }
+
+  givingTrendPoints(): Array<{ month: string; collected: number }> {
+    const points = this.operationsSummary?.collection_trend ?? [];
+    return points.map((point) => ({
+      month: point.label?.split(' ')[0] ?? point.period,
+      collected: Number(point.collected ?? 0),
+    }));
+  }
+
+  maxGivingTrend(): number {
+    const values = this.givingTrendPoints().map((point) => point.collected);
+    const max = values.length ? Math.max(...values) : 0;
+    return max > 0 ? max : 1;
+  }
+
+  givingTrendIsEmpty(): boolean {
+    const points = this.givingTrendPoints();
+    if (!points.length) {
+      return true;
+    }
+    return points.every((point) => point.collected === 0);
+  }
+
+  givingChannelRows(): GivingChannelRow[] {
+    const mix = this.operationsSummary?.collections_by_method_this_month ?? {};
+    const total = Object.values(mix).reduce((sum, value) => sum + (value ?? 0), 0);
+    if (total <= 0) {
+      return [];
+    }
+
+    return Object.entries(mix)
+      .filter(([, amount]) => (amount ?? 0) > 0)
+      .sort(([, left], [, right]) => (right ?? 0) - (left ?? 0))
+      .map(([method, amount]) => ({
+        channel: PAYMENT_METHOD_LABELS[method] ?? method,
+        amount: this.formatCurrency(amount ?? 0),
+        share: Math.round(((amount ?? 0) / total) * 100),
+      }));
+  }
+
+  stewardshipPeriodLabel(): string {
+    const period = this.operationsSummary?.period;
+    if (!period?.month_start) {
+      return 'This month';
+    }
+    const start = new Date(`${period.month_start}T12:00:00`);
+    return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   }
 
   openFinancialDashboard(): void {
     this.router.navigate(['/donations']);
   }
 
-  loadBCCDetails(): void {
-    this.loadingBccDetails = true;
+  openMinistries(): void {
+    this.router.navigate(['/ministries']);
+  }
+
+  formatCompactNumber(value: number | null | undefined): string {
+    return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value ?? 0);
+  }
+
+  planBreakdown(byPlan: Record<string, number> | null | undefined): { key: string; label: string; count: number }[] {
+    if (!byPlan) {
+      return [];
+    }
+
+    const order = ['free', 'starter', 'standard', 'professional', 'enterprise'];
+    const label = (key: string) => key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const rows = Object.entries(byPlan)
+      .filter(([, count]) => count > 0)
+      .map(([key, count]) => ({ key, label: `${label(key)} plan`, count }));
+
+    return rows.sort((a, b) => {
+      const ai = order.indexOf(a.key);
+      const bi = order.indexOf(b.key);
+      if (ai !== -1 || bi !== -1) {
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      }
+      return a.label.localeCompare(b.label);
+    });
+  }
+
+  ministriesMembershipTotal(): number {
+    if (!this.ministriesSummary) {
+      return 0;
+    }
+    return this.ministriesSummary.memberships.active + this.ministriesSummary.memberships.inactive;
+  }
+
+  ministriesActiveSharePercent(): number {
+    const total = this.ministriesMembershipTotal();
+    if (total <= 0) {
+      return 0;
+    }
+    return Math.round((this.ministriesSummary!.memberships.active / total) * 100);
+  }
+
+  ministriesOrgMemberBarPercent(activeMembers: number): number {
+    const max = this.ministriesSummary?.top_organizations[0]?.active_members ?? 0;
+    if (max <= 0) {
+      return 0;
+    }
+    return Math.max(4, Math.round((activeMembers / max) * 100));
+  }
+
+  ministriesActionLabel(entry: MinistriesAuditLogEntry): string {
+    const key = entry.action_type || entry.event;
+    return this.ministriesActionLabels[key] ?? key;
+  }
+
+  ministriesActivityActor(entry: MinistriesAuditLogEntry): string {
+    return entry.actor_name?.trim() || 'System';
+  }
+
+  formatMinistriesDate(value: string | null | undefined): string {
+    if (!value) {
+      return '—';
+    }
+    const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return date.toLocaleDateString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+
+  formatMinistriesDateTime(value: string | null | undefined): string {
+    if (!value) {
+      return '—';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+      return value;
+    }
+    return date.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  }
+
+  private resolveMinistriesAccess(user: User | null): void {
+    const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
+    const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
+    if (!hasTenantContext || !this.authService.canAccessMinistries(user)) {
+      this.showMinistriesSection = false;
+      this.ministriesSummary = null;
+      this.ministriesActivity = [];
+      return;
+    }
+
+    this.canCreateOrganization = this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.create');
+    this.canManageMembers = this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.manage_members');
+    this.canManageLeadership =
+      this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.manage_leadership');
+    this.canConfigureTaxonomies =
+      this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.configure');
+    this.canViewTenantAuditLogs = false;
+
+    this.entitlements
+      .load()
+      .pipe(
+        switchMap(() => this.ministriesApi.getModuleStatus()),
+        takeUntil(this.destroy$)
+      )
+      .subscribe({
+        next: (response) => {
+          this.canViewTenantAuditLogs =
+            this.authService.canViewTenantAuditLogs(user) && this.entitlements.hasFeature('AUDIT_LOG');
+          const enabled = response.data?.enabled === true && this.entitlements.hasFeature('MINISTRIES');
+          this.showMinistriesSection = enabled;
+          if (enabled) {
+            this.loadMinistriesSummary();
+            if (this.operationsVisited) {
+              this.loadOperationsScopedData();
+            }
+          } else {
+            this.ministriesSummary = null;
+            this.ministriesActivity = [];
+          }
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.showMinistriesSection = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /** Overview — ministries KPIs / membership / leadership summary. */
+  private loadMinistriesSummary(): void {
+    this.loadingMinistries = true;
+    this.cdr.markForCheck();
+
+    this.ministriesApi
+      .getDashboardSummary()
+      .pipe(
+        catchError(() => of(null)),
+        takeUntil(this.destroy$),
+      )
+      .subscribe({
+        next: (summary) => {
+          this.ministriesSummary = summary?.data ?? null;
+          this.loadingMinistries = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.loadingMinistries = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /** Operations — recent ministries audit feed (lazy, session-cached). */
+  private loadMinistriesActivity(): void {
+    if (!this.canViewTenantAuditLogs || this.ministriesActivityLoaded || this.loadingMinistriesActivity) {
+      return;
+    }
+
+    this.loadingMinistriesActivity = true;
+    this.ministriesActivityError = false;
+    this.cdr.markForCheck();
+
+    this.ministriesApi
+      .listAuditLogs({ per_page: 3 })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (activity) => {
+          this.ministriesActivity = activity?.data ?? [];
+          this.ministriesActivityLoaded = true;
+          this.ministriesActivityError = false;
+          this.loadingMinistriesActivity = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.ministriesActivityError = true;
+          this.loadingMinistriesActivity = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  /** Overview — BCC stats for Life Groups strip and registry count. */
+  loadBccStatistics(): void {
+    this.bccStatsState = 'loading';
+    this.lifeGroups[0].value = '—';
+    this.lifeGroups[0].detail = 'Loading group count…';
+    this.lifeGroups[1].value = '—';
+    this.lifeGroups[1].detail = 'Families assigned to a Life Group';
+    this.lifeGroups[2].value = '—';
+    this.lifeGroups[2].detail = 'Active BCC leaders across parish';
     this.cdr.markForCheck();
 
     this.bccService.getStatistics()
@@ -430,18 +1043,35 @@ export class DashboardComponent implements OnInit, OnDestroy {
         next: (response) => {
           if (response.success && response.data) {
             this.bccStatistics = response.data;
-            this.totalBCCs = response.data.total_bccs || 0;
-            this.lifeGroups[0].value = String(response.data.active_bccs || this.totalBCCs);
-            this.lifeGroups[0].detail = `${response.data.total_families_in_bccs || 0} families assigned`;
-            this.lifeGroups[1].value = `${response.data.utilization_percentage || 0}%`;
-            this.lifeGroups[1].detail = `${response.data.bccs_with_space || 0} groups have open capacity`;
-            this.lifeGroups[2].value = String(response.data.total_leaders || 0);
+            this.totalBCCs = response.data.total_bccs ?? 0;
+            const activeBccs = response.data.active_bccs ?? 0;
+            this.lifeGroups[0].value = String(activeBccs);
+            this.lifeGroups[0].detail = `${response.data.total_families_in_bccs ?? 0} families in groups`;
+            this.lifeGroups[2].value = String(response.data.total_leaders ?? 0);
             this.lifeGroups[2].detail = 'Active BCC leaders across parish';
+            this.bccStatsState = 'ready';
+            this.updateLifeGroupCoverage();
+          } else {
+            this.bccStatsState = 'error';
           }
           this.cdr.markForCheck();
         },
-        error: () => this.cdr.markForCheck()
+        error: () => {
+          this.bccStatsState = 'error';
+          this.cdr.markForCheck();
+        }
       });
+  }
+
+  retryBccStats(): void {
+    this.loadBccStatistics();
+  }
+
+  /** Operations — top BCC list (lazy, session-cached). */
+  loadBccHighlights(): void {
+    this.loadingBccDetails = true;
+    this.bccHighlightsError = false;
+    this.cdr.markForCheck();
 
     this.bccService.getBCCs({ status: 'active', sort_by: 'current_family_count', sort_order: 'desc', per_page: 5, page: 1 })
       .pipe(takeUntil(this.destroy$))
@@ -449,11 +1079,20 @@ export class DashboardComponent implements OnInit, OnDestroy {
         next: (response) => {
           if (response.success && response.data) {
             this.bccHighlights = response.data.map(bcc => this.mapBccHighlight(bcc));
+            this.bccHighlightsLoaded = true;
+            this.bccHighlightsError = false;
+          } else if (response.success) {
+            this.bccHighlights = [];
+            this.bccHighlightsLoaded = true;
+            this.bccHighlightsError = false;
+          } else {
+            this.bccHighlightsError = true;
           }
           this.loadingBccDetails = false;
           this.cdr.markForCheck();
         },
         error: () => {
+          this.bccHighlightsError = true;
           this.loadingBccDetails = false;
           this.cdr.markForCheck();
         }
@@ -464,32 +1103,47 @@ export class DashboardComponent implements OnInit, OnDestroy {
     if (!this.tenantId) return;
 
     this.loadingSacraments = true;
+    this.sacramentsError = false;
     this.cdr.markForCheck();
 
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const dateFrom = monthStart.toISOString().slice(0, 10);
-
-    this.sacramentService.getSacraments({
-      tenant_id: this.tenantId,
-      per_page: 100,
-      page: 1,
-      date_from: dateFrom,
-      sort_by: 'date_administered',
-      sort_dir: 'desc',
-      status: 'active'
+    this.sacramentService.getDashboardSummary({
+      preset: 'calendar_month_mtd',
+      minimal: true,
+      include_gaps: false,
     }).pipe(takeUntil(this.destroy$)).subscribe({
       next: (response) => {
         if (response.success && response.data) {
-          const records = response.data.data || [];
-          this.sacramentsThisMonth = response.data.total || records.length;
-          this.sacramentHighlights = records.slice(0, 5).map(s => this.mapSacramentHighlight(s));
-          this.sacramentTypeCounts = this.buildSacramentTypeCounts(records);
+          const summary = response.data;
+          this.sacramentsThisMonth = summary.kpis.total_period;
+          this.sacramentHighlights = summary.recent.map((record) => ({
+            id: record.id,
+            typeName: record.type?.name || 'Sacrament',
+            recipientName: record.recipient_name,
+            dateAdministered: record.date_administered,
+            place: record.place_administered,
+          }));
+          this.sacramentTypeCounts = summary.breakdowns.by_type_totals
+            .filter((row) => row.count > 0)
+            .map((row) => ({
+              label: row.label,
+              count: row.count,
+            }));
+          this.sacramentsLoaded = true;
+          this.sacramentsError = false;
+        } else if (response.success) {
+          this.sacramentHighlights = [];
+          this.sacramentTypeCounts = [];
+          this.sacramentsThisMonth = 0;
+          this.sacramentsLoaded = true;
+          this.sacramentsError = false;
+        } else {
+          this.sacramentsError = true;
         }
         this.loadingSacraments = false;
         this.cdr.markForCheck();
       },
       error: () => {
+        this.sacramentsError = true;
         this.loadingSacraments = false;
         this.cdr.markForCheck();
       }
@@ -498,25 +1152,58 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   loadMemberCelebrations(): void {
     this.loadingCelebrations = true;
+    this.celebrationsError = false;
+    this.celebrationsUnauthorized = false;
     this.cdr.markForCheck();
 
-    this.memberService.getMembers({ status: 'active', per_page: 500, page: 1, sort_by: 'first_name', sort_order: 'asc' })
+    this.memberService.getCelebrations()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            const { start, end } = this.getThisWeekRange();
-            this.weekBirthdays = this.extractWeekBirthdays(response.data, start, end);
-            this.weekAnniversaries = this.extractWeekAnniversaries(response.data, start, end);
+            this.weekRangeLabel = response.data.week?.label ?? this.weekRangeLabel;
+            this.weekBirthdays = (response.data.birthdays ?? []).map((item) => this.mapCelebrationItem(item));
+            this.weekAnniversaries = (response.data.anniversaries ?? []).map((item) => this.mapCelebrationItem(item));
+            this.celebrationsLoaded = true;
+            this.celebrationsError = false;
+            this.celebrationsUnauthorized = false;
+          } else if (response.success) {
+            this.weekBirthdays = [];
+            this.weekAnniversaries = [];
+            this.celebrationsLoaded = true;
+            this.celebrationsError = false;
+            this.celebrationsUnauthorized = false;
+          } else {
+            this.celebrationsError = true;
           }
           this.loadingCelebrations = false;
           this.cdr.markForCheck();
         },
-        error: () => {
+        error: (error) => {
+          this.celebrationsUnauthorized = error?.status === 403;
+          this.celebrationsError = error?.status !== 403;
           this.loadingCelebrations = false;
           this.cdr.markForCheck();
         }
       });
+  }
+
+  private mapCelebrationItem(item: {
+    id: string;
+    family_id?: string;
+    name: string;
+    day_label: string;
+    date_label: string;
+    detail: string;
+  }): CelebrationItem {
+    return {
+      id: item.id,
+      name: item.name,
+      dayLabel: item.day_label,
+      dateLabel: item.date_label,
+      detail: item.detail,
+      familyId: item.family_id,
+    };
   }
 
   private mapBccHighlight(bcc: BCC): BccHighlight {
@@ -532,132 +1219,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       meetingLabel,
       status: bcc.status
     };
-  }
-
-  private mapSacramentHighlight(sacrament: Sacrament): SacramentHighlight {
-    return {
-      id: sacrament.id,
-      typeName: sacrament.sacrament_type?.name || 'Sacrament',
-      recipientName: sacrament.recipient_name,
-      dateAdministered: sacrament.date_administered,
-      place: sacrament.place_administered
-    };
-  }
-
-  private buildSacramentTypeCounts(records: Sacrament[]): SacramentTypeCount[] {
-    const counts = new Map<string, number>();
-    for (const record of records) {
-      const label = record.sacrament_type?.name || 'Other';
-      counts.set(label, (counts.get(label) || 0) + 1);
-    }
-    return Array.from(counts.entries())
-      .map(([label, count]) => ({ label, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 4);
-  }
-
-  private extractWeekBirthdays(members: FamilyMember[], weekStart: Date, weekEnd: Date): CelebrationItem[] {
-    const items: CelebrationItem[] = [];
-
-    for (const member of members) {
-      if (!member.date_of_birth || member.status === 'deceased') continue;
-      const parsed = this.parseMonthDay(member.date_of_birth);
-      if (!parsed || !this.isMonthDayInWeek(parsed.month, parsed.day, weekStart, weekEnd)) continue;
-
-      const eventDate = new Date(new Date().getFullYear(), parsed.month - 1, parsed.day);
-      const age = this.calculateAge(member.date_of_birth, eventDate);
-
-      items.push({
-        id: member.id,
-        name: this.getMemberDisplayName(member),
-        dayLabel: eventDate.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateLabel: eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        detail: age !== null ? `Turning ${age}` : 'Birthday',
-        familyId: member.family_id
-      });
-    }
-
-    return items.sort((a, b) => this.compareCelebrationDates(a, b));
-  }
-
-  private extractWeekAnniversaries(members: FamilyMember[], weekStart: Date, weekEnd: Date): CelebrationItem[] {
-    const items: CelebrationItem[] = [];
-
-    for (const member of members) {
-      if (!member.marriage_date || member.status === 'deceased') continue;
-      const parsed = this.parseMonthDay(member.marriage_date);
-      if (!parsed || !this.isMonthDayInWeek(parsed.month, parsed.day, weekStart, weekEnd)) continue;
-
-      const eventDate = new Date(new Date().getFullYear(), parsed.month - 1, parsed.day);
-      const years = eventDate.getFullYear() - new Date(member.marriage_date).getFullYear();
-      const spouse = member.marriage_spouse_name?.trim();
-      const coupleName = spouse
-        ? `${this.getMemberDisplayName(member)} & ${spouse}`
-        : this.getMemberDisplayName(member);
-
-      items.push({
-        id: `${member.id}-anniversary`,
-        name: coupleName,
-        dayLabel: eventDate.toLocaleDateString('en-US', { weekday: 'short' }),
-        dateLabel: eventDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-        detail: years > 0 ? `${years} years together` : 'Wedding anniversary',
-        familyId: member.family_id
-      });
-    }
-
-    return items.sort((a, b) => this.compareCelebrationDates(a, b));
-  }
-
-  private getMemberDisplayName(member: FamilyMember): string {
-    return member.full_name?.trim() || `${member.first_name} ${member.last_name}`.trim();
-  }
-
-  private getThisWeekRange(): { start: Date; end: Date } {
-    const now = new Date();
-    const day = now.getDay();
-    const diffToMonday = day === 0 ? -6 : 1 - day;
-    const start = new Date(now);
-    start.setHours(0, 0, 0, 0);
-    start.setDate(now.getDate() + diffToMonday);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-    return { start, end };
-  }
-
-  private formatWeekRangeLabel(): string {
-    const { start, end } = this.getThisWeekRange();
-    const startLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const endLabel = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    return `${startLabel} – ${endLabel}`;
-  }
-
-  private parseMonthDay(dateValue: string): { month: number; day: number } | null {
-    const parts = dateValue.split('T')[0].split('-').map(Number);
-    if (parts.length < 3 || !parts[1] || !parts[2]) return null;
-    return { month: parts[1], day: parts[2] };
-  }
-
-  private isMonthDayInWeek(month: number, day: number, weekStart: Date, weekEnd: Date): boolean {
-    const eventDate = new Date(new Date().getFullYear(), month - 1, day);
-    eventDate.setHours(12, 0, 0, 0);
-    return eventDate >= weekStart && eventDate <= weekEnd;
-  }
-
-  private calculateAge(dateOfBirth: string, onDate: Date): number | null {
-    const birth = new Date(dateOfBirth);
-    if (Number.isNaN(birth.getTime())) return null;
-    let age = onDate.getFullYear() - birth.getFullYear();
-    const monthDiff = onDate.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && onDate.getDate() < birth.getDate())) {
-      age -= 1;
-    }
-    return age + 1;
-  }
-
-  private compareCelebrationDates(a: CelebrationItem, b: CelebrationItem): number {
-    const order = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-    return order.indexOf(a.dayLabel) - order.indexOf(b.dayLabel);
   }
 
   private capitalize(value: string): string {
@@ -710,32 +1271,108 @@ export class DashboardComponent implements OnInit, OnDestroy {
     return Math.max(4, Math.round((value / max) * this.chartBarMaxHeightPx));
   }
 
-  getVolunteerPercent(shift: VolunteerShift): number {
-    return Math.round((shift.filled / shift.required) * 100);
-  }
-
-  getVolunteerRingOffset(shift: VolunteerShift): number {
-    const circumference = 2 * Math.PI * 16;
-    const percent = this.getVolunteerPercent(shift) / 100;
-    return circumference * (1 - percent);
-  }
-
   navigateTo(route: string): void {
     this.router.navigate([route]);
   }
 
-  onSearchKeydown(event: KeyboardEvent): void {
-    if ((event.metaKey || event.ctrlKey) && event.key === 'k') {
-      event.preventDefault();
-      const input = event.target as HTMLInputElement;
-      input?.focus();
+  private loadPastoralWorkflow(): void {
+    this.loadingPastoral = true;
+    this.pastoralError = false;
+    this.pastoralCare
+      .dashboard()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          this.careAlerts = data?.alerts ?? [];
+          this.pastoralTasks = data?.tasks ?? [];
+          this.pastoralLoaded = true;
+          this.pastoralError = false;
+          this.loadingPastoral = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.pastoralError = true;
+          this.loadingPastoral = false;
+          this.cdr.markForCheck();
+        },
+      });
+
+    if (this.canAssignPastoral && this.pastoralStaff.length === 0) {
+      this.pastoralCare
+        .staff()
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (staff) => {
+            this.pastoralStaff = staff ?? [];
+            this.cdr.markForCheck();
+          },
+          error: () => {
+            this.pastoralStaff = [];
+            this.cdr.markForCheck();
+          },
+        });
     }
   }
 
-  assignTask(task: PastoralTask): void {
-    task.assignee = 'Pastoral Staff';
-    task.status = 'assigned';
+  beginAssign(task: PastoralCareRequest): void {
+    if (!this.canAssignPastoral || task.status !== 'open') {
+      return;
+    }
+    this.assigningTaskId = task.id;
+    this.selectedAssigneeId = this.pastoralStaff[0]?.id ?? null;
     this.cdr.markForCheck();
+  }
+
+  cancelAssign(): void {
+    this.assigningTaskId = null;
+    this.selectedAssigneeId = null;
+    this.cdr.markForCheck();
+  }
+
+  confirmAssign(task: PastoralCareRequest): void {
+    if (!this.selectedAssigneeId || this.assigningBusy) {
+      return;
+    }
+    this.assigningBusy = true;
+    this.pastoralCare.assign(task.id, this.selectedAssigneeId).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (updated) => {
+        this.pastoralTasks = this.pastoralTasks.map((row) => (row.id === updated.id ? updated : row));
+        this.assigningTaskId = null;
+        this.selectedAssigneeId = null;
+        this.assigningBusy = false;
+        this.pastoralLoaded = false;
+        this.loadPastoralWorkflow();
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.assigningBusy = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  completeTask(task: PastoralCareRequest): void {
+    if (!this.canCompleteTask(task)) {
+      return;
+    }
+    this.pastoralCare.complete(task.id).pipe(takeUntil(this.destroy$)).subscribe({
+      next: () => {
+        this.pastoralLoaded = false;
+        this.loadPastoralWorkflow();
+      },
+      error: () => this.cdr.markForCheck(),
+    });
+  }
+
+  canCompleteTask(task: PastoralCareRequest): boolean {
+    if (task.status !== 'assigned') {
+      return false;
+    }
+    if (this.canAssignPastoral) {
+      return true;
+    }
+    const userId = this.authService.currentUserValue?.id;
+    return userId != null && Number(userId) === Number(task.assigned_to_user_id);
   }
 
   getUserFirstName(name?: string | null): string {

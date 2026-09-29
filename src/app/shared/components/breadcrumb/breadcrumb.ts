@@ -29,7 +29,15 @@ export class BreadcrumbComponent implements OnInit {
     'tenants': 'Tenants',
     'auth': 'Authentication',
     'login': 'Login',
-    'register': 'Register'
+    'register': 'Register',
+    'sacraments': 'Sacraments',
+    'ministries': 'Ministries & Associations',
+    'guests': 'Guest members',
+    'audit': 'Audit log',
+    'mass-intentions': 'Mass intentions',
+    'intentions': 'Intentions',
+    'masses': 'Masses',
+    'reports': 'Reports',
   };
 
   constructor(
@@ -81,11 +89,12 @@ export class BreadcrumbComponent implements OnInit {
       if (routeURL !== '') {
         url += `/${routeURL}`;
 
-        // Prefer resolver-provided label (e.g., family_code)
-        let label = (child.snapshot.data && child.snapshot.data['breadcrumbLabel'])
-          ? child.snapshot.data['breadcrumbLabel']
+        // Prefer resolver or static route data (e.g., family_code, "Add organization")
+        const resolvedLabel = child.snapshot.data && child.snapshot.data['breadcrumbLabel'];
+        const label = resolvedLabel
+          ? resolvedLabel
           : this.getRouteLabel(routeURL);
-        
+
         // Skip auth routes from breadcrumbs
         if (routeURL === 'auth' || this.isAuthRoute(url)) {
           continue;
@@ -95,6 +104,22 @@ export class BreadcrumbComponent implements OnInit {
         // Ensure parent list crumb appears for detail pages like families/:id
         if (url.startsWith('/families/') && !breadcrumbs.find(b => b.url === '/families')) {
           breadcrumbs.push({ label: this.getRouteLabel('families'), url: '/families' });
+        }
+
+        const ministriesParent = url.match(/^(.*\/ministries)\/.+/);
+        if (ministriesParent && !breadcrumbs.find(b => b.url === ministriesParent[1])) {
+          breadcrumbs.push({
+            label: this.getRouteLabel('ministries'),
+            url: ministriesParent[1],
+          });
+        }
+
+        const sacramentRecord = url.match(/^(.*\/sacraments)\/view(?:\/|$)/);
+        if (sacramentRecord && !breadcrumbs.find(b => b.url === `${sacramentRecord[1]}/register`)) {
+          breadcrumbs.push({
+            label: 'Register',
+            url: `${sacramentRecord[1]}/register`,
+          });
         }
 
         if (!breadcrumbs.find(b => b.url === url)) {

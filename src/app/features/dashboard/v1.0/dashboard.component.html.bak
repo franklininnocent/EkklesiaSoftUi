@@ -1,0 +1,678 @@
+<div class="church-dashboard">
+  <!-- Page header (uses app shell for tenant + profile; no duplicate topbar) -->
+  <header class="cd-page-header">
+    <div class="cd-page-header__intro">
+      <h1 class="cd-page-title">Operations Dashboard</h1>
+      <p class="cd-page-subtitle" *ngIf="currentUser$ | async as user">
+        {{ getGreeting() }}, <strong>{{ getUserFirstName(user.name) }}</strong>
+        <span class="cd-page-subtitle__sep">·</span>
+        <time [attr.datetime]="today | date:'yyyy-MM-dd'">{{ today | date:'EEEE, MMMM d, y' }}</time>
+        <span *ngIf="operationsSummary?.persona as persona" class="cd-page-subtitle__persona">
+          · {{ persona.label }}
+        </span>
+      </p>
+      <p *ngIf="operationsSummary?.persona?.emphasis" class="cd-page-persona">{{ operationsSummary?.persona?.emphasis }}</p>
+    </div>
+    <div class="cd-page-header__search">
+      <svg class="cd-page-header__search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+      </svg>
+      <input
+        type="search"
+        class="cd-page-header__search-input"
+        placeholder="Search members, events, volunteers..."
+        [(ngModel)]="searchQuery"
+        (keydown)="onSearchKeydown($event)"
+        aria-label="Search church operations"
+      />
+      <kbd class="cd-page-header__kbd">Ctrl+K</kbd>
+    </div>
+  </header>
+
+  <!-- Real church registry (live API counts) -->
+  <section class="cd-registry" aria-label="Church registry summary">
+    <button type="button" class="cd-registry__card" (click)="navigateTo('/families')">
+      <span class="cd-registry__label">Families</span>
+      <span class="cd-registry__value">{{ totalFamilies | number }}</span>
+      <span class="cd-registry__hint">View all families</span>
+    </button>
+    <button type="button" class="cd-registry__card" (click)="navigateTo('/members')">
+      <span class="cd-registry__label">Members</span>
+      <span class="cd-registry__value">{{ totalMembers | number }}</span>
+      <span class="cd-registry__hint">Member directory</span>
+    </button>
+    <button type="button" class="cd-registry__card" (click)="navigateTo('/bccs')">
+      <span class="cd-registry__label">Life Groups</span>
+      <span class="cd-registry__value">{{ totalBCCs | number }}</span>
+      <span class="cd-registry__hint">Manage BCCs</span>
+    </button>
+  </section>
+
+  <!-- Hero KPI Row -->
+  <section class="cd-hero" aria-label="Key performance indicators">
+    <article
+      *ngFor="let kpi of heroKpis"
+      class="cd-kpi"
+      [ngClass]="'cd-kpi--' + kpi.accent"
+    >
+      <div class="cd-kpi__head">
+        <span class="cd-kpi__label">{{ kpi.label }}</span>
+        <span
+          class="cd-kpi__delta"
+          [class.is-up]="kpi.trend === 'up'"
+          [class.is-down]="kpi.trend === 'down'"
+        >
+          {{ kpi.change }}
+        </span>
+      </div>
+      <div class="cd-kpi__value">{{ kpi.value }}</div>
+      <p class="cd-kpi__sub">{{ kpi.sublabel }}</p>
+      <svg class="cd-kpi__spark" viewBox="0 0 72 28" preserveAspectRatio="none" aria-hidden="true">
+        <path [attr.d]="getSparklinePath(kpi.sparkline)" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+    </article>
+  </section>
+
+  <!-- Community Analytics Strip -->
+  <section class="cd-analytics" aria-label="Community and engagement analytics">
+    <article class="cd-panel">
+      <header class="cd-panel__head">
+        <h2>Attendance Trend</h2>
+        <span class="cd-panel__badge">Weekly</span>
+      </header>
+      <div class="cd-attendance-split">
+        <div class="cd-attendance-metric">
+          <span class="cd-attendance-metric__label">In-Person</span>
+          <span class="cd-attendance-metric__value">{{ attendanceBreakdown.inPerson | number }}</span>
+          <span class="cd-attendance-metric__delta is-up">{{ attendanceBreakdown.inPersonChange }}</span>
+        </div>
+        <div class="cd-attendance-metric">
+          <span class="cd-attendance-metric__label">Online Streaming</span>
+          <span class="cd-attendance-metric__value">{{ attendanceBreakdown.online | number }}</span>
+          <span class="cd-attendance-metric__delta is-up">{{ attendanceBreakdown.onlineChange }}</span>
+        </div>
+      </div>
+    </article>
+
+    <article class="cd-panel">
+      <header class="cd-panel__head">
+        <h2>Growth Vectors</h2>
+        <span class="cd-panel__badge">This Month</span>
+      </header>
+      <dl class="cd-stat-row">
+        <div class="cd-stat-row__item">
+          <dt>New Member Sign-ups</dt>
+          <dd>{{ growthMetrics.newMembers }}</dd>
+        </div>
+        <div class="cd-stat-row__item">
+          <dt>Assimilation Progress</dt>
+          <dd>{{ growthMetrics.assimilationRate }}%</dd>
+        </div>
+        <div class="cd-stat-row__item">
+          <dt>Visitors to Active</dt>
+          <dd>{{ growthMetrics.visitorsToActive }}</dd>
+        </div>
+      </dl>
+    </article>
+
+    <article class="cd-panel">
+      <header class="cd-panel__head">
+        <h2>Life Groups</h2>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">Manage groups</button>
+      </header>
+      <div class="cd-groups-grid">
+        <div class="cd-groups-item" *ngFor="let group of lifeGroups">
+          <span class="cd-groups-item__value">{{ group.value }}</span>
+          <span class="cd-groups-item__label">{{ group.label }}</span>
+          <span class="cd-groups-item__detail">{{ group.detail }}</span>
+        </div>
+      </div>
+    </article>
+  </section>
+
+  <!-- BCC, Sacraments, Birthdays & Anniversaries -->
+  <section class="cd-community" aria-label="BCC, sacraments, and member celebrations">
+    <article class="cd-panel cd-panel--bcc">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>BCC Overview</h2>
+          <p class="cd-panel__desc">Basic Christian Communities — groups, capacity, and meeting rhythm</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/bccs')">View all BCCs</button>
+      </header>
+
+      <div class="cd-bcc-stats" *ngIf="bccStatistics">
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Active BCCs</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.active_bccs }}</span>
+        </div>
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Families in BCCs</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.total_families_in_bccs }}</span>
+        </div>
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Utilization</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.utilization_percentage }}%</span>
+        </div>
+        <div class="cd-bcc-stat">
+          <span class="cd-bcc-stat__label">Open Capacity</span>
+          <span class="cd-bcc-stat__value">{{ bccStatistics.bccs_with_space }}</span>
+        </div>
+      </div>
+
+      <ul class="cd-bcc-list" *ngIf="!loadingBccDetails && bccHighlights.length > 0">
+        <li *ngFor="let bcc of bccHighlights" class="cd-bcc-item">
+          <button type="button" class="cd-bcc-item__main" (click)="navigateToBcc(bcc.id)">
+            <span class="cd-bcc-item__name">{{ bcc.name }}</span>
+            <span class="cd-bcc-item__code">{{ bcc.code }}</span>
+          </button>
+          <div class="cd-bcc-item__meta">
+            <span>{{ bcc.families }} families</span>
+            <span>{{ bcc.meetingLabel }}</span>
+          </div>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingBccDetails && bccHighlights.length === 0">No active BCC records found.</p>
+      <p class="cd-loading" *ngIf="loadingBccDetails">Loading BCC details...</p>
+    </article>
+
+    <article class="cd-panel cd-panel--sacraments">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>Sacramental Records</h2>
+          <p class="cd-panel__desc">{{ sacramentsThisMonth }} sacraments recorded this month</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/settings/sacraments')">Open sacraments</button>
+      </header>
+
+      <div class="cd-sacrament-counts" *ngIf="sacramentTypeCounts.length > 0">
+        <span class="cd-sacrament-count" *ngFor="let item of sacramentTypeCounts">
+          {{ item.label }} <strong>{{ item.count }}</strong>
+        </span>
+      </div>
+
+      <ul class="cd-sacrament-list" *ngIf="!loadingSacraments && sacramentHighlights.length > 0">
+        <li *ngFor="let record of sacramentHighlights" class="cd-sacrament-item">
+          <div class="cd-sacrament-item__head">
+            <span class="cd-sacrament-item__type">{{ record.typeName }}</span>
+            <time class="cd-sacrament-item__date">{{ formatSacramentDate(record.dateAdministered) }}</time>
+          </div>
+          <p class="cd-sacrament-item__name">{{ record.recipientName }}</p>
+          <p class="cd-sacrament-item__place" *ngIf="record.place">{{ record.place }}</p>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingSacraments && sacramentHighlights.length === 0">No sacramental records this month.</p>
+      <p class="cd-loading" *ngIf="loadingSacraments">Loading sacramental records...</p>
+    </article>
+
+    <article class="cd-panel cd-panel--birthdays">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>Birthdays This Week</h2>
+          <p class="cd-panel__desc">{{ weekRangeLabel }}</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/members')">Member directory</button>
+      </header>
+
+      <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && weekBirthdays.length > 0">
+        <li *ngFor="let item of weekBirthdays" class="cd-celebration-item">
+          <button type="button" class="cd-celebration-item__main" (click)="navigateToFamily(item.familyId)">
+            <span class="cd-celebration-item__day">{{ item.dayLabel }}</span>
+            <div class="cd-celebration-item__copy">
+              <span class="cd-celebration-item__name">{{ item.name }}</span>
+              <span class="cd-celebration-item__detail">{{ item.detail }} · {{ item.dateLabel }}</span>
+            </div>
+          </button>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingCelebrations && weekBirthdays.length === 0">No member birthdays scheduled this week.</p>
+      <p class="cd-loading" *ngIf="loadingCelebrations">Checking member birthdays...</p>
+    </article>
+
+    <article class="cd-panel cd-panel--anniversaries">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>Wedding Anniversaries</h2>
+          <p class="cd-panel__desc">Celebrations this week · {{ weekRangeLabel }}</p>
+        </div>
+        <button type="button" class="cd-link-btn" (click)="navigateTo('/families')">Family records</button>
+      </header>
+
+      <ul class="cd-celebration-list" *ngIf="!loadingCelebrations && weekAnniversaries.length > 0">
+        <li *ngFor="let item of weekAnniversaries" class="cd-celebration-item cd-celebration-item--anniversary">
+          <button type="button" class="cd-celebration-item__main" (click)="navigateToFamily(item.familyId)">
+            <span class="cd-celebration-item__day">{{ item.dayLabel }}</span>
+            <div class="cd-celebration-item__copy">
+              <span class="cd-celebration-item__name">{{ item.name }}</span>
+              <span class="cd-celebration-item__detail">{{ item.detail }} · {{ item.dateLabel }}</span>
+            </div>
+          </button>
+        </li>
+      </ul>
+      <p class="cd-empty" *ngIf="!loadingCelebrations && weekAnniversaries.length === 0">No wedding anniversaries this week.</p>
+      <p class="cd-loading" *ngIf="loadingCelebrations">Checking anniversaries...</p>
+    </article>
+  </section>
+
+  <!-- Ministries & Associations -->
+  <section class="cd-ministries" *ngIf="showMinistriesSection" aria-label="Ministries and Associations">
+    <article class="cd-panel cd-ministries__panel">
+      <header class="cd-panel__head">
+        <div class="cd-panel__head-copy">
+          <h2>Ministries &amp; Associations</h2>
+          <p class="cd-panel__desc">Organization health, membership strength, and leadership readiness</p>
+        </div>
+        <button type="button" class="cd-panel__link cd-panel__link--inline" (click)="openMinistries()">
+          Open Ministries
+        </button>
+      </header>
+
+      <p class="cd-loading" *ngIf="loadingMinistries">Loading ministries insights…</p>
+
+      <ng-container *ngIf="!loadingMinistries && ministriesSummary as m">
+        <div class="cd-ministries__kpis" *ngIf="m.organizations.total > 0; else ministriesEmpty">
+          <article class="cd-kpi cd-kpi--forest">
+            <div class="cd-kpi__head">
+              <span class="cd-kpi__label">Total Organizations</span>
+            </div>
+            <div class="cd-kpi__value">{{ formatCompactNumber(m.organizations.total) }}</div>
+            <p class="cd-kpi__sub">{{ formatCompactNumber(m.organizations.inactive) }} inactive</p>
+          </article>
+          <article class="cd-kpi cd-kpi--indigo">
+            <div class="cd-kpi__head">
+              <span class="cd-kpi__label">Active Organizations</span>
+            </div>
+            <div class="cd-kpi__value">{{ formatCompactNumber(m.organizations.active) }}</div>
+            <p class="cd-kpi__sub">Ready for enrollments</p>
+          </article>
+          <article class="cd-kpi cd-kpi--amber">
+            <div class="cd-kpi__head">
+              <span class="cd-kpi__label">Active Members</span>
+            </div>
+            <div class="cd-kpi__value">{{ formatCompactNumber(m.memberships.active) }}</div>
+            <p class="cd-kpi__sub">{{ formatCompactNumber(m.memberships.guest_active) }} guest members</p>
+          </article>
+          <article class="cd-kpi cd-kpi--slate">
+            <div class="cd-kpi__head">
+              <span class="cd-kpi__label">Leadership Filled</span>
+            </div>
+            <div class="cd-kpi__value">{{ formatCompactNumber(m.leadership.filled_positions) }}</div>
+            <p class="cd-kpi__sub">{{ formatCompactNumber(m.leadership.vacancies) }} vacant positions</p>
+          </article>
+        </div>
+
+        <ng-template #ministriesEmpty>
+          <div class="cd-ministries__empty">
+            <p class="cd-empty">No ministries or associations yet.</p>
+            <button
+              *ngIf="canCreateOrganization"
+              type="button"
+              class="cd-panel__link cd-panel__link--inline"
+              (click)="navigateTo('/ministries/new')"
+            >
+              Create Organization
+            </button>
+          </div>
+        </ng-template>
+
+        <div class="cd-ministries__grid" *ngIf="m.organizations.total > 0">
+          <section class="cd-ministries__card" aria-labelledby="ministries-top-orgs-heading">
+            <h3 id="ministries-top-orgs-heading">Members by Organization</h3>
+            <p class="cd-ministries__card-desc">Top active organizations by current membership</p>
+            <ul class="cd-ministries__rank" *ngIf="m.top_organizations.length; else noTopOrgs">
+              <li *ngFor="let org of m.top_organizations">
+                <button type="button" class="cd-ministries__rank-btn" (click)="navigateTo('/ministries/' + org.id)">
+                  <div class="cd-ministries__rank-head">
+                    <strong>{{ org.name }}</strong>
+                    <span>{{ formatCompactNumber(org.active_members) }}</span>
+                  </div>
+                  <div class="cd-progress cd-progress--subtle">
+                    <div
+                      class="cd-progress__fill"
+                      [style.width.%]="ministriesOrgMemberBarPercent(org.active_members)"
+                    ></div>
+                  </div>
+                  <span class="cd-ministries__rank-meta">
+                    {{ formatCompactNumber(org.active_office_bearers) }} office bearers
+                    <span *ngIf="org.code"> · {{ org.code }}</span>
+                  </span>
+                </button>
+              </li>
+            </ul>
+            <ng-template #noTopOrgs>
+              <p class="cd-empty">No organization membership counts yet.</p>
+            </ng-template>
+          </section>
+
+          <section class="cd-ministries__card" aria-labelledby="ministries-membership-heading">
+            <h3 id="ministries-membership-heading">Membership Overview</h3>
+            <p class="cd-ministries__card-desc">Current membership status across all organizations</p>
+            <div class="cd-giving-summary cd-ministries__metrics">
+              <div class="cd-giving-summary__metric">
+                <span class="cd-giving-summary__label">Active</span>
+                <span class="cd-giving-summary__value">{{ formatCompactNumber(m.memberships.active) }}</span>
+              </div>
+              <div class="cd-giving-summary__metric">
+                <span class="cd-giving-summary__label">Inactive</span>
+                <span class="cd-giving-summary__value">{{ formatCompactNumber(m.memberships.inactive) }}</span>
+              </div>
+              <div class="cd-giving-summary__metric">
+                <span class="cd-giving-summary__label">Guests (active)</span>
+                <span class="cd-giving-summary__value">{{ formatCompactNumber(m.memberships.guest_active) }}</span>
+              </div>
+              <div class="cd-giving-summary__metric">
+                <span class="cd-giving-summary__label">Guest directory</span>
+                <span class="cd-giving-summary__value">{{ formatCompactNumber(m.guest_members_total) }}</span>
+              </div>
+            </div>
+            <div class="cd-ministries__split" *ngIf="ministriesMembershipTotal() > 0">
+              <div class="cd-progress">
+                <div class="cd-progress__fill" [style.width.%]="ministriesActiveSharePercent()"></div>
+              </div>
+              <span class="cd-ministries__split-label">
+                {{ ministriesActiveSharePercent() }}% of current memberships are active
+              </span>
+            </div>
+          </section>
+
+          <section class="cd-ministries__card" aria-labelledby="ministries-leadership-heading">
+            <h3 id="ministries-leadership-heading">Leadership Overview</h3>
+            <p class="cd-ministries__card-desc">Vacancies needing assignment and terms ending soon</p>
+            <div class="cd-ministries__alert" *ngIf="m.leadership.vacancies > 0">
+              <strong>{{ formatCompactNumber(m.leadership.vacancies) }} vacant positions</strong>
+              <span>require assignment across active organizations.</span>
+              <button type="button" class="cd-panel__link cd-panel__link--inline" (click)="openMinistries()">
+                Review organizations
+              </button>
+            </div>
+            <p class="cd-empty" *ngIf="m.leadership.vacancies === 0">No single-occupancy vacancies right now.</p>
+
+            <h4 class="cd-ministries__subheader">Terms expiring soon</h4>
+            <ul class="cd-ministries__list" *ngIf="m.leadership.expiring_soon.length; else noExpiring">
+              <li *ngFor="let term of m.leadership.expiring_soon">
+                <button type="button" (click)="navigateTo('/ministries/' + term.organization_id)">
+                  <strong>
+                    {{ term.position_name || 'Position' }}
+                    <span class="cd-ministries__badge" *ngIf="term.is_interim">Interim</span>
+                  </strong>
+                  <span>
+                    {{ term.holder_name || 'Unnamed holder' }} · {{ term.organization_name || 'Organization' }}
+                  </span>
+                  <span class="cd-ministries__list-meta">Ends {{ formatMinistriesDate(term.effective_to) }}</span>
+                </button>
+              </li>
+            </ul>
+            <ng-template #noExpiring>
+              <p class="cd-empty">No leadership terms ending in the next 30 days.</p>
+            </ng-template>
+          </section>
+
+          <section class="cd-ministries__card" aria-labelledby="ministries-activity-heading">
+            <h3 id="ministries-activity-heading">Recent Activity</h3>
+            <p class="cd-ministries__card-desc">Latest enrollments, leadership changes, and guest updates</p>
+            <ul class="cd-ministries__list" *ngIf="ministriesActivity.length; else noActivity">
+              <li *ngFor="let entry of ministriesActivity">
+                <div>
+                  <strong>{{ ministriesActionLabel(entry) }}</strong>
+                  <span>{{ ministriesActivityActor(entry) }}</span>
+                  <span class="cd-ministries__list-meta">{{ formatMinistriesDateTime(entry.created_at) }}</span>
+                </div>
+              </li>
+            </ul>
+            <ng-template #noActivity>
+              <p class="cd-empty">No recent ministries activity.</p>
+            </ng-template>
+            <button type="button" class="cd-panel__link cd-panel__link--inline" (click)="navigateTo('/ministries/audit')">
+              View audit log
+            </button>
+          </section>
+        </div>
+
+        <div
+          class="cd-ministries__actions"
+          *ngIf="canCreateOrganization || canManageMembers || canManageLeadership || canConfigureTaxonomies"
+        >
+          <h3 class="cd-ministries__actions-title">Quick actions</h3>
+          <div class="cd-ministries__action-row">
+            <button
+              *ngIf="canCreateOrganization"
+              type="button"
+              class="cd-ministries__action"
+              (click)="navigateTo('/ministries/new')"
+            >
+              Create Organization
+            </button>
+            <button
+              *ngIf="canManageMembers"
+              type="button"
+              class="cd-ministries__action"
+              (click)="navigateTo('/ministries')"
+            >
+              Enroll Member
+            </button>
+            <button
+              *ngIf="canManageLeadership"
+              type="button"
+              class="cd-ministries__action"
+              (click)="navigateTo('/ministries')"
+            >
+              Assign Leadership
+            </button>
+            <button
+              *ngIf="canConfigureTaxonomies"
+              type="button"
+              class="cd-ministries__action"
+              (click)="navigateTo('/ministries/settings')"
+            >
+              Manage Taxonomies
+            </button>
+          </div>
+        </div>
+      </ng-container>
+
+      <p class="cd-empty" *ngIf="!loadingMinistries && !ministriesSummary">
+        Could not load ministries insights right now.
+      </p>
+    </article>
+  </section>
+
+  <!-- Main Body Split -->
+  <div class="cd-main">
+    <div class="cd-main__primary">
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Sunday Service Readiness</h2>
+            <p class="cd-panel__desc">Today's schedule, volunteer check-ins, and venue flow</p>
+          </div>
+          <span class="cd-panel__live">Live operations</span>
+        </header>
+        <ol class="cd-timeline">
+          <li
+            *ngFor="let item of todaySchedule"
+            class="cd-timeline__item"
+            [class.is-action]="item.status === 'action'"
+          >
+            <time class="cd-timeline__time">{{ item.time }}</time>
+            <div class="cd-timeline__track">
+              <div class="cd-timeline__dot" [attr.data-category]="item.category"></div>
+            </div>
+            <div class="cd-timeline__content">
+              <div class="cd-timeline__title-row">
+                <h3>{{ item.title }}</h3>
+                <span class="cd-timeline__status" [attr.data-status]="item.status">
+                  {{ item.status === 'action' ? 'Action needed' : (item.status === 'pending' ? 'Pending' : 'Confirmed') }}
+                </span>
+              </div>
+              <p>{{ item.detail }}</p>
+            </div>
+          </li>
+        </ol>
+      </article>
+
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Attendance &amp; Giving Correlation</h2>
+            <p class="cd-panel__desc">Last 6 months — Sunday attendance vs. monthly tithes (in $1k)</p>
+          </div>
+        </header>
+        <div class="cd-chart">
+          <div class="cd-chart__legend">
+            <span class="cd-chart__legend-item cd-chart__legend-item--attendance">Attendance</span>
+            <span class="cd-chart__legend-item cd-chart__legend-item--giving">Giving ($1k)</span>
+          </div>
+          <div class="cd-chart__grid" role="img" aria-label="Six month attendance and giving chart">
+            <div class="cd-chart__col" *ngFor="let point of attendanceGivingChart">
+              <div class="cd-chart__bars">
+                <div
+                  class="cd-chart__bar cd-chart__bar--attendance"
+                  [style.height.px]="getChartBarHeightPx(point.attendance, maxAttendance)"
+                  [attr.title]="point.attendance + ' attendance'"
+                ></div>
+                <div
+                  class="cd-chart__bar cd-chart__bar--giving"
+                  [style.height.px]="getChartBarHeightPx(point.giving, maxGiving)"
+                  [attr.title]="'$' + point.giving + 'k giving'"
+                ></div>
+              </div>
+              <span class="cd-chart__label">{{ point.month }}</span>
+            </div>
+          </div>
+        </div>
+      </article>
+
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Stewardship Hub</h2>
+            <p class="cd-panel__desc" *ngIf="operationsSummary?.financial?.health as health">
+              Health score {{ health.score }} · {{ health.label }}
+            </p>
+            <p class="cd-panel__desc" *ngIf="!operationsSummary">High-level stewardship health — connect donations for live totals</p>
+          </div>
+          <button type="button" class="cd-panel__link" *ngIf="canViewFinancial" (click)="openFinancialDashboard()">Open Financial Dashboard</button>
+        </header>
+        <p *ngIf="loadingFinancial" class="cd-panel__desc">Loading live stewardship data…</p>
+        <div class="cd-giving-summary" *ngIf="!loadingFinancial">
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">This Month</span>
+            <span class="cd-giving-summary__value">{{ givingSummary.monthly }}</span>
+          </div>
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">Outstanding</span>
+            <span class="cd-giving-summary__value">{{ operationsSummary ? formatCurrency(operationsSummary.financial?.totals?.pending_dues || 0) : givingSummary.budgetGoal }}</span>
+          </div>
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">Families Needing Care</span>
+            <span class="cd-giving-summary__value">{{ operationsSummary?.financial?.attention_summary?.count || 0 }}</span>
+            <span class="cd-giving-summary__detail">{{ formatCurrency(operationsSummary?.financial?.attention_summary?.total_overdue_amount || 0) }} overdue</span>
+          </div>
+          <div class="cd-giving-summary__metric">
+            <span class="cd-giving-summary__label">Participation</span>
+            <span class="cd-giving-summary__value">{{ operationsSummary?.financial?.families?.participation_rate || 0 }}%</span>
+          </div>
+        </div>
+        <ul class="cd-financial-attention" *ngIf="operationsSummary?.families_requiring_attention?.length">
+          <li *ngFor="let family of operationsSummary?.families_requiring_attention ?? []">
+            <button type="button" (click)="navigateToFamily(family.family_id)">
+              <strong>{{ family.family_name }}</strong>
+              <span>{{ family.overdue_amount | number:'1.2-2' }} overdue · {{ family.days_overdue }} days</span>
+            </button>
+          </li>
+        </ul>
+        <div class="cd-giving-channels" *ngIf="!operationsSummary">
+          <h3 class="cd-giving-channels__title">Giving Channels</h3>
+          <div class="cd-giving-channel" *ngFor="let channel of givingChannels">
+            <div class="cd-giving-channel__head">
+              <span>{{ channel.channel }}</span>
+              <span>{{ channel.amount }}</span>
+            </div>
+            <div class="cd-progress cd-progress--subtle">
+              <div class="cd-progress__fill" [style.width.%]="channel.share"></div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <aside class="cd-main__sidebar" aria-label="Pastoral care and volunteer bottlenecks">
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Volunteer Coordination</h2>
+            <p class="cd-panel__desc">Sunday 9:00 AM service shift fulfillment</p>
+          </div>
+        </header>
+        <ul class="cd-volunteer-list">
+          <li *ngFor="let shift of volunteerShifts" class="cd-volunteer-item" [attr.data-status]="shift.status">
+            <svg class="cd-volunteer-ring" viewBox="0 0 40 40" aria-hidden="true">
+              <circle cx="20" cy="20" r="16" fill="none" stroke="#e8edf2" stroke-width="4"/>
+              <circle
+                cx="20" cy="20" r="16" fill="none"
+                stroke="currentColor" stroke-width="4"
+                stroke-linecap="round"
+                transform="rotate(-90 20 20)"
+                [attr.stroke-dasharray]="100.53"
+                [attr.stroke-dashoffset]="getVolunteerRingOffset(shift)"
+              />
+            </svg>
+            <div class="cd-volunteer-item__content">
+              <div class="cd-volunteer-item__head">
+                <span class="cd-volunteer-item__team">{{ shift.team }}</span>
+                <span class="cd-volunteer-item__pct">{{ getVolunteerPercent(shift) }}%</span>
+              </div>
+              <p>{{ shift.filled }} of {{ shift.required }} filled</p>
+              <span class="cd-volunteer-item__flag" *ngIf="shift.status === 'critical'">Action needed before Sunday</span>
+              <span class="cd-volunteer-item__flag is-watch" *ngIf="shift.status === 'watch'">Recruit 1–2 more volunteers</span>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Pastoral Care Alerts</h2>
+            <p class="cd-panel__desc">Urgent community needs requiring attention</p>
+          </div>
+        </header>
+        <ul class="cd-care-list">
+          <li *ngFor="let alert of careAlerts" class="cd-care-item" [class.is-urgent]="alert.priority === 'urgent'">
+            <div class="cd-care-item__count">{{ alert.count }}</div>
+            <div class="cd-care-item__content">
+              <span class="cd-care-item__title">{{ alert.title }}</span>
+              <button type="button" class="cd-link-btn">{{ alert.action }}</button>
+            </div>
+          </li>
+        </ul>
+      </article>
+
+      <article class="cd-panel">
+        <header class="cd-panel__head">
+          <div class="cd-panel__head-copy">
+            <h2>Pastoral Workflow</h2>
+            <p class="cd-panel__desc">Assign follow-ups to pastoral staff</p>
+          </div>
+        </header>
+        <ul class="cd-task-list">
+          <li *ngFor="let task of pastoralTasks" class="cd-task-item" [class.is-open]="task.status === 'open'">
+            <div class="cd-task-item__main">
+              <span class="cd-task-item__title">{{ task.title }}</span>
+              <span class="cd-task-item__meta">{{ task.assignee }} · Due {{ task.due }}</span>
+            </div>
+            <button
+              *ngIf="task.status === 'open'"
+              type="button"
+              class="cd-task-item__assign"
+              (click)="assignTask(task)"
+            >
+              Assign
+            </button>
+            <span *ngIf="task.status === 'assigned'" class="cd-task-item__assigned">Assigned</span>
+          </li>
+        </ul>
+      </article>
+    </aside>
+  </div>
+</div>

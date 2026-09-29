@@ -1,0 +1,53 @@
+.bcc-members {
+  display: grid;
+  gap: 1rem;
+}
+
+.bcc-members__name-link {
+  display: inline-block;
+  overflow-wrap: anywhere;
+}
+
+.bcc-members__name-link:hover,
+.bcc-members__name-link:focus-visible {
+  text-decoration: underline;
+}
+
+.bcc-members__filter-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+}
+
+.bcc-members__filter-summary .cf-meta {
+  margin: 0;
+}
+
+.bcc-members__assign {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bcc-members__lookup {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.35rem;
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.bcc-members__lookup-item {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  background: transparent;
+  border: 0;
+  padding: 0.35rem 0;
+  cursor: pointer;
+  color: inherit;
+  text-align: left;
+}

@@ -18,7 +18,8 @@ export interface User {
   user_type: 1 | 2 | null;  // 1 = primary_contact, 2 = secondary_contact
   is_primary_admin?: boolean;  // Primary admin created during tenant onboarding - cannot be deleted/deactivated by tenant users
   tenant_id?: number | null;
-  
+  person_id?: string | null;
+  profile_image_full_url?: string | null;
   // Legacy single role support (deprecated)
   role_id?: number | null;
   role_name?: string | null;
@@ -31,9 +32,12 @@ export interface User {
   deleted_at?: string | null;
   
   // Authorization flags (from backend)
-  can_edit?: boolean;  // Whether the current user can edit this user
-  is_self?: boolean;   // Whether this is the current user's own account
-  edit_restriction_reason?: string | null;  // Reason why user cannot edit (if can_edit is false)
+  can_edit?: boolean;
+  can_reset_password?: boolean;
+  is_self?: boolean;
+  edit_restriction_reason?: string | null;
+  force_password_change?: boolean;
+  password_changed_at?: string | null;
   is_super_admin?: boolean;  // User has SuperAdmin role
   is_admin?: boolean;  // User has SuperAdmin or EkklesiaAdmin role
   has_ekklesia_role?: boolean;  // User has any Ekklesia role (SuperAdmin, EkklesiaAdmin, EkklesiaManager, EkklesiaUser)
@@ -44,6 +48,29 @@ export interface User {
   roles?: Role[]; // Multiple roles support
   permissions?: Permission[]; // Aggregated permissions from all roles
   tenant?: any;
+  person?: LinkedParishPerson | null;
+}
+
+export interface LinkedParishPerson {
+  id: string;
+  first_name?: string;
+  last_name?: string;
+  full_name_display?: string;
+  email?: string | null;
+  phone?: string | null;
+}
+
+export interface LinkableClergy {
+  assignment_id: string;
+  person_id: string;
+  person_name: string;
+  first_name?: string;
+  last_name?: string;
+  email?: string | null;
+  phone?: string | null;
+  role_id: string;
+  role_title?: string;
+  start_date?: string | null;
 }
 
 /**
@@ -85,6 +112,7 @@ export interface UserRequest {
   user_type?: 1 | 2;
   role_ids: number[]; // Array of role IDs for multi-role support
   active?: 0 | 1;
+  person_id?: string | null;
 }
 
 /**

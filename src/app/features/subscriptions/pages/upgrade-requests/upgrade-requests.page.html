@@ -1,0 +1,99 @@
+<div class="sa-stack">
+  <p class="sa-muted" *ngIf="!can.requests">You do not have access to plan requests.</p>
+
+  <ng-container *ngIf="can.requests">
+    <div class="sa-toolbar">
+      <div class="sa-field">
+        <label for="sa-request-status">Show</label>
+        <select id="sa-request-status" class="sa-search" [(ngModel)]="status" (ngModelChange)="applyFilter()">
+          <option *ngFor="let f of filters" [ngValue]="f.value">{{ f.label }}</option>
+        </select>
+      </div>
+      <span class="sa-muted" *ngIf="meta">{{ meta.open_count }} waiting for a decision</span>
+    </div>
+
+    <div *ngIf="loading && requests.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+    </div>
+
+    <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+      <div>
+        <strong>Could not load plan requests</strong>
+        <p>{{ error }}</p>
+      </div>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!loading && !error && requests.length === 0"
+      title="No plan requests"
+      description="When a church asks for a different plan, the request appears here."
+      icon="✉"
+      [hasActions]="false">
+    </app-cf-empty-state>
+
+    <article *ngFor="let r of requests; trackBy: trackById" class="sa-plan-card" [attr.aria-label]="'Request from ' + (r.tenant?.name || 'church')">
+      <div class="sa-plan-card__title">
+        <h3>
+          <a *ngIf="r.tenant; else noTenant" [routerLink]="['/tenants', r.tenant.id]">{{ r.tenant.name }}</a>
+          <ng-template #noTenant>Church</ng-template>
+        </h3>
+        <app-status-badge [label]="statusLabel(r.status)" [tone]="statusTone(r.status)"></app-status-badge>
+      </div>
+
+      <dl class="sa-kv">
+        <dt>Wants</dt>
+        <dd><strong>{{ r.requested_plan?.name || '—' }}</strong> (now on {{ r.current_plan?.name || 'no plan' }})</dd>
+        <dt>Billing</dt>
+        <dd>{{ intervalLabel(r.billing_interval) }}</dd>
+        <ng-container *ngIf="r.feature_code">
+          <dt>Asked about</dt>
+          <dd><span class="sa-code">{{ r.feature_code }}</span></dd>
+        </ng-container>
+        <dt>Sent</dt>
+        <dd>{{ r.created_at | date: 'medium' }}<ng-container *ngIf="r.requested_by_name"> by {{ r.requested_by_name }}</ng-container></dd>
+        <ng-container *ngIf="r.message">
+          <dt>Message</dt>
+          <dd>{{ r.message }}</dd>
+        </ng-container>
+        <ng-container *ngIf="r.review_notes">
+          <dt>Review note</dt>
+          <dd>{{ r.review_notes }}<ng-container *ngIf="r.reviewed_by_name"> ({{ r.reviewed_by_name }})</ng-container></dd>
+        </ng-container>
+      </dl>
+
+      <div class="sa-plan-card__actions" *ngIf="isOpen(r) && activeId !== r.id">
+        <button type="button" class="cf-btn cf-btn-primary" *ngIf="canApprove(r)" (click)="start(r, 'approve')">Approve</button>
+        <button type="button" class="cf-btn" *ngIf="r.status === 'PENDING'" (click)="start(r, 'info')">Ask for more information</button>
+        <button type="button" class="cf-btn" (click)="start(r, 'reject')">Decline</button>
+      </div>
+
+      <form *ngIf="activeId === r.id" class="sa-stack" (ngSubmit)="submit(r)">
+        <p class="sa-muted" *ngIf="action === 'approve'">
+          The church moves to {{ r.requested_plan?.name }} straight away, on the plan's published price.
+          To set a special price or start date, use <a [routerLink]="['/tenants', r.tenant?.id]">the church's subscription tab</a> instead.
+        </p>
+        <div class="sa-field sa-field--full">
+          <label [for]="'sa-note-' + r.id">
+            {{ action === 'approve' ? 'Note for the church (optional)' : action === 'info' ? 'What do you need to know?' : 'Reason for declining' }}
+            <span class="required" *ngIf="noteRequired">*</span>
+          </label>
+          <textarea [id]="'sa-note-' + r.id" name="note" maxlength="1000" [(ngModel)]="note" [required]="noteRequired"></textarea>
+          <small *ngIf="noteRequired">The church will see this note.</small>
+        </div>
+        <div class="sa-plan-card__actions">
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="busy || !noteValid">
+            {{ busy ? 'Saving…' : action === 'approve' ? 'Approve and change plan' : action === 'info' ? 'Send question' : 'Decline request' }}
+          </button>
+          <button type="button" class="cf-btn" (click)="cancel()" [disabled]="busy">Cancel</button>
+        </div>
+      </form>
+    </article>
+
+    <nav class="sa-pager" *ngIf="meta && meta.last_page > 1" aria-label="Pages">
+      <button type="button" class="cf-btn" (click)="goTo(page - 1)" [disabled]="loading || page <= 1">Previous</button>
+      <span>Page {{ meta.current_page }} of {{ meta.last_page }}</span>
+      <button type="button" class="cf-btn" (click)="goTo(page + 1)" [disabled]="loading || page >= meta.last_page">Next</button>
+    </nav>
+  </ng-container>
+</div>

@@ -1,0 +1,19 @@
+.cf-field-provenance {
+  display: grid;
+  gap: 0.125rem;
+  font-size: 0.875rem;
+}
+
+.cf-field-provenance__label {
+  color: #64748b;
+  font-size: 0.75rem;
+}
+
+.cf-field-provenance__value {
+  font-weight: 500;
+}
+
+.cf-field-provenance__source {
+  color: #166534;
+  font-size: 0.75rem;
+}

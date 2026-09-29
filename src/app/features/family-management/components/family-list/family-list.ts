@@ -1,27 +1,46 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
+import { Router, ActivatedRoute } from '@angular/router';
+import { Subject, debounceTime, takeUntil, distinctUntilChanged, filter, map } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { FamilyService } from '../../../../core/services/family.service';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { Family, BCC, FamilyStatistics, FamilyMember } from '../../../../core/models/family.model';
 import { FamilyFormComponent } from '../family-form/family-form';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 
 @Component({
   selector: 'app-family-list',
   standalone: true,
   imports: [
-    CommonModule, 
-    FormsModule, 
-    ReactiveFormsModule, 
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
     FamilyFormComponent,
     AdvancedSearchPanelComponent,
-    PaginationComponent
+    PaginationComponent,
+    PageHeaderComponent,
+    ListToolbarComponent,
+    DataTableComponent,
+    StatusBadgeComponent,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    DisableWhenReadOnlyDirective,
+    ImageViewerComponent,
   ],
   templateUrl: './family-list.html',
   styleUrls: ['./family-list.scss'],
@@ -30,40 +49,41 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
 export class FamilyListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
-  
-  // Data
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly supportSessions = inject(SupportSessionService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
+
   families: Family[] = [];
   bccs: BCC[] = [];
   statistics: FamilyStatistics | null = null;
-  
-  // Pagination
+
   currentPage = 1;
   totalPages = 1;
   totalRecords = 0;
   perPage = 20;
   perPageOptions = [10, 20, 50, 100];
-  
-  // UI State
+
   loading = false;
+  loaded = false;
   error: string | null = null;
   showAdvancedSearch = false;
   showForm = false;
   selectedFamily: Family | null = null;
-  
-  // Search & Filter Form
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+
   filterForm: FormGroup;
   searchFields: SearchField[] = [];
   searchTerm = '';
-  
-  // Expose Math and Object for template
+
   Math = Math;
   Object = Object;
-  
+
   constructor(
     private familyService: FamilyService,
     private bccService: BCCService,
     private fb: FormBuilder,
     private router: Router,
+    private route: ActivatedRoute,
     private toastService: ToastService,
     private authService: AuthService
   ) {
@@ -71,23 +91,28 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       search: [''],
       status: [''],
       bcc_id: [''],
+      missing_sacrament: [''],
+      progression: [''],
       city: [''],
-      // Backend order remains consistent; active-first handled client-side
-      sort_by: ['created_at'],
-      sort_order: ['desc']
+      sort_by: ['family_code'],
+      sort_order: ['asc']
     });
   }
 
-  /**
-   * Determine the family head member for a given family
-   */
+  get isTenantAdmin(): boolean {
+    return this.authService.isTenantAdmin();
+  }
+
+  get hasActiveFiltersOrSearch(): boolean {
+    return this.getActiveFilterCount() > 0 || this.searchTerm.trim().length > 0;
+  }
+
   private resolveHeadMember(family: Family): FamilyMember | null {
     const members = family.members || [];
     if (!members.length) {
       return null;
     }
 
-    // Prefer explicit self/head relationships
     const relPriority = ['self', 'head', 'head of family'];
     const byRelationship = members.find(member => {
       const rel = String(member.relationship_to_head || '').toLowerCase();
@@ -101,21 +126,16 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       return byRelationship;
     }
 
-    // Next, prefer primary contact
     const primaryContact = members.find(member => (member as any).is_primary_contact === true && member.status === 'active')
       || members.find(member => (member as any).is_primary_contact === true);
     if (primaryContact) {
       return primaryContact;
     }
 
-    // Fallback: use first active member, then first member
     const activeMember = members.find(member => member.status === 'active');
     return activeMember || members[0];
   }
 
-  /**
-   * Get contact details (phone/email) for the family head
-   */
   getHeadContactInfo(family: Family): { phone: string | null; email: string | null } {
     const head = this.resolveHeadMember(family);
     const phone = head?.phone && String(head.phone).trim() ? String(head.phone).trim() : null;
@@ -125,15 +145,62 @@ export class FamilyListComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.initializeSearchFields();
-    this.loadReferenceData();
-    this.loadStatistics();
-    this.loadFamilies();
+    this.tryLoadParishData();
+    this.supportSessions.session$
+      .pipe(
+        map((session) => session?.id ?? null),
+        distinctUntilChanged(),
+        filter((id) => id !== null),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => this.tryLoadParishData());
+    this.applyQueryParams(this.route.snapshot.queryParamMap);
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((params) => this.applyQueryParams(params));
     this.setupSearchDebounce();
   }
 
-  /**
-   * Initialize search fields for advanced search panel
-   */
+  private applyQueryParams(params: import('@angular/router').ParamMap): void {
+    const missingSacrament = params.get('missing_sacrament') ?? '';
+    const progression = params.get('progression') ?? '';
+    const bccId = params.get('bcc_id') ?? '';
+    let changed = false;
+
+    if (this.filterForm.get('missing_sacrament')?.value !== missingSacrament) {
+      this.filterForm.patchValue({
+        missing_sacrament: missingSacrament,
+        ...(missingSacrament ? { progression: '' } : {}),
+      });
+      changed = true;
+    }
+
+    if (this.filterForm.get('progression')?.value !== progression) {
+      this.filterForm.patchValue({
+        progression,
+        ...(progression ? { missing_sacrament: '' } : {}),
+      });
+      changed = true;
+    }
+
+    if (bccId && this.filterForm.get('bcc_id')?.value !== bccId) {
+      this.filterForm.patchValue({ bcc_id: bccId });
+      changed = true;
+    }
+
+    const field = this.searchFields.find((row) => row.key === 'bcc_id');
+    if (field && bccId) {
+      field.value = bccId;
+    }
+
+    if (changed) {
+      this.currentPage = 1;
+      this.loadFamilies();
+    } else if (!this.loaded) {
+      this.loadFamilies();
+    }
+  }
+
   initializeSearchFields(): void {
     this.searchFields = [
       {
@@ -151,7 +218,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
         key: 'bcc_id',
         label: 'BCC',
         type: 'select',
-        options: [], // Will be populated after BCCs are loaded
+        options: [],
         value: this.filterForm.get('bcc_id')?.value
       },
       {
@@ -169,9 +236,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  /**
-   * Setup search input debounce
-   */
   private setupSearchDebounce(): void {
     this.filterForm.get('search')?.valueChanges
       .pipe(
@@ -186,16 +250,28 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Load reference data for filters
-   */
+  private tryLoadParishData(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
+    this.loadReferenceData();
+    this.loadStatistics();
+    if (!this.loaded) {
+      this.loadFamilies();
+    }
+  }
+
   private loadReferenceData(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.bccService.getBCCs({ status: 'active' })
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           this.bccs = response.data;
-          // Update search field options
           const bccField = this.searchFields.find(f => f.key === 'bcc_id');
           if (bccField) {
             bccField.options = this.bccs.map(bcc => ({
@@ -212,10 +288,11 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Load statistics
-   */
   private loadStatistics(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.familyService.getStatistics()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
@@ -232,12 +309,14 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       });
   }
 
-  /**
-   * Load families with filters
-   */
   loadFamilies(): void {
+    if (!this.authService.hasParishContext()) {
+      return;
+    }
+
     this.loading = true;
     this.error = null;
+    this.cdr.markForCheck();
 
     const formValue = this.filterForm.value;
     const filters: any = {
@@ -245,15 +324,23 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       per_page: this.perPage
     };
 
-    // Extract form values properly (handle arrays from form controls)
     if (formValue.search) filters.search = Array.isArray(formValue.search) ? formValue.search[0] : formValue.search;
     if (formValue.status) filters.status = Array.isArray(formValue.status) ? formValue.status[0] : formValue.status;
     if (formValue.bcc_id) filters.bcc_id = Array.isArray(formValue.bcc_id) ? formValue.bcc_id[0] : formValue.bcc_id;
+    if (formValue.missing_sacrament) {
+      filters.missing_sacrament = Array.isArray(formValue.missing_sacrament)
+        ? formValue.missing_sacrament[0]
+        : formValue.missing_sacrament;
+    }
+    if (formValue.progression) {
+      filters.progression = Array.isArray(formValue.progression)
+        ? formValue.progression[0]
+        : formValue.progression;
+    }
     if (formValue.city) filters.city = Array.isArray(formValue.city) ? formValue.city[0] : formValue.city;
     if (formValue.sort_by) filters.sort_by = Array.isArray(formValue.sort_by) ? formValue.sort_by[0] : formValue.sort_by;
     if (formValue.sort_order) filters.sort_order = Array.isArray(formValue.sort_order) ? formValue.sort_order[0] : formValue.sort_order;
 
-    // Remove empty filters
     Object.keys(filters).forEach(key => {
       if (filters[key] === '' || filters[key] === null || filters[key] === undefined) {
         delete filters[key];
@@ -265,25 +352,28 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.families = response.data;
-          // Don't override backend sorting - backend handles sorting
           this.currentPage = response.current_page;
           this.totalPages = response.last_page;
           this.totalRecords = response.total;
           this.loading = false;
+          this.loaded = true;
           this.cdr.markForCheck();
         },
         error: (error) => {
           this.error = 'Failed to load families. Please try again.';
           this.loading = false;
+          this.loaded = true;
           console.error('Error loading families:', error);
           this.cdr.markForCheck();
         }
       });
   }
 
-  /**
-   * Handle advanced search
-   */
+  onListSearchChange(value: string): void {
+    this.searchTerm = value ?? '';
+    this.filterForm.patchValue({ search: this.searchTerm });
+  }
+
   onAdvancedSearch(searchValues: { [key: string]: any }): void {
     this.filterForm.patchValue({
       status: searchValues['status'] || '',
@@ -295,9 +385,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.showAdvancedSearch = false;
   }
 
-  /**
-   * Clear advanced search filters
-   */
   onClearAdvancedSearch(): void {
     this.filterForm.patchValue({
       status: '',
@@ -311,28 +398,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.loadFamilies();
   }
 
-  /**
-   * Quick search (search term only)
-   */
-  onQuickSearch(): void {
-    this.filterForm.patchValue({ search: this.searchTerm });
-    this.currentPage = 1;
-    this.loadFamilies();
-  }
-
-  /**
-   * Clear search term
-   */
-  clearSearch(): void {
-    this.searchTerm = '';
-    this.filterForm.patchValue({ search: '' });
-    this.currentPage = 1;
-    this.loadFamilies();
-  }
-
-  /**
-   * Get active filters for display
-   */
   getActiveFilters(): ActiveFilter[] {
     const filters: ActiveFilter[] = [];
     const values = this.filterForm.value;
@@ -351,8 +416,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       });
     }
 
-    // Parish Zone removed from filters
-
     if (values.bcc_id) {
       const bcc = this.bccs.find(b => b.id === values.bcc_id);
       filters.push({
@@ -360,6 +423,24 @@ export class FamilyListComponent implements OnInit, OnDestroy {
         label: 'BCC',
         value: values.bcc_id,
         displayValue: bcc?.name || String(values.bcc_id)
+      });
+    }
+
+    if (values.missing_sacrament) {
+      filters.push({
+        key: 'missing_sacrament',
+        label: 'Missing sacrament',
+        value: values.missing_sacrament,
+        displayValue: this.missingSacramentLabel(String(values.missing_sacrament)),
+      });
+    }
+
+    if (values.progression) {
+      filters.push({
+        key: 'progression',
+        label: 'Progression',
+        value: values.progression,
+        displayValue: this.progressionLabel(String(values.progression)),
       });
     }
 
@@ -375,22 +456,15 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     return filters;
   }
 
-  /**
-   * Get count of active filters
-   */
   getActiveFilterCount(): number {
     return this.getActiveFilters().length;
   }
 
-  /**
-   * Remove single filter
-   */
   removeFilter(filter: ActiveFilter): void {
     this.filterForm.patchValue({
       [filter.key]: ''
     });
 
-    // Update search field value
     const field = this.searchFields.find(f => f.key === filter.key);
     if (field) {
       field.value = undefined;
@@ -400,17 +474,16 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.loadFamilies();
   }
 
-  /**
-   * Clear all filters
-   */
   clearAllFilters(): void {
     this.filterForm.reset({
       search: '',
       status: '',
       bcc_id: '',
+      missing_sacrament: '',
+      progression: '',
       city: '',
-      sort_by: 'created_at',
-      sort_order: 'desc'
+      sort_by: 'family_code',
+      sort_order: 'asc'
     });
     this.searchTerm = '';
     this.searchFields.forEach(field => {
@@ -420,9 +493,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.loadFamilies();
   }
 
-  /**
-   * Handle page change
-   */
   onPageChange(page: number): void {
     if (page >= 1 && page <= this.totalPages) {
       this.currentPage = page;
@@ -430,65 +500,38 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Handle page size change
-   */
   onPageSizeChange(pageSize: number): void {
     this.perPage = pageSize;
     this.currentPage = 1;
     this.loadFamilies();
   }
 
-  /**
-   * Change page (backward compatibility)
-   */
-  goToPage(page: number): void {
-    this.onPageChange(page);
-  }
-
-  /**
-   * Change items per page (backward compatibility)
-   */
-  changePerPage(perPage: number): void {
-    this.onPageSizeChange(perPage);
-  }
-
-  /**
-   * Sort by column
-   */
   sortBy(column: string): void {
     const currentSortValue = this.filterForm.get('sort_by')?.value;
     const currentOrderValue = this.filterForm.get('sort_order')?.value;
-    
-    // Handle array values from form controls
+
     const currentSort = Array.isArray(currentSortValue) ? currentSortValue[0] : currentSortValue;
     const currentOrder = Array.isArray(currentOrderValue) ? currentOrderValue[0] : currentOrderValue;
 
     if (currentSort === column) {
-      // Toggle order
       this.filterForm.patchValue({
         sort_order: currentOrder === 'asc' ? 'desc' : 'asc'
       });
     } else {
-      // New column, default to ascending
       this.filterForm.patchValue({
         sort_by: column,
         sort_order: 'asc'
       });
     }
 
-    this.currentPage = 1; // Reset to first page when sorting
+    this.currentPage = 1;
     this.loadFamilies();
   }
 
-  /**
-   * Get sort icon for column
-   */
   getSortIcon(column: string): string {
     const currentSortValue = this.filterForm.get('sort_by')?.value;
     const currentOrderValue = this.filterForm.get('sort_order')?.value;
-    
-    // Handle array values from form controls
+
     const currentSort = Array.isArray(currentSortValue) ? currentSortValue[0] : currentSortValue;
     const currentOrder = Array.isArray(currentOrderValue) ? currentOrderValue[0] : currentOrderValue;
 
@@ -496,57 +539,48 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     return currentOrder === 'asc' ? '↑' : '↓';
   }
 
-  /**
-   * View family details
-   */
   viewFamily(family: Family): void {
     this.router.navigate(['/families', family.id]);
   }
 
-  /**
-   * Edit family
-   */
-  editFamily(family: Family): void {
-    this.selectedFamily = family;
-    this.showForm = true;
+  isReadOnly(): boolean {
+    return this.subscriptionAccess.isReadOnly();
   }
 
-  /**
-   * Create new family
-   */
   createFamily(): void {
+    if (this.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to add families.', 'Read-only');
+      return;
+    }
     this.selectedFamily = null;
     this.showForm = true;
   }
 
-  /**
-   * Check if current user is Tenant Admin
-   */
-  get isTenantAdmin(): boolean {
-    return this.authService.isTenantAdmin();
-  }
-
-  /**
-   * Delete a family (only for Tenant Admins)
-   */
   deleteFamily(family: Family): void {
-    // Check if user is Tenant Admin
+    if (this.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to delete families.', 'Read-only');
+      return;
+    }
     if (!this.isTenantAdmin) {
       this.toastService.error('Only Tenant Administrators can delete families.', 'Permission Denied', 5000);
       return;
     }
 
-    // Confirmation dialog
     const familyName = family.family_name || family.family_code || 'this family';
     const memberCount = family.members?.length || 0;
-    const warningMessage = memberCount > 0 
+    const warningMessage = memberCount > 0
       ? `Are you sure you want to delete ${familyName}? This will also delete ${memberCount} member(s) associated with this family. This action cannot be undone.`
       : `Are you sure you want to delete ${familyName}? This action cannot be undone.`;
 
-    if (!confirm(warningMessage)) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Family',
+      message: warningMessage,
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.loading = true;
     this.cdr.markForCheck();
 
@@ -570,12 +604,10 @@ export class FamilyListComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
-  /**
-   * Handle form save
-   */
-  onFormSave(family: Family): void {
+  onFormSave(_family: Family): void {
     this.showForm = false;
     this.selectedFamily = null;
     this.loadFamilies();
@@ -583,37 +615,11 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.toastService.success('Family saved successfully!', 'Success');
   }
 
-  /**
-   * Handle form cancel
-   */
   onFormCancel(): void {
     this.showForm = false;
     this.selectedFamily = null;
   }
 
-  /**
-   * Export families
-   */
-  exportFamilies(): void {
-    console.log('Export families');
-    // Implement export functionality
-  }
-
-  /**
-   * Get status badge class
-   */
-  getStatusClass(status: string): string {
-    switch (status) {
-      case 'active': return 'badge-success';
-      case 'inactive': return 'badge-secondary';
-      case 'migrated': return 'badge-info';
-      default: return 'badge-secondary';
-    }
-  }
-
-  /**
-   * Generate initials from a full name (e.g., "John Doe" -> "JD")
-   */
   getInitials(name: string): string {
     if (!name) return '';
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -625,7 +631,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     return (first + last).toUpperCase();
   }
 
-  // Track avatars that failed to load so we can fallback to initials
   private brokenAvatarIds = new Set<string>();
 
   isAvatarBroken(family: Family): boolean {
@@ -636,9 +641,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     this.brokenAvatarIds.add(family.id);
   }
 
-  /**
-   * Deterministically choose a color class for the initials avatar
-   */
   getAvatarColorClass(seed: string | undefined): string {
     const text = (seed || '').trim();
     if (!text) return 'avatar-color-1';
@@ -647,61 +649,29 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       hash = ((hash << 5) - hash) + text.charCodeAt(i);
       hash |= 0;
     }
-    const idx = Math.abs(hash) % 8; // 8 palette options
+    const idx = Math.abs(hash) % 8;
     return `avatar-color-${idx + 1}`;
   }
 
-  /**
-   * Get page numbers for pagination
-   */
-  getPageNumbers(): number[] {
-    const pages: number[] = [];
-    const maxPagesToShow = 5;
-    
-    let startPage = Math.max(1, this.currentPage - Math.floor(maxPagesToShow / 2));
-    let endPage = Math.min(this.totalPages, startPage + maxPagesToShow - 1);
-    
-    if (endPage - startPage < maxPagesToShow - 1) {
-      startPage = Math.max(1, endPage - maxPagesToShow + 1);
-    }
-    
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(i);
-    }
-    
-    return pages;
-  }
-
-  /**
-   * Get the head's profile image URL
-   * Checks multiple possible image URL properties in priority order
-   */
   getHeadImageUrl(family: Family): string | null {
-    // Priority 1: head_profile_image_full_url (full URL from backend accessor)
     if (family.head_profile_image_full_url && family.head_profile_image_full_url.trim()) {
       return family.head_profile_image_full_url;
     }
-    
-    // Priority 2: head_profile_image_url (database path - construct full URL if needed)
+
     if (family.head_profile_image_url && family.head_profile_image_url.trim()) {
-      // If it already looks like a full URL, return it
       if (family.head_profile_image_url.startsWith('http://') || family.head_profile_image_url.startsWith('https://')) {
         return family.head_profile_image_url;
       }
-      // Otherwise, it's a storage path - backend should provide full_url, but fallback
       return family.head_profile_image_url;
     }
-    
-    // Priority 3: head_avatar_url (legacy/alternative property)
+
     if (family.head_avatar_url && family.head_avatar_url.trim()) {
       return family.head_avatar_url;
     }
-    
-    // Priority 4: Try to get from the head member's profile image
+
     const headMember = this.resolveHeadMember(family);
     if (headMember) {
       const member = headMember as any;
-      // Check member's profile image properties
       if (member.profile_image_full_url && member.profile_image_full_url.trim()) {
         return member.profile_image_full_url;
       }
@@ -712,7 +682,52 @@ export class FamilyListComponent implements OnInit, OnDestroy {
         return member.avatar_url;
       }
     }
-    
+
     return null;
+  }
+
+  private missingSacramentLabel(code: string): string {
+    const labels: Record<string, string> = {
+      BAPTISM: 'Baptism',
+      EUCHARIST: 'First Communion',
+      CONFIRMATION: 'Confirmation',
+      MATRIMONY: 'Marriage',
+    };
+
+    return labels[code.toUpperCase()] ?? code;
+  }
+
+  private progressionLabel(key: string): string {
+    const labels: Record<string, string> = {
+      baptized_without_communion: 'Baptized, no First Communion (age 10+)',
+      baptized_without_confirmation: 'Baptized, no Confirmation (age 10+)',
+      female_unmarried_over_18: 'Female (>18) - Not Married',
+      male_unmarried_over_23: 'Male (>23) - Not Married',
+    };
+
+    return labels[key] ?? key;
+  }
+
+  openPhotoViewer(family: Family, event: Event): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const photoUrl = this.getHeadImageUrl(family);
+    if (!photoUrl || this.isAvatarBroken(family) || !family.head_of_family) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: photoUrl,
+      alt: family.head_of_family,
+      title: family.head_of_family,
+      subtitle: family.family_name || 'Head of Family',
+    };
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 }

@@ -1,0 +1,55 @@
+.enroll-from-family-modal__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.enroll-from-family-modal__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.85rem;
+}
+
+.enroll-from-family-modal__grid label,
+.enroll-from-family-modal__block {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.enroll-from-family-modal__grid input,
+.enroll-from-family-modal__grid select,
+.enroll-from-family-modal__block input,
+.enroll-from-family-modal__block select,
+.enroll-from-family-modal__block textarea {
+  width: 100%;
+  font-weight: 400;
+}
+
+.enroll-from-family-modal__muted {
+  margin: 0;
+  color: var(--cf-muted, #64748b);
+  font-size: 0.85rem;
+  font-weight: 400;
+}
+
+.enroll-from-family-modal__retry {
+  margin-left: 0.5rem;
+}
+
+.enroll-from-family-modal__grid small,
+.enroll-from-family-modal__field-error,
+.enroll-from-family-modal__error {
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 400;
+}
+
+.enroll-from-family-modal__field-error,
+.enroll-from-family-modal__error {
+  margin: 0;
+}
+
+abbr {
+  text-decoration: none;
+}

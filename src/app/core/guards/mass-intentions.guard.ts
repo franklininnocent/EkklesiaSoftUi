@@ -1,0 +1,107 @@
+import { inject } from '@angular/core';
+import { CanActivateFn, Router } from '@angular/router';
+import { Store } from '@ngrx/store';
+import { catchError, filter, map, switchMap, take } from 'rxjs/operators';
+import { of } from 'rxjs';
+import { User } from '@core/models';
+import { AuthService } from '@core/services/auth.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { selectCurrentUser } from '@core/store/auth/auth.selectors';
+import * as AuthActions from '@core/store/auth/auth.actions';
+import { FEATURE_UNAVAILABLE_PATH } from '@core/guards/entitlement.guard';
+import { MassIntentionsApiService } from '@features/mass-intentions/services/mass-intentions-api.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
+
+export const massIntentionsGuard: CanActivateFn = (_route, state) => {
+  const authService = inject(AuthService);
+  const access = inject(SubscriptionAccessService);
+  const api = inject(MassIntentionsApiService);
+  const router = inject(Router);
+  const store = inject(Store);
+  const supportSessions = inject(SupportSessionService);
+
+  if (!authService.isAuthenticated()) {
+    router.navigate(['/auth/login'], { queryParams: { returnUrl: state.url } });
+    return false;
+  }
+
+  if (!authService.currentUserValue) {
+    store.dispatch(AuthActions.loadUser());
+  }
+
+  return store.select(selectCurrentUser).pipe(
+    filter((user): user is User => !!user),
+    take(1),
+    switchMap((user) => {
+      const hasActiveSupportSession = authService.isPlatformActor(user) && !!supportSessions.sessionId;
+      const isPlatformAdmin = authService.isSuperAdmin() || authService.isEkklesiaAdmin();
+      const hasTenantContext = !!user.tenant_id || hasActiveSupportSession;
+
+      if (authService.isPlatformActor(user) && !hasTenantContext) {
+        void router.navigate(['/dashboard'], {
+          queryParams: {
+            notice: 'support_session_required',
+            message: 'Mass intentions needs a Support Center session for the parish you are helping.',
+            returnUrl: state.url,
+          },
+        });
+        return of(false);
+      }
+
+      if (!authService.canAccessMassIntentions(user, { hasActiveSupportSession })) {
+        void router.navigate(['/dashboard'], {
+          queryParams: {
+            error: 'forbidden',
+            message: 'You do not have access to Mass intentions.',
+          },
+        });
+        return of(false);
+      }
+
+      if (!user.tenant_id || isPlatformAdmin) {
+        return of(true);
+      }
+
+      access.ensureLoaded();
+      return access.refresh().pipe(
+        switchMap(() => {
+          if (!access.canViewGatedModules()) {
+            const canViewSub = authService.canViewMySubscription(user);
+            if (canViewSub) {
+              void router.navigate(['/settings/my-subscription'], {
+                queryParams: { status: access.snapshot?.status || 'EXPIRED' },
+              });
+            } else {
+              void router.navigate(['/dashboard'], {
+                queryParams: {
+                  error: 'subscription',
+                  message:
+                    'Your subscription has ended or is suspended. Contact your administrator to restore access.',
+                },
+              });
+            }
+            return of(false);
+          }
+
+          return api.getModuleStatus().pipe(
+            map((response) => {
+              if (response.data?.enabled === true) {
+                return true;
+              }
+              void router.navigate([FEATURE_UNAVAILABLE_PATH], {
+                queryParams: { feature: 'MASS_INTENTIONS' },
+              });
+              return false;
+            }),
+            catchError(() => {
+              void router.navigate([FEATURE_UNAVAILABLE_PATH], {
+                queryParams: { feature: 'MASS_INTENTIONS' },
+              });
+              return of(false);
+            })
+          );
+        })
+      );
+    })
+  );
+};

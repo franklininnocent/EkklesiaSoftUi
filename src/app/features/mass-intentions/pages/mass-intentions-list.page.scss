@@ -1,0 +1,156 @@
+@use '../../../../styles/church-financial-os-mixins' as *;
+
+.mass-intentions-list__create {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+}
+
+.mass-intentions-list__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-space-2);
+  margin-bottom: var(--cf-space-3);
+}
+
+.mass-intentions-list__chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-1);
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.mass-intentions-list__chip-remove {
+  margin-left: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+}
+
+.mass-intentions-list__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+  padding: var(--cf-space-3);
+}
+
+.mass-intentions-list__summary {
+  margin: 0;
+}
+
+.mass-intentions-list__day {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.mass-intentions-list__name {
+  min-width: 8rem;
+}
+
+.mass-intentions-list__name strong {
+  font-weight: 600;
+}
+
+.mass-intentions-list__identification {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.mass-intentions-list__intention {
+  min-width: 10rem;
+}
+
+.mass-intentions-list__intention-cell {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--cf-space-2);
+  min-width: 0;
+}
+
+.mass-intentions-list__intention-label {
+  @include cf-truncate;
+  min-width: 0;
+  font-size: var(--cf-text-sm);
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--cf-slate-900);
+}
+
+.mass-intentions-list__legacy-badge {
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: var(--cf-text-xs);
+}
+
+.mass-intentions-list__desc {
+  min-width: 10rem;
+}
+
+.mass-intentions-list__desc-text {
+  @include cf-truncate;
+  display: block;
+  max-width: 22rem;
+  color: var(--cf-color-text-muted);
+}
+
+.mass-intentions-list__sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.mass-intentions-list__status {
+  white-space: nowrap;
+  width: 1%;
+}
+
+.mass-intentions-list__status-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+}
+
+.mass-intentions-list__status-icon {
+  display: inline-flex;
+  color: var(--cf-color-text-muted);
+}
+
+.mass-intentions-list__actions {
+  white-space: nowrap;
+}
+
+.mass-intentions-list__actions .cf-row-actions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  align-items: center;
+  gap: var(--cf-space-2);
+}
+
+:host ::ng-deep .mass-intentions-list__panel .cf-table {
+  min-width: 56rem;
+
+  th,
+  td {
+    vertical-align: middle;
+  }
+
+  tbody td.mass-intentions-list__intention,
+  tbody td.mass-intentions-list__intention .mass-intentions-list__intention-label {
+    text-decoration: none;
+    color: var(--cf-slate-900);
+  }
+}
+
+@media (max-width: 56rem) {
+  .mass-intentions-list__col-desc,
+  .mass-intentions-list__desc {
+    display: none;
+  }
+}

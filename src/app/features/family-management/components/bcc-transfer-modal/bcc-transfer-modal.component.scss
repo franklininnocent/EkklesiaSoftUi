@@ -1,0 +1,92 @@
+.bcc-transfer-modal__steps {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.bcc-transfer-modal__step {
+  flex: 1;
+  text-align: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  background: var(--cf-surface-muted, #f1f5f9);
+  color: var(--cf-muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.bcc-transfer-modal__step.is-active,
+.bcc-transfer-modal__step.is-complete {
+  background: var(--cf-primary-soft, #dbeafe);
+  color: var(--cf-primary, #1d4ed8);
+}
+
+.bcc-transfer-modal__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.bcc-transfer-modal__lead {
+  margin: 0;
+  color: var(--cf-text, #0f172a);
+}
+
+.bcc-transfer-modal__block {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.bcc-transfer-modal__block input,
+.bcc-transfer-modal__block select,
+.bcc-transfer-modal__block textarea {
+  width: 100%;
+  font-weight: 400;
+}
+
+.bcc-transfer-modal__preview {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.bcc-transfer-modal__preview div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.bcc-transfer-modal__preview dt {
+  font-size: 0.78rem;
+  color: var(--cf-muted, #64748b);
+}
+
+.bcc-transfer-modal__preview dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.bcc-transfer-modal__warnings {
+  margin: 0;
+  padding-left: 1.1rem;
+  color: #b45309;
+  font-size: 0.85rem;
+}
+
+.bcc-transfer-modal__muted,
+.bcc-transfer-modal__error {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.bcc-transfer-modal__muted {
+  color: var(--cf-muted, #64748b);
+}
+
+.bcc-transfer-modal__error {
+  color: #b91c1c;
+}
+
+abbr {
+  text-decoration: none;
+}

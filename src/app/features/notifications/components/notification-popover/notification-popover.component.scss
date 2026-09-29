@@ -1,0 +1,117 @@
+.notification-popover-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1040;
+  background: rgba(15, 23, 42, 0.08);
+}
+
+.notification-popover {
+  position: fixed;
+  top: 3.25rem;
+  right: max(1rem, env(safe-area-inset-right));
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  width: min(400px, calc(100vw - 1.5rem));
+  max-height: min(520px, calc(100dvh - 4.5rem));
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-md);
+  background: var(--cf-surface);
+  box-shadow: var(--cf-shadow-lg, 0 12px 32px rgba(15, 23, 42, 0.14));
+  overflow: hidden;
+}
+
+.notification-popover__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.75rem 0.65rem 1rem;
+  border-bottom: 1px solid var(--cf-panel-border);
+  background: var(--cf-slate-50);
+}
+
+.notification-popover__header-main {
+  min-width: 0;
+}
+
+.notification-popover__title {
+  margin: 0;
+  font-size: var(--cf-text-base);
+  font-weight: 600;
+  color: var(--cf-slate-900);
+}
+
+.notification-popover__count {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: var(--cf-text-xs);
+  color: var(--cf-muted);
+}
+
+.notification-popover__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+}
+
+.notification-popover__close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: var(--cf-radius-sm);
+  background: transparent;
+  color: var(--cf-muted);
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cf-slate-100);
+    color: var(--cf-slate-900);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-primary);
+    outline-offset: 1px;
+  }
+}
+
+.notification-popover__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.notification-popover__loading,
+.notification-popover__empty {
+  padding: 1rem;
+}
+
+.notification-popover__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.notification-popover__footer {
+  padding: 0.65rem 1rem;
+  border-top: 1px solid var(--cf-panel-border);
+  text-align: center;
+  background: var(--cf-slate-50);
+}
+
+@media (max-width: 640px) {
+  .notification-popover {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-height: min(85dvh, 520px);
+    border-radius: var(--cf-radius-md) var(--cf-radius-md) 0 0;
+  }
+}

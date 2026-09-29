@@ -26,6 +26,7 @@ export class FamilyHierarchyGroupComponent {
 
   @Output() expandedChange = new EventEmitter<boolean>();
   @Output() selectMember = new EventEmitter<number>();
+  @Output() previewPhoto = new EventEmitter<{ src: string; alt: string; title: string; subtitle: string }>();
 
   toggleExpanded(): void {
     this.expandedChange.emit(!this.expanded);

@@ -47,16 +47,16 @@
    GLOBAL HEADING STYLES
    ======================================================================== */
 
-/* Page Titles - Main heading for each page */
+/* Page Titles — aliases CF OS page-title token (see _church-financial-os-tokens.scss) */
 .page-title,
 h1.page-title {
-  font-size: 1.5rem !important;        /* 24px - Professional, not too large */
-  font-weight: var(--font-semibold) !important;
-  line-height: var(--leading-tight) !important;
-  color: var(--text-primary) !important;
+  font-size: var(--cf-text-page-title) !important;
+  font-weight: var(--cf-font-weight-page-title, var(--font-semibold)) !important;
+  line-height: var(--cf-leading-page-title, var(--leading-tight)) !important;
+  color: var(--cf-color-text-primary, var(--text-primary)) !important;
   margin: 0 !important;
-  letter-spacing: var(--tracking-tight) !important;
-  font-family: var(--font-primary) !important;
+  letter-spacing: -0.01em !important;
+  font-family: var(--cf-font-sans, var(--font-primary)) !important;
 }
 
 /* Page Subtitles */
@@ -70,23 +70,23 @@ h1.page-title {
   letter-spacing: var(--tracking-normal) !important;
 }
 
-/* Section Titles */
+/* Section Titles — prefer .cf-section-title in new UI */
 .section-title,
 h2.section-title {
-  font-size: 1.25rem !important;       /* 20px */
+  font-size: var(--cf-text-section-title, 1.05rem) !important;
   font-weight: var(--font-semibold) !important;
-  line-height: var(--leading-snug) !important;
+  line-height: 1.3 !important;
   color: var(--text-primary) !important;
   margin: 0 0 var(--spacing-md) 0 !important;
   letter-spacing: var(--tracking-tight) !important;
 }
 
-/* Subsection Titles */
+/* Subsection Titles — prefer .cf-subsection-title in new UI */
 .subsection-title,
 h3.subsection-title {
-  font-size: 1.125rem !important;      /* 18px */
+  font-size: var(--cf-text-subsection, 0.9rem) !important;
   font-weight: var(--font-medium) !important;
-  line-height: var(--leading-snug) !important;
+  line-height: 1.35 !important;
   color: var(--text-primary) !important;
   margin: 0 0 var(--spacing-sm) 0 !important;
   letter-spacing: var(--tracking-normal) !important;
@@ -126,18 +126,18 @@ h1 {
 }
 
 h2 {
-  font-size: 1.25rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
   font-weight: var(--font-semibold);
-  line-height: var(--leading-snug);
+  line-height: 1.3;
   color: var(--text-primary);
   margin: 0 0 var(--spacing-md) 0;
   letter-spacing: var(--tracking-tight);
 }
 
 h3 {
-  font-size: 1.125rem;
+  font-size: var(--cf-text-subsection, 0.9rem);
   font-weight: var(--font-medium);
-  line-height: var(--leading-snug);
+  line-height: 1.35;
   color: var(--text-primary);
   margin: 0 0 var(--spacing-sm) 0;
   letter-spacing: var(--tracking-normal);
@@ -311,10 +311,8 @@ button,
 
 /* Tablet (768px - 1023px) */
 @media (max-width: 1023px) {
-  .page-title {
-    font-size: 1.375rem !important;     /* 22px */
-  }
-  
+  /* .page-title size comes from --cf-text-page-title (responsive in CF tokens) */
+
   .section-title {
     font-size: 1.125rem !important;     /* 18px */
   }
@@ -326,10 +324,8 @@ button,
 
 /* Mobile (≤767px) */
 @media (max-width: 767px) {
-  .page-title {
-    font-size: 1.25rem !important;      /* 20px */
-  }
-  
+  /* .page-title size comes from --cf-text-page-title (responsive in CF tokens) */
+
   .page-subtitle {
     font-size: 0.8125rem !important;    /* 13px */
   }
@@ -355,10 +351,8 @@ button,
 
 /* Small Mobile (≤479px) */
 @media (max-width: 479px) {
-  .page-title {
-    font-size: 1.125rem !important;     /* 18px */
-  }
-  
+  /* .page-title size comes from --cf-text-page-title (responsive in CF tokens) */
+
   .page-subtitle {
     font-size: 0.75rem !important;      /* 12px */
   }

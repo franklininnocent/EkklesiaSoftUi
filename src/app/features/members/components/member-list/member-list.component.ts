@@ -1,16 +1,24 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule, DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
-import { Subject, debounceTime, takeUntil, distinctUntilChanged } from 'rxjs';
+import { Router, ActivatedRoute } from '@angular/router';
+import { Subject, takeUntil } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
 import { MemberService, MemberFilters } from '../../services/member.service';
 import { BCCService } from '@core/services/bcc.service';
-import { FamilyMember, BCC } from '@core/models/family.model';
-import { PaginationComponent, ButtonComponent } from '@shared/components';
+import { FamilyMember, BCC, Family } from '@core/models/family.model';
+import { getMemberParentDisplayName } from '../../../family-management/utils/member-parent-display.util';
+import { PaginationComponent } from '@shared/components';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
-import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 
 @Component({
   selector: 'app-member-list',
@@ -20,8 +28,15 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
     FormsModule,
     PaginationComponent,
     AdvancedSearchPanelComponent,
-    ButtonComponent,
-    SortableDirective
+    SortableDirective,
+    PageHeaderComponent,
+    ListToolbarComponent,
+    DataTableComponent,
+    StatusBadgeComponent,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    ModalShellComponent,
+    ImageViewerComponent,
   ],
   templateUrl: './member-list.component.html',
   styleUrls: ['./member-list.component.scss'],
@@ -31,8 +46,6 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
 export class MemberListComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
-  private focusTrapCleanup?: () => void;
-  private previouslyFocusedElement?: HTMLElement | null;
 
   // Data
   members: FamilyMember[] = [];
@@ -47,20 +60,32 @@ export class MemberListComponent implements OnInit, OnDestroy {
 
   // UI State
   loading = false;
+  loaded = false;
   error: string | null = null;
   searchTerm = '';
   selectedStatus = '';
   selectedBccId = '';
+  selectedProgression: MemberFilters['progression'] | '' = '';
   showHeadOnly = false;
   
-  // Sorting state
-  sortColumn: string = ''; // Backend sort column name
-  sortDirection: 'asc' | 'desc' | null = null;
-  frontendSortColumn: string = ''; // Frontend column name for UI display
+  // Sorting state — default to member name ascending (API); header indicator only after user clicks
+  sortColumn = 'name';
+  sortDirection: 'asc' | 'desc' = 'asc';
+  headerSortColumn = '';
+  headerSortDirection: 'asc' | 'desc' | null = null;
   
   // Advanced search panel state
   showAdvancedSearch = false;
   searchFields: SearchField[] = [];
+
+  get hasActiveFiltersOrSearch(): boolean {
+    return this.getActiveFilterCount() > 0 || this.searchTerm.trim().length > 0;
+  }
+
+  openAdvancedSearch(): void {
+    this.syncSearchFieldsWithFilters();
+    this.showAdvancedSearch = true;
+  }
 
   /**
    * Toggle advanced search panel
@@ -76,8 +101,9 @@ export class MemberListComponent implements OnInit, OnDestroy {
   // Detail Modal
   showDetailModal = false;
   selectedMember: FamilyMember | null = null;
+  photoViewer: { src: string; alt: string; title: string; subtitle: string; nested: boolean } | null = null;
+  private brokenAvatarIds = new Set<string>();
   loadingDetail = false;
-  @ViewChild('detailModalRef', { static: false }) detailModalRef?: ElementRef;
 
   // Expose DatePipe for template
   datePipe = new DatePipe('en-US');
@@ -86,13 +112,57 @@ export class MemberListComponent implements OnInit, OnDestroy {
     private memberService: MemberService,
     private bccService: BCCService,
     private router: Router,
+    private route: ActivatedRoute,
     private toastService: ToastService
   ) {}
 
   ngOnInit(): void {
     this.initializeSearchFields();
     this.loadBCCs();
-    this.loadMembers();
+    this.applyQueryParams(this.route.snapshot.queryParamMap);
+    this.route.queryParamMap
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((params) => this.applyQueryParams(params));
+  }
+
+  private applyQueryParams(params: import('@angular/router').ParamMap): void {
+    const progression = this.parseProgressionFilter(params.get('progression'));
+    const bccId = params.get('bcc_id') ?? '';
+    let changed = false;
+
+    if (this.selectedProgression !== progression) {
+      this.selectedProgression = progression;
+      changed = true;
+    }
+
+    if (bccId && this.selectedBccId !== bccId) {
+      this.selectedBccId = bccId;
+      changed = true;
+    }
+
+    const bccField = this.searchFields.find((field) => field.key === 'bcc_id');
+    if (bccField && bccId) {
+      bccField.value = bccId;
+    }
+
+    if (changed) {
+      this.currentPage = 1;
+      this.loadMembers();
+    } else if (!this.loaded) {
+      this.loadMembers();
+    }
+  }
+
+  private parseProgressionFilter(value: string | null): MemberFilters['progression'] | '' {
+    switch (value) {
+      case 'baptized_without_communion':
+      case 'baptized_without_confirmation':
+      case 'female_unmarried_over_18':
+      case 'male_unmarried_over_23':
+        return value;
+      default:
+        return '';
+    }
   }
 
   /**
@@ -104,6 +174,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
         key: 'status',
         label: 'Status',
         type: 'select',
+        group: 'Membership',
         options: [
           { value: 'active', label: 'Active' },
           { value: 'inactive', label: 'Inactive' },
@@ -116,6 +187,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
         key: 'bcc_id',
         label: 'BCC',
         type: 'select',
+        group: 'Membership',
         options: [], // Will be populated after BCCs are loaded
         value: this.selectedBccId
       },
@@ -123,6 +195,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
         key: 'is_head',
         label: 'Family Head',
         type: 'boolean',
+        group: 'Household',
         placeholder: 'Family Heads Only',
         value: this.showHeadOnly
       }
@@ -132,12 +205,6 @@ export class MemberListComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-    if (this.focusTrapCleanup) {
-      this.focusTrapCleanup();
-    }
-    if (this.previouslyFocusedElement) {
-      restoreActiveElement(this.previouslyFocusedElement);
-    }
   }
 
   /**
@@ -177,9 +244,10 @@ export class MemberListComponent implements OnInit, OnDestroy {
       search: this.searchTerm || undefined,
       status: this.selectedStatus || undefined,
       bcc_id: this.selectedBccId || undefined,
+      progression: this.selectedProgression || undefined,
       is_head: this.showHeadOnly ? 'true' : undefined,
-      sort_by: this.sortColumn || undefined,
-      sort_order: this.sortDirection || undefined,
+      sort_by: this.sortColumn,
+      sort_order: this.sortDirection,
       per_page: this.perPage,
       page: this.currentPage
     };
@@ -204,6 +272,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
             this.error = 'Failed to load members.';
           }
           this.loading = false;
+          this.loaded = true;
           this.cdr.markForCheck();
         },
         error: (error) => {
@@ -217,9 +286,16 @@ export class MemberListComponent implements OnInit, OnDestroy {
           this.members = [];
           this.error = error?.error?.message || error?.message || 'Failed to load members. Please try again.';
           this.loading = false;
+          this.loaded = true;
           this.cdr.markForCheck();
         }
       });
+  }
+
+  onListSearchChange(value: string): void {
+    this.searchTerm = value ?? '';
+    this.currentPage = 1;
+    this.loadMembers();
   }
 
   /**
@@ -237,6 +313,20 @@ export class MemberListComponent implements OnInit, OnDestroy {
     this.searchTerm = '';
     this.currentPage = 1;
     this.loadMembers();
+  }
+
+  statusTone(status: string | undefined): StatusBadgeTone {
+    switch (status) {
+      case 'active':
+        return 'success';
+      case 'deceased':
+        return 'critical';
+      case 'migrated':
+        return 'info';
+      case 'inactive':
+      default:
+        return 'neutral';
+    }
   }
 
   /**
@@ -324,7 +414,27 @@ export class MemberListComponent implements OnInit, OnDestroy {
       });
     }
 
+    if (this.selectedProgression) {
+      filters.push({
+        key: 'progression',
+        label: 'Progression',
+        value: this.selectedProgression,
+        displayValue: this.progressionLabel(this.selectedProgression),
+      });
+    }
+
     return filters;
+  }
+
+  private progressionLabel(key: NonNullable<MemberFilters['progression']>): string {
+    const labels: Record<NonNullable<MemberFilters['progression']>, string> = {
+      baptized_without_communion: 'Baptized, no First Communion (age 10+)',
+      baptized_without_confirmation: 'Baptized, no Confirmation (age 10+)',
+      female_unmarried_over_18: 'Female (>18) - Not Married',
+      male_unmarried_over_23: 'Male (>23) - Not Married',
+    };
+
+    return labels[key];
   }
 
   /**
@@ -344,6 +454,8 @@ export class MemberListComponent implements OnInit, OnDestroy {
       this.selectedBccId = '';
     } else if (filter.key === 'is_head') {
       this.showHeadOnly = false;
+    } else if (filter.key === 'progression') {
+      this.selectedProgression = '';
     }
 
     // Update search field value
@@ -365,6 +477,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
   clearAllFilters(): void {
     this.selectedStatus = '';
     this.selectedBccId = '';
+    this.selectedProgression = '';
     this.showHeadOnly = false;
     this.searchTerm = '';
     this.searchFields.forEach(field => {
@@ -403,6 +516,16 @@ export class MemberListComponent implements OnInit, OnDestroy {
     return parts.join(' ') || 'N/A';
   }
 
+  /** Up to two initials for the detail modal avatar when no photo exists. */
+  getMemberInitials(member: FamilyMember): string {
+    const letters = [member.first_name, member.last_name]
+      .map((part) => (part || '').trim()[0])
+      .filter((char) => !!char && /[a-z0-9]/i.test(char))
+      .slice(0, 2)
+      .join('');
+    return (letters || 'M').toUpperCase();
+  }
+
   /**
    * Check if member is a family head
    */
@@ -423,6 +546,15 @@ export class MemberListComponent implements OnInit, OnDestroy {
    * Or if the member is a child, the family head might be the father
    */
   getFatherName(member: FamilyMember): string | null {
+    const apiName = member.display_father_name || member.father_name;
+    if (apiName) {
+      return apiName;
+    }
+
+    if (member.person?.father_name) {
+      return member.person.father_name;
+    }
+
     if (!member?.family_id) {
       return null;
     }
@@ -505,30 +637,15 @@ export class MemberListComponent implements OnInit, OnDestroy {
     this.selectedMember = member;
     this.showDetailModal = true;
     this.cdr.markForCheck();
-
-    // Set up focus trap
-    setTimeout(() => {
-      if (this.detailModalRef?.nativeElement) {
-        this.previouslyFocusedElement = saveActiveElement();
-        this.focusTrapCleanup = trapFocus(this.detailModalRef.nativeElement);
-      }
-    }, 100);
   }
 
   /**
    * Close detail modal
    */
   closeDetailModal(): void {
-    if (this.focusTrapCleanup) {
-      this.focusTrapCleanup();
-      this.focusTrapCleanup = undefined;
-    }
-    if (this.previouslyFocusedElement) {
-      restoreActiveElement(this.previouslyFocusedElement);
-      this.previouslyFocusedElement = null;
-    }
     this.showDetailModal = false;
     this.selectedMember = null;
+    this.photoViewer = null;
     this.cdr.markForCheck();
   }
 
@@ -563,6 +680,22 @@ export class MemberListComponent implements OnInit, OnDestroy {
   }
 
   /**
+   * Role shown once in the identity strip. The dialog title already carries the name.
+   */
+  getRelationshipLabel(member: FamilyMember): string {
+    if (this.isFamilyHead(member)) {
+      return 'Family head';
+    }
+
+    const relationship = (member.relationship_to_head || '').trim();
+    if (!relationship) {
+      return 'Member';
+    }
+
+    return relationship.replace(/_/g, ' ');
+  }
+
+  /**
    * Format date for display
    */
   formatDate(date: string | null | undefined): string {
@@ -579,52 +712,19 @@ export class MemberListComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * Get full address for member (from family if member doesn't have own address)
+   * Household address as separate lines so a stored trailing comma
+   * does not collapse into "Oak Ave,, Apartment".
+   */
+  getMemberAddressLines(member: FamilyMember | null | undefined = this.selectedMember): string[] {
+    return this.buildAddressLines(member?.family);
+  }
+
+  /**
+   * Single-line address for compact surfaces (table cells).
    */
   getMemberAddress(): string | null {
-    if (!this.selectedMember?.family) {
-      return null;
-    }
-
-    const family = this.selectedMember.family;
-    const addressParts: string[] = [];
-
-    // Address line 1
-    if (family.address_line_1) {
-      addressParts.push(family.address_line_1.trim());
-    }
-
-    // Address line 2
-    if (family.address_line_2) {
-      addressParts.push(family.address_line_2.trim());
-    }
-
-    // City
-    if (family.city) {
-      addressParts.push(family.city.trim());
-    }
-
-    // State (if available)
-    if (family.state?.name) {
-      addressParts.push(family.state.name.trim());
-    }
-
-    // Postal code
-    if (family.postal_code) {
-      addressParts.push(family.postal_code.trim());
-    }
-
-    // Country (if available)
-    if (family.country?.name) {
-      addressParts.push(family.country.name.trim());
-    }
-
-    // If we have any address parts, join them with commas and return
-    if (addressParts.length > 0) {
-      return addressParts.join(', ');
-    }
-
-    return null;
+    const lines = this.getMemberAddressLines(this.selectedMember);
+    return lines.length ? lines.join(', ') : null;
   }
 
   /**
@@ -633,9 +733,8 @@ export class MemberListComponent implements OnInit, OnDestroy {
   onSort(event: SortEvent): void {
     // Map frontend column names to backend sort field names
     let backendSortColumn = event.column;
-    
-    if (event.column === 'last_name') {
-      // Backend expects 'name' to sort by both last_name and first_name
+
+    if (event.column === 'name') {
       backendSortColumn = 'name';
     } else if (event.column === 'address') {
       // Backend handles 'address' directly
@@ -648,10 +747,10 @@ export class MemberListComponent implements OnInit, OnDestroy {
       backendSortColumn = 'father_name';
     }
     
-    // Store both frontend and backend column names
-    this.frontendSortColumn = event.column;
+    this.headerSortColumn = event.column;
+    this.headerSortDirection = event.direction ?? 'asc';
     this.sortColumn = backendSortColumn;
-    this.sortDirection = event.direction;
+    this.sortDirection = event.direction ?? 'asc';
     this.currentPage = 1; // Reset to first page when sorting
     this.loadMembers();
   }
@@ -662,50 +761,55 @@ export class MemberListComponent implements OnInit, OnDestroy {
    * Format: line1, line2, city, state - postal_code, country
    */
   getMemberAddressForTable(member: FamilyMember): string | null {
-    if (!member?.family) {
+    const lines = this.getMemberAddressLines(member);
+    return lines.length ? lines.join(', ') : null;
+  }
+
+  private buildAddressLines(family: Family | null | undefined): string[] {
+    if (!family) {
+      return [];
+    }
+
+    const lines: string[] = [];
+    const line1 = this.cleanAddressPart(family.address_line_1);
+    const line2 = this.cleanAddressPart(family.address_line_2);
+    if (line1) {
+      lines.push(line1);
+    }
+    if (line2) {
+      lines.push(line2);
+    }
+
+    const locality = [this.cleanAddressPart(family.city), this.cleanAddressPart(family.state?.name)]
+      .filter((part): part is string => !!part)
+      .join(', ');
+    const postal = this.cleanAddressPart(family.postal_code);
+    const cityLine = [locality, postal].filter((part): part is string => !!part).join(' ');
+    if (cityLine) {
+      lines.push(cityLine);
+    }
+
+    const country = this.cleanAddressPart(family.country?.name);
+    if (country) {
+      lines.push(country);
+    }
+
+    return lines;
+  }
+
+  private cleanAddressPart(value: string | null | undefined): string | null {
+    if (!value) {
       return null;
     }
 
-    const family = member.family;
-    const addressParts: string[] = [];
+    const cleaned = value
+      .replace(/,+/g, ',')
+      .replace(/\s*,\s*/g, ', ')
+      .replace(/^[,\s]+|[,\s]+$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
 
-    // Address line 1
-    if (family.address_line_1) {
-      addressParts.push(family.address_line_1.trim());
-    }
-
-    // Address line 2
-    if (family.address_line_2) {
-      addressParts.push(family.address_line_2.trim());
-    }
-
-    // City
-    if (family.city) {
-      addressParts.push(family.city.trim());
-    }
-
-    // State (if available)
-    if (family.state?.name) {
-      addressParts.push(family.state.name.trim());
-    }
-
-    // Postal code (with dash separator if state exists)
-    if (family.postal_code) {
-      addressParts.push(family.postal_code.trim());
-    }
-
-    // Country (if available)
-    if (family.country?.name) {
-      addressParts.push(family.country.name.trim());
-    }
-
-    // If we have any address parts, join them with commas and return
-    // The CSS will handle wrapping to two lines if needed
-    if (addressParts.length > 0) {
-      return addressParts.join(', ');
-    }
-
-    return null;
+    return cleaned || null;
   }
 
   /**
@@ -737,39 +841,105 @@ export class MemberListComponent implements OnInit, OnDestroy {
   getParentInfo(): { father?: string; mother?: string } | null {
     if (!this.selectedMember) return null;
 
-    // For marriage, check if member is bride or groom
-    if (this.selectedMember.marriage_bride_full_name) {
-      // Member is groom
-      return {
-        father: this.selectedMember.marriage_groom_father_name || undefined,
-        mother: this.selectedMember.marriage_groom_mother_name || undefined
-      };
-    } else if (this.selectedMember.marriage_groom_full_name) {
-      // Member is bride
-      return {
-        father: this.selectedMember.marriage_bride_father_name || undefined,
-        mother: this.selectedMember.marriage_bride_mother_name || undefined
-      };
+    const member = this.selectedMember;
+    let father = this.presentName(getMemberParentDisplayName(member, 'father'))
+      || this.presentName(this.getFatherName(member));
+    let mother = this.presentName(getMemberParentDisplayName(member, 'mother'));
+
+    if (member.marriage_bride_full_name) {
+      father = father || this.presentName(member.marriage_groom_father_name);
+      mother = mother || this.presentName(member.marriage_groom_mother_name);
+    } else if (member.marriage_groom_full_name) {
+      father = father || this.presentName(member.marriage_bride_father_name);
+      mother = mother || this.presentName(member.marriage_bride_mother_name);
     }
 
-    // For non-head members, try to get from family head if relationship indicates parent-child
-    const relationship = this.selectedMember.relationship_to_head?.toLowerCase();
-    if (relationship === 'son' || relationship === 'daughter' || relationship === 'child') {
-      // Could potentially get from family head, but for now return null
-      // as we don't have parent fields in FamilyMember model
+    if (!father && !mother) {
       return null;
+    }
+
+    return { father, mother };
+  }
+
+  private presentName(value: string | null | undefined): string | undefined {
+    const trimmed = (value || '').trim();
+    return trimmed || undefined;
+  }
+
+  /**
+   * Head photos live on the nested family record, not on FamilyMember.
+   * Non-heads have no person photo in this architecture — return null for initials.
+   */
+  getMemberPhotoUrl(member: FamilyMember | null | undefined): string | null {
+    if (!member || !this.isFamilyHead(member) || this.isAvatarBroken(member)) {
+      return null;
+    }
+
+    const family = member.family;
+    if (!family) {
+      return null;
+    }
+
+    if (family.head_profile_image_full_url?.trim()) {
+      return family.head_profile_image_full_url;
+    }
+
+    if (family.head_profile_image_url?.trim()) {
+      return family.head_profile_image_url;
+    }
+
+    if (family.head_avatar_url?.trim()) {
+      return family.head_avatar_url;
     }
 
     return null;
   }
 
-  /**
-   * Get member photo URL (if available)
-   */
-  getMemberPhotoUrl(): string | null {
-    // Check if member has a photo field (may not exist in current model)
-    const member = this.selectedMember as any;
-    return member?.photo_url || member?.profile_image_url || member?.profile_image_full_url || null;
+  isAvatarBroken(member: FamilyMember): boolean {
+    return this.brokenAvatarIds.has(member.id);
+  }
+
+  onAvatarError(member: FamilyMember): void {
+    this.brokenAvatarIds.add(member.id);
+    this.cdr.markForCheck();
+  }
+
+  getAvatarColorClass(seed: string | undefined): string {
+    const text = (seed || '').trim();
+    if (!text) {
+      return 'avatar-color-1';
+    }
+    let hash = 0;
+    for (let i = 0; i < text.length; i++) {
+      hash = ((hash << 5) - hash) + text.charCodeAt(i);
+      hash |= 0;
+    }
+    const idx = Math.abs(hash) % 8;
+    return `avatar-color-${idx + 1}`;
+  }
+
+  openPhotoViewer(member: FamilyMember, event: Event, nested = false): void {
+    event.stopPropagation();
+    event.preventDefault();
+
+    const photoUrl = this.getMemberPhotoUrl(member);
+    if (!photoUrl) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: photoUrl,
+      alt: this.getFullName(member),
+      title: this.getFullName(member),
+      subtitle: this.isFamilyHead(member) ? 'Family head' : (member.relationship_to_head || 'Member'),
+      nested,
+    };
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 }
 

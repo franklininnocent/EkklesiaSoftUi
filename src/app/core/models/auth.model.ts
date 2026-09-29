@@ -7,6 +7,7 @@ export interface AuthResponse {
   user_id: number;
   role_id: number;
   token_type: string;
+  force_password_change?: boolean;
   message: string;
 }
 

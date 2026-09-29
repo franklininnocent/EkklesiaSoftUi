@@ -12,11 +12,12 @@ import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/util
 import { isHighRiskPermissionName } from '@shared/utils/rbac-permission.util';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 import { RolePermissionWorkspaceComponent } from '../role-permission-workspace/role-permission-workspace.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-role-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RolePermissionWorkspaceComponent],
+  imports: [CommonModule, ReactiveFormsModule, RolePermissionWorkspaceComponent, ModalShellComponent],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -66,7 +67,7 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   loadingPermissions = false;
   permissionsError: string | null = null;
   permissionCatalogAccessDenied = false;
-  showPermissions = false; // Toggle for permissions section
+  showPermissions = true;
 
 
   ngOnInit(): void {
@@ -98,9 +99,10 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         this.selectedPermissionIds.clear();
       }
       
-      // Clear any previous errors
+      // Clear any previous errors and keep permissions visible in edit/create.
       this.errorMessage = null;
       this.permissionCatalogAccessDenied = false;
+      this.showPermissions = true;
     }
     
     // Handle role changes (when switching between edit modals)
@@ -712,6 +714,14 @@ export class RoleFormModalComponent implements OnInit, OnChanges, AfterViewCheck
 
   private resolvePermissionModule(permission: Permission): string {
     const permissionName = (permission.name || '').toLowerCase();
+    if (
+      permissionName.startsWith('users.password.')
+      || permissionName === 'tenant.admin_password.reset'
+      || permission.module === 'Password & Account Security'
+    ) {
+      return 'Password & Account Security';
+    }
+
     const prefix = permissionName.includes('.') ? permissionName.split('.')[0] : '';
     const prefixModuleMap: Record<string, string> = {
       users: 'Users',

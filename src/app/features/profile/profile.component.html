@@ -1,68 +1,180 @@
-<div class="profile-container" *ngIf="currentUser$ | async as user">
-  <div class="profile-header">
-    <h1 class="page-title">Profile</h1>
-    <p class="page-description">Manage your account information</p>
+<div class="profile cf-page" *ngIf="currentUser$ | async as user">
+  <app-page-header title="Profile" subtitle="Your account">
+    <button
+      type="button"
+      class="cf-btn cf-btn-primary cf-btn--sm"
+      (click)="openChangePasswordModal()"
+    >
+      Change password
+    </button>
+  </app-page-header>
+
+  <div class="cf-inline-alert" *ngIf="user.force_password_change" role="alert">
+    <p>You must change your password before continuing.</p>
   </div>
 
-  <div class="profile-content">
-    <div class="profile-card">
-      <div class="profile-avatar-section">
-        <div class="profile-avatar">
-          <span class="avatar-text">{{ getInitials(user.name) }}</span>
-        </div>
-        <h2 class="profile-name">{{ user.name }}</h2>
-        <p class="profile-email">{{ user.email }}</p>
+  <section class="profile__identity cf-panel" aria-label="Profile identity">
+    <div class="profile__identity-main">
+      <div class="profile__avatar-col">
+        <app-user-avatar
+          [name]="user.name"
+          [imageUrl]="getUserPhotoUrl(user)"
+          size="lg"
+          (photoClick)="openPhotoViewer(user)"
+        ></app-user-avatar>
       </div>
 
-      <div class="profile-divider"></div>
+      <div class="profile__identity-copy">
+        <h2 class="profile__name">{{ user.name }}</h2>
+        <p class="cf-meta profile__email">{{ user.email }}</p>
 
-      <div class="profile-info-section">
-        <h3 class="section-title">Account Information</h3>
-        
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Full Name</span>
-            <span class="info-value">{{ user.name }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="info-label">Email Address</span>
-            <span class="info-value">{{ user.email }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="info-label">User ID</span>
-            <span class="info-value">#{{ user.id }}</span>
-          </div>
-
-          <div class="info-item">
-            <span class="info-label">Account Status</span>
-            <span class="info-value">
-              <span class="status-badge active">Active</span>
-            </span>
-          </div>
+        <div class="profile__badges">
+          <app-status-badge
+            [label]="getAccountStatusLabel(user)"
+            [tone]="getAccountStatusTone(user)"
+          ></app-status-badge>
+          <app-status-badge
+            *ngFor="let role of getRoleNames(user)"
+            [label]="role"
+            tone="neutral"
+          ></app-status-badge>
+          <app-status-badge
+            *ngIf="user.is_primary_admin"
+            label="Primary administrator"
+            tone="info"
+          ></app-status-badge>
         </div>
-      </div>
 
-      <div class="profile-divider"></div>
+        <div
+          class="profile__photo"
+          *ngIf="canManageOwnProfileImage(user)"
+          aria-labelledby="profile-photo-heading"
+        >
+          <p id="profile-photo-heading" class="sr-only">Profile photo</p>
 
-      <div class="profile-actions">
-        <button class="btn-edit" disabled type="button" title="Edit profile information">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-          <span>Edit Profile</span>
-        </button>
-        <button class="btn-settings" disabled type="button" title="Change password">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-          </svg>
-          <span>Change Password</span>
-        </button>
+          <div class="profile__photo-actions">
+            <label
+              class="cf-btn cf-btn--sm profile__photo-upload"
+              [class.is-disabled]="isSavingProfileImage"
+            >
+              <svg
+                *ngIf="!isSavingProfileImage"
+                class="cf-icon-sm"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
+                <circle cx="12" cy="13" r="4"></circle>
+              </svg>
+              {{ isSavingProfileImage ? 'Saving…' : 'Change photo' }}
+              <input
+                id="profile_photo"
+                type="file"
+                hidden
+                [accept]="profileImageAccept"
+                [disabled]="isSavingProfileImage"
+                aria-label="Choose profile photo"
+                (change)="onProfilePhotoSelected($event, user)"
+              />
+            </label>
+
+            <button
+              type="button"
+              class="cf-btn-text profile__photo-remove"
+              *ngIf="getUserPhotoUrl(user)"
+              [disabled]="isSavingProfileImage"
+              (click)="removeProfilePhoto(user)"
+            >
+              <svg
+                class="cf-icon-sm"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              Remove photo
+            </button>
+          </div>
+
+          <p class="cf-caption profile__photo-hint">JPG, PNG, or WebP · up to 3 MB</p>
+
+          <p class="profile__photo-error" *ngIf="profileImageError" role="alert">{{ profileImageError }}</p>
+        </div>
       </div>
     </div>
+  </section>
+
+  <div class="profile__grid">
+    <app-section-card title="Account">
+      <dl class="profile__meta-grid cf-meta">
+        <div *ngIf="user.contact_number">
+          <dt>Phone</dt>
+          <dd>{{ user.contact_number }}</dd>
+        </div>
+        <div *ngIf="getContactTypeLabel(user) as contactType">
+          <dt>Contact type</dt>
+          <dd>{{ contactType }}</dd>
+        </div>
+        <div *ngIf="user.created_at">
+          <dt>Member since</dt>
+          <dd>{{ user.created_at | date: 'mediumDate' }}</dd>
+        </div>
+        <div>
+          <dt>Password</dt>
+          <dd *ngIf="user.force_password_change">Password change required</dd>
+          <dd *ngIf="!user.force_password_change && user.password_changed_at">
+            Last changed {{ user.password_changed_at | date: 'mediumDate' }}
+          </dd>
+          <dd *ngIf="!user.force_password_change && !user.password_changed_at">—</dd>
+        </div>
+      </dl>
+      <p class="cf-caption profile__admin-note">
+        Name and email are managed by your administrator. Account #{{ user.id }}.
+      </p>
+    </app-section-card>
+
+    <app-section-card *ngIf="hasTenantName(user)" title="Parish">
+      <dl class="profile__meta-grid cf-meta">
+        <div>
+          <dt>Parish</dt>
+          <dd>{{ user.tenant?.name }}</dd>
+        </div>
+        <div *ngIf="formatTenantTier(user.tenant?.tenant_tier) as tierLabel">
+          <dt>Tier</dt>
+          <dd>{{ tierLabel }}</dd>
+        </div>
+      </dl>
+    </app-section-card>
   </div>
 </div>
 
+<app-change-password-modal
+  *ngIf="showChangePasswordModal"
+  [forced]="forcePasswordChangeRequired"
+  (closed)="onChangePasswordModalClosed()"
+  (saved)="onChangePasswordSaved()"
+></app-change-password-modal>
+
+<app-image-viewer
+  *ngIf="photoViewer as viewer"
+  [src]="viewer.src"
+  [alt]="viewer.alt"
+  [title]="viewer.title"
+  [subtitle]="viewer.subtitle"
+  (closeRequested)="closePhotoViewer()"
+></app-image-viewer>

@@ -2,14 +2,18 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { CommandCenterDataService } from '../dashboard/services/command-center-data.service';
 import { ParishExpenseRecord } from '../models/donation.model';
 import { refreshStewardshipView } from '../utils/stewardship-view.util';
-
+import { localDateOnly } from '../utils/local-date-only';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-expenses',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, PageHeaderComponent, ModalShellComponent, CfCurrencyPipe, CfActionIconComponent],
   templateUrl: './donations-expenses.component.html',
   styleUrl: './donations-expenses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -26,7 +30,7 @@ export class DonationsExpensesComponent implements OnInit {
   form = {
     category: '',
     amount: null as number | null,
-    expense_date: new Date().toISOString().slice(0, 10),
+    expense_date: localDateOnly(),
     payee: '',
     method: 'cash',
     notes: ''
@@ -74,7 +78,7 @@ export class DonationsExpensesComponent implements OnInit {
         this.form = {
           category: '',
           amount: null,
-          expense_date: new Date().toISOString().slice(0, 10),
+          expense_date: localDateOnly(),
           payee: '',
           method: 'cash',
           notes: ''

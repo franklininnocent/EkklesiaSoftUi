@@ -103,14 +103,14 @@
 
 .cf-split-card__header-copy h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
   font-weight: 600;
   color: var(--cf-slate-900);
 }
 
 .cf-split-card__header-copy p {
   margin: 0.2rem 0 0;
-  font-size: 0.82rem;
+  font-size: var(--cf-text-meta, 0.8rem);
   color: var(--cf-muted);
 }
 
@@ -144,7 +144,7 @@
 
 .cf-split-form-cta__title {
   margin: 0;
-  font-size: 0.95rem;
+  font-size: var(--cf-text-subsection, 0.9rem);
   font-weight: 600;
   color: var(--cf-slate-900);
 }
@@ -323,6 +323,98 @@
   line-height: 1.35;
 }
 
+/*
+ * Read-only field pairs for detail (view) modals. Same label typography as an
+ * editable `.cf-split-field` label, but expressed with semantic `<dl>`/`<dt>`/
+ * `<dd>` markup so a 360° detail view stays a description list rather than a
+ * fake form. Use `<dl class="cf-split-grid">` → `<div class="cf-split-field">`
+ * → `<dt>` + `<dd>`. Generic on purpose so any entity detail modal (member,
+ * family, organization, tenant) can reuse it.
+ */
+.cf-split-field dt {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--cf-slate-700);
+}
+
+.cf-split-field dd {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
+  color: var(--cf-slate-900);
+  overflow-wrap: anywhere;
+}
+
+.cf-split-field dd.cf-split-value--multiline {
+  white-space: pre-wrap;
+}
+
+/*
+ * Identity strip for detail (view) modals — avatar (photo or initials
+ * monogram), primary name, a muted meta line, and room for a status badge.
+ * Sits as the first child of `.cf-split-form-body`, above the first
+ * `.cf-split-section`. Generic naming so any entity detail modal can reuse it.
+ */
+.cf-split-identity {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid var(--cf-panel-border);
+}
+
+.cf-split-identity__avatar {
+  flex: 0 0 auto;
+  width: 3.25rem;
+  height: 3.25rem;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--cf-radius-sm);
+  border: 1px solid var(--cf-panel-border);
+  background: var(--cf-slate-100);
+  color: var(--cf-slate-700);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.cf-split-identity__copy {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.cf-split-identity__name {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--cf-slate-900);
+  overflow-wrap: anywhere;
+}
+
+.cf-split-identity__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--cf-muted);
+}
+
+.cf-split-identity__sep {
+  color: var(--cf-slate-300);
+}
+
 .cf-split-toggle {
   display: inline-flex;
   align-items: flex-start;
@@ -349,6 +441,99 @@
   font-weight: 400;
   margin-top: 0.15rem;
   line-height: 1.35;
+}
+
+/*
+ * Shared ng-select skin for `.cf-split-*` forms — matches `.cf-split-field`
+ * input border/radius/padding/font/focus values exactly. Category itself has
+ * no `ng-select`; when a control needs one (platform, month, denomination,
+ * country, etc.), apply this class to the `<ng-select>` element instead of
+ * writing a per-modal `::ng-deep` override.
+ */
+.cf-split-select {
+  display: block;
+  width: 100%;
+
+  ::ng-deep {
+    .ng-select-container {
+      min-height: calc(0.5rem + 0.5rem + 0.9rem + 2px);
+      border: 1px solid var(--cf-panel-border);
+      border-radius: var(--cf-radius-sm);
+      background: #fff;
+      font-size: 0.9rem;
+      padding: 0 0.15rem;
+    }
+
+    &.ng-select-focused .ng-select-container {
+      border-color: var(--cf-primary);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+    }
+
+    .ng-placeholder {
+      color: var(--cf-muted);
+    }
+
+    .ng-value-label {
+      color: var(--cf-slate-900);
+    }
+
+    .ng-dropdown-panel {
+      border: 1px solid var(--cf-panel-border);
+      border-radius: var(--cf-radius-sm);
+      box-shadow: var(--cf-shadow-modal, 0 12px 32px rgba(15, 23, 42, 0.12));
+    }
+  }
+}
+
+/*
+ * Shared image-upload field for `.cf-split-*` forms — preview thumbnail,
+ * bordered `.cf-btn` trigger, and an optional remove pill. Generic on
+ * purpose (not "patron image", "logo", or "avatar") so any future
+ * Category-style modal that needs a single image upload (church logo,
+ * member photo, organization badge, etc.) can reuse it as-is. Use inside a
+ * `.cf-split-field` / `.cf-split-field--full` wrapper with its own
+ * `<label>` and optional `.cf-split-field__hint` for format/size guidance.
+ */
+.cf-split-image-upload {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: start;
+}
+
+.cf-split-image-upload__preview {
+  position: relative;
+  width: 5.5rem;
+  height: 5.5rem;
+  border-radius: var(--cf-radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--cf-panel-border);
+  background: var(--cf-slate-50);
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+}
+
+.cf-split-image-upload__remove {
+  position: absolute;
+  top: 0.2rem;
+  right: 0.2rem;
+  appearance: none;
+  border: 0;
+  border-radius: var(--cf-radius-sm);
+  background: rgba(15, 23, 42, 0.75);
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cf-critical);
+  }
 }
 
 .cf-split-form-actions {

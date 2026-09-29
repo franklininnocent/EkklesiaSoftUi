@@ -1,0 +1,160 @@
+.bishop-wizard__steps {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.bishop-wizard__step {
+  flex: 1;
+  text-align: center;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  background: var(--cf-surface-muted, #f3f4f6);
+  color: var(--cf-text-muted, #6b7280);
+
+  &.is-active,
+  &.is-complete {
+    background: var(--cf-primary-soft, #dbeafe);
+    color: var(--cf-primary, #1d4ed8);
+    font-weight: 600;
+  }
+}
+
+.bishop-wizard__body {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.bishop-wizard__lead,
+.bishop-wizard__muted,
+.bishop-wizard__confirm {
+  margin: 0;
+  color: var(--cf-text-muted, #6b7280);
+  font-size: 0.9rem;
+}
+
+.bishop-wizard__confirm {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--cf-panel-border, #e5e7eb);
+  background: var(--cf-slate-50, #f9fafb);
+}
+
+.bishop-wizard__error {
+  margin: 0;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.bishop-wizard__type-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bishop-wizard__type-card {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--cf-border, #e5e7eb);
+  border-radius: 0.75rem;
+  cursor: pointer;
+
+  input {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  &.is-selected {
+    border-color: var(--cf-primary, #1d4ed8);
+    background: var(--cf-primary-soft, #eff6ff);
+  }
+}
+
+.bishop-wizard__type-label {
+  font-weight: 600;
+}
+
+.bishop-wizard__type-desc {
+  font-size: 0.85rem;
+  color: var(--cf-text-muted, #6b7280);
+}
+
+.bishop-wizard__block {
+  display: grid;
+  gap: 0.35rem;
+
+  span {
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+
+  input,
+  textarea,
+  select {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--cf-border, #d1d5db);
+    border-radius: 0.5rem;
+    font: inherit;
+  }
+
+  small {
+    color: #b91c1c;
+  }
+}
+
+.bishop-wizard__review {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+
+  div {
+    display: grid;
+    gap: 0.15rem;
+  }
+
+  dt {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--cf-text-muted, #6b7280);
+  }
+
+  dd {
+    margin: 0;
+    font-weight: 600;
+  }
+}
+
+.bishop-wizard__readonly {
+  background: var(--cf-surface-muted, #f3f4f6);
+  color: var(--cf-text, #111827);
+}
+
+.bishop-wizard__hint {
+  font-style: normal;
+  font-size: 0.8rem;
+  color: var(--cf-text-muted, #6b7280);
+}
+
+.bishop-wizard__more {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.bishop-wizard__step.is-hidden {
+  display: none;
+}
+
+.bishop-wizard__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}

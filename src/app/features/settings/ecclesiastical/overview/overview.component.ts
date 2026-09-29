@@ -4,7 +4,8 @@ import { Router } from '@angular/router';
 import { DioceseService, BishopService } from '@core/services/ecclesiastical';
 import { ToastService } from '@core/services';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
-import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { forkJoin, Subject, of } from 'rxjs';
 import { takeUntil, catchError } from 'rxjs/operators';
 
@@ -35,7 +36,8 @@ interface BishopStatistics {
   imports: [
     CommonModule,
     LoadingSkeletonComponent,
-    EmptyStateComponent
+    CfEmptyStateComponent,
+    PageHeaderComponent
   ],
   templateUrl: './overview.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

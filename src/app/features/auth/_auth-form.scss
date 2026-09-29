@@ -1,0 +1,51 @@
+.auth-card {
+  background: var(--cf-panel-bg);
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius);
+  box-shadow: var(--cf-shadow);
+  padding: var(--cf-space-6);
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 767px) {
+  .auth-card {
+    padding: var(--cf-space-4);
+  }
+}
+
+/* 1rem keeps iOS Safari from zooming into the field on focus. */
+.auth-native-input,
+.auth-otp-input {
+  width: 100%;
+  min-height: var(--cf-touch-target);
+  padding: var(--cf-space-2) var(--cf-space-3);
+  border: 1px solid var(--cf-slate-300);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-panel-bg);
+  color: var(--cf-slate-900);
+  font-size: 1rem;
+  font-family: inherit;
+  box-sizing: border-box;
+
+  &::placeholder {
+    color: var(--cf-slate-400);
+  }
+
+  &:focus-visible {
+    outline: var(--cf-focus-ring-width) solid var(--cf-focus-ring);
+    outline-offset: 0;
+    border-color: var(--cf-primary);
+  }
+
+  &:disabled {
+    background: var(--cf-slate-100);
+    cursor: not-allowed;
+  }
+}
+
+.auth-submit {
+  width: 100%;
+  min-height: var(--cf-touch-target);
+  font-size: 1rem;
+  font-weight: 600;
+}

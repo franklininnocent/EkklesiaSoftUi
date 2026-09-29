@@ -1,0 +1,281 @@
+<section class="migration-queue cf-page">
+  <app-page-header
+    title="Link older names"
+    subtitle="Match a name on an older sacrament record to a parish member, or mark the person as outside the parish."
+    [backLink]="['/sacraments/register']"
+    backLabel="Back to register"
+  >
+    <app-list-toolbar
+      searchPlaceholder="Search by name"
+      [searchValue]="search"
+      [showFilters]="false"
+      (searchChange)="onSearchChange($event)"
+    >
+      <ng-container *ngIf="canResolve">
+        <button
+          type="button"
+          class="cf-btn"
+          [disabled]="busy"
+          (click)="requestPreviewScan()"
+        >
+          Preview scan
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          [disabled]="busy"
+          (click)="requestScanRecords()"
+        >
+          Scan records
+        </button>
+      </ng-container>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <div class="cf-decision-strip" role="region" aria-label="How linking works">
+    <div class="cf-decision-strip__copy">
+      <strong>Start with a preview. It changes nothing.</strong>
+      <span *ngIf="canResolve">
+        Scan records links a name only when the name and date of birth match exactly one parish member.
+        Every other name stays in this list. Names you have already decided are left alone.
+      </span>
+      <span *ngIf="!canResolve">
+        You can review this list. Someone who can update sacraments must scan and decide.
+      </span>
+    </div>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="reportError" role="alert">
+    <p>{{ reportError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="loadReport()">Try again</button>
+  </div>
+
+  <section class="cf-panel migration-queue__progress" *ngIf="report && !reportError" aria-label="Linking progress">
+    <h2 class="cf-section-title">Progress</h2>
+    <div class="cf-kpi-grid">
+      <button
+        type="button"
+        class="cf-kpi migration-queue__kpi-btn"
+        (click)="showUnresolvedQueue()"
+        [attr.aria-label]="'Show names that need a decision: ' + report.unresolved"
+      >
+        <span>Needs a decision</span>
+        <strong>{{ report.unresolved }}</strong>
+      </button>
+      <div class="cf-kpi">
+        <span>Parish member</span>
+        <strong>{{ report.linked }}</strong>
+      </div>
+      <div class="cf-kpi">
+        <span>Outside the parish</span>
+        <strong>{{ report.external }}</strong>
+      </div>
+      <div class="cf-kpi">
+        <span>Records with no people yet</span>
+        <strong>{{ report.sacraments_without_participants }}</strong>
+      </div>
+    </div>
+    <p class="cf-meta migration-queue__affiliation-note" *ngIf="report.affiliation_incomplete > 0">
+      Other-church details are still missing on {{ report.affiliation_incomplete }} records.
+      That is separate from linking these names.
+    </p>
+  </section>
+
+  <div
+    class="cf-inline-alert cf-panel migration-queue__scan-result"
+    *ngIf="lastScan"
+    role="status"
+    aria-live="polite"
+  >
+    <p><strong>{{ scanResultHeadline() }}</strong></p>
+    <ul class="migration-queue__scan-stats">
+      <li>Names checked: {{ lastScan.totals.processed ?? 0 }}</li>
+      <li *ngIf="lastScan.dryRun">Would link: {{ lastScan.totals.linked ?? 0 }}</li>
+      <li *ngIf="!lastScan.dryRun">Linked: {{ lastScan.totals.linked ?? 0 }}</li>
+      <li>Still need a decision: {{ lastScan.totals.unresolved ?? 0 }}</li>
+      <li>Already decided: {{ lastScan.totals.skipped ?? 0 }}</li>
+      <li *ngIf="(lastScan.totals.failed ?? 0) > 0">
+        Could not be checked: {{ lastScan.totals.failed }}
+      </li>
+    </ul>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="queueError" role="alert">
+    <p>{{ queueError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="loadQueue()">Try again</button>
+  </div>
+
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="queueLoading && !queueLoaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <p class="cf-loading-block__label">Loading names…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+  </div>
+
+  <section class="cf-panel migration-queue__queue" *ngIf="queueLoaded && !queueError">
+    <div class="migration-queue__queue-head">
+      <h2 class="cf-section-title">Names</h2>
+      <label class="migration-queue__status-filter">
+        <span class="cf-meta">Status</span>
+        <select
+          class="cf-form-field__control"
+          [(ngModel)]="filterResolution"
+          (ngModelChange)="onStatusChange()"
+          aria-label="Filter by status"
+        >
+          <option value="unresolved">Needs a decision</option>
+          <option value="member">Parish member</option>
+          <option value="external">Outside the parish</option>
+          <option value="">All</option>
+        </select>
+      </label>
+    </div>
+
+    <div class="cf-table-responsive" *ngIf="rows.length">
+      <app-data-table>
+        <thead>
+          <tr>
+            <th scope="col">Role</th>
+            <th scope="col">Name on the record</th>
+            <th scope="col">Date of birth</th>
+            <th scope="col">Match</th>
+            <th scope="col">Status</th>
+            <th scope="col">Sacrament</th>
+            <th scope="col" class="cf-table__actions-col">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of rows">
+            <td>{{ roleLabel(row.participant_role) }}</td>
+            <td>{{ row.legacy_name || '—' }}</td>
+            <td>{{ row.legacy_dob || '—' }}</td>
+            <td>
+              <app-status-badge
+                [label]="confidenceLabel(row.confidence)"
+                [tone]="confidenceTone(row.confidence)"
+              ></app-status-badge>
+            </td>
+            <td>
+              <app-status-badge
+                [label]="resolutionLabel(row.resolution)"
+                [tone]="resolutionTone(row.resolution)"
+              ></app-status-badge>
+            </td>
+            <td>
+              <a
+                *ngIf="row.sacrament"
+                class="migration-queue__sacrament-link"
+                [routerLink]="['/sacraments/view', row.sacrament.id]"
+              >
+                {{ row.sacrament.recipient_name || ('Record #' + row.sacrament.id) }}
+              </a>
+              <span *ngIf="!row.sacrament" class="cf-meta">—</span>
+            </td>
+            <td class="cf-table__actions-cell">
+              <button
+                type="button"
+                class="cf-btn cf-btn--sm"
+                *ngIf="canResolve && row.resolution === 'unresolved'"
+                (click)="openResolve(row)"
+              >
+                Decide
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <app-pagination
+        [currentPage]="currentPage"
+        [pageSize]="perPage"
+        [totalItems]="totalItems"
+        [pageSizeOptions]="pageSizeOptions"
+        [showPageSizeSelector]="true"
+        [showPageInfo]="true"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!queueLoading && !rows.length"
+      icon="◇"
+      [title]="emptyTitle"
+      [description]="emptyDescription"
+      [hasActions]="false"
+    ></app-cf-empty-state>
+  </section>
+
+  <app-confirmation-modal
+    [show]="showScanConfirm"
+    title="Scan parish records?"
+    message="This links a name only when the name and date of birth match exactly one parish member. Other names stay in the list. Names you have already decided are not changed."
+    confirmText="Scan records"
+    cancelText="Cancel"
+    [externalSubmitting]="busy"
+    (confirmed)="confirmScan()"
+    (cancelled)="cancelScanConfirm()"
+    (closed)="cancelScanConfirm()"
+  ></app-confirmation-modal>
+
+  <app-modal-shell
+    *ngIf="selected"
+    title="Decide this name"
+    [description]="decisionModalDescription()"
+    size="md"
+    closeAriaLabel="Close decision"
+    [isSubmitting]="busy"
+    (closeRequested)="closeResolve()"
+  >
+    <div class="cf-context-card migration-queue__decision-context" *ngIf="selected">
+      <p class="cf-meta">
+        Written name: <strong>{{ selected.legacy_name || '—' }}</strong>
+      </p>
+      <p class="cf-meta" *ngIf="selected.legacy_dob">
+        Date of birth: {{ selected.legacy_dob }}
+      </p>
+      <p class="cf-meta" *ngIf="selected.sacrament">
+        Sacrament:
+        <a [routerLink]="['/sacraments/view', selected.sacrament.id]">
+          {{ selected.sacrament.recipient_name || ('Record #' + selected.sacrament.id) }}
+        </a>
+      </p>
+    </div>
+
+    <div class="cf-inline-alert" *ngIf="resolveError" role="alert">
+      <p>{{ resolveError }}</p>
+    </div>
+
+    <app-participant-source-control
+      [label]="roleLabel(selected.participant_role)"
+      [role]="selected.participant_role"
+      [allowedSources]="['member', 'external']"
+      [value]="resolveDraft"
+      (valueChange)="onResolveDraftChange($event)"
+    ></app-participant-source-control>
+
+    <p class="cf-helper migration-queue__decision-helper">
+      Saving updates this sacrament record. This list will then treat the name as decided.
+    </p>
+
+    <div modalFooter>
+      <button
+        type="button"
+        class="cf-btn cf-btn-primary"
+        [disabled]="busy"
+        (click)="confirmResolve()"
+      >
+        Save decision
+      </button>
+      <button type="button" class="cf-btn" [disabled]="busy" (click)="closeResolve()">
+        Cancel
+      </button>
+    </div>
+  </app-modal-shell>
+</section>

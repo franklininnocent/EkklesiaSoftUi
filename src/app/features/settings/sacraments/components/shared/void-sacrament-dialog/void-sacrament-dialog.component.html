@@ -1,0 +1,53 @@
+<app-modal-shell
+  *ngIf="show"
+  title="Void sacramental record?"
+  size="sm"
+  [nested]="true"
+  headerVariant="compact"
+  [isSubmitting]="submitting"
+  closeAriaLabel="Close void dialog"
+  (closeRequested)="onCancel()"
+>
+  <p class="cf-confirm__message">
+    Void keeps the record for
+    <strong>{{ recipientLabel }}</strong>
+    visible in the register as Voided. This is not Remove or Delete — the entry stays on file with an audit trail.
+  </p>
+
+  <div class="cf-form-field">
+    <label class="cf-form-field__label" for="void-sacrament-reason">
+      Reason <span class="cf-split-req" aria-hidden="true">*</span>
+    </label>
+    <textarea
+      id="void-sacrament-reason"
+      name="voidReason"
+      class="cf-form-field__control"
+      [(ngModel)]="reason"
+      placeholder="Why is this record being voided?"
+      maxlength="500"
+      rows="3"
+      [disabled]="submitting"
+      required
+      aria-required="true"
+      [attr.aria-invalid]="reasonTrimmed.length > 0 && reasonTrimmed.length < minReasonLength"
+    ></textarea>
+    <div class="cf-form-field__hint">
+      At least {{ minReasonLength }} characters. This reason is stored with the audit trail.
+    </div>
+  </div>
+
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="submitting">
+      Cancel
+    </button>
+    <button
+      type="button"
+      class="cf-btn cf-btn-danger"
+      (click)="onConfirm()"
+      [disabled]="!canConfirm"
+    >
+      <span *ngIf="!submitting">Void record</span>
+      <span *ngIf="submitting">Voiding…</span>
+    </button>
+  </div>
+</app-modal-shell>

@@ -39,6 +39,11 @@ export const ECCLESIASTICAL_ROUTES: Routes = [
           .then(m => m.BishopDetailComponent)
       },
       {
+        path: 'bishop-updates',
+        loadComponent: () => import('./bishops/bishop-update-queue/bishop-update-queue.component')
+          .then(m => m.BishopUpdateQueueComponent)
+      },
+      {
         path: 'sacrament-types',
         loadComponent: () => import('./sacrament-types/components/sacrament-type-list/sacrament-type-list.component')
           .then(m => m.SacramentTypeListComponent)

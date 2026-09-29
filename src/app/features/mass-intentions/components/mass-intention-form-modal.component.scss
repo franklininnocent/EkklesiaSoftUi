@@ -1,0 +1,94 @@
+@use '../../donations/styles/stewardship-split-layout.scss';
+
+.mass-intention-modal-form {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mass-intention-modal-form .cf-split-form-actions {
+  justify-content: flex-end;
+  margin-top: auto;
+}
+
+.mass-intention-modal-form__for {
+  position: relative;
+}
+
+.mass-intention-modal-form__suggestions {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: #fff;
+  max-height: 10rem;
+  overflow-y: auto;
+  box-shadow: var(--cf-shadow-sm, 0 4px 12px rgba(15, 23, 42, 0.08));
+  z-index: 1;
+}
+
+.mass-intention-modal-form__suggestion {
+  width: 100%;
+  text-align: left;
+  padding: 0.5rem 0.65rem;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--cf-slate-100);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-family: inherit;
+  color: var(--cf-slate-900);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover,
+  &:focus-visible {
+    background: var(--cf-slate-50);
+    outline: none;
+  }
+}
+
+.mass-intention-modal-form__suggestion-name {
+  font-weight: 600;
+}
+
+.mass-intention-modal-form__suggestion-meta {
+  font-size: var(--cf-text-sm, 0.8125rem);
+  color: var(--cf-slate-500);
+  font-weight: 400;
+}
+
+.mass-intention-modal-form__add-category {
+  padding: var(--cf-space-3);
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-slate-50, #f8fafc);
+  display: grid;
+  gap: var(--cf-space-2);
+}
+
+.mass-intention-modal-form__add-actions {
+  display: flex;
+  gap: var(--cf-space-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.mass-intention-modal-form__inline-error {
+  margin: 0;
+  font-size: var(--cf-text-sm);
+  color: var(--cf-color-danger, #b91c1c);
+}
+
+@media (max-width: 640px) {
+  .mass-intention-modal-form .cf-split-grid {
+    grid-template-columns: 1fr;
+  }
+}

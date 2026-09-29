@@ -1,4 +1,4 @@
-export type StewardshipWorkspaceId = 'leadership' | 'collect' | 'families' | 'projects' | 'configure';
+export type StewardshipWorkspaceId = 'leadership' | 'collect' | 'projects' | 'configure';
 
 export interface StewardshipNavLink {
   path: string;
@@ -17,14 +17,14 @@ export interface StewardshipWorkspace {
 export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
   {
     id: 'leadership',
-    label: 'Leadership',
+    label: 'Dashboard',
     hint: 'Health & decisions',
     links: [
-      { path: '/donations', label: 'Dashboard', exact: true, description: 'Financial Operations Center' },
-      { path: '/donations/collection-health', label: 'Collection Health', description: 'Score breakdown and issues' },
+      { path: '/donations', label: 'Overview', exact: true, description: 'Financial Operations Center' },
       { path: '/donations/expenses', label: 'Disbursements', description: 'Parish expense register' },
-      { path: '/donations/reports', label: 'Reports', description: 'Exports and leadership reports' },
-      { path: '/donations/notifications', label: 'Notifications', description: 'Outreach and reminders' }
+      { path: '/donations/reports', label: 'Reports', description: 'CSV exports and report previews' },
+      { path: '/donations/notifications', label: 'Notifications', description: 'Outreach and reminders' },
+      { path: '/donations/download-history', label: 'Download History', description: 'CSV exports requested for this parish' }
     ]
   },
   {
@@ -33,17 +33,10 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
     hint: 'Payments & receipts',
     links: [
       { path: '/donations/collection-day', label: 'Collection Day', description: 'Live collection workspace' },
+      { path: '/donations/today-collections', label: "Today's Collections", description: 'All payments for the parish business date' },
       { path: '/donations/payments', label: 'Payment Register', description: 'All recorded payments' },
       { path: '/donations/register', label: "Today's Register", description: 'Today’s collection log' },
-      { path: '/donations/receipts', label: 'Receipts', description: 'Receipt hub and printing' }
-    ]
-  },
-  {
-    id: 'families',
-    label: 'Families',
-    hint: 'Outstanding & directory',
-    links: [
-      { path: '/families', label: 'Family Directory', description: 'Browse parish families' },
+      { path: '/donations/receipts', label: 'Receipts', description: 'Receipt hub and printing' },
       { path: '/donations/dues', label: 'Outstanding Contributions', description: 'Overdue and open balances' },
       { path: '/donations/donors', label: 'Donors', description: 'Contributor directory' }
     ]
@@ -66,6 +59,7 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
       { path: '/donations/plans', label: 'Contribution Plans', description: 'Mandatory and voluntary plans' },
       { path: '/donations/categories', label: 'Categories', description: 'Contribution categories' },
       { path: '/donations/recurring', label: 'Recurring', description: 'Recurring schedules' },
+      { path: '/donations/approvals', label: 'Approvals', description: 'Refund and correction approvals' },
       { path: '/donations/history', label: 'History', description: 'Historical transactions' },
       { path: '/donations/settings', label: 'Settings', description: 'Stewardship configuration' }
     ]
@@ -73,11 +67,16 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
 ];
 
 export function resolveStewardshipWorkspace(path: string): StewardshipWorkspaceId {
-  if (matchesAny(path, ['/donations/payments', '/donations/register', '/donations/receipts', '/donations/collection-day'])) {
+  if (matchesAny(path, [
+    '/donations/payments',
+    '/donations/register',
+    '/donations/receipts',
+    '/donations/collection-day',
+    '/donations/today-collections',
+    '/donations/dues',
+    '/donations/donors'
+  ])) {
     return 'collect';
-  }
-  if (matchesAny(path, ['/donations/dues', '/donations/donors', '/families'])) {
-    return 'families';
   }
   if (matchesAny(path, ['/donations/projects', '/donations/campaigns', '/donations/project-installments'])) {
     return 'projects';
@@ -86,6 +85,7 @@ export function resolveStewardshipWorkspace(path: string): StewardshipWorkspaceI
     '/donations/plans',
     '/donations/categories',
     '/donations/recurring',
+    '/donations/approvals',
     '/donations/history',
     '/donations/settings'
   ])) {

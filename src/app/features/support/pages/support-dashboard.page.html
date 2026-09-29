@@ -1,0 +1,114 @@
+<section class="support-dashboard cf-page">
+  <app-page-header
+    title="Support System"
+    subtitle="Get help from the EkklesiaSoft Support Team and track your support requests."
+  >
+    <app-list-toolbar
+      searchPlaceholder="Search tickets…"
+      [searchValue]="searchTerm"
+      [filterCount]="filterCount"
+      (searchChange)="onSearchChange($event)"
+      (filtersOpened)="openFilters()"
+    >
+      <button
+        *ngIf="canCreateTicket"
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="openCreateModal()"
+      >
+        New Support Ticket
+      </button>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <div class="support-dashboard__metrics" *ngIf="metrics as m" aria-label="Support summary">
+    <div class="support-dashboard__metric cf-panel">
+      <span class="support-dashboard__metric-value">{{ m.open }}</span>
+      <span class="support-dashboard__metric-label">Open</span>
+    </div>
+    <div class="support-dashboard__metric cf-panel">
+      <span class="support-dashboard__metric-value">{{ m.awaiting_ekklesia }}</span>
+      <span class="support-dashboard__metric-label">Awaiting Ekklesia</span>
+    </div>
+    <div class="support-dashboard__metric cf-panel">
+      <span class="support-dashboard__metric-value">{{ m.awaiting_you }}</span>
+      <span class="support-dashboard__metric-label">Awaiting You</span>
+    </div>
+    <div class="support-dashboard__metric cf-panel">
+      <span class="support-dashboard__metric-value">{{ m.resolved }}</span>
+      <span class="support-dashboard__metric-label">Resolved</span>
+    </div>
+    <div class="support-dashboard__metric cf-panel">
+      <span class="support-dashboard__metric-value">{{ m.total }}</span>
+      <span class="support-dashboard__metric-label">Total</span>
+    </div>
+    <div class="support-dashboard__metric cf-panel" [class.support-dashboard__metric--risk]="m.sla_at_risk > 0">
+      <span class="support-dashboard__metric-value">{{ m.sla_at_risk }}</span>
+      <span class="support-dashboard__metric-label">SLA At Risk</span>
+    </div>
+  </div>
+
+  <div class="cf-loading-block cf-panel" *ngIf="loading" role="status" aria-busy="true">
+    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <p>{{ error }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <div class="cf-panel" *ngIf="!loading && !error && items.length">
+    <app-data-table [clickableRows]="true">
+      <thead>
+        <tr>
+          <th scope="col">Ticket</th>
+          <th scope="col">Subject</th>
+          <th scope="col">Type</th>
+          <th scope="col">Priority</th>
+          <th scope="col">Status</th>
+          <th scope="col">Updated</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of items" (click)="openTicket(row)" tabindex="0">
+          <td>{{ row.ticket_number }}</td>
+          <td>{{ row.subject }}</td>
+          <td>{{ row.request_type?.name }}</td>
+          <td>{{ row.priority }}</td>
+          <td>{{ row.status }}</td>
+          <td>{{ row.updated_at | date: 'medium' }}</td>
+        </tr>
+      </tbody>
+    </app-data-table>
+    <app-pagination
+      [currentPage]="page"
+      [pageSize]="perPage"
+      [totalItems]="total"
+      [showPageSizeSelector]="false"
+      (pageChange)="onPageChange($event)"
+    ></app-pagination>
+  </div>
+
+  <app-cf-empty-state
+    *ngIf="!loading && !error && !items.length"
+    title="No support tickets yet"
+    description="Create a ticket when you need help from the EkklesiaSoft team."
+    actionLabel="New Support Ticket"
+    (action)="openCreateModal()"
+  ></app-cf-empty-state>
+
+  <app-support-ticket-create-modal
+    *ngIf="showCreateModal"
+    (close)="closeCreateModal()"
+    (created)="onTicketCreated($event)"
+  ></app-support-ticket-create-modal>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</section>

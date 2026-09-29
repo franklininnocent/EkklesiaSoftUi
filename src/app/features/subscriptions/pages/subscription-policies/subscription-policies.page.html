@@ -1,0 +1,134 @@
+<div class="sa-stack">
+  <div *ngIf="loading && !form" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+    <app-loading-skeleton type="card" [rows]="5"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <div>
+      <strong>Could not load policies</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <p class="sa-muted" *ngIf="form && readonly">You can view these policies. Only a Super Admin can change them.</p>
+
+  <form class="sa-stack" *ngIf="form && payload" (ngSubmit)="save()">
+    <section class="cf-panel sa-section">
+      <div class="sa-section__header">
+        <div>
+          <h2>New churches</h2>
+          <p class="sa-muted">Plan given automatically when a church is created without choosing one.</p>
+        </div>
+      </div>
+      <div class="sa-form-grid">
+        <div class="sa-field">
+          <label for="sa-pol-default">Default plan</label>
+          <select id="sa-pol-default" name="default_plan_id" [(ngModel)]="form.default_plan_id" [disabled]="readonly || saving">
+            <option [ngValue]="null">No default (choose each time)</option>
+            <option *ngFor="let p of defaultPlanOptions" [ngValue]="p.id">{{ p.name }}</option>
+          </select>
+          <small>Only published, fixed-price plans can be the default.</small>
+        </div>
+        <div class="sa-field">
+          <span class="sa-field__label">Trials</span>
+          <label class="cf-switch-field">
+            <input type="checkbox" name="allow_trial" [(ngModel)]="form.allow_trial_on_assignment" [disabled]="readonly || saving" />
+            <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Allow a free trial when assigning a plan</span></span>
+          </label>
+          <label for="sa-pol-trial">Longest trial (days)</label>
+          <input id="sa-pol-trial" name="max_trial_days" type="number" min="0" max="365" [(ngModel)]="form.max_trial_days" [disabled]="readonly || saving" />
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-panel sa-section">
+      <div class="sa-section__header">
+        <div>
+          <h2>When a church reaches a limit</h2>
+          <p class="sa-muted">Existing records are never deleted or hidden, whatever you choose here.</p>
+        </div>
+      </div>
+      <fieldset class="sa-stack">
+        <legend class="sa-field__label">At the limit</legend>
+        <label class="cf-switch-field">
+          <input type="radio" name="over_limit" value="BLOCK_NEW" [(ngModel)]="form.over_limit_behavior" [disabled]="readonly || saving" />
+          <span class="cf-switch-field__copy">
+            <span class="cf-switch-field__label">Stop adding new records</span>
+            <small>Recommended. The church sees a clear message and can ask for an upgrade.</small>
+          </span>
+        </label>
+        <label class="cf-switch-field">
+          <input type="radio" name="over_limit" value="WARN_ONLY" [(ngModel)]="form.over_limit_behavior" [disabled]="readonly || saving" />
+          <span class="cf-switch-field__copy">
+            <span class="cf-switch-field__label">Warn only</span>
+            <small>Records can still be added above the limit.</small>
+          </span>
+        </label>
+      </fieldset>
+
+      <fieldset class="sa-stack" *ngIf="payload.options.limit_exempt_flows.length">
+        <legend class="sa-field__label">Always allowed, even at the limit</legend>
+        <label class="cf-switch-field" *ngFor="let flow of payload.options.limit_exempt_flows">
+          <input type="checkbox" [name]="'exempt_' + flow" [(ngModel)]="form.exempt[flow]" [disabled]="readonly || saving" />
+          <span class="cf-switch-field__copy">
+            <span class="cf-switch-field__label">{{ flowLabel(flow).label }}</span>
+            <small *ngIf="flowLabel(flow).help">{{ flowLabel(flow).help }}</small>
+          </span>
+        </label>
+      </fieldset>
+
+      <div class="sa-field">
+        <label for="sa-pol-thresholds">Usage warnings at (%)</label>
+        <input id="sa-pol-thresholds" name="thresholds" placeholder="70, 85, 95, 100" [(ngModel)]="form.thresholds" [disabled]="readonly || saving" />
+        <small>Usage is flagged as it passes each percentage of a limit.</small>
+      </div>
+    </section>
+
+    <section class="cf-panel sa-section">
+      <div class="sa-section__header">
+        <div>
+          <h2>Pricing defaults</h2>
+          <p class="sa-muted">Default currency when a plan version does not set its own.</p>
+        </div>
+      </div>
+      <div class="sa-form-grid sa-form-grid--3">
+        <div class="sa-field">
+          <label for="sa-pol-currency">Currency</label>
+          <input id="sa-pol-currency" name="currency_code" maxlength="3" [(ngModel)]="form.currency_code" [disabled]="readonly || saving" />
+        </div>
+        <p class="sa-muted sa-field--full">
+          Tax name, rate, and treatment are configured on the
+          <a routerLink="/settings/subscription/tax">Tax</a> tab.
+        </p>
+      </div>
+    </section>
+
+    <section class="cf-panel sa-section">
+      <div class="sa-section__header">
+        <div>
+          <h2>Upgrade requests</h2>
+        </div>
+      </div>
+      <label class="cf-switch-field">
+        <input type="checkbox" name="upgrade_requests" [(ngModel)]="form.upgrade_requests_enabled" [disabled]="readonly || saving" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">Let church admins ask for a plan upgrade</span>
+          <small>Requests are reviewed by platform staff. Nothing changes until a request is approved.</small>
+        </span>
+      </label>
+      <p class="sa-muted">Downgrades always keep church data. This cannot be changed.</p>
+    </section>
+
+    <div class="cf-panel sa-section" *ngIf="!readonly">
+      <div class="sa-field">
+        <label for="sa-pol-reason">Note for change history</label>
+        <textarea id="sa-pol-reason" name="reason" rows="2" maxlength="500" [(ngModel)]="form.reason" [disabled]="saving"></textarea>
+      </div>
+      <div class="sa-toolbar">
+        <span></span>
+        <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">{{ saving ? 'Saving…' : 'Save policies' }}</button>
+      </div>
+    </div>
+  </form>
+</div>

@@ -1,0 +1,58 @@
+<div class="cf-media-upload">
+  <label class="cf-media-upload__label" [attr.for]="inputId">{{ label }}</label>
+
+  <div class="cf-media-upload__control">
+    @if (showPreview && displayUrl) {
+      <div class="cf-media-upload__preview">
+        @if (previewClickable) {
+          <button
+            type="button"
+            class="cf-media-upload__preview-button"
+            [attr.aria-label]="'View ' + label"
+            (click)="previewClick.emit()"
+          >
+            <img [src]="displayUrl" [alt]="label" />
+          </button>
+        } @else {
+          <img [src]="displayUrl" [alt]="label" />
+        }
+
+        @if (canManage) {
+          <button
+            type="button"
+            class="cf-media-upload__remove"
+            [disabled]="disabled || uploading"
+            [attr.aria-label]="'Remove ' + label"
+            (click)="onRemove()"
+          >
+            Remove
+          </button>
+        }
+      </div>
+    }
+
+    @if (canManage) {
+      <label
+        class="cf-btn cf-media-upload__button"
+        [class.is-disabled]="disabled || uploading"
+      >
+        <input
+          [id]="inputId"
+          type="file"
+          [accept]="accept"
+          [disabled]="disabled || uploading"
+          (change)="onFileSelected($event)"
+        />
+        {{ uploading ? 'Uploading…' : (displayUrl ? 'Change image' : 'Upload image') }}
+      </label>
+    }
+  </div>
+
+  @if (hint) {
+    <p class="cf-media-upload__hint">{{ hint }}</p>
+  }
+
+  @if (validationMessage) {
+    <p class="cf-media-upload__error" role="alert">{{ validationMessage }}</p>
+  }
+</div>

@@ -1,0 +1,469 @@
+<div class="sa-stack" [class.sa-plan-editor--v2]="isLayoutV2">
+  <a *ngIf="!isLayoutV2" routerLink="/settings/subscription/plans" class="sa-muted">← All plans</a>
+
+  <div *ngIf="loading" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-loading-block__label">Loading plan…</p>
+    <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <div>
+      <strong>Could not load this plan</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load(true)">Try again</button>
+  </div>
+
+  <ng-container *ngIf="plan && !loading">
+    <ng-template #planBadges>
+      <app-status-badge *ngIf="plan.is_default" label="Default for new churches" tone="success"></app-status-badge>
+      <app-status-badge *ngIf="plan.is_legacy" label="Legacy (read-only)" tone="neutral"></app-status-badge>
+      <app-status-badge *ngIf="plan.status === 'ARCHIVED'" label="Archived" tone="neutral"></app-status-badge>
+      <app-status-badge *ngIf="!plan.is_public && !plan.is_legacy" label="Private" tone="info"></app-status-badge>
+    </ng-template>
+
+    <ng-template #planEditorActions>
+      <button
+        *ngIf="canManageVersions && !draftVersion && plan.status !== 'ARCHIVED'"
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="startDraft()"
+        [disabled]="busyVersionId !== null">
+        {{ busyVersionId === -1 ? 'Starting…' : 'Start new version' }}
+      </button>
+      <button
+        *ngIf="can.publish && draftVersion"
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="openReview(draftVersion, 'publish')">
+        Review & publish v{{ draftVersion.version_number }}
+      </button>
+      <button
+        *ngIf="can.delete && plan.can_delete"
+        type="button"
+        class="cf-btn cf-btn-danger"
+        (click)="deletePlan()">
+        Delete plan
+      </button>
+    </ng-template>
+
+    <!-- Layout v1: separate title row + tab strip -->
+    <ng-container *ngIf="!isLayoutV2">
+      <header class="sa-toolbar">
+        <div class="sa-title-block">
+          <div class="sa-plan-card__title">
+            <h2>{{ plan.name }}</h2>
+            <ng-container *ngTemplateOutlet="planBadges"></ng-container>
+          </div>
+          <span class="sa-muted"><span class="sa-code">{{ plan.code }}</span> · {{ plan.tenant_count }} {{ plan.tenant_count === 1 ? 'church' : 'churches' }}</span>
+        </div>
+        <div class="sa-toolbar__filters">
+          <ng-container *ngTemplateOutlet="planEditorActions"></ng-container>
+        </div>
+      </header>
+
+      <div class="cf-nav-cluster">
+        <app-tab-strip ariaLabel="Plan sections" [tabs]="tabs" [activeId]="activeTab" (tabChange)="onTabChange($event)"></app-tab-strip>
+      </div>
+    </ng-container>
+
+    <!-- Layout v2: breadcrumb + meta + actions + compact tabs in one band -->
+    <header *ngIf="isLayoutV2" class="sa-plan-editor-chrome">
+      <div class="sa-plan-editor-chrome__row">
+        <div class="sa-plan-editor-chrome__context">
+          <nav class="sa-plan-editor-chrome__trail" aria-label="Location">
+            <a routerLink="/settings">Settings</a>
+            <span class="sa-plan-editor-chrome__sep" aria-hidden="true">›</span>
+            <a routerLink="/settings/subscription/plans">Subscriptions</a>
+            <span class="sa-plan-editor-chrome__sep" aria-hidden="true">›</span>
+            <span class="sa-plan-editor-chrome__current">{{ plan.name }}</span>
+          </nav>
+          <div class="sa-plan-editor-chrome__meta">
+            <span class="sa-code">{{ plan.code }}</span>
+            <span class="sa-plan-editor-chrome__dot" aria-hidden="true">·</span>
+            <span>{{ plan.tenant_count }} {{ plan.tenant_count === 1 ? 'church' : 'churches' }}</span>
+            <ng-container *ngTemplateOutlet="planBadges"></ng-container>
+          </div>
+        </div>
+        <div class="sa-plan-editor-chrome__actions">
+          <span class="sa-plan-editor-chrome__layout-tag" title="Subscription admin layout v2 preview">Layout v2</span>
+          <ng-container *ngTemplateOutlet="planEditorActions"></ng-container>
+        </div>
+      </div>
+      <app-tab-strip
+        class="sa-plan-editor-chrome__tabs"
+        density="compact"
+        ariaLabel="Plan sections"
+        [tabs]="tabs"
+        [activeId]="activeTab"
+        (tabChange)="onTabChange($event)">
+      </app-tab-strip>
+    </header>
+
+    <div *ngIf="plan.edit_restriction" class="cf-inline-alert cf-panel" role="status">
+      <div>
+        <strong>Read-only plan</strong>
+        <p>{{ plan.edit_restriction.message }}</p>
+      </div>
+    </div>
+
+    <div
+      *ngIf="!plan.edit_restriction && plan.tenant_count > 0"
+      class="cf-inline-alert cf-panel"
+      role="status">
+      <div>
+        <strong>{{ plan.tenant_count }} {{ plan.tenant_count === 1 ? 'church uses' : 'churches use' }} this plan</strong>
+        <p>
+          You can update the plan name and description here. Price, features, and limits stay on each church’s assigned version until you publish a new version and move them.
+        </p>
+      </div>
+    </div>
+
+    <!-- Versions -->
+    <section
+      *ngIf="activeTab === 'versions'"
+      class="cf-panel sa-section sa-versions"
+      role="tabpanel"
+      id="sa-editor-panel-versions"
+      aria-labelledby="sa-editor-tab-versions">
+      <header class="sa-section__header">
+        <div>
+          <h3 class="cf-subsection-title">Versions</h3>
+          <p class="cf-meta">
+            Each church stays on the version it was given. Publishing a new version affects new assignments only,
+            until you choose to move churches.
+          </p>
+        </div>
+      </header>
+
+      <p class="cf-meta" *ngIf="versions.length === 0">This plan has no versions yet.</p>
+
+      <div class="sa-versions-table" *ngIf="versions.length > 0">
+        <app-data-table>
+          <caption class="sr-only">Versions of {{ plan.name }}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Version</th>
+              <th scope="col">Status</th>
+              <th scope="col">Price</th>
+              <th scope="col" class="sa-versions-table__num-col">Churches</th>
+              <th scope="col">Timeline</th>
+              <th scope="col" class="cf-table__actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let v of versions"
+              class="sa-versions-table__row"
+              [class.sa-versions-table__row--live]="v.status === 'ACTIVE'"
+              [class.sa-versions-table__row--selected]="v.id === selectedVersionId"
+              [attr.aria-current]="v.id === selectedVersionId ? 'true' : null">
+              <td class="sa-versions-table__version">
+                <span class="sa-versions-table__version-label">v{{ v.version_number }}</span>
+                <span class="cf-meta" *ngIf="v.status === 'ACTIVE'">Current live version</span>
+                <span class="cf-meta" *ngIf="v.status === 'DRAFT'">Draft — not published</span>
+              </td>
+              <td>
+                <app-status-badge [label]="statusLabel(v.status)" [tone]="statusTone(v.status)"></app-status-badge>
+              </td>
+              <td class="sa-versions-table__price">
+                <ng-container [ngSwitch]="plan.pricing_type">
+                  <span *ngSwitchCase="'CUSTOM'">Custom</span>
+                  <span *ngSwitchCase="'FREE'">Free</span>
+                  <ng-container *ngSwitchDefault>
+                    <span class="sa-versions-table__price-line" *ngIf="v.monthly_price !== null">
+                      {{ v.monthly_price | cfCurrency: v.currency_code : 0 }}
+                      <span class="cf-meta">/ month</span>
+                    </span>
+                    <span class="sa-versions-table__price-line" *ngIf="v.annual_price !== null">
+                      {{ v.annual_price | cfCurrency: v.currency_code : 0 }}
+                      <span class="cf-meta">/ year</span>
+                    </span>
+                    <span class="cf-meta" *ngIf="v.monthly_price === null && v.annual_price === null">Not set</span>
+                  </ng-container>
+                </ng-container>
+              </td>
+              <td class="sa-versions-table__num-col">
+                <span class="sa-versions-table__count">{{ v.tenant_count ?? 0 }}</span>
+              </td>
+              <td class="sa-versions-table__timeline">
+                <span class="cf-meta" *ngIf="v.status === 'SCHEDULED' && v.effective_from">
+                  Goes live {{ v.effective_from | date: 'mediumDate' }}
+                </span>
+                <span class="cf-meta" *ngIf="v.status === 'ACTIVE' && v.published_at">
+                  Live since {{ v.published_at | date: 'mediumDate' }}
+                </span>
+                <span class="cf-meta" *ngIf="v.status === 'RETIRED' && v.retired_at">
+                  Retired {{ v.retired_at | date: 'mediumDate' }}
+                </span>
+                <span class="cf-meta" *ngIf="v.status === 'DRAFT'">—</span>
+              </td>
+              <td class="cf-table__actions-cell">
+                <app-action-bar
+                  [actions]="versionRowActions(v)"
+                  size="sm"
+                  [iconOnly]="true"
+                  (actionClicked)="onVersionRowAction($event, v)">
+                </app-action-bar>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+      </div>
+    </section>
+
+    <!-- Version picker (shared by pricing & features) -->
+    <ng-template #versionPicker>
+      <div class="sa-version-picker" *ngIf="versions.length > 0">
+        <label for="sa-version-picker" class="sa-version-picker__label">Version</label>
+        <div class="sa-version-picker__controls">
+          <select
+            id="sa-version-picker"
+            class="sa-version-picker__select"
+            [ngModel]="selectedVersionId"
+            (ngModelChange)="onSelectVersionId($event)">
+            <option *ngFor="let v of versions" [ngValue]="v.id">v{{ v.version_number }}</option>
+          </select>
+          <app-status-badge
+            *ngIf="selectedVersion as sv"
+            [label]="statusLabel(sv.status)"
+            [tone]="statusTone(sv.status)"></app-status-badge>
+        </div>
+      </div>
+    </ng-template>
+
+    <!-- Pricing & trial -->
+    <section
+      *ngIf="activeTab === 'pricing' && selectedVersion"
+      class="cf-panel sa-section"
+      role="tabpanel"
+      id="sa-editor-panel-pricing"
+      aria-labelledby="sa-editor-tab-pricing">
+      <div class="sa-section__header">
+        <div>
+          <h3>Pricing & trial</h3>
+          <p class="sa-muted">
+            Prices are what the church is invoiced outside EkklesiaSoft. No payment is collected here.
+            <ng-container *ngIf="plan.pricing_type === 'CUSTOM'">This plan is quoted per church, so list prices are optional.</ng-container>
+          </p>
+          <p class="sa-muted" *ngIf="versionReadonly && canManageVersions && !draftVersion">
+            Published versions cannot be changed. Start a new version to make changes.
+          </p>
+        </div>
+        <ng-container *ngTemplateOutlet="versionPicker"></ng-container>
+      </div>
+
+      <form class="sa-form-grid sa-form-grid--3" (ngSubmit)="saveTerms()" (input)="termsDirty = true" (change)="termsDirty = true">
+        <div class="sa-field">
+          <label for="sa-monthly">Monthly price</label>
+          <input id="sa-monthly" name="monthly_price" inputmode="decimal" [(ngModel)]="termsForm.monthly_price" [disabled]="versionReadonly || termsSaving || plan.pricing_type === 'FREE'" />
+        </div>
+        <div class="sa-field">
+          <label for="sa-annual">Yearly price</label>
+          <input id="sa-annual" name="annual_price" inputmode="decimal" [(ngModel)]="termsForm.annual_price" [disabled]="versionReadonly || termsSaving || plan.pricing_type === 'FREE'" />
+        </div>
+        <div class="sa-field">
+          <label for="sa-currency">Currency</label>
+          <input id="sa-currency" name="currency_code" maxlength="3" [(ngModel)]="termsForm.currency_code" [disabled]="versionReadonly || termsSaving" />
+        </div>
+        <div class="sa-field">
+          <label for="sa-setup">One-time setup fee</label>
+          <input id="sa-setup" name="setup_fee" inputmode="decimal" [(ngModel)]="termsForm.setup_fee" [disabled]="versionReadonly || termsSaving" />
+        </div>
+        <div class="sa-field">
+          <label for="sa-trial">Free trial (days)</label>
+          <input id="sa-trial" name="trial_days" type="number" min="0" max="365" [(ngModel)]="termsForm.trial_days" [disabled]="versionReadonly || termsSaving" />
+          <small>Leave empty for no trial.</small>
+        </div>
+        <div class="sa-field">
+          <span class="sa-field__label">Billing options</span>
+          <label class="cf-switch-field" *ngFor="let o of intervalOptions">
+            <input type="checkbox" [name]="'interval_' + o.value" [(ngModel)]="termsForm.intervals[o.value]" [disabled]="versionReadonly || termsSaving" />
+            <span class="cf-switch-field__copy"><span class="cf-switch-field__label">{{ o.label }}</span></span>
+          </label>
+        </div>
+        <div class="sa-field sa-field--full">
+          <span class="sa-field__label">Tax configuration</span>
+          <fieldset class="sa-stack">
+            <label class="cf-switch-field">
+              <input type="radio" name="tax_mode" value="inherit" [(ngModel)]="termsForm.tax_mode" [disabled]="versionReadonly || termsSaving" />
+              <span class="cf-switch-field__copy">
+                <span class="cf-switch-field__label">Inherit platform default</span>
+                <small *ngIf="termsForm.tax_mode === 'inherit' && effectiveTaxSummary()">
+                  <app-status-badge label="Inherited" tone="info"></app-status-badge>
+                  {{ effectiveTaxSummary() }} — from platform tax configuration.
+                </small>
+              </span>
+            </label>
+            <label class="cf-switch-field">
+              <input type="radio" name="tax_mode" value="override" [(ngModel)]="termsForm.tax_mode" [disabled]="versionReadonly || termsSaving" />
+              <span class="cf-switch-field__copy">
+                <span class="cf-switch-field__label">Override platform default</span>
+                <small>This version will not follow future platform tax changes until inheritance is restored.</small>
+              </span>
+            </label>
+          </fieldset>
+        </div>
+        <ng-container *ngIf="termsForm.tax_mode === 'override'">
+          <div class="sa-field">
+            <label for="sa-tax-label">Tax name</label>
+            <input id="sa-tax-label" name="tax_label" maxlength="40" [(ngModel)]="termsForm.tax_label" [disabled]="versionReadonly || termsSaving" />
+          </div>
+          <div class="sa-field">
+            <label for="sa-tax-rate">Tax rate (%)</label>
+            <input id="sa-tax-rate" name="tax_rate_percent" inputmode="decimal" [(ngModel)]="termsForm.tax_rate_percent" [disabled]="versionReadonly || termsSaving" />
+          </div>
+          <div class="sa-field">
+            <span class="sa-field__label">Tax handling</span>
+            <label class="cf-switch-field">
+              <input type="checkbox" name="tax_inclusive" [(ngModel)]="termsForm.tax_inclusive" [disabled]="versionReadonly || termsSaving" />
+              <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Prices include tax</span></span>
+            </label>
+          </div>
+        </ng-container>
+        <div class="sa-field sa-field--full">
+          <label for="sa-notes">What changed in this version</label>
+          <textarea id="sa-notes" name="change_notes" rows="2" maxlength="2000" [(ngModel)]="termsForm.change_notes" [disabled]="versionReadonly || termsSaving"></textarea>
+        </div>
+        <div class="sa-toolbar sa-field--full" *ngIf="!versionReadonly">
+          <span class="sa-muted">{{ termsDirty ? 'You have unsaved changes.' : 'All changes saved.' }}</span>
+          <div class="sa-toolbar__filters">
+            <button type="button" class="cf-btn" (click)="resetTerms()" [disabled]="!termsDirty || termsSaving">Discard changes</button>
+            <button type="submit" class="cf-btn cf-btn-primary" [disabled]="termsSaving">{{ termsSaving ? 'Saving…' : 'Save pricing' }}</button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- Features & limits -->
+    <section
+      *ngIf="activeTab === 'features' && selectedVersion"
+      class="cf-panel sa-section"
+      role="tabpanel"
+      id="sa-editor-panel-features"
+      aria-labelledby="sa-editor-tab-features">
+      <app-entitlements-editor
+        [planId]="plan.id"
+        [version]="selectedVersion"
+        [features]="features"
+        [readonly]="versionReadonly"
+        (dirtyChange)="entitlementsDirty = $event"
+        (saved)="onEntitlementsSaved($event)">
+        <ng-container *ngTemplateOutlet="versionPicker"></ng-container>
+      </app-entitlements-editor>
+    </section>
+
+    <!-- Plan details -->
+    <section
+      *ngIf="activeTab === 'details'"
+      class="cf-panel sa-section"
+      role="tabpanel"
+      id="sa-editor-panel-details"
+      aria-labelledby="sa-editor-tab-details">
+      <div class="sa-section__header">
+        <div>
+          <h3>Plan details</h3>
+          <p class="sa-muted">Name and visibility apply to every version of this plan.</p>
+        </div>
+      </div>
+      <form class="sa-plan-details-form" (ngSubmit)="saveDetails()">
+        <div class="sa-plan-details-form__columns">
+          <div class="sa-form-grid sa-plan-details-form__fields">
+            <div class="sa-field">
+              <label for="sa-plan-name">Plan name <span class="required" aria-hidden="true">*</span></label>
+              <input id="sa-plan-name" name="name" maxlength="100" [(ngModel)]="detailsForm.name" [disabled]="!canEditDetails || detailsSaving" required />
+            </div>
+            <div class="sa-field">
+              <label for="sa-plan-badge">Badge</label>
+              <input id="sa-plan-badge" name="badge_label" maxlength="60" [(ngModel)]="detailsForm.badge_label" placeholder="e.g. Most Popular" [disabled]="!canEditDetails || detailsSaving" />
+            </div>
+            <div class="sa-field" *ngIf="canChangePricingType || plan.pricing_type">
+              <label for="sa-plan-pricing">Pricing</label>
+              <select
+                *ngIf="canChangePricingType"
+                id="sa-plan-pricing"
+                name="pricing_type"
+                [(ngModel)]="detailsForm.pricing_type"
+                [disabled]="detailsSaving">
+                <option *ngFor="let t of pricingTypes" [ngValue]="t.value">{{ t.label }}</option>
+              </select>
+              <input
+                *ngIf="!canChangePricingType"
+                id="sa-plan-pricing"
+                [value]="plan.pricing_type === 'CUSTOM' ? 'Custom (quoted per church)' : plan.pricing_type === 'FREE' ? 'Free' : 'Fixed price'"
+                disabled
+                readonly />
+              <small *ngIf="!canChangePricingType">Pricing type is fixed after a version is published.</small>
+            </div>
+            <div class="sa-field">
+              <label for="sa-plan-order">Display order</label>
+              <input id="sa-plan-order" name="display_order" type="number" min="0" [(ngModel)]="detailsForm.display_order" [disabled]="!canEditDetails || detailsSaving" />
+            </div>
+            <div class="sa-field">
+              <label for="sa-plan-short">Short description</label>
+              <textarea id="sa-plan-short" name="short_description" rows="2" maxlength="500" [(ngModel)]="detailsForm.short_description" [disabled]="!canEditDetails || detailsSaving"></textarea>
+            </div>
+            <div class="sa-field">
+              <label for="sa-plan-desc">Full description</label>
+              <textarea id="sa-plan-desc" name="description" rows="3" maxlength="2000" [(ngModel)]="detailsForm.description" [disabled]="!canEditDetails || detailsSaving"></textarea>
+            </div>
+          </div>
+
+          <aside class="sa-plan-details-form__aside" aria-labelledby="sa-plan-visibility-label">
+            <span id="sa-plan-visibility-label" class="sa-field__label">Visibility</span>
+            <label class="cf-switch-field">
+              <input type="checkbox" name="is_public" [(ngModel)]="detailsForm.is_public" [disabled]="!canEditDetails || detailsSaving" />
+              <span class="cf-switch-field__copy">
+                <span class="cf-switch-field__label">Show on public pricing</span>
+              </span>
+            </label>
+            <label class="cf-switch-field">
+              <input type="checkbox" name="is_featured" [(ngModel)]="detailsForm.is_featured" [disabled]="!canEditDetails || detailsSaving" />
+              <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Highlight this plan</span></span>
+            </label>
+            <label class="cf-switch-field">
+              <input type="checkbox" name="is_assignable" [(ngModel)]="detailsForm.is_assignable" [disabled]="!canEditDetails || detailsSaving" />
+              <span class="cf-switch-field__copy">
+                <span class="cf-switch-field__label">Can be given to churches</span>
+                <small>Turn off to stop new assignments. Churches already on it are not changed.</small>
+              </span>
+            </label>
+          </aside>
+        </div>
+
+        <div class="sa-toolbar sa-plan-details-form__actions" *ngIf="canEditDetails">
+          <span></span>
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="detailsSaving">{{ detailsSaving ? 'Saving…' : 'Save details' }}</button>
+        </div>
+      </form>
+    </section>
+
+    <!-- Churches -->
+    <section
+      *ngIf="activeTab === 'churches' && can.usage"
+      class="cf-panel sa-section"
+      role="tabpanel"
+      id="sa-editor-panel-churches"
+      aria-labelledby="sa-editor-tab-churches">
+      <app-plan-tenants-panel [plan]="plan"></app-plan-tenants-panel>
+    </section>
+  </ng-container>
+</div>
+
+<app-version-review-dialog
+  *ngIf="plan && reviewVersion"
+  [plan]="plan"
+  [version]="reviewVersion"
+  [mode]="reviewMode"
+  (closed)="closeReview()"
+  (published)="onPublished($event)">
+</app-version-review-dialog>
+
+<app-migrate-tenants-dialog
+  *ngIf="plan && migrateFrom && activeVersion"
+  [plan]="plan"
+  [target]="activeVersion"
+  [from]="migrateFrom"
+  (closed)="closeMigrate()"
+  (migrated)="load()">
+</app-migrate-tenants-dialog>

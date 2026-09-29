@@ -1,0 +1,24 @@
+@use '../../../../styles/church-financial-os-mixins' as *;
+
+:host {
+  display: block;
+}
+
+.cf-table-responsive {
+  @include cf-table-scroll-wrapper;
+
+  @media (max-width: $cf-bp-lg) {
+    border: 1px solid var(--cf-panel-border);
+    border-radius: var(--cf-radius-sm);
+  }
+}
+
+/* Clickable rows — projected tbody lives in parent templates; ::ng-deep required. */
+:host ::ng-deep .cf-table--clickable tbody tr {
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cf-slate-50);
+  }
+}
+

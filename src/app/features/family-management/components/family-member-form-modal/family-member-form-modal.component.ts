@@ -1,14 +1,18 @@
 import { Component, EventEmitter, Input, Output, OnChanges, SimpleChanges, OnInit, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
+import { AbstractControl, FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
+import { ModalShellComponent } from '@shared/components';
 import { AuthService } from '@core/services';
+import { ParishPersonService, ParishPerson } from '@features/settings/sacraments/services/person.service';
+import { ParentPersonAutocompleteComponent, ParentPersonValue } from '../parent-person-autocomplete/parent-person-autocomplete.component';
 import { getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
 export interface FamilyMemberFormValue {
   // CRITICAL: ID must be string (UUID) to match FamilyMember model
   id?: string | null;
+  person_id?: string | null;
   first_name: string;
   middle_name?: string;
   last_name: string;
@@ -20,6 +24,10 @@ export interface FamilyMemberFormValue {
   email?: string;
   occupation?: string;
   education?: string;
+  father_person_id?: string | null;
+  father_name?: string | null;
+  mother_person_id?: string | null;
+  mother_name?: string | null;
   baptism_date?: string;
   baptism_place?: string;
   baptism_godparent_primary?: string;
@@ -77,7 +85,7 @@ function createLocalPhoneValidator(getDialCode: () => string): ValidatorFn {
 @Component({
   selector: 'app-family-member-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, PhoneInputComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, PhoneInputComponent, ModalShellComponent, ParentPersonAutocompleteComponent],
   templateUrl: './family-member-form-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-member-form-modal.component.scss']
@@ -101,15 +109,20 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
   get callingCode(): string { return this.phoneCodeService.getPhoneCodeSync(); }
   errorMessage: string | null = null;
   private lastMemberId: string | null = null; // Track last member ID to prevent unnecessary patches
+  personQuery = '';
+  personResults: ParishPerson[] = [];
+  searchingPersons = false;
 
   constructor(
     private fb: FormBuilder, 
     private phoneCodeService: PhoneCodeService,
-    private authService: AuthService
+    private authService: AuthService,
+    private personService: ParishPersonService
   ) {
     this.form = this.fb.group({
       // ID stored as string (UUID), not number
       id: [null as string | null],
+      person_id: [null as string | null],
       first_name: ['', Validators.required],
       middle_name: [''],
       last_name: ['', Validators.required],
@@ -147,8 +160,11 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       marriage_groom_church_type: ['home_parish'],
       marriage_groom_church_name: [''],
       marriage_groom_church_address: [''],
-      status: ['active']
+      status: ['active'],
+      father: this.fb.control<ParentPersonValue>({ person_id: null, name: null, linked: false }),
+      mother: this.fb.control<ParentPersonValue>({ person_id: null, name: null, linked: false }),
     });
+    this.applyDateOfBirthValidators();
   }
 
   ngOnInit(): void {
@@ -240,6 +256,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
         // Edit mode - populate form with member data only if it's a different member
         if (isNewMember) {
           this.isEditMode = true;
+          this.applyDateOfBirthValidators();
           this.errorMessage = null;
           this.lastMemberId = currentMemberId;
           this.populateFormWithMember(this.member);
@@ -255,13 +272,21 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
         if (this.lastMemberId !== null || changes['isHeadOnly']) {
           // Only reset if we were previously in edit mode or isHeadOnly changed
           this.isEditMode = false;
+          this.applyDateOfBirthValidators();
           this.errorMessage = null;
           this.lastMemberId = null;
           this.form.reset({ 
             id: null,
+            person_id: null,
             relationship_to_head: this.isHeadOnly ? 'self' : 'other', 
             marital_status: 'single', 
-            status: 'active' 
+            status: 'active',
+            baptism_priest_is_home: true,
+            baptism_location_type: 'home_parish',
+            marriage_bride_church_type: 'home_parish',
+            marriage_groom_church_type: 'home_parish',
+            father: { person_id: null, name: null, linked: false },
+            mother: { person_id: null, name: null, linked: false },
           });
           
           // CRITICAL: If isHeadOnly mode, ensure relationship is set to 'self'
@@ -393,7 +418,16 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
     if (!memberData.marriage_groom_church_type) {
       memberData.marriage_groom_church_type = 'home_parish';
     }
-    
+
+    memberData.father = this.buildParentControlValue(
+      member.father_person_id ?? null,
+      member.father_name ?? null
+    );
+    memberData.mother = this.buildParentControlValue(
+      member.mother_person_id ?? null,
+      member.mother_name ?? null
+    );
+
     // Use patchValue with emitEvent false to avoid triggering change detection issues
     this.form.patchValue(memberData, { emitEvent: false });
     
@@ -436,6 +470,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
         case 'first_name': return 'First name is required';
         case 'last_name': return 'Last name is required';
         case 'relationship_to_head': return 'Relationship to head is required';
+        case 'date_of_birth': return 'Date of birth is required.';
         default: return `${this.getFieldLabel(controlName)} is required`;
       }
     }
@@ -469,6 +504,19 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
   }
 
   /**
+   * DOB is required when creating a member; legacy members may still lack DOB on edit.
+   */
+  private applyDateOfBirthValidators(): void {
+    const control = this.form.get('date_of_birth');
+    if (!control) {
+      return;
+    }
+
+    control.setValidators(this.isEditMode ? [] : [Validators.required]);
+    control.updateValueAndValidity({ emitEvent: false });
+  }
+
+  /**
    * Get human-readable field label
    */
   private getFieldLabel(controlName: string): string {
@@ -498,6 +546,62 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
   isFieldInvalid(controlName: string): boolean {
     const control = this.form.get(controlName);
     return !!(control && control.invalid && control.touched);
+  }
+
+  searchUnaffiliatedPersons(): void {
+    const term = this.personQuery.trim();
+    if (term.length < 2 || this.isEditMode) {
+      this.personResults = [];
+      return;
+    }
+    this.searchingPersons = true;
+    this.personService.search(term, true).subscribe({
+      next: (res) => {
+        this.personResults = res.data || [];
+        this.searchingPersons = false;
+      },
+      error: () => {
+        this.personResults = [];
+        this.searchingPersons = false;
+      },
+    });
+  }
+
+  linkExistingPerson(person: ParishPerson): void {
+    this.form.patchValue({
+      person_id: person.id,
+      first_name: person.first_name,
+      middle_name: person.middle_name || '',
+      last_name: person.last_name,
+      date_of_birth: person.date_of_birth || '',
+      gender: person.gender || '',
+      phone: person.phone || '',
+      email: person.email || '',
+    });
+    this.personQuery = '';
+    this.personResults = [];
+  }
+
+  clearLinkedPerson(): void {
+    this.form.patchValue({ person_id: null });
+  }
+
+  personDisplayName(person: ParishPerson): string {
+    return person.full_name_display
+      || [person.first_name, person.middle_name, person.last_name].filter(Boolean).join(' ');
+  }
+
+  get excludePersonId(): string | null {
+    const value = this.form.get('person_id')?.value;
+    return value ? String(value) : null;
+  }
+
+  private buildParentControlValue(personId: string | null, name: string | null): ParentPersonValue {
+    const trimmedName = name?.trim() || null;
+    if (personId) {
+      return { person_id: personId, name: trimmedName, linked: true };
+    }
+    return { person_id: null, name: trimmedName, linked: false };
   }
 
   onSave(): void {
@@ -591,7 +695,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
     }
     
     // Convert empty strings to null for optional fields to allow clearing values
-    const optionalFields = ['middle_name', 'date_of_birth', 'gender', 'marital_status', 'email', 
+    const optionalFields = ['middle_name', 'gender', 'marital_status', 'email', 
                            'occupation', 'education', 'baptism_date', 'baptism_place',
                            'baptism_godparent_primary', 'baptism_godparent_secondary',
                            'baptism_location_type', 'baptism_church_name', 'baptism_church_address',
@@ -601,12 +705,25 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
                            'marriage_bride_church_type', 'marriage_bride_church_name', 'marriage_bride_church_address',
                            'marriage_groom_full_name', 'marriage_groom_address', 'marriage_groom_church_type',
                            'marriage_groom_church_name', 'marriage_groom_church_address'];
+
+    if (this.isEditMode) {
+      optionalFields.unshift('date_of_birth');
+    }
     
     optionalFields.forEach(field => {
       if (formValue[field] === '') {
         formValue[field] = null;
       }
     });
+
+    const father = formValue.father as ParentPersonValue | undefined;
+    const mother = formValue.mother as ParentPersonValue | undefined;
+    formValue.father_person_id = father?.linked ? father.person_id ?? null : null;
+    formValue.father_name = father?.name?.trim() || null;
+    formValue.mother_person_id = mother?.linked ? mother.person_id ?? null : null;
+    formValue.mother_name = mother?.name?.trim() || null;
+    delete formValue.father;
+    delete formValue.mother;
     
     // Debug log to verify the status value being sent
     console.log('Form submission - Final values:', {

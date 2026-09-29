@@ -1,43 +1,127 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ChangeDetectionStrategy, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Role, Permission } from '@core/models';
 import { RolesService } from '@core/services/roles.service';
 import { PermissionsService } from '@core/services/permissions.service';
 import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { User } from '@core/models/user.model';
-import { CardComponent, PaginationComponent, FilterPanelComponent, FilterPanelConfig, FilterValues } from '@shared/components';
+import { PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { RoleFormModalComponent } from './role-form-modal/role-form-modal.component';
 import { AssignPermissionsModalComponent } from './assign-permissions-modal/assign-permissions-modal.component';
+import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/pope-details-management.component';
-import { take, takeUntil } from 'rxjs/operators';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
+import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
+import { filter, take, takeUntil } from 'rxjs/operators';
 import { Subject } from 'rxjs';
+import { parseRolesTabFromUrl } from '../config/roles-nav.config';
+
+interface AssignRoleTenantGroup {
+  tenantKey: string;
+  tenantLabel: string;
+  roles: Role[];
+}
 
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, CardComponent, PaginationComponent, FilterPanelComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, DataTableComponent, StatusBadgeComponent, UserAvatarComponent, ImageViewerComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class RolesPermissionsComponent implements OnInit, OnDestroy {
   private destroy$ = new Subject<void>();
-  @ViewChild('assignModal') assignModalRef!: AssignPermissionsModalComponent;
-  
+
   activeTab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope' = 'roles';
   hasEkklesiaRole = false; // For backward compatibility
   hasSuperAdminAccess = false; // For Pope tab - SuperAdmin only
   isTenantMode = false;
   
-  // Filter Panel State
-  showRolesFilterPanel = false;
-  showPermissionsFilterPanel = false;
-  
+  // Roles filter state
+  rolesSearchTerm = '';
+  rolesStatusFilter: 'all' | 'active' | 'inactive' = 'all';
+  rolesTypeFilter: 'all' | 'system' | 'custom' | 'protected' | 'default' = 'all';
+  showRolesAdvancedSearch = false;
+  rolesSearchFields: SearchField[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      group: 'Role filters',
+      options: [
+        { value: '', label: 'All Statuses' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' }
+      ]
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select',
+      group: 'Role filters',
+      options: [
+        { value: '', label: 'All Types' },
+        { value: 'system', label: 'System' },
+        { value: 'custom', label: 'Custom' },
+        { value: 'protected', label: 'Protected' },
+        { value: 'default', label: 'Default' }
+      ]
+    }
+  ];
+
+  // Permissions filter state
+  permissionsSearchTerm = '';
+  permissionsStatusFilter: 'all' | 'active' | 'inactive' = 'all';
+  permissionsTypeFilter: 'all' | 'system' | 'custom' = 'all';
+  permissionsModuleFilter = '';
+  showPermissionsAdvancedSearch = false;
+  permissionsSearchFields: SearchField[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      group: 'Permission filters',
+      options: [
+        { value: '', label: 'All Statuses' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' }
+      ]
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select',
+      group: 'Permission filters',
+      options: [
+        { value: '', label: 'All Types' },
+        { value: 'system', label: 'System' },
+        { value: 'custom', label: 'Custom' }
+      ]
+    },
+    {
+      key: 'module',
+      label: 'Module',
+      type: 'select',
+      group: 'Permission filters',
+      options: [{ value: '', label: 'All Modules' }]
+    }
+  ];
+
   // Roles data
   roles: Role[] = [];
   allRoles: Role[] = []; // Store all roles for client-side pagination
@@ -72,43 +156,6 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   permissionsSortColumn = '';
   permissionsSortDirection: 'asc' | 'desc' | null = null;
   
-  // Filters
-  searchQuery = '';
-  statusFilter: 'all' | 'active' | 'inactive' = 'all';
-  typeFilter: 'all' | 'system' | 'custom' | 'protected' | 'default' = 'all';
-  moduleFilter = '';
-
-  // Filter Panel Configurations
-  rolesFilterConfig: FilterPanelConfig = {
-    title: 'Filter Roles',
-    showSearch: true,
-    showStatusFilter: true,
-    showTypeFilter: true,
-    showModuleFilter: false,
-    searchPlaceholder: 'Search roles by name or description...',
-    typeOptions: [
-      { value: 'all', label: 'All Types' },
-      { value: 'protected', label: 'Protected' },
-      { value: 'default', label: 'Default' },
-      { value: 'custom', label: 'Custom' },
-      { value: 'system', label: 'System' }
-    ]
-  };
-
-  permissionsFilterConfig: FilterPanelConfig = {
-    title: 'Filter Permissions',
-    showSearch: true,
-    showStatusFilter: true,
-    showTypeFilter: true,
-    showModuleFilter: true,
-    searchPlaceholder: 'Search permissions by name, display name, module...',
-    typeOptions: [
-      { value: 'all', label: 'All Types' },
-      { value: 'system', label: 'System' },
-      { value: 'custom', label: 'Custom' }
-    ]
-  };
-  
   // Modals
   showCreateRoleModal = false;
   showEditRoleModal = false;
@@ -121,6 +168,36 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   selectedRole: Role | null = null;
   selectedPermission: Permission | null = null;
   selectedRoleForAssignment: Role | null = null; // For Assign Permissions tab
+  assignRoleSearchTerm = '';
+  assignRoleStatusFilter: 'all' | 'active' | 'inactive' = 'all';
+  assignRoleTypeFilter: 'all' | 'system' | 'custom' | 'protected' | 'default' = 'all';
+  showAssignRoleAdvancedSearch = false;
+  assignRoleSearchFields: SearchField[] = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'select',
+      group: 'Role filters',
+      options: [
+        { value: '', label: 'All Statuses' },
+        { value: 'active', label: 'Active' },
+        { value: 'inactive', label: 'Inactive' }
+      ]
+    },
+    {
+      key: 'type',
+      label: 'Type',
+      type: 'select',
+      group: 'Role filters',
+      options: [
+        { value: '', label: 'All Types' },
+        { value: 'system', label: 'System' },
+        { value: 'custom', label: 'Custom' },
+        { value: 'protected', label: 'Protected' },
+        { value: 'default', label: 'Default' }
+      ]
+    }
+  ];
   pendingRoleAction: Role | null = null;
   pendingRoleStatusTarget: 0 | 1 | null = null;
 
@@ -131,6 +208,8 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   selectedUserForRoles: User | null = null;
   selectedRoleIdsForUser: number[] = [];
   savingUserRoles = false;
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly entitlements = inject(EntitlementService);
 
   constructor(
     private rolesService: RolesService,
@@ -138,11 +217,16 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     private usersService: UsersService,
     private toastService: ToastService,
     public authService: AuthService,  // Made public for template access
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute,
+    private router: Router
   ) {}
 
   ngOnInit(): void {
     this.checkEkklesiaRole();
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.syncTabFromRoute();
+    });
     this.loadRoles();
     this.loadPermissions();
     this.loadTenantUsers();
@@ -160,10 +244,15 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     
     // Also subscribe to user changes
     this.authService.currentUser$.pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
+      const previousTenantMode = this.isTenantMode;
       this.updateEkklesiaRole(user);
       this.updateSuperAdminAccess(user);
       this.updateTenantMode(user);
       this.loadTenantUsers();
+      if (previousTenantMode !== this.isTenantMode) {
+        this.loadRoles();
+        this.loadPermissions();
+      }
       this.cdr.detectChanges();
     });
   }
@@ -211,7 +300,8 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.isTenantMode = !!user.tenant_id && !this.authService.isSuperAdmin() && !this.authService.isEkklesiaAdmin();
+    // Parish-homed actors (including EkklesiaAdmin) must use tenant-scoped RBAC APIs.
+    this.isTenantMode = !!user.tenant_id && !this.authService.isSuperAdmin();
     if (!this.isTenantMode) {
       this.selectedUserForRoles = null;
       this.tenantUsers = [];
@@ -220,11 +310,41 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   // Tab Management
   selectTab(tab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope'): void {
-    this.activeTab = tab;
+    if (tab === 'pope') {
+      this.activeTab = tab;
+      return;
+    }
+
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
   }
 
   isActiveTab(tab: 'roles' | 'permissions' | 'assign' | 'users' | 'pope'): boolean {
     return this.activeTab === tab;
+  }
+
+  private syncTabFromRoute(): void {
+    const tab = parseRolesTabFromUrl(this.router.url);
+    const resolved = tab ?? 'roles';
+
+    if (resolved === 'users' && !this.isTenantMode) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { tab: 'roles' },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+      return;
+    }
+
+    if (resolved === 'users' || resolved === 'roles' || resolved === 'permissions' || resolved === 'assign') {
+      this.activeTab = resolved;
+      this.cdr.markForCheck();
+    }
   }
 
   // Roles Management
@@ -325,6 +445,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
         'This role has assigned users. Reassign users first before deleting.',
         'Delete Blocked'
       );
+      this.cancelDeleteRole();
       return;
     }
 
@@ -336,11 +457,13 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
         this.toastService.success(`Role "${role.name}" deleted successfully!`, 'Role Deleted');
         this.cancelDeleteRole();
         this.loadRoles();
+        this.authService.refreshUser();
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error deleting role:', err);
         this.toastService.error(this.getFriendlyErrorMessage(err, 'Failed to delete role'), 'Error');
+        this.cancelDeleteRole();
       }
     });
   }
@@ -363,7 +486,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canCreateRole(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.create')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.create');
   }
@@ -373,7 +499,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canUpdateRole(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.update')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.update');
   }
@@ -383,7 +512,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canDeleteRole(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.delete')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.delete');
   }
@@ -393,7 +525,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canAssignPermissions(): boolean {
     if (this.isTenantMode) {
-      return this.canManageRoles();
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('permissions.assign')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('permissions.assign');
   }
@@ -562,6 +697,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     this.permissionsService.getPermissions(params, { tenantMode: this.isTenantMode }).subscribe({
       next: (response) => {
         this.allPermissions = Array.isArray(response) ? response : response.data;
+        this.updatePermissionsModuleOptions();
         this.applyFiltersAndPagination('permissions');
         this.groupPermissionsByModule();
         this.loadingPermissions = false;
@@ -691,10 +827,15 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   }
 
   deletePermission(permission: Permission): void {
-    if (!confirm(`Are you sure you want to delete the permission "${permission.display_name}"?\n\nThis action cannot be undone.`)) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Permission',
+      message: `Are you sure you want to delete the permission "${permission.display_name}"?\n\nThis action cannot be undone.`,
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
     this.permissionsService.deletePermission(permission.id).subscribe({
       next: () => {
         console.log(`✅ Permission "${permission.display_name}" deleted successfully`);
@@ -712,6 +853,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
         );
       }
     });
+    });
   }
 
   // Assignment Management
@@ -727,6 +869,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   onPermissionsAssigned(): void {
     this.loadRoles(); // Reload roles to reflect changes
+    this.authService.refreshUser();
     this.toastService.success('Permissions assigned successfully', 'Success');
   }
 
@@ -741,9 +884,196 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     this.selectedRoleForAssignment = null;
   }
 
+  get filteredRolesForAssignment(): Role[] {
+    let roles = [...this.allRoles];
+    const query = this.assignRoleSearchTerm.trim().toLowerCase();
+
+    if (query) {
+      roles = roles.filter((role) =>
+        role.name.toLowerCase().includes(query) ||
+        (role.description && role.description.toLowerCase().includes(query)) ||
+        this.getRoleTenantGroupLabel(role).toLowerCase().includes(query)
+      );
+    }
+
+    if (this.assignRoleStatusFilter !== 'all') {
+      const activeValue = this.assignRoleStatusFilter === 'active' ? 1 : 0;
+      roles = roles.filter((role) => role.active === activeValue);
+    }
+
+    if (this.assignRoleTypeFilter !== 'all') {
+      if (this.assignRoleTypeFilter === 'custom') {
+        roles = roles.filter((role) => this.getRoleClassification(role) === 'custom');
+      } else if (this.assignRoleTypeFilter === 'system') {
+        roles = roles.filter((role) => role.is_custom === false);
+      } else if (this.assignRoleTypeFilter === 'protected') {
+        roles = roles.filter((role) => this.getRoleClassification(role) === 'protected');
+      } else if (this.assignRoleTypeFilter === 'default') {
+        roles = roles.filter((role) => this.getRoleClassification(role) === 'default');
+      }
+    }
+
+    return roles;
+  }
+
+  get groupedRolesForAssignment(): AssignRoleTenantGroup[] {
+    const groups = new Map<string, AssignRoleTenantGroup>();
+
+    this.filteredRolesForAssignment.forEach((role) => {
+      const tenantKey = this.getRoleTenantGroupKey(role);
+      const tenantLabel = this.getRoleTenantGroupLabel(role);
+
+      if (!groups.has(tenantKey)) {
+        groups.set(tenantKey, {
+          tenantKey,
+          tenantLabel,
+          roles: []
+        });
+      }
+
+      groups.get(tenantKey)!.roles.push(role);
+    });
+
+    return Array.from(groups.values())
+      .map((group) => ({
+        ...group,
+        roles: [...group.roles].sort((a, b) => a.name.localeCompare(b.name))
+      }))
+      .sort((a, b) => {
+        if (a.tenantKey === 'platform') {
+          return -1;
+        }
+        if (b.tenantKey === 'platform') {
+          return 1;
+        }
+        return a.tenantLabel.localeCompare(b.tenantLabel);
+      });
+  }
+
+  getRoleTenantGroupKey(role: Role): string {
+    if (!role.tenant_id) {
+      return 'platform';
+    }
+    return `tenant-${role.tenant_id}`;
+  }
+
+  getRoleTenantGroupLabel(role: Role): string {
+    if (!role.tenant_id) {
+      return 'Platform';
+    }
+    return role.tenant?.name?.trim() || `Tenant ${role.tenant_id}`;
+  }
+
+  getRoleUsersCountLabel(role: Role): string {
+    const count = role.users_count || 0;
+    return count === 1 ? '1 user' : `${count} users`;
+  }
+
+  getRoleUsersCountTitle(role: Role): string {
+    const count = role.users_count || 0;
+    if (count === 0) {
+      return 'No users assigned to this role';
+    }
+    return count === 1
+      ? '1 user assigned to this role'
+      : `${count} users assigned to this role`;
+  }
+
+  trackByTenantGroupKey(_index: number, group: AssignRoleTenantGroup): string {
+    return group.tenantKey;
+  }
+
+  onAssignRoleSearchChange(value: string): void {
+    this.assignRoleSearchTerm = value;
+    this.cdr.markForCheck();
+  }
+
+  onAssignRoleAdvancedSearch(searchValues: { [key: string]: unknown }): void {
+    this.assignRoleStatusFilter = (searchValues['status'] as 'all' | 'active' | 'inactive') || 'all';
+    this.assignRoleTypeFilter = (searchValues['type'] as 'all' | 'system' | 'custom' | 'protected' | 'default') || 'all';
+    this.syncAssignRoleSearchFieldValues(searchValues);
+    this.showAssignRoleAdvancedSearch = false;
+    this.cdr.markForCheck();
+  }
+
+  onClearAssignRoleAdvancedSearch(): void {
+    this.assignRoleStatusFilter = 'all';
+    this.assignRoleTypeFilter = 'all';
+    this.assignRoleSearchFields.forEach((field) => {
+      field.value = undefined;
+    });
+    this.showAssignRoleAdvancedSearch = false;
+    this.cdr.markForCheck();
+  }
+
+  clearAssignRoleSearchAndFilters(): void {
+    this.assignRoleSearchTerm = '';
+    this.onClearAssignRoleAdvancedSearch();
+  }
+
+  getAssignRoleActiveFilters(): ActiveFilter[] {
+    const filters: ActiveFilter[] = [];
+
+    if (this.assignRoleStatusFilter !== 'all') {
+      filters.push({
+        key: 'status',
+        label: 'Status',
+        value: this.assignRoleStatusFilter,
+        displayValue: this.assignRoleStatusFilter === 'active' ? 'Active' : 'Inactive'
+      });
+    }
+
+    if (this.assignRoleTypeFilter !== 'all') {
+      const typeLabels: Record<string, string> = {
+        system: 'System',
+        custom: 'Custom',
+        protected: 'Protected',
+        default: 'Default'
+      };
+      filters.push({
+        key: 'type',
+        label: 'Type',
+        value: this.assignRoleTypeFilter,
+        displayValue: typeLabels[this.assignRoleTypeFilter] || this.assignRoleTypeFilter
+      });
+    }
+
+    return filters;
+  }
+
+  getAssignRoleActiveFilterCount(): number {
+    return this.getAssignRoleActiveFilters().length;
+  }
+
+  hasAssignRoleActiveFiltersOrSearch(): boolean {
+    return this.getAssignRoleActiveFilterCount() > 0 || this.assignRoleSearchTerm.trim().length > 0;
+  }
+
+  removeAssignRoleFilter(filter: ActiveFilter): void {
+    if (filter.key === 'status') {
+      this.assignRoleStatusFilter = 'all';
+    } else if (filter.key === 'type') {
+      this.assignRoleTypeFilter = 'all';
+    }
+
+    const field = this.assignRoleSearchFields.find((item) => item.key === filter.key);
+    if (field) {
+      field.value = undefined;
+    }
+
+    this.cdr.markForCheck();
+  }
+
+  private syncAssignRoleSearchFieldValues(searchValues: { [key: string]: unknown }): void {
+    this.assignRoleSearchFields.forEach((field) => {
+      field.value = searchValues[field.key];
+    });
+  }
+
   onPermissionsAssignedInTab(): void {
     this.loadRoles(); // Reload roles to reflect changes
     this.selectedRoleForAssignment = null; // Clear selection
+    this.authService.refreshUser();
     this.toastService.success('Permissions assigned successfully', 'Success');
   }
 
@@ -807,6 +1137,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
           this.savingUserRoles = false;
           this.toastService.success('User roles updated successfully', 'Success');
           this.loadTenantUsers();
+          this.authService.refreshUser();
         },
         error: (err) => {
           this.savingUserRoles = false;
@@ -854,8 +1185,9 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   }
 
   private getFriendlyErrorMessage(error: any, fallback: string): string {
+    // errorInterceptor flattens HttpErrorResponse to { message, status, errors }.
     const status = error?.status;
-    const apiMessage = error?.error?.message;
+    const apiMessage = error?.message || error?.error?.message;
 
     if (status === 0) {
       return 'Network connection failed. Please check your internet and try again.';
@@ -866,7 +1198,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     }
 
     if (status === 422) {
-      const validationErrors = error?.error?.errors;
+      const validationErrors = error?.errors || error?.error?.errors;
       if (validationErrors) {
         const firstKey = Object.keys(validationErrors)[0];
         const firstMessage = firstKey ? validationErrors[firstKey]?.[0] : null;
@@ -882,6 +1214,13 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     }
 
     return apiMessage || fallback;
+  }
+
+  /**
+   * Full role catalog for assignment UIs (not the current paginated page).
+   */
+  get assignableRoles(): Role[] {
+    return (this.allRoles || []).filter((role) => role.active === 1);
   }
 
   private syncSelectedRoleForAssignment(): void {
@@ -913,34 +1252,220 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     this.selectedUserForRoles = refreshedUser;
   }
 
-  // Filters
-  onSearchChange(): void {
-    this.permissionsPage = 1; // Reset to first page
-    this.applyFiltersAndPagination('permissions');
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+
+  getUserPhotoUrl(user: User): string | null {
+    return resolveUserProfileImageUrl(user);
   }
 
-  onStatusFilterChange(): void {
-    this.permissionsPage = 1; // Reset to first page
-    this.applyFiltersAndPagination('permissions');
+  openPhotoViewer(user: User, event: Event): void {
+    event.stopPropagation();
+    const url = this.getUserPhotoUrl(user);
+    if (!url) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: url,
+      alt: user.name,
+      title: user.name,
+      subtitle: user.email,
+    };
+    this.cdr.markForCheck();
   }
 
-  onTypeFilterChange(): void {
-    this.permissionsPage = 1; // Reset to first page
-    this.applyFiltersAndPagination('permissions');
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.markForCheck();
   }
 
-  onModuleFilterChange(): void {
-    this.permissionsPage = 1; // Reset to first page
-    this.applyFiltersAndPagination('permissions');
+  private updatePermissionsModuleOptions(): void {
+    const modules = [...new Set(
+      this.allPermissions
+        .map((permission) => permission.module?.trim())
+        .filter((module): module is string => !!module)
+    )].sort((a, b) => a.localeCompare(b));
+
+    const moduleField = this.permissionsSearchFields.find((field) => field.key === 'module');
+    if (moduleField) {
+      moduleField.options = [
+        { value: '', label: 'All Modules' },
+        ...modules.map((module) => ({ value: module, label: module }))
+      ];
+    }
   }
 
-  resetFilters(): void {
-    this.searchQuery = '';
-    this.statusFilter = 'all';
-    this.typeFilter = 'all';
-    this.moduleFilter = '';
-    this.permissionsPage = 1; // Reset to first page
+  onRolesListSearchChange(value: string): void {
+    this.rolesSearchTerm = value;
+    this.rolesPage = 1;
+    this.applyFiltersAndPagination('roles');
+    this.cdr.markForCheck();
+  }
+
+  onPermissionsListSearchChange(value: string): void {
+    this.permissionsSearchTerm = value;
+    this.permissionsPage = 1;
     this.applyFiltersAndPagination('permissions');
+    this.cdr.markForCheck();
+  }
+
+  onRolesAdvancedSearch(searchValues: { [key: string]: unknown }): void {
+    this.rolesStatusFilter = (searchValues['status'] as 'all' | 'active' | 'inactive') || 'all';
+    this.rolesTypeFilter = (searchValues['type'] as 'all' | 'system' | 'custom' | 'protected' | 'default') || 'all';
+    this.syncSearchFieldValues(this.rolesSearchFields, searchValues);
+    this.showRolesAdvancedSearch = false;
+    this.rolesPage = 1;
+    this.applyFiltersAndPagination('roles');
+    this.cdr.markForCheck();
+  }
+
+  onPermissionsAdvancedSearch(searchValues: { [key: string]: unknown }): void {
+    this.permissionsStatusFilter = (searchValues['status'] as 'all' | 'active' | 'inactive') || 'all';
+    this.permissionsTypeFilter = (searchValues['type'] as 'all' | 'system' | 'custom') || 'all';
+    this.permissionsModuleFilter = (searchValues['module'] as string) || '';
+    this.syncSearchFieldValues(this.permissionsSearchFields, searchValues);
+    this.showPermissionsAdvancedSearch = false;
+    this.permissionsPage = 1;
+    this.applyFiltersAndPagination('permissions');
+    this.cdr.markForCheck();
+  }
+
+  onClearRolesAdvancedSearch(): void {
+    this.rolesStatusFilter = 'all';
+    this.rolesTypeFilter = 'all';
+    this.rolesSearchFields.forEach((field) => {
+      field.value = undefined;
+    });
+    this.showRolesAdvancedSearch = false;
+    this.rolesPage = 1;
+    this.applyFiltersAndPagination('roles');
+    this.cdr.markForCheck();
+  }
+
+  onClearPermissionsAdvancedSearch(): void {
+    this.permissionsStatusFilter = 'all';
+    this.permissionsTypeFilter = 'all';
+    this.permissionsModuleFilter = '';
+    this.permissionsSearchFields.forEach((field) => {
+      field.value = undefined;
+    });
+    this.showPermissionsAdvancedSearch = false;
+    this.permissionsPage = 1;
+    this.applyFiltersAndPagination('permissions');
+    this.cdr.markForCheck();
+  }
+
+  getRolesActiveFilters(): ActiveFilter[] {
+    const filters: ActiveFilter[] = [];
+
+    if (this.rolesStatusFilter !== 'all') {
+      filters.push({
+        key: 'status',
+        label: 'Status',
+        value: this.rolesStatusFilter,
+        displayValue: this.rolesStatusFilter === 'active' ? 'Active' : 'Inactive'
+      });
+    }
+
+    if (this.rolesTypeFilter !== 'all') {
+      const typeLabels: Record<string, string> = {
+        system: 'System',
+        custom: 'Custom',
+        protected: 'Protected',
+        default: 'Default'
+      };
+      filters.push({
+        key: 'type',
+        label: 'Type',
+        value: this.rolesTypeFilter,
+        displayValue: typeLabels[this.rolesTypeFilter] || this.rolesTypeFilter
+      });
+    }
+
+    return filters;
+  }
+
+  getPermissionsActiveFilters(): ActiveFilter[] {
+    const filters: ActiveFilter[] = [];
+
+    if (this.permissionsStatusFilter !== 'all') {
+      filters.push({
+        key: 'status',
+        label: 'Status',
+        value: this.permissionsStatusFilter,
+        displayValue: this.permissionsStatusFilter === 'active' ? 'Active' : 'Inactive'
+      });
+    }
+
+    if (this.permissionsTypeFilter !== 'all') {
+      filters.push({
+        key: 'type',
+        label: 'Type',
+        value: this.permissionsTypeFilter,
+        displayValue: this.permissionsTypeFilter === 'custom' ? 'Custom' : 'System'
+      });
+    }
+
+    if (this.permissionsModuleFilter) {
+      filters.push({
+        key: 'module',
+        label: 'Module',
+        value: this.permissionsModuleFilter,
+        displayValue: this.permissionsModuleFilter
+      });
+    }
+
+    return filters;
+  }
+
+  getRolesActiveFilterCount(): number {
+    return this.getRolesActiveFilters().length;
+  }
+
+  getPermissionsActiveFilterCount(): number {
+    return this.getPermissionsActiveFilters().length;
+  }
+
+  removeRolesFilter(filter: ActiveFilter): void {
+    if (filter.key === 'status') {
+      this.rolesStatusFilter = 'all';
+    } else if (filter.key === 'type') {
+      this.rolesTypeFilter = 'all';
+    }
+
+    const field = this.rolesSearchFields.find((item) => item.key === filter.key);
+    if (field) {
+      field.value = undefined;
+    }
+
+    this.rolesPage = 1;
+    this.applyFiltersAndPagination('roles');
+    this.cdr.markForCheck();
+  }
+
+  removePermissionsFilter(filter: ActiveFilter): void {
+    if (filter.key === 'status') {
+      this.permissionsStatusFilter = 'all';
+    } else if (filter.key === 'type') {
+      this.permissionsTypeFilter = 'all';
+    } else if (filter.key === 'module') {
+      this.permissionsModuleFilter = '';
+    }
+
+    const field = this.permissionsSearchFields.find((item) => item.key === filter.key);
+    if (field) {
+      field.value = undefined;
+    }
+
+    this.permissionsPage = 1;
+    this.applyFiltersAndPagination('permissions');
+    this.cdr.markForCheck();
+  }
+
+  private syncSearchFieldValues(fields: SearchField[], searchValues: { [key: string]: unknown }): void {
+    fields.forEach((field) => {
+      field.value = searchValues[field.key];
+    });
   }
 
   /**
@@ -950,30 +1475,27 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     if (type === 'roles') {
       let filtered = [...this.allRoles];
 
-      // Apply search filter
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase();
+      if (this.rolesSearchTerm.trim()) {
+        const query = this.rolesSearchTerm.trim().toLowerCase();
         filtered = filtered.filter(role => 
           role.name.toLowerCase().includes(query) ||
           (role.description && role.description.toLowerCase().includes(query))
         );
       }
 
-      // Apply status filter
-      if (this.statusFilter !== 'all') {
-        const activeValue = this.statusFilter === 'active' ? 1 : 0;
+      if (this.rolesStatusFilter !== 'all') {
+        const activeValue = this.rolesStatusFilter === 'active' ? 1 : 0;
         filtered = filtered.filter(role => role.active === activeValue);
       }
 
-      // Apply type filter
-      if (this.typeFilter !== 'all') {
-        if (this.typeFilter === 'custom') {
+      if (this.rolesTypeFilter !== 'all') {
+        if (this.rolesTypeFilter === 'custom') {
           filtered = filtered.filter((role) => this.getRoleClassification(role) === 'custom');
-        } else if (this.typeFilter === 'system') {
+        } else if (this.rolesTypeFilter === 'system') {
           filtered = filtered.filter((role) => role.is_custom === false);
-        } else if (this.typeFilter === 'protected') {
+        } else if (this.rolesTypeFilter === 'protected') {
           filtered = filtered.filter((role) => this.getRoleClassification(role) === 'protected');
-        } else if (this.typeFilter === 'default') {
+        } else if (this.rolesTypeFilter === 'default') {
           filtered = filtered.filter((role) => this.getRoleClassification(role) === 'default');
         }
       }
@@ -991,9 +1513,8 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     } else {
       let filtered = [...this.allPermissions];
 
-      // Apply search filter
-      if (this.searchQuery) {
-        const query = this.searchQuery.toLowerCase();
+      if (this.permissionsSearchTerm.trim()) {
+        const query = this.permissionsSearchTerm.trim().toLowerCase();
         filtered = filtered.filter(permission => 
           permission.name.toLowerCase().includes(query) ||
           permission.display_name.toLowerCase().includes(query) ||
@@ -1002,21 +1523,18 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
         );
       }
 
-      // Apply status filter
-      if (this.statusFilter !== 'all') {
-        const activeValue = this.statusFilter === 'active' ? 1 : 0;
+      if (this.permissionsStatusFilter !== 'all') {
+        const activeValue = this.permissionsStatusFilter === 'active' ? 1 : 0;
         filtered = filtered.filter(permission => permission.active === activeValue);
       }
 
-      // Apply type filter
-      if (this.typeFilter !== 'all') {
-        const isCustomValue = this.typeFilter === 'custom';
+      if (this.permissionsTypeFilter !== 'all') {
+        const isCustomValue = this.permissionsTypeFilter === 'custom';
         filtered = filtered.filter(permission => permission.is_custom === isCustomValue);
       }
 
-      // Apply module filter
-      if (this.moduleFilter) {
-        const moduleQuery = this.moduleFilter.toLowerCase();
+      if (this.permissionsModuleFilter) {
+        const moduleQuery = this.permissionsModuleFilter.toLowerCase();
         filtered = filtered.filter(permission => 
           permission.module && permission.module.toLowerCase().includes(moduleQuery)
         );
@@ -1038,196 +1556,17 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     }
   }
 
-  // Filter Panel Methods
-  openRolesFilterPanel(): void {
-    this.showRolesFilterPanel = true;
-  }
-
-  closeRolesFilterPanel(): void {
-    this.showRolesFilterPanel = false;
-  }
-
-  applyRolesFilters(filters: FilterValues): void {
-    this.searchQuery = filters.search || '';
-    this.statusFilter = (filters.status as 'all' | 'active' | 'inactive') || 'all';
-    this.typeFilter = (filters.type as 'all' | 'system' | 'custom' | 'protected' | 'default') || 'all';
-    this.rolesPage = 1; // Reset to first page
-    this.applyFiltersAndPagination('roles');
-  }
-
-  resetRolesFilters(): void {
-    this.searchQuery = '';
-    this.statusFilter = 'all';
-    this.typeFilter = 'all';
-    this.rolesPage = 1;
-    this.applyFiltersAndPagination('roles');
-  }
-
-  openPermissionsFilterPanel(): void {
-    this.showPermissionsFilterPanel = true;
-  }
-
-  closePermissionsFilterPanel(): void {
-    this.showPermissionsFilterPanel = false;
-  }
-
-  applyPermissionsFilters(filters: FilterValues): void {
-    this.searchQuery = filters.search || '';
-    this.statusFilter = (filters.status as 'all' | 'active' | 'inactive') || 'all';
-    this.typeFilter = (filters.type as 'all' | 'system' | 'custom') || 'all';
-    this.moduleFilter = filters.module || '';
-    this.permissionsPage = 1; // Reset to first page
-    this.applyFiltersAndPagination('permissions');
-  }
-
-  resetPermissionsFilters(): void {
-    this.searchQuery = '';
-    this.statusFilter = 'all';
-    this.typeFilter = 'all';
-    this.moduleFilter = '';
-    this.permissionsPage = 1;
-    this.applyFiltersAndPagination('permissions');
-  }
-
-  getCurrentFilterValues(): FilterValues {
-    return {
-      search: this.searchQuery,
-      status: this.statusFilter,
-      type: this.typeFilter,
-      module: this.moduleFilter
-    };
-  }
-
-  getRolesFilterValues(): FilterValues {
-    return {
-      search: this.searchQuery,
-      status: this.statusFilter,
-      type: this.typeFilter
-    };
-  }
-
-  getPermissionsFilterValues(): FilterValues {
-    return {
-      search: this.searchQuery,
-      status: this.statusFilter,
-      type: this.typeFilter,
-      module: this.moduleFilter
-    };
-  }
-
-  // Maximum number of filter chips to display before showing "+ more"
-  maxVisibleChips = 3;
-
-  hasActiveFilters(): boolean {
-    return this.searchQuery !== '' ||
-           this.statusFilter !== 'all' ||
-           this.typeFilter !== 'all' ||
-           this.moduleFilter !== '';
-  }
-
   hasActiveRolesFilters(): boolean {
-    return this.searchQuery !== '' ||
-      this.statusFilter !== 'all' ||
-      this.typeFilter !== 'all';
+    return this.rolesSearchTerm.trim() !== '' ||
+      this.rolesStatusFilter !== 'all' ||
+      this.rolesTypeFilter !== 'all';
   }
 
   hasActivePermissionsFilters(): boolean {
-    return this.hasActiveRolesFilters() || this.moduleFilter !== '';
-  }
-
-  getActiveFilterChips(context: 'roles' | 'permissions'): Array<{type: string, label: string, value: string}> {
-    const chips: Array<{type: string, label: string, value: string}> = [];
-    
-    if (this.searchQuery) {
-      chips.push({
-        type: 'search',
-        label: 'Search',
-        value: this.searchQuery
-      });
-    }
-    
-    if (this.statusFilter !== 'all') {
-      chips.push({
-        type: 'status',
-        label: 'Status',
-        value: this.statusFilter === 'active' ? 'Active' : 'Inactive'
-      });
-    }
-    
-    if (this.typeFilter !== 'all') {
-      const roleTypeLabelMap: Record<string, string> = {
-        system: 'System',
-        custom: 'Custom',
-        protected: 'Protected',
-        default: 'Default'
-      };
-      chips.push({
-        type: 'type',
-        label: 'Type',
-        value: roleTypeLabelMap[this.typeFilter] || 'Custom'
-      });
-    }
-    
-    if (context === 'permissions' && this.moduleFilter) {
-      chips.push({
-        type: 'module',
-        label: 'Module',
-        value: this.moduleFilter
-      });
-    }
-
-    return chips;
-  }
-
-  getVisibleFilterChips(context: 'roles' | 'permissions'): Array<{type: string, label: string, value: string}> {
-    return this.getActiveFilterChips(context).slice(0, this.maxVisibleChips);
-  }
-
-  getHiddenFilterChips(context: 'roles' | 'permissions'): Array<{type: string, label: string, value: string}> {
-    return this.getActiveFilterChips(context).slice(this.maxVisibleChips);
-  }
-
-  getHiddenChipsCount(context: 'roles' | 'permissions'): number {
-    return this.getHiddenFilterChips(context).length;
-  }
-
-  getHiddenChipsTooltip(context: 'roles' | 'permissions'): string {
-    return this.getHiddenFilterChips(context).map(chip => `${chip.label}: ${chip.value}`).join('\n');
-  }
-
-  openFilterPanelWithCurrentFilters(): void {
-    // Open the appropriate filter panel based on active tab
-    if (this.activeTab === 'roles') {
-      this.openRolesFilterPanel();
-    } else {
-      this.openPermissionsFilterPanel();
-    }
-  }
-
-  removeFilter(filterType: string): void {
-    switch (filterType) {
-      case 'search':
-        this.searchQuery = '';
-        break;
-      case 'status':
-        this.statusFilter = 'all';
-        break;
-      case 'type':
-        this.typeFilter = 'all';
-        break;
-      case 'module':
-        this.moduleFilter = '';
-        break;
-    }
-    
-    // Determine which tab we're on and reapply filters
-    if (this.activeTab === 'roles') {
-      this.rolesPage = 1; // Reset to first page
-      this.applyFiltersAndPagination('roles');
-    } else {
-      this.permissionsPage = 1; // Reset to first page
-      this.applyFiltersAndPagination('permissions');
-    }
+    return this.permissionsSearchTerm.trim() !== '' ||
+      this.permissionsStatusFilter !== 'all' ||
+      this.permissionsTypeFilter !== 'all' ||
+      this.permissionsModuleFilter !== '';
   }
 
   // Helper Methods
@@ -1245,6 +1584,14 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
     if (classification === 'default') return 'Default';
     if (classification === 'custom') return 'Custom';
     return 'System';
+  }
+
+  getRoleBadgeTone(role: Role): StatusBadgeTone {
+    const classification = this.getRoleClassification(role);
+    if (classification === 'protected') return 'critical';
+    if (classification === 'default') return 'warning';
+    if (classification === 'custom') return 'neutral';
+    return 'info';
   }
 
   getRoleClassification(role: Role): 'protected' | 'default' | 'custom' | 'system' {
@@ -1278,6 +1625,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
 
   getStatusText(active: 0 | 1): string {
     return active === 1 ? 'Active' : 'Inactive';
+  }
+
+  getStatusBadgeTone(active: 0 | 1): StatusBadgeTone {
+    return active === 1 ? 'success' : 'neutral';
   }
 
   getRolesEmptyTitle(): string {
@@ -1391,6 +1742,23 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
       return data.slice(startIndex, endIndex);
     }
     return data;
+  }
+
+  get deleteConfirmMessage(): string {
+    const role = this.pendingRoleAction;
+    if (!role) return '';
+    const users = role.users_count || 0;
+    const perms = role.permissions_count || 0;
+    return `${role.name}\nAssigned users: ${users} | Permissions: ${perms}\n\n${this.getRoleDeleteImpactMessage(role)}`;
+  }
+
+  get statusConfirmMessage(): string {
+    const role = this.pendingRoleAction;
+    if (!role) return '';
+    if (this.pendingRoleStatusTarget === 0) {
+      return `${role.name}\n\nInactive roles cannot be assigned to new users. Existing assignments remain visible.`;
+    }
+    return `${role.name}\n\nThis role will be available again for new user assignments.`;
   }
 
   ngOnDestroy(): void {

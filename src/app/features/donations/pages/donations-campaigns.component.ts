@@ -9,11 +9,22 @@ import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationProject } from '../models/donation.model';
 import { FinancialActivityTimelineComponent } from '../components/financial-activity-timeline/financial-activity-timeline.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
-
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-campaigns',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, FinancialActivityTimelineComponent, CfEmptyStateComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    ReactiveFormsModule,
+    RouterModule,
+    FinancialActivityTimelineComponent,
+    CfEmptyStateComponent,
+    ModalShellComponent,
+    CfCurrencyPipe,
+    CfActionIconComponent],
   template: `
     <section class="campaigns-page cf-page">
       <header class="cf-hero">
@@ -23,37 +34,83 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 
       <div class="cf-decision-strip" role="region" aria-label="Suggested next step" *ngIf="!loading && campaigns.length">
         <div class="cf-decision-strip__copy">
-          <strong>{{ activeCampaignCount }} active · {{ fundingGap | number:'1.2-2' }} still to raise</strong>
+          <strong>{{ activeCampaignCount }} active · {{ fundingGap | cfCurrency }} still to raise</strong>
           <span>{{ campaignDecisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-          <button type="button" class="cf-btn" (click)="toggleForm()">{{ showForm ? 'Close setup' : 'New campaign' }}</button>
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="toggleForm()"
+            [attr.aria-label]="showForm ? 'Close setup' : 'New campaign'"
+            [attr.title]="showForm ? 'Close setup' : 'New campaign'"
+          >
+            <app-cf-action-icon [name]="showForm ? 'x' : 'plus'" />
+          </button>
         </div>
       </div>
 
-      <details class="cf-disclosure" role="group" [attr.open]="showForm ? true : null">
-        <summary class="cf-disclosure__trigger">
-          <strong>Set up a campaign</strong>
-          <span>Name, target, dates, and campaign type</span>
-        </summary>
-        <div class="cf-disclosure__body">
-      <form [formGroup]="campaignForm" (ngSubmit)="saveCampaign()" class="campaign-form cf-form-grid">
-        <input formControlName="name" placeholder="Campaign name" />
-        <input formControlName="code" placeholder="Code" />
-        <select formControlName="campaign_type">
-          <option value="general">General</option>
-          <option value="building">Building</option>
-          <option value="charity">Charity</option>
-          <option value="event">Event</option>
-        </select>
-        <input formControlName="target_amount" type="number" placeholder="Target amount" />
-        <input formControlName="start_date" type="date" />
-        <input formControlName="end_date" type="date" />
-        <button type="submit" class="cf-btn cf-btn-primary" [disabled]="campaignForm.invalid || saving">{{ saving ? 'Saving…' : 'Create Campaign' }}</button>
-      </form>
-        </div>
-      </details>
+      <app-modal-shell
+        *ngIf="showForm"
+        title="Set up a Campaign"
+        size="sm"
+        headerVariant="compact"
+        bodyPadding="none"
+        closeAriaLabel="Close campaign setup"
+        [isSubmitting]="saving"
+        (closeRequested)="toggleForm()"
+      >
+        <form [formGroup]="campaignForm" (ngSubmit)="saveCampaign()" class="cf-split-form-body" novalidate>
+          <section class="cf-split-section" aria-labelledby="campaign-section-details">
+            <h3 id="campaign-section-details" class="cf-split-section__title">Campaign details</h3>
+            <div class="cf-split-grid">
+              <div class="cf-split-field cf-split-field--full">
+                <label for="campaign-name">Campaign name <span class="cf-split-req" aria-hidden="true">*</span></label>
+                <input id="campaign-name" formControlName="name" placeholder="Campaign name" autocomplete="off" aria-required="true" />
+              </div>
+              <div class="cf-split-field">
+                <label for="campaign-code">Code <span class="cf-split-req" aria-hidden="true">*</span></label>
+                <input id="campaign-code" formControlName="code" placeholder="Code" autocomplete="off" aria-required="true" />
+              </div>
+              <div class="cf-split-field">
+                <label for="campaign-type">Campaign type</label>
+                <select id="campaign-type" formControlName="campaign_type">
+                  <option value="general">General</option>
+                  <option value="building">Building</option>
+                  <option value="charity">Charity</option>
+                  <option value="event">Event</option>
+                </select>
+              </div>
+              <div class="cf-split-field">
+                <label for="campaign-target">Target amount</label>
+                <input id="campaign-target" formControlName="target_amount" type="number" placeholder="Target amount" />
+              </div>
+              <div class="cf-split-field">
+                <label for="campaign-start">Start date</label>
+                <input id="campaign-start" formControlName="start_date" type="date" />
+              </div>
+              <div class="cf-split-field">
+                <label for="campaign-end">End date</label>
+                <input id="campaign-end" formControlName="end_date" type="date" />
+              </div>
+            </div>
+          </section>
+
+          <div class="cf-split-form-actions">
+            <button
+          aria-label="Save"
+          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="campaignForm.invalid || saving">
+          <app-cf-action-icon name="save" />
+            </button>
+            <button type="button" class="cf-btn cf-btn-icon" (click)="toggleForm()" [disabled]="saving" aria-label="Cancel" title="Cancel"><app-cf-action-icon name="x" /></button>
+          </div>
+        </form>
+      </app-modal-shell>
 
       <p *ngIf="loading" class="cf-state">Loading campaigns…</p>
       <p *ngIf="error" class="cf-state cf-state--error">{{ error }}</p>
@@ -78,7 +135,7 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
             </span>
           </div>
           <p>{{ campaign.code }} · {{ campaign.status }}</p>
-          <p>{{ campaign.raised_amount | number:'1.2-2' }} of {{ campaign.target_amount | number:'1.2-2' }}</p>
+          <p>{{ campaign.raised_amount | cfCurrency }} of {{ campaign.target_amount | cfCurrency }}</p>
           <p *ngIf="daysRemaining(campaign) !== null" class="campaign-deadline">
             {{ daysRemaining(campaign)! <= 0 ? 'Ended' : daysRemaining(campaign) + ' days left' }}
           </p>
@@ -92,12 +149,16 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
         <header>
           <h2>{{ campaign.name }}</h2>
           <div class="detail-actions">
-            <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect</button>
-            <button type="button" class="cf-btn" (click)="selectedCampaignId = null">Close</button>
+            <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+            </button>
+            <button type="button" class="cf-btn cf-btn-icon" (click)="selectedCampaignId = null" aria-label="Close" title="Close"><app-cf-action-icon name="x" /></button>
           </div>
         </header>
         <div class="cf-attention-callout" *ngIf="isCampaignAtRisk(campaign)">
-          <p>{{ campaignGap(campaign) | number:'1.2-2' }} still needed · {{ campaign.collection_percentage || 0 }}% funded.</p>
+          <p>{{ campaignGap(campaign) | cfCurrency }} still needed · {{ campaign.collection_percentage || 0 }}% funded.</p>
         </div>
         <app-financial-activity-timeline
           subjectType="campaign"
@@ -112,14 +173,23 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
         title="No campaigns running"
         description="Launch a time-bound drive for building funds, charity events, or special appeals."
       >
-        <button type="button" class="cf-btn cf-btn-primary" (click)="toggleForm()">Create campaign</button>
-        <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
+        <button
+          aria-label="Add"
+          title="Add" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="toggleForm()">
+          <app-cf-action-icon name="plus" />
+        </button>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
       </app-cf-empty-state>
     </section>
   `,
   styles: [`
-    details summary { list-style: none; cursor: pointer; }
-    details summary::-webkit-details-marker { display: none; }
+    @use '../styles/stewardship-split-layout.scss';
+
+    .cf-split-form-actions { justify-content: flex-end; }
     .campaign-top { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; }
     .campaign-badge { padding: 0.15rem 0.45rem; border-radius: 999px; background: var(--cf-forest-soft); color: var(--cf-forest); font-size: 0.78rem; }
     .campaign-badge--attention { background: var(--cf-amber-soft); color: var(--cf-amber); }

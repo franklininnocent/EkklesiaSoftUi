@@ -1,0 +1,144 @@
+<app-modal-shell
+  title="Hand over leadership"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <div class="handover-leadership-modal__body cf-loading-block" *ngIf="loading" role="status" aria-live="polite">
+    <p class="cf-loading-block__label">Loading handover options…</p>
+  </div>
+
+  <div class="cf-inline-alert" *ngIf="!loading && loadError" role="alert">
+    <p>{{ loadError }}</p>
+  </div>
+
+  <form
+    id="handover-leadership-form"
+    class="handover-leadership-modal__body"
+    *ngIf="!loading && !loadError"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+  >
+    <p class="handover-leadership-modal__summary">
+      <strong>{{ positionName }}</strong>
+      — currently held by {{ outgoingHolderName }}
+    </p>
+
+    <fieldset class="handover-leadership-modal__section">
+      <legend>Outgoing</legend>
+
+      <div class="handover-leadership-modal__grid cf-form-grid">
+        <app-form-field
+          label="Effective to"
+          [required]="true"
+          fieldId="handover-outgoing-effective-to"
+          [errorText]="submitted && form.controls.outgoing_effective_to.invalid ? 'Effective to date is required.' : null"
+        >
+          <input id="handover-outgoing-effective-to" type="date" formControlName="outgoing_effective_to" />
+        </app-form-field>
+
+        <app-form-field
+          label="Exit reason"
+          [required]="true"
+          fieldId="handover-exit-reason"
+          [errorText]="submitted && form.controls.exit_reason.invalid ? 'Exit reason is required.' : null"
+        >
+          <select id="handover-exit-reason" formControlName="exit_reason">
+            <option value="">Select reason…</option>
+            <option *ngFor="let reason of exitReasons" [value]="reason.value">
+              {{ reason.label }}
+            </option>
+          </select>
+        </app-form-field>
+      </div>
+
+      <p
+        class="cf-form-field__error"
+        *ngIf="submitted && form.hasError('outgoingBeforeTermStart')"
+        role="alert"
+      >
+        Outgoing end date must be on or after the term start date.
+      </p>
+    </fieldset>
+
+    <fieldset class="handover-leadership-modal__section">
+      <legend>Incoming</legend>
+
+      <app-leadership-member-picker
+        formControlName="membership_id"
+        [members]="members"
+        [guestsCanHoldOffice]="guestsCanHoldOffice"
+        [showRequiredError]="submitted && form.controls.membership_id.invalid"
+      ></app-leadership-member-picker>
+
+      <div class="handover-leadership-modal__grid cf-form-grid">
+        <app-form-field
+          label="Appointment date"
+          [required]="true"
+          fieldId="handover-appointment-date"
+          [errorText]="submitted && form.controls.appointment_date.invalid ? 'Appointment date is required.' : null"
+        >
+          <input id="handover-appointment-date" type="date" formControlName="appointment_date" />
+        </app-form-field>
+
+        <app-form-field
+          label="Effective from"
+          [required]="true"
+          fieldId="handover-effective-from"
+          [errorText]="submitted && form.controls.effective_from.invalid ? 'Effective from date is required.' : null"
+        >
+          <input id="handover-effective-from" type="date" formControlName="effective_from" />
+        </app-form-field>
+      </div>
+
+      <p
+        class="cf-form-field__error"
+        *ngIf="submitted && form.hasError('appointmentAfterEffective')"
+        role="alert"
+      >
+        Appointment date must be on or before the effective from date.
+      </p>
+
+      <div class="handover-leadership-modal__grid cf-form-grid">
+        <app-form-field
+          label="Effective to"
+          fieldId="handover-effective-to"
+          [errorText]="submitted && form.hasError('effectiveToBeforeFrom') ? 'Effective to must be on or after the effective from date.' : null"
+        >
+          <input id="handover-effective-to" type="date" formControlName="effective_to" />
+        </app-form-field>
+
+        <app-form-field label="Term label" fieldId="handover-term-label">
+          <input id="handover-term-label" type="text" formControlName="term_label" maxlength="50" />
+        </app-form-field>
+      </div>
+
+      <app-form-field label="Appointment reference" fieldId="handover-appointment-reference">
+        <input id="handover-appointment-reference" type="text" formControlName="appointment_reference" maxlength="100" />
+      </app-form-field>
+
+      <label class="handover-leadership-modal__check">
+        <input type="checkbox" formControlName="is_interim" />
+        Interim appointment
+      </label>
+
+      <app-form-field label="Remarks" fieldId="handover-remarks">
+        <textarea id="handover-remarks" formControlName="remarks" rows="2"></textarea>
+      </app-form-field>
+    </fieldset>
+
+    <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <ng-container *ngIf="!loading && loadError">
+      <button type="button" class="cf-btn" (click)="onCancel()">Cancel</button>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="retryLoad()">Try again</button>
+    </ng-container>
+    <ng-container *ngIf="!loading && !loadError">
+      <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+      <button type="submit" form="handover-leadership-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+        {{ saving ? 'Handing over…' : 'Complete handover' }}
+      </button>
+    </ng-container>
+  </ng-container>
+</app-modal-shell>

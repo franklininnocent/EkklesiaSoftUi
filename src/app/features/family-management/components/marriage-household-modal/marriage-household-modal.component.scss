@@ -1,0 +1,115 @@
+.marriage-household-modal__steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.marriage-household-modal__step {
+  text-align: center;
+  padding: 0.35rem 0.5rem;
+  border-radius: 999px;
+  background: var(--cf-surface-muted, #f1f5f9);
+  color: var(--cf-muted, #64748b);
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.marriage-household-modal__step.is-active,
+.marriage-household-modal__step.is-complete {
+  background: var(--cf-primary-soft, #dbeafe);
+  color: var(--cf-primary, #1d4ed8);
+}
+
+.marriage-household-modal__body {
+  display: grid;
+  gap: 1rem;
+}
+
+.marriage-household-modal__choices {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.marriage-household-modal__legend {
+  margin-bottom: 0.25rem;
+  font-weight: 700;
+}
+
+.marriage-household-modal__choice {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.75rem;
+  align-items: start;
+  padding: 0.85rem;
+  border: 1px solid var(--cf-border, #e2e8f0);
+  border-radius: 0.75rem;
+  cursor: pointer;
+}
+
+.marriage-household-modal__choice strong {
+  display: block;
+}
+
+.marriage-household-modal__choice small {
+  color: var(--cf-muted, #64748b);
+}
+
+.marriage-household-modal__lead,
+.marriage-household-modal__hint,
+.marriage-household-modal__muted,
+.marriage-household-modal__error {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.marriage-household-modal__lead,
+.marriage-household-modal__hint,
+.marriage-household-modal__muted {
+  color: var(--cf-muted, #64748b);
+}
+
+.marriage-household-modal__block {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.marriage-household-modal__block input,
+.marriage-household-modal__block select {
+  width: 100%;
+  font-weight: 400;
+}
+
+.marriage-household-modal__review {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0;
+}
+
+.marriage-household-modal__review div {
+  display: grid;
+  gap: 0.15rem;
+}
+
+.marriage-household-modal__review dt {
+  font-size: 0.78rem;
+  color: var(--cf-muted, #64748b);
+}
+
+.marriage-household-modal__review dd {
+  margin: 0;
+  font-weight: 600;
+}
+
+.marriage-household-modal__error {
+  color: #b91c1c;
+}
+
+abbr {
+  text-decoration: none;
+}

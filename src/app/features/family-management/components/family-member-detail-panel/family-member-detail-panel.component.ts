@@ -10,12 +10,14 @@ import { Family, FamilyMember } from '@core/models/family.model';
 import { SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
 import { getMemberDisplayName } from '../../utils/profile-completion.util';
 import { getRelationshipLabel } from '../../utils/family-hierarchy.util';
+import { FamilyAffiliationsPanelComponent } from '../family-affiliations-panel/family-affiliations-panel.component';
 import { FamilyHeadProfileBlockComponent } from '../family-head-profile-block/family-head-profile-block.component';
+import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 
 @Component({
   selector: 'app-family-member-detail-panel',
   standalone: true,
-  imports: [CommonModule, FamilyHeadProfileBlockComponent],
+  imports: [CommonModule, FamilyHeadProfileBlockComponent, FamilyAffiliationsPanelComponent],
   templateUrl: './family-member-detail-panel.component.html',
   styleUrls: ['./family-member-detail-panel.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -28,6 +30,8 @@ export class FamilyMemberDetailPanelComponent {
   @Input() headSacramentsExpanded = true;
   @Input() editingHeadImage = false;
   @Input() showHeadWithoutMember = false;
+  @Input() memberRegisterSacraments: Sacrament[] = [];
+  @Input() canViewRegisterSacraments = false;
 
   @Output() editHead = new EventEmitter<void>();
   @Output() editMember = new EventEmitter<number>();
@@ -38,6 +42,7 @@ export class FamilyMemberDetailPanelComponent {
   @Output() deleteHeadProfileImage = new EventEmitter<void>();
   @Output() openSacramentModal = new EventEmitter<{ index: number; code: string }>();
   @Output() openHeadSacramentModal = new EventEmitter<string>();
+  @Output() linkedParentSelected = new EventEmitter<string>();
 
   sacramentsSectionExpanded = true;
 

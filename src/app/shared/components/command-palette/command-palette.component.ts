@@ -10,6 +10,8 @@ import { AuthService } from '@core/services/auth.service';
 import { CommandPaletteService } from '@shared/services/command-palette.service';
 import { QuickCollectService } from '@features/donations/services/quick-collect.service';
 import { DonationsService } from '@features/donations/services/donations.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { FinancialAiResponse, FinancialGlobalSearchResult, FinancialSearchResultItem } from '@features/donations/models/donation.model';
 
 
@@ -107,6 +109,8 @@ export class CommandPaletteComponent implements OnInit {
   private readonly donationsService = inject(DonationsService);
   private readonly familyService = inject(FamilyService);
   private readonly authService = inject(AuthService);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly supportSessions = inject(SupportSessionService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly search$ = new Subject<string>();
@@ -130,13 +134,21 @@ export class CommandPaletteComponent implements OnInit {
   ];
 
   get canSearchFinancial(): boolean {
-    return this.authService.canAccessDonations();
+    return this.authService.canAccessDonations(undefined, {
+      hasActiveSupportSession: !!this.supportSessions.sessionId,
+    });
   }
 
   get filteredActions() {
     const q = this.query.trim().toLowerCase();
-    const canDonations = this.authService.canAccessDonations();
+    const canDonations = this.authService.canAccessDonations(undefined, {
+      hasActiveSupportSession: !!this.supportSessions.sessionId,
+    });
+    const readOnly = this.subscriptionAccess.isReadOnly();
     return this.actions.filter((action) => {
+      if (readOnly && (action.id === 'collect' || action.id === 'collection-day')) {
+        return false;
+      }
       if (action.donations && !canDonations) {
         return false;
       }
@@ -189,7 +201,11 @@ export class CommandPaletteComponent implements OnInit {
   onGlobalKeydown(event: KeyboardEvent): void {
     if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
       event.preventDefault();
-      this.isOpen ? this.close() : this.open();
+      if (this.isOpen) {
+        this.close();
+      } else {
+        this.open();
+      }
       return;
     }
     if (event.key === 'Escape' && this.isOpen) {

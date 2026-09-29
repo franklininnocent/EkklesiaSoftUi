@@ -1,0 +1,26 @@
+<ng-container *ngIf="displayUrl; else initialsAvatar">
+  <button
+    *ngIf="clickable; else staticPhoto"
+    type="button"
+    class="user-avatar user-avatar--photo user-avatar--{{ size }} user-avatar--trigger"
+    [attr.aria-label]="ariaLabel"
+    (click)="onPhotoClick($event)"
+  >
+    <img [src]="displayUrl" alt="" loading="lazy" (error)="onImageError()" />
+  </button>
+  <ng-template #staticPhoto>
+    <span class="user-avatar user-avatar--photo user-avatar--{{ size }}" aria-hidden="true">
+      <img [src]="displayUrl" alt="" loading="lazy" (error)="onImageError()" />
+    </span>
+  </ng-template>
+</ng-container>
+
+<ng-template #initialsAvatar>
+  <div
+    class="user-avatar user-avatar--initials user-avatar--{{ size }}"
+    [ngClass]="colorClass"
+    aria-hidden="true"
+  >
+    {{ initials }}
+  </div>
+</ng-template>

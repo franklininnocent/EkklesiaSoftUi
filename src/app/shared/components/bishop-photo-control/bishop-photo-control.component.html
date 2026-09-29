@@ -1,0 +1,43 @@
+<div class="bishop-photo-control">
+  <div class="bishop-photo-control__preview">
+    <app-bishop-avatar
+      [name]="name"
+      [source]="displaySource"
+      size="xl"
+      [alt]="name ? name + ' photo' : 'Bishop photo'"
+    ></app-bishop-avatar>
+  </div>
+
+  <div class="bishop-photo-control__actions" *ngIf="canManage">
+    <label class="cf-btn cf-btn-secondary bishop-photo-control__upload" [class.is-disabled]="disabled || uploading">
+      {{ uploading ? 'Uploading…' : (hasDisplayPhoto ? 'Change photo' : 'Upload photo') }}
+      <input
+        type="file"
+        accept="image/jpeg,image/jpg,image/png,image/webp"
+        hidden
+        [disabled]="disabled || uploading"
+        (change)="onFileSelected($event)"
+        aria-label="Upload bishop photo"
+      />
+    </label>
+
+    <button
+      type="button"
+      class="cf-btn"
+      *ngIf="hasDisplayPhoto"
+      [disabled]="disabled || uploading"
+      (click)="removePhoto()"
+      aria-label="Remove bishop photo"
+    >
+      Remove photo
+    </button>
+  </div>
+
+  <p class="bishop-photo-control__hint" *ngIf="canManage">
+    Accepted: JPG, PNG, WebP. Maximum size: 3 MB.
+  </p>
+
+  <p class="bishop-photo-control__error" *ngIf="validationError" role="alert">
+    {{ validationError }}
+  </p>
+</div>

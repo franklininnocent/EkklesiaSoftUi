@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnInit, inject } from '@angular/core';
 import {
   AbstractControl,
   FormBuilder,
@@ -8,16 +8,22 @@ import {
   ValidationErrors,
   Validators
 } from '@angular/forms';
-import { RouterModule } from '@angular/router';
+import { RouterModule, ActivatedRoute } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { FamilyService } from '@core/services/family.service';
 import { Family } from '@core/models/family.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationProject, ProjectDashboard, ProjectFamilyAssignment } from '../models/donation.model';
 import { FinancialActivityTimelineComponent } from '../components/financial-activity-timeline/financial-activity-timeline.component';
+import { localDateOnly } from '../utils/local-date-only';
 
 function projectDateRangeValidator(control: AbstractControl): ValidationErrors | null {
   const start = control.get('start_date')?.value;
@@ -27,7 +33,7 @@ function projectDateRangeValidator(control: AbstractControl): ValidationErrors |
   }
   return null;
 }
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 @Component({
   selector: 'app-donations-projects',
   standalone: true,
@@ -38,12 +44,22 @@ function projectDateRangeValidator(control: AbstractControl): ValidationErrors |
     RouterModule,
     FinancialActivityTimelineComponent,
     CfEmptyStateComponent,
-    LoadingSkeletonComponent
-  ],
+    LoadingSkeletonComponent,
+    ModalShellComponent,
+    PageHeaderComponent,
+    CfCurrencyPipe,
+    CfActionIconComponent,
+    EditIconButtonComponent],
   templateUrl: './donations-projects.component.html',
   styleUrl: './donations-projects.component.scss'
 })
 export class DonationsProjectsComponent implements OnInit {
+  private readonly churchCurrency = inject(ChurchCurrencyService);
+
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? '';
+  }
+
   projects: DonationProject[] = [];
   tableSearch = '';
   families: Family[] = [];
@@ -53,7 +69,7 @@ export class DonationsProjectsComponent implements OnInit {
   selectedFamilyId = '';
   assignmentAmount = 0;
   assignmentExempt = false;
-  assignmentEffectiveFrom = new Date().toISOString().slice(0, 10);
+  assignmentEffectiveFrom = localDateOnly();
   showForm = false;
   editingProjectId: string | null = null;
   submitAttempted = false;
@@ -84,7 +100,8 @@ export class DonationsProjectsComponent implements OnInit {
     private familyService: FamilyService,
     private authService: AuthService,
     private quickCollectService: QuickCollectService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
@@ -93,19 +110,9 @@ export class DonationsProjectsComponent implements OnInit {
     this.loadFamilies();
   }
 
-  get pageTitle(): string {
-    if (this.showForm) {
-      return this.editingProjectId ? 'Edit Project' : 'Create Project';
-    }
-    return 'Building & Special Projects';
-  }
+  readonly pageTitle = 'Building & Special Projects';
 
-  get pageSubtitle(): string {
-    if (this.showForm) {
-      return 'Set up project targets, contribution schedules, and family assignments.';
-    }
-    return 'Track funding progress — spot gaps and follow up with families.';
-  }
+  readonly pageSubtitle = 'Track funding progress — spot gaps and follow up with families.';
 
   get activeProjectCount(): number {
     return this.projects.filter((project) => project.status === 'active').length;
@@ -214,7 +221,6 @@ export class DonationsProjectsComponent implements OnInit {
       status: 'active'
     });
     this.showForm = true;
-    this.scrollToForm();
   }
 
   closeForm(): void {
@@ -239,7 +245,6 @@ export class DonationsProjectsComponent implements OnInit {
       status: project.status
     });
     this.draftAssignments = [];
-    this.scrollToForm();
   }
 
   setStatusActive(active: boolean): void {
@@ -257,6 +262,11 @@ export class DonationsProjectsComponent implements OnInit {
       next: (res) => {
         this.projects = res.data || [];
         this.projectsLoaded = true;
+        const projectId = this.route.snapshot.paramMap.get('id');
+        const selected = projectId ? this.projects.find((project) => project.id === projectId) : undefined;
+        if (selected) {
+          this.viewDashboard(selected);
+        }
         this.cdr.detectChanges();
       },
       error: (err: { message?: string }) => {
@@ -357,12 +367,6 @@ export class DonationsProjectsComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
-  }
-
-  private scrollToForm(): void {
-    setTimeout(() => {
-      document.getElementById('project-form-card')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 0);
   }
 
   private resetForm(): void {

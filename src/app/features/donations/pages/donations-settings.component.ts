@@ -4,14 +4,16 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 import { DonationsService } from '../services/donations.service';
-import { FinancialAiStatus } from '../models/donation.model';
+import { DonationFinancialYearResolved, FinancialAiStatus } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
 
 @Component({
   selector: 'app-donations-settings',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, LoadingSkeletonComponent],
+  imports: [CommonModule, ReactiveFormsModule, LoadingSkeletonComponent, PageHeaderComponent, CfActionIconComponent],
   templateUrl: './donations-settings.component.html',
   styleUrl: './donations-settings.component.scss'
 })
@@ -21,9 +23,11 @@ export class DonationsSettingsComponent implements OnInit {
   canEditSettings = false;
   settingsLoaded = false;
   aiStatus: FinancialAiStatus | null = null;
+  financialYearResolved: DonationFinancialYearResolved | null = null;
 
   form = this.fb.group({
-    default_currency: ['INR', Validators.required],
+    default_currency: ['INR'],
+    financial_year_source: ['country' as 'country' | 'tenant'],
     financial_year_start_month: ['01', Validators.required],
     financial_year_start_day: ['01', Validators.required],
     tax_registration_number: [''],
@@ -78,17 +82,39 @@ export class DonationsSettingsComponent implements OnInit {
       next: (res) => {
         if (res.data) {
           const metadata = (res.data.metadata ?? {}) as Record<string, unknown>;
+          this.financialYearResolved = res.data.financial_year_resolved ?? null;
           this.form.patchValue({
             ...res.data,
+            financial_year_source: res.data.financial_year_source ?? 'country',
             upi_vpa: String(metadata['upi_vpa'] ?? ''),
             upi_payee_name: String(metadata['upi_payee_name'] ?? ''),
             financial_ai_llm_enabled: metadata['financial_ai_llm_enabled'] !== false
           });
+          if (this.useCountryFinancialYear && this.financialYearResolved) {
+            this.form.patchValue({
+              financial_year_start_month: this.financialYearResolved.start_month,
+              financial_year_start_day: this.financialYearResolved.start_day,
+            });
+          }
         }
         finish();
       },
       error: () => finish()
     });
+  }
+
+  get useCountryFinancialYear(): boolean {
+    return this.form.value.financial_year_source !== 'tenant';
+  }
+
+  onCountryFinancialYearToggle(useCountry: boolean): void {
+    this.form.patchValue({ financial_year_source: useCountry ? 'country' : 'tenant' });
+    if (useCountry && this.financialYearResolved) {
+      this.form.patchValue({
+        financial_year_start_month: this.financialYearResolved.start_month,
+        financial_year_start_day: this.financialYearResolved.start_day,
+      });
+    }
   }
 
   get settingsDecisionHint(): string {
@@ -119,6 +145,7 @@ export class DonationsSettingsComponent implements OnInit {
     delete (payload as Record<string, unknown>)['upi_vpa'];
     delete (payload as Record<string, unknown>)['upi_payee_name'];
     delete (payload as Record<string, unknown>)['financial_ai_llm_enabled'];
+    delete (payload as Record<string, unknown>)['default_currency'];
     this.donationsService.updateSettings(payload as Record<string, unknown>).subscribe({
       next: () => {
         this.saving = false;

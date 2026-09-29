@@ -1,0 +1,153 @@
+<app-modal-shell
+  title="Marriage household change"
+  [description]="stepTitle"
+  size="lg"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <div class="marriage-household-modal__steps" aria-hidden="true">
+    <span
+      *ngFor="let n of [1, 2, 3, 4]"
+      class="marriage-household-modal__step"
+      [class.is-active]="step === n"
+      [class.is-complete]="step > n"
+    >
+      Step {{ n }}
+    </span>
+  </div>
+
+  <form class="marriage-household-modal__body" [formGroup]="form" (ngSubmit)="goNext()">
+    <ng-container *ngIf="step === 1">
+      <fieldset class="marriage-household-modal__choices">
+        <legend class="marriage-household-modal__legend">After the wedding</legend>
+        <label class="marriage-household-modal__choice">
+          <input type="radio" formControlName="outcome" value="new_household" (change)="onOutcomeChange()" />
+          <span>
+            <strong>Start a new household</strong>
+            <small>The couple forms a brand-new family record.</small>
+          </span>
+        </label>
+        <label class="marriage-household-modal__choice">
+          <input type="radio" formControlName="outcome" value="join_existing" (change)="onOutcomeChange()" />
+          <span>
+            <strong>Join an existing household</strong>
+            <small>One spouse moves into the other’s family.</small>
+          </span>
+        </label>
+      </fieldset>
+    </ng-container>
+
+    <ng-container *ngIf="step === 2">
+      <p class="marriage-household-modal__lead">
+        Pick the bride and groom from active members. You can include people from this family or another family search in the next step for join flows.
+      </p>
+
+      <label class="marriage-household-modal__block">
+        <span>Bride <abbr title="required">*</abbr></span>
+        <select formControlName="bride_member_id">
+          <option value="">Select bride…</option>
+          <option *ngFor="let member of members" [value]="member.id">{{ memberLabel(member) }}</option>
+        </select>
+      </label>
+
+      <label class="marriage-household-modal__block">
+        <span>Groom <abbr title="required">*</abbr></span>
+        <select formControlName="groom_member_id">
+          <option value="">Select groom…</option>
+          <option *ngFor="let member of members" [value]="member.id">{{ memberLabel(member) }}</option>
+        </select>
+      </label>
+    </ng-container>
+
+    <ng-container *ngIf="step === 3">
+      <ng-container *ngIf="form.controls.outcome.value === 'new_household'">
+        <label class="marriage-household-modal__block">
+          <span>New family name <abbr title="required">*</abbr></span>
+          <input type="text" formControlName="new_family_name" />
+        </label>
+
+        <label class="marriage-household-modal__block">
+          <span>BCC for new household <abbr title="required">*</abbr></span>
+          <select formControlName="new_bcc_id">
+            <option value="">Select BCC…</option>
+            <option *ngFor="let bcc of bccs" [value]="bcc.id">{{ bcc.name }}</option>
+          </select>
+        </label>
+
+        <label class="marriage-household-modal__block">
+          <span>Head of new household <abbr title="required">*</abbr></span>
+          <select formControlName="new_head_member_id">
+            <option value="">Select head…</option>
+            <option *ngIf="form.controls.bride_member_id.value" [value]="form.controls.bride_member_id.value">Bride</option>
+            <option *ngIf="form.controls.groom_member_id.value" [value]="form.controls.groom_member_id.value">Groom</option>
+          </select>
+        </label>
+      </ng-container>
+
+      <ng-container *ngIf="form.controls.outcome.value === 'join_existing'">
+        <label class="marriage-household-modal__block">
+          <span>Destination family <abbr title="required">*</abbr></span>
+          <select formControlName="target_family_id">
+            <option value="">Select family…</option>
+            <option *ngFor="let family of otherFamilies" [value]="family.id">{{ family.family_name }}</option>
+          </select>
+        </label>
+
+        <label class="marriage-household-modal__block">
+          <span>Who is moving in? <abbr title="required">*</abbr></span>
+          <select formControlName="joining_member_id">
+            <option value="">Select member…</option>
+            <option *ngIf="form.controls.bride_member_id.value" [value]="form.controls.bride_member_id.value">Bride</option>
+            <option *ngIf="form.controls.groom_member_id.value" [value]="form.controls.groom_member_id.value">Groom</option>
+          </select>
+        </label>
+
+        <label class="marriage-household-modal__block">
+          <span>Spouse already in destination family</span>
+          <select formControlName="partner_member_id">
+            <option value="">Optional partner link…</option>
+            <option *ngIf="form.controls.bride_member_id.value" [value]="form.controls.bride_member_id.value">Bride</option>
+            <option *ngIf="form.controls.groom_member_id.value" [value]="form.controls.groom_member_id.value">Groom</option>
+          </select>
+        </label>
+      </ng-container>
+
+      <label class="marriage-household-modal__block">
+        <span>Replacement head for {{ sourceFamily.family_name }} (if needed)</span>
+        <select formControlName="replacement_head_member_id">
+          <option value="">Let the system decide automatically</option>
+          <option *ngFor="let member of members" [value]="member.id">{{ memberLabel(member) }}</option>
+        </select>
+        <small class="marriage-household-modal__hint">
+          Required when more than one member will remain in this family.
+        </small>
+      </label>
+    </ng-container>
+
+    <ng-container *ngIf="step === 4">
+      <dl class="marriage-household-modal__review">
+        <div>
+          <dt>Outcome</dt>
+          <dd>{{ form.controls.outcome.value === 'new_household' ? 'New household' : 'Join existing household' }}</dd>
+        </div>
+        <div>
+          <dt>Effective date</dt>
+          <dd>
+            <input type="date" formControlName="effective_date" />
+          </dd>
+        </div>
+      </dl>
+    </ng-container>
+
+    <p class="marriage-household-modal__muted" *ngIf="familiesLoading">Loading families…</p>
+    <p class="marriage-household-modal__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button type="button" class="cf-btn" *ngIf="step > 1" (click)="goBack()" [disabled]="saving">Back</button>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="goNext()" [disabled]="saving">
+      {{ saving ? 'Saving…' : step === 4 ? 'Confirm marriage change' : 'Continue' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

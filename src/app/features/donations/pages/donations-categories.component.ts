@@ -1,20 +1,23 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
 import { DonationCategory } from '../models/donation.model';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 
 @Component({
   selector: 'app-donations-categories',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, EditIconButtonComponent, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, EditIconButtonComponent, LoadingSkeletonComponent, PageHeaderComponent, CfActionIconComponent],
   templateUrl: './donations-categories.component.html',
   styleUrl: './donations-categories.component.scss'
 })
@@ -29,7 +32,6 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
   showForm = false;
   editingCategoryId: string | null = null;
   saving = false;
-  seeding = false;
   deletingId: string | null = null;
   canManage = false;
 
@@ -40,6 +42,8 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
     is_tax_deductible: [false],
     active: [true]
   });
+
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   constructor(
     private fb: FormBuilder,
@@ -167,13 +171,14 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
   }
 
   deleteCategory(category: DonationCategory): void {
-    const confirmed = window.confirm(
-      `Delete "${category.name}"?\n\nThis only works if the category has never been used. Otherwise, edit it and set Active to off.`
-    );
-    if (!confirmed) {
-      return;
-    }
-
+    this.confirmationDialog.confirm({
+      title: 'Delete Category',
+      message: `Delete "${category.name}"?\n\nThis only works if the category has never been used. Otherwise, edit it and set Active to off.`,
+      confirmText: 'Confirm Delete',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+    ).subscribe(() => {
     this.deletingId = category.id;
     this.donationsService.deleteCategory(category.id).subscribe({
       next: (res) => {
@@ -189,20 +194,6 @@ export class DonationsCategoriesComponent implements OnInit, OnDestroy {
         this.toastService.error(this.parseError(err), 'Could not delete category');
       }
     });
-  }
-
-  seedDefaults(): void {
-    this.seeding = true;
-    this.donationsService.seedDefaultCategories().subscribe({
-      next: () => {
-        this.seeding = false;
-        this.toastService.success('Default categories added.', 'Success');
-        this.load();
-      },
-      error: (err) => {
-        this.seeding = false;
-        this.toastService.error(this.parseError(err), 'Could not add defaults');
-      }
     });
   }
 

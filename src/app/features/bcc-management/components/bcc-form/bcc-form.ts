@@ -1,16 +1,20 @@
-import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, ViewChild, ElementRef, AfterViewInit, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
+import { Component, Input, Output, EventEmitter, OnInit, OnDestroy, AfterViewInit, ViewChild, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { BCCService } from '../../../../core/services/bcc.service';
 import { BCC } from '../../../../core/models/family.model';
 import { getErrorMessage, isFieldInvalid, markFormGroupTouched } from '../../../../core/validators/form-validation.helper';
 import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
+import { filter, take, takeUntil } from 'rxjs/operators';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 
 @Component({
   selector: 'app-bcc-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
   templateUrl: './bcc-form.html',
   styleUrls: ['./bcc-form.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -19,10 +23,13 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   @Input() bcc: BCC | null = null;
   @Output() save = new EventEmitter<any>();
   @Output() cancel = new EventEmitter<void>();
-  @ViewChild('formContent', { static: false }) formContentRef!: ElementRef<HTMLDivElement>;
+  @ViewChild('formContent', { static: false }) formContentRef!: ElementRef<HTMLFormElement>;
 
   private destroy$ = new Subject<void>();
   private cdr = inject(ChangeDetectorRef);
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly toast = inject(ToastService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   bccForm: FormGroup;
   loading = false;
   error: string | null = null;
@@ -70,6 +77,7 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   ngOnInit(): void {
     if (this.bcc) {
       this.bccForm.patchValue(this.bcc);
+
     }
 
     // Watch for status changes to validate against active families
@@ -99,6 +107,7 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
     // Only validate when trying to set to inactive
     if (status === 'inactive') {
       const activeFamilyCount = this.getActiveFamilyCountInternal();
+
       
       if (activeFamilyCount > 0) {
         statusControl.setErrors({
@@ -146,6 +155,24 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.getActiveFamilyCountInternal();
   }
 
+  /**
+   * Show inactive-families warning only when user attempts to set BCC status to inactive.
+   */
+  shouldShowInactiveFamiliesWarning(): boolean {
+    if (this.getActiveFamilyCountInternal() === 0) {
+      return false;
+    }
+
+    const statusControl = this.bccForm.get('status');
+    if (statusControl?.value !== 'inactive') {
+      return false;
+    }
+
+    const shouldShow = !!statusControl.dirty || !!statusControl.errors?.['hasActiveFamilies'];
+
+    return shouldShow;
+  }
+
   ngAfterViewInit(): void {
     // Ensure form content scrolls to top when modal opens
     this.scrollToTop();
@@ -160,6 +187,10 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onSubmit(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toast.warning('Read-only mode: renew subscription to save BCCs.', 'Read-only');
+      return;
+    }
     // Re-validate status before submission
     const status = this.bccForm.get('status')?.value;
     if (status === 'inactive' && this.bcc) {
@@ -205,13 +236,19 @@ export class BCCFormComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   onCancel(): void {
-    if (this.bccForm.dirty) {
-      if (confirm('You have unsaved changes. Are you sure you want to cancel?')) {
-        this.cancel.emit();
-      }
-    } else {
+    if (!this.bccForm.dirty) {
       this.cancel.emit();
+      return;
     }
+
+    this.confirmationDialog.confirmDiscardChanges('You have unsaved changes. Are you sure you want to cancel?')
+      .pipe(
+        filter((result) => result.confirmed),
+        take(1),
+      )
+      .subscribe(() => {
+        this.cancel.emit();
+      });
   }
 
   hasError(controlName: string): boolean {

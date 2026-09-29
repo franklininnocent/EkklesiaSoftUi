@@ -1,0 +1,33 @@
+.handover-leadership-modal__body {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.handover-leadership-modal__summary {
+  margin: 0;
+  font-size: var(--cf-text-sm);
+  color: var(--cf-muted);
+}
+
+.handover-leadership-modal__section {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.handover-leadership-modal__section legend {
+  padding: 0;
+  margin-bottom: var(--cf-space-1);
+  font-size: var(--cf-text-md);
+  font-weight: 700;
+}
+
+.handover-leadership-modal__check {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--cf-space-2);
+  font-size: var(--cf-text-sm);
+  font-weight: 500;
+}

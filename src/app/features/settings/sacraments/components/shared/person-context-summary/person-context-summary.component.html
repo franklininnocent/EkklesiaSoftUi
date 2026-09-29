@@ -1,0 +1,24 @@
+<div class="person-context-summary" *ngIf="loading">
+  <span class="person-context-summary__loading">Loading person information…</span>
+</div>
+
+<div class="person-context-summary person-context-summary--error" *ngIf="!loading && error">
+  {{ error }}
+</div>
+
+<div class="person-context-summary" *ngIf="!loading && context && !error" [class.person-context-summary--marriage]="marriageMode">
+  <div class="person-context-summary__header" *ngIf="!marriageMode">
+    <strong>{{ displayName }}</strong>
+    <span class="person-context-summary__badge" *ngIf="isMember">Existing parish member</span>
+  </div>
+  <p class="person-context-summary__marriage-lead" *ngIf="marriageMode">What we found on file</p>
+  <ul class="person-context-summary__list">
+    <li *ngFor="let item of summaryItems" [class.is-found]="item.found">
+      <span aria-hidden="true">{{ item.found ? '✓' : '○' }}</span>
+      {{ item.found ? item.label : item.notFoundLabel }}
+    </li>
+  </ul>
+  <p class="person-context-summary__note" *ngIf="showAutoFillNote">
+    We've automatically filled the available information.
+  </p>
+</div>

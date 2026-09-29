@@ -32,7 +32,7 @@
     
     .close-btn,
     .btn-close {
-      color: var(--text-inverse) !important;
+      color: var(--modal-title-color) !important;
       opacity: 0.9;
       
       &:hover {
@@ -97,15 +97,10 @@
    BUTTON COMPONENTS
    ======================================================================== */
    
-/* 
- * NOTE: Button styles are now standardized in the ButtonComponent.
- * This section provides fallback styles for direct button elements
- * that don't use the app-button component.
- * 
- * For consistency, all buttons should use <app-button> component.
+/*
+ * Legacy `.btn` family. New buttons use `cf-btn` (see docs/design-system/buttons.md);
+ * this stays only for markup that has not migrated yet.
  */
-
-/* Base button styles - matches ButtonComponent */
 button.btn,
 a.btn {
   display: inline-flex;
@@ -127,7 +122,7 @@ a.btn {
   &:focus {
     outline: 2px solid transparent;
     outline-offset: 2px;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
   }
   
   &:focus-visible {
@@ -142,32 +137,32 @@ a.btn {
     transform: none !important;
   }
   
-  /* Standard Variants - matches ButtonComponent */
+  /* Variants */
   &.btn-primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: #ffffff;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    
+    background: var(--cf-primary);
+    color: var(--cf-color-text-on-dark);
+    box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2);
+
     &:hover:not(:disabled) {
-      background: linear-gradient(135deg, #5a72d8 0%, #6a4290 100%);
+      background: var(--cf-primary-hover);
       transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
     }
-    
+
     &:active:not(:disabled) {
       transform: translateY(0);
     }
   }
   
   &.btn-secondary {
-    background: #ffffff;
-    color: var(--text-primary);
-    border: 1px solid var(--border-dark);
+    background: var(--cf-panel-bg);
+    color: var(--cf-slate-900);
+    border: 1px solid var(--cf-slate-300);
     
     &:hover:not(:disabled) {
-      background: var(--bg-secondary);
-      border-color: var(--primary-color);
-      color: var(--primary-color);
+      background: var(--cf-slate-50);
+      border-color: var(--cf-primary);
+      color: var(--cf-primary);
     }
   }
   
@@ -219,7 +214,7 @@ a.btn {
     }
   }
   
-  /* Button Sizes - matches ButtonComponent */
+  /* Sizes */
   &.btn-sm {
     padding: 0.375rem 0.875rem;
     font-size: 0.8125rem;
@@ -451,23 +446,7 @@ textarea {
 
 .sidebar {
   background: var(--sidebar-bg);
-  color: var(--text-inverse);
-  
-  .nav-item {
-    color: rgba(255, 255, 255, 0.8);
-    transition: all var(--transition-fast);
-    
-    &:hover {
-      background: var(--sidebar-hover);
-      color: var(--text-inverse);
-    }
-    
-    &.active {
-      background: var(--sidebar-active);
-      color: var(--text-inverse);
-      border-left: 3px solid var(--primary-color);
-    }
-  }
+  color: var(--cf-color-text-on-dark, var(--text-inverse));
 }
 
 /* ========================================================================
@@ -476,8 +455,8 @@ textarea {
 
 .topbar {
   background: var(--topbar-bg);
-  color: var(--text-inverse);
-  box-shadow: var(--shadow-md);
+  color: var(--topbar-text, var(--text-primary));
+  box-shadow: var(--topbar-shadow, var(--shadow-md));
 }
 
 /* ========================================================================
@@ -556,10 +535,6 @@ textarea {
     margin-top: var(--spacing-md);
     color: var(--text-secondary);
   }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
 }
 
 /* ========================================================================

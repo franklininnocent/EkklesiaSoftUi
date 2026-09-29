@@ -1,14 +1,23 @@
 import { Routes } from '@angular/router';
 import { authGuard } from '@core/guards/auth.guard';
+import { forcePasswordChangeGuard } from '@core/guards/force-password-change.guard';
+import { platformUsersGuard } from '@core/guards/platform-users.guard';
 import { tenantGuard } from '@core/guards/tenant.guard';
 import { tenantAdminGuard } from '@core/guards/tenant-admin.guard';
+import { supportCenterGuard } from '@core/guards/support-center.guard';
+import { applicationAccessGuard } from '@core/guards/application-access.guard';
 import { donationsGuard } from '@core/guards/donations.guard';
+import { ministriesGuard } from '@core/guards/ministries.guard';
+import { massIntentionsGuard } from '@core/guards/mass-intentions.guard';
+import { massIntentionsUrlGuard } from '@core/guards/mass-intentions-url.guard';
+import { entitlementGuard } from '@core/guards/entitlement.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
 import { FamilyListComponent } from './features/family-management/components/family-list/family-list';
 import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
 import { FamilyBreadcrumbResolver } from './features/family-management/resolvers/family-breadcrumb.resolver';
-import { BCCListComponent } from './features/bcc-management/components/bcc-list/bcc-list';
-import { BccDetail } from './features/bcc-management/components/bcc-detail/bcc-detail';
+import { bccGuard } from './core/guards/bcc.guard';
+import { supportGuard } from './core/guards/support.guard';
+import { parishResourceGuard } from './core/guards/parish-resource.guard';
 
 export const routes: Routes = [
   {
@@ -20,15 +29,34 @@ export const routes: Routes = [
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES)
   },
+  {
+    path: 'verify/certificate/:token',
+    loadComponent: () =>
+      import('./features/settings/sacraments/certificates/verify/certificate-verify-page.component').then(
+        (m) => m.CertificateVerifyPageComponent
+      ),
+  },
   // Direct dashboard access (simplified)
   {
     path: '',
     component: MainLayoutComponent,
-    canActivate: [authGuard],
+    canActivate: [authGuard, forcePasswordChangeGuard],
     children: [
       {
         path: 'dashboard',
         loadChildren: () => import('./features/dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES)
+      },
+      {
+        path: 'feature-unavailable',
+        loadComponent: () =>
+          import('./features/subscriptions/pages/feature-unavailable/feature-unavailable.page').then(
+            (m) => m.FeatureUnavailablePageComponent
+          )
+      },
+      {
+        path: 'notifications',
+        loadChildren: () =>
+          import('./features/notifications/notifications.routes').then((m) => m.NOTIFICATIONS_ROUTES),
       },
       {
         path: 'profile',
@@ -39,7 +67,18 @@ export const routes: Routes = [
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
       },
       {
+        path: 'sacraments',
+        canActivate: [parishResourceGuard],
+        loadChildren: () => import('./features/settings/sacraments/sacraments.routes').then(m => m.SACRAMENTS_ROUTES)
+      },
+      {
         path: 'users',
+        canActivate: [parishResourceGuard],
+        loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
+      },
+      {
+        path: 'platform/users',
+        canActivate: [platformUsersGuard],
         loadChildren: () => import('./features/users/users.routes').then(m => m.USERS_ROUTES)
       },
       {
@@ -48,34 +87,77 @@ export const routes: Routes = [
         loadChildren: () => import('./features/tenants/tenants.routes').then(m => m.TENANTS_ROUTES)
       },
       {
+        path: 'support-center',
+        canActivate: [supportCenterGuard],
+        loadChildren: () =>
+          import('./features/support-center/support-center.routes').then((m) => m.SUPPORT_CENTER_ROUTES),
+      },
+      {
+        path: 'application-access',
+        canActivate: [applicationAccessGuard],
+        loadChildren: () =>
+          import('./features/application-access/application-access.routes').then(
+            (m) => m.APPLICATION_ACCESS_ROUTES
+          ),
+      },
+      {
+        path: 'platform/ministries',
+        canActivate: [tenantAdminGuard],
+        loadChildren: () =>
+          import('./features/ministries-insights/ministries-insights.routes').then(
+            (m) => m.MINISTRIES_INSIGHTS_ROUTES
+          ),
+      },
+      {
         path: 'church-profile',
+        canActivate: [parishResourceGuard],
         loadChildren: () => import('./features/tenants/church-profile/church-profile.routes').then(m => m.CHURCH_PROFILE_ROUTES)
       },
       {
         path: 'families',
+        canActivate: [parishResourceGuard],
         component: FamilyListComponent
       },
       {
         path: 'families/:id',
+        canActivate: [parishResourceGuard],
         component: FamilyDetail,
         resolve: { breadcrumbLabel: FamilyBreadcrumbResolver }
       },
       {
         path: 'bccs',
-        component: BCCListComponent
-      },
-      {
-        path: 'bccs/:id',
-        component: BccDetail
+        canActivate: [bccGuard],
+        loadChildren: () => import('./features/bcc-management/bcc.routes').then((m) => m.BCC_ROUTES)
       },
       {
         path: 'members',
+        canActivate: [parishResourceGuard],
         loadChildren: () => import('./features/members/members.routes').then(m => m.MEMBERS_ROUTES)
       },
       {
         path: 'donations',
-        canActivate: [donationsGuard],
+        canActivate: [donationsGuard, entitlementGuard],
+        data: { feature: 'CONTRIBUTIONS' },
         loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
+      },
+      {
+        path: 'ministries',
+        canActivate: [ministriesGuard, entitlementGuard],
+        data: { feature: 'MINISTRIES' },
+        loadChildren: () =>
+          import('./features/ministries-associations/ministries.routes').then(m => m.MINISTRIES_ROUTES)
+      },
+      {
+        path: 'mass-intentions',
+        canActivate: [massIntentionsUrlGuard, massIntentionsGuard, entitlementGuard],
+        data: { feature: 'MASS_INTENTIONS' },
+        loadChildren: () =>
+          import('./features/mass-intentions/mass-intentions.routes').then((m) => m.MASS_INTENTIONS_ROUTES),
+      },
+      {
+        path: 'support',
+        canActivate: [supportGuard],
+        loadChildren: () => import('./features/support/support.routes').then((m) => m.SUPPORT_ROUTES),
       }
     ]
   },
@@ -95,12 +177,21 @@ export const routes: Routes = [
         loadChildren: () => import('./features/dashboard/dashboard.routes').then(m => m.DASHBOARD_ROUTES)
       },
       {
+        path: 'notifications',
+        loadChildren: () =>
+          import('./features/notifications/notifications.routes').then((m) => m.NOTIFICATIONS_ROUTES),
+      },
+      {
         path: 'profile',
         loadChildren: () => import('./features/profile/profile.routes').then(m => m.PROFILE_ROUTES)
       },
       {
         path: 'settings',
         loadChildren: () => import('./features/settings/settings.routes').then(m => m.SETTINGS_ROUTES)
+      },
+      {
+        path: 'sacraments',
+        loadChildren: () => import('./features/settings/sacraments/sacraments.routes').then(m => m.SACRAMENTS_ROUTES)
       },
       {
         path: 'users',
@@ -121,16 +212,28 @@ export const routes: Routes = [
       },
       {
         path: 'bccs',
-        component: BCCListComponent
-      },
-      {
-        path: 'bccs/:id',
-        component: BccDetail
+        canActivate: [bccGuard],
+        loadChildren: () => import('./features/bcc-management/bcc.routes').then((m) => m.BCC_ROUTES)
       },
       {
         path: 'donations',
-        canActivate: [donationsGuard],
+        canActivate: [donationsGuard, entitlementGuard],
+        data: { feature: 'CONTRIBUTIONS' },
         loadChildren: () => import('./features/donations/donations.routes').then(m => m.DONATIONS_ROUTES)
+      },
+      {
+        path: 'ministries',
+        canActivate: [ministriesGuard, entitlementGuard],
+        data: { feature: 'MINISTRIES' },
+        loadChildren: () =>
+          import('./features/ministries-associations/ministries.routes').then(m => m.MINISTRIES_ROUTES)
+      },
+      {
+        path: 'mass-intentions',
+        canActivate: [massIntentionsUrlGuard, massIntentionsGuard, entitlementGuard],
+        data: { feature: 'MASS_INTENTIONS' },
+        loadChildren: () =>
+          import('./features/mass-intentions/mass-intentions.routes').then((m) => m.MASS_INTENTIONS_ROUTES),
       }
     ]
   },

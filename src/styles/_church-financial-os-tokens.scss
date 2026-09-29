@@ -1,11 +1,16 @@
 /* Church Financial OS — shared design tokens for stewardship surfaces */
+@use "./church-financial-os-mixins" as *;
+
 :root {
   --cf-font-sans: "Inter", "Segoe UI", system-ui, sans-serif;
   --cf-font-serif: Georgia, "Times New Roman", serif;
 
   --cf-slate-900: #0f172a;
+  --cf-slate-800: #1e293b;
   --cf-slate-700: #334155;
+  --cf-slate-600: #475569;
   --cf-slate-500: #64748b;
+  --cf-slate-400: #94a3b8;
   --cf-slate-300: #cbd5e1;
   --cf-slate-200: #e2e8f0;
   --cf-slate-100: #f1f5f9;
@@ -19,16 +24,197 @@
   --cf-amber-soft: #fef3c7;
   --cf-critical: #b91c1c;
   --cf-critical-soft: #fee2e2;
+  --cf-critical-hover: #991b1b;
+  --cf-info: #075985;
+  --cf-info-soft: #e0f2fe;
 
   --cf-radius: 10px;
   --cf-radius-sm: 8px;
+  --cf-radius-pill: 999px;
   --cf-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
   --cf-shadow-lg: 0 12px 32px rgba(15, 23, 42, 0.08);
+  --cf-shadow-modal: 0 20px 50px rgba(15, 23, 42, 0.25);
 
   --cf-panel-bg: #fff;
   --cf-panel-border: var(--cf-slate-200);
   --cf-muted: var(--cf-slate-500);
   --cf-primary: #2563eb;
+  --cf-primary-hover: #1d4ed8;
+  --cf-primary-active: #1e40af;
+  --cf-primary-soft: var(--cf-indigo-soft);
+  --cf-primary-subtle: #eff6ff;
+  --cf-overlay-bg: rgba(15, 23, 42, 0.45);
+
+  --cf-focus-ring: var(--cf-primary);
+  --cf-focus-ring-width: 2px;
+  --cf-focus-ring-offset: 2px;
+
+  --cf-shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --cf-shadow-sm: var(--cf-shadow);
+  --cf-shadow-md: 0 4px 6px rgba(15, 23, 42, 0.07);
+
+  --cf-duration-fast: 150ms;
+  --cf-duration-base: 200ms;
+  --cf-duration-slow: 300ms;
+  --cf-easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+
+  --cf-bp-sm: 480px;
+  --cf-bp-md: 768px;
+  --cf-bp-lg: 1024px;
+
+  --cf-shell-sidebar-width: 16.5rem;
+  --cf-shell-sidebar-width-collapsed: 4.5rem;
+  --cf-shell-topbar-height: 52px;
+  --cf-shell-topbar-height-tablet: 48px;
+  --cf-shell-topbar-height-mobile: 44px;
+
+  --cf-color-text-on-dark: #ffffff;
+
+  /*
+   * Popup / modal system — single source of truth for centered dialogs.
+   * Use via app-modal-shell size input; do not invent per-feature widths.
+   */
+  --cf-modal-width-xs: 28rem;
+  --cf-modal-width-sm: 32rem;
+  --cf-modal-width-md: 36rem;
+  --cf-modal-width-lg: 44rem;
+  --cf-modal-width-xl: 56rem;
+  --cf-modal-width-full: 72rem;
+  --cf-modal-max-height: 90vh;
+  --cf-modal-pad-x: var(--cf-space-4);
+  --cf-modal-pad-y: var(--cf-space-4);
+  --cf-modal-header-pad-y: var(--cf-space-3);
+  --cf-modal-footer-gap: var(--cf-space-2);
+  --cf-modal-anim-duration: 180ms;
+  --cf-modal-anim-easing: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /*
+   * Filter drawer — floating, right-anchored contextual filter surface.
+   * Distinct from the centered modal system: content-sized height, inset
+   * from the viewport edges, lighter overlay. See docs/frontend/style-guide.md.
+   */
+  --cf-drawer-width: 24rem;
+  --cf-drawer-width-tablet: 22rem;
+  --cf-drawer-inset: var(--cf-space-4);
+  --cf-drawer-min-height: 18rem;
+  --cf-drawer-max-height: calc(100vh - (2 * var(--cf-drawer-inset)));
+  --cf-drawer-overlay-bg: rgba(15, 23, 42, 0.28);
+  --cf-drawer-sheet-max-height: 85vh;
+
+  /* Layering — prefer these over hardcoded 999 / 9999 / 10000 */
+  --cf-z-dropdown: 1000;
+  --cf-z-drawer: 1100;
+  --cf-z-modal: 1200;
+  --cf-z-modal-nested: 1300;
+  --cf-z-toast: 1400;
+  --cf-z-command-palette: 1350;
+
+  /* Semantic color roles — alias existing palette; prefer these in new UI */
+  --cf-color-primary: var(--cf-primary);
+  --cf-color-secondary: var(--cf-slate-700);
+  --cf-color-success: var(--cf-forest);
+  --cf-color-warning: var(--cf-amber);
+  --cf-color-danger: var(--cf-critical);
+  --cf-color-info: var(--cf-info);
+  --cf-color-text-primary: var(--cf-slate-900);
+  --cf-color-text-secondary: var(--cf-slate-700);
+  --cf-color-text-muted: var(--cf-muted);
+  --cf-color-border: var(--cf-panel-border);
+  --cf-color-surface: var(--cf-panel-bg);
+  --cf-color-background: var(--cf-slate-50);
+  --cf-color-disabled: var(--cf-slate-300);
+
+  --cf-border-width: 1px;
+
+  /* Typography scale — see docs/frontend/style-guide.md for usage guidance */
+  --cf-text-xs: 0.72rem;   /* filter badges, KPI captions, timestamps */
+  --cf-text-sm: 0.8rem;    /* table body text, secondary metadata, error text */
+  --cf-text-base: 0.85rem; /* form labels, button text */
+  --cf-text-md: 0.9rem;    /* banners, section intros */
+  --cf-text-lg: 1.05rem;   /* section headings (h2) */
+  --cf-text-xl: 1.15rem;   /* panel/dialog titles */
+  --cf-text-2xl: 1.3rem;   /* compact emphasis (KPIs, dense chrome) — NOT page titles */
+
+  /*
+   * Semantic typography roles
+   * Page Title is a dedicated token (not --cf-text-2xl) so the enterprise H1
+   * scale can change without resizing compact chrome that uses 2xl.
+   * Compact page headers: 1.125rem (18px) at all breakpoints.
+   */
+  --cf-text-page-title: 1.125rem;
+  --cf-font-weight-page-title: 700;
+  --cf-leading-page-title: 1.25;
+  --cf-text-section-title: var(--cf-text-lg);
+  --cf-text-subsection: var(--cf-text-md);
+  --cf-text-minor-heading: var(--cf-text-base);
+  --cf-text-body: var(--cf-text-sm);
+  --cf-text-body-sm: var(--cf-text-xs);
+  --cf-font-size-body: var(--cf-text-body);
+  --cf-font-size-body-sm: var(--cf-text-body-sm);
+  --cf-text-caption: var(--cf-text-xs);
+  --cf-text-label: var(--cf-text-base);
+  --cf-text-meta: var(--cf-text-sm);
+  --cf-text-helper: var(--cf-text-xs);
+
+  /* Icon sizing */
+  --cf-icon-sm: 16px;
+  --cf-icon-md: 20px;
+  --cf-icon-lg: 24px;
+
+  /*
+   * Spacing / density tokens
+   * Chrome tokens (tab/toolbar/badge/page) use compact enterprise values.
+   * Table cell tokens use compact densified values (Phase 3).
+   */
+  --cf-space-1: 0.25rem;
+  --cf-space-2: 0.5rem;
+  --cf-space-3: 0.75rem;
+  --cf-space-4: 1rem;
+  --cf-space-5: 1.25rem;
+  --cf-space-6: 1.75rem;
+
+  --cf-page-gap: var(--cf-space-3);
+  --cf-page-pad: var(--cf-space-4);
+  --cf-panel-pad: var(--cf-space-4);
+
+  --cf-control-height: 2.25rem;
+  --cf-touch-target: 44px;
+  --cf-control-pad-y: 0.35rem;
+  --cf-control-pad-x: 0.6rem;
+
+  --cf-table-cell-y: 0.4rem;
+  --cf-table-cell-x: 0.5rem;
+  --cf-table-header-cell-y: 0.35rem;
+
+  --cf-tab-pad-y: 0.45rem;
+  --cf-tab-pad-x: 0.75rem;
+
+  --cf-toolbar-search-min-width: 16rem;
+  --cf-toolbar-gap: 0.35rem;
+  /* Toolbar / filter / form controls share one pad pair */
+  --cf-toolbar-control-pad-y: var(--cf-control-pad-y);
+  --cf-toolbar-control-pad-x: var(--cf-control-pad-x);
+
+  --cf-btn-pad-y: 0.55rem;
+  --cf-btn-pad-x: 0.8rem;
+  --cf-btn-sm-pad-y: 0.3rem;
+  --cf-btn-sm-pad-x: 0.6rem;
+  --cf-btn-sm-font-size: 0.78rem;
+
+  --cf-badge-pad-y: 0.1rem;
+  --cf-badge-pad-x: 0.4rem;
+}
+
+@media (min-width: $cf-bp-md) {
+  :root {
+    --cf-text-page-title: 1.125rem;
+  }
+}
+
+@media (min-width: $cf-bp-lg) {
+  :root {
+    --cf-text-page-title: 1.125rem;
+  }
 }
 
 .cf-panel {
@@ -36,7 +222,7 @@
   border: 1px solid var(--cf-panel-border);
   border-radius: var(--cf-radius);
   box-shadow: var(--cf-shadow);
-  padding: 1rem;
+  padding: var(--cf-panel-pad);
 }
 
 .cf-kpi-grid {
@@ -73,8 +259,8 @@
 .cf-engine-badge {
   display: inline-flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.15rem 0.5rem;
+  gap: var(--cf-space-1);
+  padding: var(--cf-badge-pad-y) var(--cf-badge-pad-x);
   border-radius: 999px;
   font-size: 0.72rem;
   font-weight: 600;
@@ -93,52 +279,193 @@
 }
 
 .cf-btn {
-  border: 1px solid var(--cf-panel-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cf-space-2);
+  min-height: var(--cf-control-height);
+  border: var(--cf-border-width, 1px) solid var(--cf-panel-border);
   border-radius: var(--cf-radius-sm);
-  padding: 0.55rem 0.8rem;
+  padding: var(--cf-btn-pad-y) var(--cf-btn-pad-x);
   background: var(--cf-panel-bg);
   color: var(--cf-slate-900);
   cursor: pointer;
-  font-size: 0.88rem;
+  font-size: var(--cf-text-base);
+  font-family: inherit;
+  line-height: 1.25;
+  text-decoration: none;
+
+  &:hover:not(:disabled) {
+    background: var(--cf-slate-50);
+  }
 
   &:focus-visible {
     outline: 2px solid var(--cf-primary);
     outline-offset: 2px;
   }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+    color: var(--cf-color-text-muted);
+  }
+}
+
+/* Inline busy indicator, sized to the surrounding font. In a button, pair with
+   [disabled] and aria-busy while the action runs. */
+.cf-spinner {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
 }
 
 .cf-btn-primary {
   border-color: transparent;
   background: var(--cf-primary);
   color: #fff;
+
+  &:hover:not(:disabled) {
+    filter: brightness(0.95);
+    background: var(--cf-primary);
+  }
+
+  /* `.cf-btn:disabled` mutes the label, which is unreadable on the filled background. */
+  &:disabled {
+    color: #fff;
+  }
 }
 
 .cf-page {
-  padding: 1rem;
+  padding: var(--cf-page-pad);
   display: grid;
-  gap: 1rem;
+  gap: var(--cf-page-gap);
+  /* Keep rows packed to the top when a page shell is taller than its content
+     (e.g. min-height: 100vh from legacy list containers). Default stretch
+     expands the gaps between header and body into large empty bands. */
+  align-content: start;
   font-family: var(--cf-font-sans);
 }
 
-.cf-hero h1 {
-  margin: 0 0 0.25rem;
-  color: var(--cf-slate-900);
+/* Tight module + in-page tab pairing (e.g. Settings: module tabs + taxonomy tabs). */
+.cf-nav-cluster {
+  display: grid;
+  gap: var(--cf-space-1);
+  min-width: 0;
+}
+
+/** Context / subject summary card inside modals and lookups. */
+.cf-context-card {
+  display: grid;
+  gap: var(--cf-space-1);
+  padding: var(--cf-space-3);
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-slate-50);
+}
+
+/* Official Page Title / H1 — single source of truth for top-level page headings.
+   Prefer <app-page-header> (renders h1 inside .cf-hero) or class .cf-page-title. */
+.cf-hero h1,
+.cf-page-title,
+.cf-page-header.cf-hero .cf-page-header__title,
+.cf-page-header__title-row > h1 {
+  margin: 0 0 var(--cf-space-1);
+  font-size: var(--cf-text-page-title) !important;
+  font-weight: var(--cf-font-weight-page-title);
+  line-height: var(--cf-leading-page-title);
+  color: var(--cf-color-text-primary);
+  font-family: var(--cf-font-sans);
+  letter-spacing: -0.01em;
+}
+
+.cf-hero h3:not(.cf-page-header__title) {
+  margin: 0 0 var(--cf-space-1);
+  font-size: var(--cf-text-section-title);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cf-color-text-primary);
+  font-family: var(--cf-font-sans);
 }
 
 .cf-hero p {
-  margin: 0;
-  color: var(--cf-muted);
+  margin: var(--cf-space-1) 0 0;
+  color: var(--cf-color-text-muted);
+  font-size: var(--cf-text-meta);
+  line-height: 1.35;
+}
+
+.cf-section-title {
+  margin: 0 0 var(--cf-space-2);
+  font-size: var(--cf-text-section-title);
+  font-weight: 600;
+  line-height: 1.3;
+  color: var(--cf-color-text-primary);
+}
+
+.cf-subsection-title {
+  margin: 0 0 var(--cf-space-2);
+  font-size: var(--cf-text-subsection);
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--cf-color-text-primary);
+}
+
+.cf-body {
+  font-size: var(--cf-text-body);
+  line-height: 1.45;
+  color: var(--cf-color-text-primary);
+}
+
+.cf-caption {
+  font-size: var(--cf-text-caption);
+  line-height: 1.35;
+  color: var(--cf-color-text-muted);
+}
+
+.cf-meta {
+  font-size: var(--cf-text-meta);
+  line-height: 1.35;
+  color: var(--cf-color-text-muted);
+}
+
+.cf-helper {
+  font-size: var(--cf-text-helper);
+  line-height: 1.35;
+  color: var(--cf-color-text-muted);
 }
 
 .cf-table {
   width: 100%;
   border-collapse: collapse;
+  font-size: var(--cf-text-sm);
+  line-height: 1.3;
+  color: var(--cf-slate-900);
 
   th,
   td {
     border-bottom: 1px solid var(--cf-panel-border);
     text-align: left;
-    padding: 0.55rem;
+    vertical-align: middle;
+    padding: var(--cf-table-cell-y) var(--cf-table-cell-x);
+  }
+
+  th {
+    padding-top: var(--cf-table-header-cell-y);
+    padding-bottom: var(--cf-table-header-cell-y);
+    font-size: var(--cf-text-sm);
+    font-weight: 600;
+    line-height: 1.3;
+    color: var(--cf-slate-900);
+    white-space: nowrap;
+  }
+
+  td {
+    font-size: var(--cf-text-sm);
   }
 
   a {
@@ -150,22 +477,41 @@
 .cf-filters {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.65rem;
   align-items: center;
+  gap: var(--cf-toolbar-gap);
 
   input,
   select {
+    box-sizing: border-box;
+    display: inline-block;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    min-height: var(--cf-control-height);
     border: 1px solid var(--cf-panel-border);
     border-radius: var(--cf-radius-sm);
-    padding: 0.5rem 0.65rem;
+    padding: var(--cf-toolbar-control-pad-y) var(--cf-toolbar-control-pad-x);
     background: var(--cf-panel-bg);
+    font-size: var(--cf-text-base);
+    line-height: 1.25;
+    vertical-align: middle;
+  }
+
+  /* Compact CTAs — match list-toolbar control height (36px). */
+  .cf-btn,
+  .cf-btn-primary {
+    box-sizing: border-box;
+    min-height: var(--cf-control-height);
+    padding: var(--cf-control-pad-y) var(--cf-btn-pad-x);
+    font-size: var(--cf-text-base);
+    line-height: 1.25;
   }
 }
 
 .cf-form-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 0.65rem;
+  gap: var(--cf-space-3);
   align-items: start;
 
   input,
@@ -173,15 +519,27 @@
   textarea {
     border: 1px solid var(--cf-panel-border);
     border-radius: var(--cf-radius-sm);
-    padding: 0.5rem 0.65rem;
+    padding: var(--cf-control-pad-y) var(--cf-control-pad-x);
     background: var(--cf-panel-bg);
     width: 100%;
+    box-sizing: border-box;
+    font-size: var(--cf-text-base);
   }
+
+  input,
+  select {
+    min-height: var(--cf-control-height);
+  }
+}
+
+/** Wider field columns for multi-column identity/contact forms. */
+.cf-form-grid--fields {
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
 }
 
 .cf-form-field {
   display: grid;
-  gap: 0.35rem;
+  gap: var(--cf-control-pad-y);
   min-width: 0;
 }
 
@@ -192,9 +550,9 @@
 .cf-form-field__label {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: var(--cf-control-pad-y);
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: var(--cf-text-base);
   color: var(--cf-slate-900);
 }
 
@@ -205,26 +563,26 @@
 .cf-form-field__optional {
   color: var(--cf-muted);
   font-weight: 500;
-  font-size: 0.78rem;
+  font-size: var(--cf-text-sm);
 }
 
 .cf-form-field__desc {
   margin: 0;
-  font-size: 0.82rem;
+  font-size: var(--cf-text-sm);
   color: var(--cf-muted);
   line-height: 1.4;
 }
 
 .cf-form-field__help {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--cf-text-sm);
   color: var(--cf-slate-500);
   line-height: 1.4;
 }
 
 .cf-form-field__error {
   margin: 0;
-  font-size: 0.78rem;
+  font-size: var(--cf-text-sm);
   color: var(--cf-critical);
 }
 
@@ -234,7 +592,7 @@
   color: var(--cf-indigo);
   cursor: help;
   padding: 0;
-  font-size: 0.82rem;
+  font-size: var(--cf-text-sm);
   line-height: 1;
 }
 
@@ -244,18 +602,19 @@
 
 .cf-form-section {
   display: grid;
-  gap: 0.85rem;
+  gap: var(--cf-space-3);
 }
 
 .cf-form-section__title {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--cf-text-lg);
+  font-weight: 600;
   color: var(--cf-slate-900);
 }
 
 .cf-form-section__intro {
-  margin: -0.35rem 0 0;
-  font-size: 0.85rem;
+  margin: calc(var(--cf-control-pad-y) * -1) 0 0;
+  font-size: var(--cf-text-base);
   color: var(--cf-muted);
 }
 
@@ -283,37 +642,38 @@
 
 .cf-switch-field {
   display: flex;
-  gap: 0.65rem;
+  gap: var(--cf-space-3);
   align-items: flex-start;
-  padding: 0.75rem;
+  padding: var(--cf-space-3);
   border: 1px solid var(--cf-panel-border);
   border-radius: var(--cf-radius-sm);
   background: var(--cf-slate-50);
 }
 
 .cf-switch-field input {
-  margin-top: 0.2rem;
+  margin-top: var(--cf-space-1);
   width: auto;
 }
 
 .cf-switch-field__copy {
   display: grid;
-  gap: 0.2rem;
+  gap: var(--cf-space-1);
 }
 
 .cf-switch-field__label {
   font-weight: 600;
-  font-size: 0.88rem;
+  font-size: var(--cf-text-base);
   color: var(--cf-slate-900);
 }
 
 .cf-form-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.55rem;
+  gap: var(--cf-space-2);
   align-items: center;
+  justify-content: flex-end;
   grid-column: 1 / -1;
-  padding-top: 0.35rem;
+  padding-top: var(--cf-space-1);
 }
 
 .cf-state {
@@ -365,11 +725,13 @@
   width: 1%;
   white-space: nowrap;
   text-align: right;
+  vertical-align: middle;
 }
 
 .cf-table__actions-cell {
   text-align: right;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .cf-card-grid {
@@ -474,8 +836,8 @@
   flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.85rem 1rem;
+  gap: var(--cf-space-3);
+  padding: var(--cf-space-3) var(--cf-space-4);
   border: 1px solid var(--cf-panel-border);
   border-radius: var(--cf-radius);
   background: var(--cf-slate-50);
@@ -483,30 +845,54 @@
 
 .cf-decision-strip__copy {
   display: grid;
-  gap: 0.2rem;
+  gap: var(--cf-space-1);
 
   strong {
     color: var(--cf-slate-900);
-    font-size: 0.95rem;
+    font-size: var(--cf-text-md);
   }
 
   span {
     color: var(--cf-muted);
-    font-size: 0.85rem;
+    font-size: var(--cf-text-base);
   }
 }
 
 .cf-decision-strip__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: var(--cf-space-2);
   align-items: center;
+}
+
+/* Shared loading / inline error banners (list pages & panels) */
+.cf-loading-block {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.cf-loading-block__label {
+  margin: 0;
+  color: var(--cf-muted);
+  font-size: var(--cf-text-md);
+}
+
+.cf-inline-alert {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+
+  p {
+    margin: 0;
+  }
 }
 
 /* Empty states */
 .cf-empty {
   text-align: center;
-  padding: 2rem 1.25rem;
+  padding: var(--cf-space-5) var(--cf-space-4);
   border: 1px dashed var(--cf-panel-border);
   border-radius: var(--cf-radius);
   background: var(--cf-slate-50);
@@ -526,25 +912,25 @@
 }
 
 .cf-empty__title {
-  margin: 0 0 0.35rem;
+  margin: 0 0 var(--cf-space-1);
   color: var(--cf-slate-900);
-  font-size: 1rem;
+  font-size: var(--cf-text-md);
 }
 
 .cf-empty__desc {
   margin: 0 auto;
   max-width: 28rem;
   color: var(--cf-muted);
-  font-size: 0.88rem;
+  font-size: var(--cf-text-sm);
   line-height: 1.45;
 }
 
 .cf-empty__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.45rem;
+  gap: var(--cf-space-2);
   justify-content: center;
-  margin-top: 1rem;
+  margin-top: var(--cf-space-3);
 }
 
 /* Collapsible disclosure sections */
@@ -743,8 +1129,8 @@
 }
 
 .cf-btn--sm {
-  padding: 0.3rem 0.6rem;
-  font-size: 0.78rem;
+  padding: var(--cf-btn-sm-pad-y) var(--cf-btn-sm-pad-x);
+  font-size: var(--cf-btn-sm-font-size);
 }
 
 .cf-dashboard-hero {
@@ -1353,3 +1739,236 @@
   .cf-ops-grid { grid-template-columns: 1fr; }
   .cf-intel-grid { grid-template-columns: 1fr; }
 }
+
+/* ==========================================================================
+   Shared UI foundation additions
+   Enterprise design-system primitives shared across all CF OS surfaces:
+   visually-hidden utility, button tiers, badges/chips, icon sizing,
+   and table responsive helpers. New component-level styling should build
+   on these tokens/classes instead of redeclaring one-off values.
+   ========================================================================== */
+
+.sr-only {
+  @include cf-visually-hidden;
+}
+
+/* Button hierarchy — tertiary/text and destructive tiers.
+   Primary (.cf-btn-primary) and secondary (.cf-btn) are defined above. */
+.cf-btn-text {
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0.2rem;
+  color: var(--cf-primary);
+  cursor: pointer;
+  font-size: var(--cf-text-base);
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    color: var(--cf-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+  }
+}
+
+.cf-btn-danger {
+  border: 1px solid transparent;
+  border-radius: var(--cf-radius-sm);
+  padding: var(--cf-btn-pad-y) var(--cf-btn-pad-x);
+  background: var(--cf-critical);
+  color: #fff;
+  cursor: pointer;
+  font-size: var(--cf-text-base);
+
+  &:hover:not(:disabled) {
+    background: var(--cf-critical-hover);
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    color: #fff;
+  }
+}
+
+/* Ghost = bordered transparent button; use with .cf-btn or alone */
+.cf-btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--cf-space-2);
+  min-height: var(--cf-control-height);
+  border: var(--cf-border-width, 1px) solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  padding: var(--cf-btn-pad-y) var(--cf-btn-pad-x);
+  background: transparent;
+  color: var(--cf-slate-900);
+  cursor: pointer;
+  font-size: var(--cf-text-base);
+  font-family: inherit;
+  line-height: 1.25;
+
+  &:hover:not(:disabled) {
+    background: var(--cf-slate-50);
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+/* Link-style alias of .cf-btn-text */
+a.cf-btn-link,
+button.cf-btn-link,
+.cf-btn-link {
+  border: 0;
+  background: transparent;
+  padding: 0.35rem 0.2rem;
+  color: var(--cf-primary);
+  cursor: pointer;
+  font-size: var(--cf-text-base);
+  font-family: inherit;
+  text-decoration: none;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    color: var(--cf-muted);
+    cursor: not-allowed;
+    text-decoration: none;
+  }
+}
+
+/* Icon-only control — square hit target aligned to control height */
+.cf-btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--cf-control-height);
+  height: var(--cf-control-height);
+  min-height: var(--cf-control-height);
+  padding: 0;
+  border: var(--cf-border-width, 1px) solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-panel-bg);
+  color: var(--cf-slate-900);
+  cursor: pointer;
+
+  svg {
+    width: var(--cf-icon-md);
+    height: var(--cf-icon-md);
+  }
+
+  &:hover:not(:disabled) {
+    background: var(--cf-slate-50);
+  }
+
+  &:focus-visible {
+    @include cf-focus-ring;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+/* Badge/chip system — single source of truth for status-like labels.
+   Tones map to the semantic token pairs above; do not hardcode hex values
+   for status pills/badges in feature modules.
+   Suggested status mapping:
+   Active → success | Inactive/Archived → neutral | Pending/Draft → warning
+   Completed → info | Warning → warning | Error → critical */
+.cf-badge {
+  display: inline-block;
+  padding: var(--cf-badge-pad-y) var(--cf-badge-pad-x);
+  border-radius: var(--cf-radius-pill);
+  font-size: var(--cf-text-sm);
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+}
+
+.cf-badge--success {
+  background: var(--cf-forest-soft);
+  color: var(--cf-forest);
+}
+
+.cf-badge--neutral {
+  background: var(--cf-slate-100);
+  color: var(--cf-slate-700);
+}
+
+.cf-badge--warning {
+  background: var(--cf-amber-soft);
+  color: var(--cf-amber);
+}
+
+.cf-badge--critical {
+  background: var(--cf-critical-soft);
+  color: var(--cf-critical);
+}
+
+.cf-badge--info {
+  background: var(--cf-info-soft);
+  color: var(--cf-info);
+}
+
+/* Icon sizing utilities — pair with inline <svg> icons for consistent scale. */
+.cf-icon-sm { width: var(--cf-icon-sm); height: var(--cf-icon-sm); }
+.cf-icon-md { width: var(--cf-icon-md); height: var(--cf-icon-md); }
+.cf-icon-lg { width: var(--cf-icon-lg); height: var(--cf-icon-lg); }
+
+/* Responsive table wrapper — wrap `.cf-table` in `.cf-table-responsive` so
+   wide tables scroll horizontally below the `$cf-bp-lg` breakpoint instead
+   of overflowing or clipping the page. */
+.cf-table-responsive {
+  @include cf-table-scroll-wrapper;
+}
+
+.cf-table__cell--truncate {
+  @include cf-truncate;
+  max-width: 0;
+}
+
+/* Phone touch targets. Compact (`--sm`, and the misspelt `cf-btn-sm` still in
+   some templates) and filter-bar buttons keep the control height so they stay
+   aligned with the inputs beside them. */
+@media (max-width: 768px) {
+  .cf-btn:not(.cf-btn--sm, .cf-btn-sm) {
+    min-height: var(--cf-touch-target);
+  }
+
+  .cf-btn-icon:not(.cf-btn--sm, .cf-btn-sm) {
+    width: var(--cf-touch-target);
+    height: var(--cf-touch-target);
+    min-height: var(--cf-touch-target);
+  }
+
+  .cf-filters .cf-btn,
+  .cf-filters .cf-btn-primary {
+    min-height: var(--cf-control-height);
+  }
+}
+

@@ -1,0 +1,110 @@
+<section class="cf-kpi-grid" aria-label="Organization health summary" *ngIf="health as h">
+  <article class="cf-kpi">
+    <span>Organizations</span>
+    <strong>{{ h.organizations.total }}</strong>
+  </article>
+  <article class="cf-kpi">
+    <span>Active</span>
+    <strong>{{ h.organizations.active }}</strong>
+  </article>
+  <button type="button" class="cf-kpi insights-orgs__kpi-btn" (click)="applyHealthFilter('without_members')">
+    <span>Without members</span>
+    <strong>{{ h.indicators.orgs_without_active_members }}</strong>
+  </button>
+  <button type="button" class="cf-kpi insights-orgs__kpi-btn" (click)="applyHealthFilter('without_leadership')">
+    <span>Without leadership</span>
+    <strong>{{ h.indicators.active_orgs_without_leadership }}</strong>
+  </button>
+  <button type="button" class="cf-kpi insights-orgs__kpi-btn" (click)="applyHealthFilter('stale')">
+    <span>Stale active</span>
+    <strong>{{ h.indicators.stale_active_orgs }}</strong>
+  </button>
+</section>
+
+<p class="insights-orgs__hint">Cross-tenant read-only inventory. Row opens Tenant 360 (not parish org CRUD).</p>
+
+<div class="insights-orgs__toolbar">
+  <app-list-toolbar
+    searchPlaceholder="Organization or tenant"
+    [searchValue]="filters.search || ''"
+    [filterCount]="drawerFilterCount"
+    (searchChange)="onSearchChange($event)"
+    (filtersOpened)="openFilters()"
+  ></app-list-toolbar>
+</div>
+
+<div class="cf-inline-alert cf-panel" *ngIf="error" role="alert">
+  <p>{{ error }}</p>
+</div>
+
+<div *ngIf="loading">
+  <app-loading-skeleton type="table" [rows]="8" [columns]="8"></app-loading-skeleton>
+</div>
+
+<ng-container *ngIf="!loading && !error">
+  <p class="insights-orgs__meta" *ngIf="total > 0">{{ total }} organization{{ total === 1 ? '' : 's' }}</p>
+
+  <app-cf-empty-state
+    *ngIf="!rows.length"
+    title="No organizations match"
+    description="Try clearing filters or choosing a different health focus."
+    [hasActions]="false"
+  ></app-cf-empty-state>
+
+  <app-data-table *ngIf="rows.length" [clickableRows]="true" [ariaBusy]="loading">
+    <thead>
+      <tr>
+        <th scope="col" [appSortable]="'name'" [direction]="sortDirectionFor('name')" (sort)="onSort($event)">Organization</th>
+        <th scope="col" [appSortable]="'tenant_name'" [direction]="sortDirectionFor('tenant_name')" (sort)="onSort($event)">Tenant</th>
+        <th scope="col">Type</th>
+        <th scope="col">Category</th>
+        <th scope="col" [appSortable]="'status'" [direction]="sortDirectionFor('status')" (sort)="onSort($event)">Status</th>
+        <th scope="col">Health</th>
+        <th scope="col" [appSortable]="'members_count'" [direction]="sortDirectionFor('members_count')" (sort)="onSort($event)">Members</th>
+        <th scope="col" [appSortable]="'leaders_count'" [direction]="sortDirectionFor('leaders_count')" (sort)="onSort($event)">Leaders</th>
+        <th scope="col" [appSortable]="'created_at'" [direction]="sortDirectionFor('created_at')" (sort)="onSort($event)">Created</th>
+        <th scope="col" [appSortable]="'last_activity_at'" [direction]="sortDirectionFor('last_activity_at')" (sort)="onSort($event)">Last activity</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        *ngFor="let row of rows"
+        tabindex="0"
+        (click)="openTenant(row)"
+        (keydown)="onRowKeydown($event, row)"
+      >
+        <td>
+          <strong>{{ row.name }}</strong>
+          <div class="insights-orgs__code">{{ row.code }}</div>
+        </td>
+        <td>{{ row.tenant?.name || '—' }}</td>
+        <td>{{ row.type?.name || '—' }}</td>
+        <td>{{ row.category?.name || '—' }}</td>
+        <td><app-status-badge [label]="statusLabel(row.status)" [tone]="toneForStatus(row.status)"></app-status-badge></td>
+        <td><app-status-badge [label]="statusLabel(row.health_flag)" [tone]="toneForStatus(row.health_flag)"></app-status-badge></td>
+        <td>{{ row.members_count }}</td>
+        <td>{{ row.leaders_count }}</td>
+        <td>{{ row.created_at ? (row.created_at | date: 'mediumDate') : '—' }}</td>
+        <td>{{ row.last_activity_at ? (row.last_activity_at | date: 'short') : '—' }}</td>
+      </tr>
+    </tbody>
+  </app-data-table>
+
+  <app-pagination
+    *ngIf="total > 0"
+    [currentPage]="page"
+    [pageSize]="perPage"
+    [totalItems]="total"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
+  ></app-pagination>
+</ng-container>
+
+<app-advanced-search-panel
+  mode="sidepanel"
+  [fields]="searchFields"
+  [isExpanded]="showFilters"
+  (search)="onAdvancedSearch($event)"
+  (clear)="onClearAdvancedSearch()"
+  (close)="showFilters = false"
+></app-advanced-search-panel>

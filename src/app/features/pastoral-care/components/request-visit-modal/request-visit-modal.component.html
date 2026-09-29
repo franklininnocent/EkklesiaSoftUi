@@ -1,0 +1,62 @@
+<app-modal-shell
+  title="Request a visit"
+  description="Log a pastoral follow-up for this family. You can assign a visitor from the dashboard."
+  size="md"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <form class="request-visit" [formGroup]="form" (ngSubmit)="submit()">
+    <p class="request-visit__lead">
+      Family: <strong>{{ family.family_name }}</strong>
+    </p>
+
+    <label class="request-visit__block">
+      <span>Who needs the visit</span>
+      <select formControlName="person_id">
+        <option value="">Whole family</option>
+        <option *ngFor="let member of members" [value]="member.person_id || ''">
+          {{ memberLabel(member) }}
+        </option>
+      </select>
+    </label>
+
+    <label class="request-visit__block">
+      <span>Kind of visit <abbr title="required">*</abbr></span>
+      <select formControlName="type">
+        <option *ngFor="let type of visitTypes" [value]="type.value">{{ type.label }}</option>
+      </select>
+    </label>
+
+    <label class="request-visit__block">
+      <span>Urgency</span>
+      <select formControlName="priority">
+        <option value="routine">Routine</option>
+        <option value="urgent">Urgent</option>
+      </select>
+    </label>
+
+    <label class="request-visit__block">
+      <span>What should we do? <abbr title="required">*</abbr></span>
+      <input type="text" formControlName="summary" maxlength="255" placeholder="e.g. Call after surgery" />
+    </label>
+
+    <label class="request-visit__block">
+      <span>Note (optional)</span>
+      <textarea formControlName="notes" rows="3" maxlength="2000"></textarea>
+    </label>
+
+    <label class="request-visit__block">
+      <span>Due date (optional)</span>
+      <input type="date" formControlName="due_on" />
+    </label>
+
+    <p class="request-visit__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="submit()" [disabled]="saving">
+      {{ saving ? 'Saving…' : 'Request visit' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

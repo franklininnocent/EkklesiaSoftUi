@@ -1,0 +1,64 @@
+<app-modal-shell
+  title="Membership details"
+  size="sm"
+  (closeRequested)="onClose()"
+>
+  <div class="member-history-detail">
+    <div class="member-history-detail__identity cf-context-card">
+      <strong>{{ membership.display_name }}</strong>
+      <span>{{ membership.interval_label || '—' }}</span>
+    </div>
+
+    <dl class="member-history-detail__kv">
+      <div>
+        <dt>Family</dt>
+        <dd>{{ familyDisplay() }}</dd>
+      </div>
+      <div>
+        <dt>Source</dt>
+        <dd>{{ sourceLabel(membership.member_source) }}</dd>
+      </div>
+      <div>
+        <dt>Type</dt>
+        <dd>{{ typeLabel(membership.member_type) }}</dd>
+      </div>
+      <div>
+        <dt>Status</dt>
+        <dd>
+          <app-status-badge
+            [label]="statusLabel(membership.status)"
+            [tone]="statusTone(membership.status)"
+          ></app-status-badge>
+        </dd>
+      </div>
+      <div>
+        <dt>Start</dt>
+        <dd>{{ formatDate(membership.joined_date) }}</dd>
+      </div>
+      <div>
+        <dt>End</dt>
+        <dd>{{ formatDate(membership.exit_date) }}</dd>
+      </div>
+      <div>
+        <dt>Duration</dt>
+        <dd>{{ formatDuration() }}</dd>
+      </div>
+      <div class="member-history-detail__kv-wide">
+        <dt>Exit reason</dt>
+        <dd class="member-history-detail__prose">{{ textOrDash(membership.exit_reason) }}</dd>
+      </div>
+      <div class="member-history-detail__kv-wide">
+        <dt>Remarks</dt>
+        <dd class="member-history-detail__prose">{{ textOrDash(membership.remarks) }}</dd>
+      </div>
+      <div class="member-history-detail__kv-wide">
+        <dt>Emergency contact</dt>
+        <dd class="member-history-detail__prose">{{ textOrDash(membership.emergency_contact) }}</dd>
+      </div>
+    </dl>
+  </div>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="onClose()">Close</button>
+  </ng-container>
+</app-modal-shell>

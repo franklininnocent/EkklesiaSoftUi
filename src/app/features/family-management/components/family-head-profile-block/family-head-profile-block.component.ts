@@ -1,20 +1,31 @@
 import {
+  AfterViewInit,
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
+  ElementRef,
   EventEmitter,
   Input,
-  Output
+  Output,
+  ViewChild
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { SectionCollapseToggleComponent } from '@shared/components/section-collapse-toggle/section-collapse-toggle.component';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 import { FamilyMember } from '@core/models/family.model';
 import { SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
+import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
 import {
-  countCompletedSacraments,
-  isSacramentCompleted
-} from '../../utils/sacrament-completion.util';
+  countSacramentsOnRecord,
+  pickRegisterRecordForType
+} from '../../utils/register-sacrament.util';
 import { formatCompletedAge } from '../../utils/age-from-birth.util';
+import {
+  getMemberParentDisplayName,
+  getMemberParentPersonId,
+  isMemberParentLinked,
+} from '../../utils/member-parent-display.util';
 import { getMemberDisplayName } from '../../utils/profile-completion.util';
 import {
   getMembershipStatusClass,
@@ -29,13 +40,95 @@ import { MemberSacramentDetailComponent } from '../family-member-detail-panel/me
     CommonModule,
     EditIconButtonComponent,
     SectionCollapseToggleComponent,
-    MemberSacramentDetailComponent
+    MemberSacramentDetailComponent,
+    ImageViewerComponent
   ],
   templateUrl: './family-head-profile-block.component.html',
   styleUrls: ['./family-head-profile-block.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class FamilyHeadProfileBlockComponent {
+export class FamilyHeadProfileBlockComponent implements AfterViewInit {
+  constructor(
+    private readonly cdr: ChangeDetectorRef,
+    private readonly host: ElementRef<HTMLElement>
+  ) {}
+
+  ngAfterViewInit(): void {
+    this.logDetailColumnTypography('post-fix');
+  }
+
+  private logDetailColumnTypography(runId: string): void {
+    requestAnimationFrame(() => {
+      const host = this.host.nativeElement;
+      const columns = [
+        { key: 'vitals', el: host.querySelector<HTMLElement>('.head-profile__col--vitals') },
+        { key: 'lineage', el: host.querySelector<HTMLElement>('.head-profile__col--lineage') },
+      ];
+
+      const samples: Record<string, unknown>[] = [];
+
+      for (const column of columns) {
+        if (!column.el) {
+          continue;
+        }
+
+        const detailFacts = column.el.querySelector<HTMLElement>('.head-profile__detail-facts');
+        const dt = column.el.querySelector('dt');
+        const dd = column.el.querySelector('dd');
+        const link = column.el.querySelector<HTMLElement>('.head-profile__fact-link');
+        const dtStyle = dt ? getComputedStyle(dt) : null;
+        const ddStyle = dd ? getComputedStyle(dd) : null;
+        const linkStyle = link ? getComputedStyle(link) : null;
+        const detailFactsStyle = detailFacts ? getComputedStyle(detailFacts) : null;
+
+        samples.push({
+          column: column.key,
+          cssVars: {
+            labelSize: detailFactsStyle?.getPropertyValue('--head-profile-detail-label-size').trim() || null,
+            valueSize: detailFactsStyle?.getPropertyValue('--head-profile-detail-value-size').trim() || null,
+          },
+          dt: dtStyle
+            ? {
+                fontSize: dtStyle.fontSize,
+                fontWeight: dtStyle.fontWeight,
+                lineHeight: dtStyle.lineHeight,
+                textTransform: dtStyle.textTransform,
+              }
+            : null,
+          dd: ddStyle
+            ? {
+                fontSize: ddStyle.fontSize,
+                fontWeight: ddStyle.fontWeight,
+                lineHeight: ddStyle.lineHeight,
+              }
+            : null,
+          link: linkStyle
+            ? {
+                fontSize: linkStyle.fontSize,
+                fontWeight: linkStyle.fontWeight,
+                lineHeight: linkStyle.lineHeight,
+                font: linkStyle.font,
+              }
+            : null,
+        });
+      }
+
+      const occupationDd = host.querySelector<HTMLElement>('.head-profile__col--lineage .head-profile__fact dd');
+      const fatherLink = host.querySelector<HTMLElement>('.head-profile__col--lineage .head-profile__fact-link');
+      const occupationStyle = occupationDd ? getComputedStyle(occupationDd) : null;
+      const fatherStyle = fatherLink ? getComputedStyle(fatherLink) : null;
+      const sizesMatch =
+        occupationStyle && fatherStyle
+          ? occupationStyle.fontSize === fatherStyle.fontSize &&
+            occupationStyle.fontWeight === fatherStyle.fontWeight &&
+            occupationStyle.lineHeight === fatherStyle.lineHeight
+          : null;
+
+    });
+  }
+
+  @ViewChild('profileImageInput') profileImageInput?: ElementRef<HTMLInputElement>;
+
   @Input({ required: true }) member!: FamilyMember;
   @Input() relationshipEyebrow = 'Family Head';
   @Input() isFamilyHead = false;
@@ -43,6 +136,8 @@ export class FamilyHeadProfileBlockComponent {
   @Input() sacramentTypesDisplay: SacramentTypeDto[] = [];
   @Input() sacramentsExpanded = true;
   @Input() editingHeadImage = false;
+  @Input() memberRegisterSacraments: Sacrament[] = [];
+  @Input() canViewRegisterSacraments = false;
 
   @Output() editProfile = new EventEmitter<void>();
   @Output() toggleSacraments = new EventEmitter<void>();
@@ -50,12 +145,19 @@ export class FamilyHeadProfileBlockComponent {
   @Output() headProfileImageSelected = new EventEmitter<Event>();
   @Output() deleteHeadProfileImage = new EventEmitter<void>();
   @Output() editSacrament = new EventEmitter<string>();
+  @Output() linkedParentSelected = new EventEmitter<string>();
+
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
 
   get isSacramentsComplete(): boolean {
     if (!this.sacramentTypesDisplay.length) {
       return true;
     }
     return this.countCompletedSacraments(this.member) > 0;
+  }
+
+  registerRecordForType(type: SacramentTypeDto): Sacrament | null {
+    return pickRegisterRecordForType(this.memberRegisterSacraments, type);
   }
 
   getDisplayName(member: FamilyMember): string {
@@ -103,8 +205,27 @@ export class FamilyHeadProfileBlockComponent {
     return value.trim();
   }
 
+  getFatherDisplayName(member: FamilyMember): string | null {
+    return getMemberParentDisplayName(member, 'father');
+  }
+
+  getMotherDisplayName(member: FamilyMember): string | null {
+    return getMemberParentDisplayName(member, 'mother');
+  }
+
+  isParentLinked(member: FamilyMember, side: 'father' | 'mother'): boolean {
+    return isMemberParentLinked(member, side);
+  }
+
+  onLinkedParentClick(member: FamilyMember, side: 'father' | 'mother'): void {
+    const personId = getMemberParentPersonId(member, side);
+    if (personId) {
+      this.linkedParentSelected.emit(personId);
+    }
+  }
+
   countCompletedSacraments(member: FamilyMember): number {
-    return countCompletedSacraments(member, this.sacramentTypesDisplay);
+    return countSacramentsOnRecord(member, this.sacramentTypesDisplay, this.memberRegisterSacraments);
   }
 
   trackSacramentType(index: number, type: SacramentTypeDto): number | string {
@@ -113,5 +234,47 @@ export class FamilyHeadProfileBlockComponent {
 
   onSacramentEdit(code: string): void {
     this.editSacrament.emit(code);
+  }
+
+  onHeadAvatarClick(): void {
+    if (this.editingHeadImage) {
+      this.profileImageInput?.nativeElement.click();
+      return;
+    }
+
+    if (this.avatarImageUrl) {
+      this.openPhotoViewer();
+      return;
+    }
+
+    this.toggleHeadImageEdit.emit();
+  }
+
+  onMemberAvatarClick(event: MouseEvent): void {
+    if (!this.avatarImageUrl) {
+      return;
+    }
+
+    event.stopPropagation();
+    this.openPhotoViewer();
+  }
+
+  openPhotoViewer(): void {
+    if (!this.avatarImageUrl) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: this.avatarImageUrl,
+      alt: this.getDisplayName(this.member),
+      title: this.getDisplayName(this.member),
+      subtitle: this.relationshipEyebrow,
+    };
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 }

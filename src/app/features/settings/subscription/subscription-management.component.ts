@@ -1,14 +1,20 @@
 /**
- * Subscription Management Component
- * Manage subscription duration options and plans (Add, Update, Delete)
+ * Subscription access settings: grace/warning windows and renewal duration options.
+ * The plan catalog lives in features/subscriptions (database-driven plans and versions).
  */
 
 import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
+import { ActionBarComponent, ActionBarItem } from '@shared/components/action-bar/action-bar.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
+import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
 import { Subject, takeUntil } from 'rxjs';
 
 interface DurationOption {
@@ -19,24 +25,22 @@ interface DurationOption {
   active: boolean;
 }
 
-interface SubscriptionPlan {
-  id?: number;
-  key: string;
-  name: string;
-  description?: string;
-  price: number;
-  max_users: number;
-  max_storage_mb: number;
-  features?: string[];
-  display_order: number;
-  active: boolean;
-  is_default: boolean;
-}
+type SubMgmtTab = 'settings' | 'duration';
 
 @Component({
   selector: 'app-subscription-management',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    TabStripComponent,
+    LoadingSkeletonComponent,
+    StatusBadgeComponent,
+    CfEmptyStateComponent,
+    DataTableComponent,
+    ActionBarComponent,
+    ModalShellComponent,
+  ],
   templateUrl: './subscription-management.component.html',
   styleUrls: ['./subscription-management.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -44,34 +48,31 @@ interface SubscriptionPlan {
 export class SubscriptionManagementComponent implements OnInit, OnDestroy {
   private tenantService = inject(TenantService);
   private toastService = inject(ToastService);
-  private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
 
-  // Tab management
-  activeTab: 'duration' | 'plans' = 'duration';
+  activeTab: SubMgmtTab = 'settings';
 
-  // Duration Options
+  settingsForm = {
+    grace_period_days: 7,
+    expiring_warning_days: 14
+  };
+  settingsLoading = false;
+  settingsSaving = false;
+  settingsError: string | null = null;
+  settingsLoaded = false;
+
   durationOptions: DurationOption[] = [];
-  
-  // Plans
-  plans: SubscriptionPlan[] = [];
-  availableFeatures: string[] = ['events', 'donations', 'groups', 'messaging', 'custom_branding', 'api_access', 'dedicated_support', 'advanced_reporting', 'multi_location', 'volunteer_management'];
-  
-  loading = false;
-  error: string | null = null;
+  durationsLoading = false;
+  durationsError: string | null = null;
 
-  // Modal states - Duration Options
+  /** True while a modal create/update/delete request is in flight */
+  saving = false;
+
   showAddModal = false;
   showEditModal = false;
   showDeleteModal = false;
 
-  // Modal states - Plans
-  showAddPlanModal = false;
-  showEditPlanModal = false;
-  showDeletePlanModal = false;
-
-  // Form data - Duration Options
   formData: DurationOption = {
     months: 1,
     label: '',
@@ -79,28 +80,26 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
     active: true
   };
 
-  // Form data - Plans
-  planFormData: SubscriptionPlan = {
-    key: '',
-    name: '',
-    description: '',
-    price: 0,
-    max_users: 10,
-    max_storage_mb: 100,
-    features: [],
-    display_order: 0,
-    active: true,
-    is_default: false
-  };
-
   editingOption: DurationOption | null = null;
   deletingOption: DurationOption | null = null;
-  editingPlan: SubscriptionPlan | null = null;
-  deletingPlan: SubscriptionPlan | null = null;
+
+  readonly tabs: { id: SubMgmtTab; label: string }[] = [
+    { id: 'settings', label: 'Access settings' },
+    { id: 'duration', label: 'Duration options' },
+  ];
+
+  get tabStripItems(): TabStripItem[] {
+    return this.tabs.map((tab) => ({
+      id: tab.id,
+      label: tab.label,
+      domId: `sub-mgmt-tab-${tab.id}`,
+      ariaControls: `sub-mgmt-panel-${tab.id}`,
+    }));
+  }
 
   ngOnInit(): void {
+    this.loadSettings();
     this.loadDurationOptions();
-    this.loadPlans();
   }
 
   ngOnDestroy(): void {
@@ -108,41 +107,115 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  /**
-   * Set active tab
-   */
-  setActiveTab(tab: 'duration' | 'plans'): void {
+  setActiveTab(tab: SubMgmtTab): void {
     this.activeTab = tab;
     this.cdr.markForCheck();
   }
 
-  // ============================================
-  // Duration Options Methods
-  // ============================================
+  onTabChange(tabId: string): void {
+    if (tabId === 'settings' || tabId === 'duration') {
+      this.setActiveTab(tabId);
+    }
+  }
 
-  /**
-   * Load all duration options
-   */
+  durationRowActions(): ActionBarItem[] {
+    return [
+      { id: 'edit', label: 'Edit', tier: 'secondary', disabled: this.saving },
+      { id: 'delete', label: 'Delete', tier: 'danger', disabled: this.saving },
+    ];
+  }
+
+  onDurationRowAction(actionId: string, option: DurationOption): void {
+    if (actionId === 'edit') {
+      this.openEditModal(option);
+      return;
+    }
+    if (actionId === 'delete') {
+      this.openDeleteModal(option);
+    }
+  }
+
+  loadSettings(): void {
+    this.settingsLoading = true;
+    this.settingsError = null;
+    this.cdr.markForCheck();
+
+    this.tenantService.getSubscriptionSettings()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.settingsForm = {
+              grace_period_days: response.data.grace_period_days,
+              expiring_warning_days: response.data.expiring_warning_days
+            };
+            this.settingsLoaded = true;
+          } else {
+            this.settingsError = this.friendlyError(response.message, 'Unable to load access settings.');
+          }
+          this.settingsLoading = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.settingsError = this.friendlyError(this.extractErrorMessage(err), 'Unable to load access settings.');
+          this.settingsLoading = false;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  saveSettings(): void {
+    if (this.settingsForm.grace_period_days < 0 || this.settingsForm.expiring_warning_days < 0) {
+      this.toastService.error('Days cannot be negative', 'Check your entries');
+      return;
+    }
+    this.settingsSaving = true;
+    this.cdr.markForCheck();
+
+    this.tenantService.updateSubscriptionSettings(this.settingsForm)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            this.settingsForm = {
+              grace_period_days: response.data.grace_period_days,
+              expiring_warning_days: response.data.expiring_warning_days
+            };
+            this.toastService.success('Access settings saved', 'Saved');
+          } else {
+            this.toastService.error(this.friendlyError(response.message, 'Unable to save access settings.'), 'Error');
+          }
+          this.settingsSaving = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.toastService.error(this.friendlyError(this.extractErrorMessage(err), 'Unable to save access settings.'), 'Error');
+          this.settingsSaving = false;
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
   loadDurationOptions(): void {
-    this.loading = true;
-    this.error = null;
+    this.durationsLoading = true;
+    this.durationsError = null;
     this.cdr.markForCheck();
 
     this.tenantService.getDurationOptions()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          if (response.success && response.data) {
+          if (response.success && Array.isArray(response.data)) {
             this.durationOptions = response.data;
           } else {
-            this.error = response.message || 'Failed to load duration options';
+            this.durationsError = this.friendlyError(response.message, 'Unable to load duration options.');
           }
-          this.loading = false;
+          this.durationsLoading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err.error?.message || 'Failed to load duration options';
-          this.loading = false;
+          this.durationsError = this.friendlyError(this.extractErrorMessage(err), 'Unable to load duration options.');
+          this.durationsLoading = false;
           this.cdr.markForCheck();
         }
       });
@@ -152,8 +225,8 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
     this.formData = {
       months: 1,
       label: '',
-      display_order: this.durationOptions.length > 0 
-        ? Math.max(...this.durationOptions.map(o => o.display_order)) + 1 
+      display_order: this.durationOptions.length > 0
+        ? Math.max(...this.durationOptions.map(o => o.display_order)) + 1
         : 0,
       active: true
     };
@@ -162,13 +235,11 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
   }
 
   closeAddModal(): void {
+    if (this.saving) {
+      return;
+    }
     this.showAddModal = false;
-    this.formData = {
-      months: 1,
-      label: '',
-      display_order: 0,
-      active: true
-    };
+    this.resetDurationForm();
     this.cdr.markForCheck();
   }
 
@@ -180,14 +251,12 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
   }
 
   closeEditModal(): void {
+    if (this.saving) {
+      return;
+    }
     this.showEditModal = false;
     this.editingOption = null;
-    this.formData = {
-      months: 1,
-      label: '',
-      display_order: 0,
-      active: true
-    };
+    this.resetDurationForm();
     this.cdr.markForCheck();
   }
 
@@ -198,17 +267,20 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
   }
 
   closeDeleteModal(): void {
+    if (this.saving) {
+      return;
+    }
     this.showDeleteModal = false;
     this.deletingOption = null;
     this.cdr.markForCheck();
   }
 
   createDurationOption(): void {
-    if (!this.validateDurationForm()) {
+    if (!this.validateDurationForm() || this.saving) {
       return;
     }
 
-    this.loading = true;
+    this.saving = true;
     this.cdr.markForCheck();
 
     this.tenantService.createDurationOption(this.formData)
@@ -216,29 +288,30 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.toastService.success('Duration option created successfully', 'Success');
+            this.toastService.success('Duration option created', 'Saved');
+            this.saving = false;
             this.closeAddModal();
             this.loadDurationOptions();
           } else {
-            this.toastService.error(response.message || 'Failed to create duration option', 'Error');
+            this.toastService.error(this.friendlyError(response.message, 'Unable to create duration option.'), 'Error');
+            this.saving = false;
           }
-          this.loading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to create duration option', 'Error');
-          this.loading = false;
+          this.toastService.error(this.friendlyError(this.extractErrorMessage(err), 'Unable to create duration option.'), 'Error');
+          this.saving = false;
           this.cdr.markForCheck();
         }
       });
   }
 
   updateDurationOption(): void {
-    if (!this.editingOption || !this.validateDurationForm()) {
+    if (!this.editingOption || !this.validateDurationForm() || this.saving) {
       return;
     }
 
-    this.loading = true;
+    this.saving = true;
     this.cdr.markForCheck();
 
     this.tenantService.updateDurationOption(this.editingOption.id!, this.formData)
@@ -246,29 +319,30 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.toastService.success('Duration option updated successfully', 'Success');
+            this.toastService.success('Duration option updated', 'Saved');
+            this.saving = false;
             this.closeEditModal();
             this.loadDurationOptions();
           } else {
-            this.toastService.error(response.message || 'Failed to update duration option', 'Error');
+            this.toastService.error(this.friendlyError(response.message, 'Unable to update duration option.'), 'Error');
+            this.saving = false;
           }
-          this.loading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to update duration option', 'Error');
-          this.loading = false;
+          this.toastService.error(this.friendlyError(this.extractErrorMessage(err), 'Unable to update duration option.'), 'Error');
+          this.saving = false;
           this.cdr.markForCheck();
         }
       });
   }
 
   deleteDurationOption(): void {
-    if (!this.deletingOption) {
+    if (!this.deletingOption || this.saving) {
       return;
     }
 
-    this.loading = true;
+    this.saving = true;
     this.cdr.markForCheck();
 
     this.tenantService.deleteDurationOption(this.deletingOption.id!)
@@ -276,18 +350,19 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.toastService.success('Duration option deleted successfully', 'Success');
+            this.toastService.success('Duration option deleted', 'Deleted');
+            this.saving = false;
             this.closeDeleteModal();
             this.loadDurationOptions();
           } else {
-            this.toastService.error(response.message || 'Failed to delete duration option', 'Error');
+            this.toastService.error(this.friendlyError(response.message, 'Unable to delete duration option.'), 'Error');
+            this.saving = false;
           }
-          this.loading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to delete duration option', 'Error');
-          this.loading = false;
+          this.toastService.error(this.friendlyError(this.extractErrorMessage(err), 'Unable to delete duration option.'), 'Error');
+          this.saving = false;
           this.cdr.markForCheck();
         }
       });
@@ -295,292 +370,49 @@ export class SubscriptionManagementComponent implements OnInit, OnDestroy {
 
   validateDurationForm(): boolean {
     if (!this.formData.months || this.formData.months < 1) {
-      this.toastService.error('Months must be at least 1', 'Validation Error');
+      this.toastService.error('Months must be at least 1', 'Check your entries');
       return false;
     }
 
     if (!this.formData.label || this.formData.label.trim().length === 0) {
-      this.toastService.error('Label is required', 'Validation Error');
+      this.toastService.error('Label is required', 'Check your entries');
       return false;
     }
 
     const existingOption = this.durationOptions.find(
-      opt => opt.months === this.formData.months && 
+      opt => opt.months === this.formData.months &&
       (!this.editingOption || opt.id !== this.editingOption.id)
     );
 
     if (existingOption) {
-      this.toastService.error('A duration option with this number of months already exists', 'Validation Error');
+      this.toastService.error('A duration option with this number of months already exists', 'Check your entries');
       return false;
     }
 
     return true;
   }
 
-  // ============================================
-  // Plans Methods
-  // ============================================
-
-  /**
-   * Load all subscription plans
-   */
-  loadPlans(): void {
-    this.loading = true;
-    this.error = null;
-    this.cdr.markForCheck();
-
-    this.tenantService.getPlans()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            this.plans = response.data;
-          } else {
-            this.error = response.message || 'Failed to load subscription plans';
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.error = err.error?.message || 'Failed to load subscription plans';
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  openAddPlanModal(): void {
-    this.planFormData = {
-      key: '',
-      name: '',
-      description: '',
-      price: 0,
-      max_users: 10,
-      max_storage_mb: 100,
-      features: [],
-      display_order: this.plans.length > 0 
-        ? Math.max(...this.plans.map(p => p.display_order)) + 1 
-        : 0,
-      active: true,
-      is_default: false
-    };
-    this.showAddPlanModal = true;
-    this.cdr.markForCheck();
-  }
-
-  closeAddPlanModal(): void {
-    this.showAddPlanModal = false;
-    this.planFormData = {
-      key: '',
-      name: '',
-      description: '',
-      price: 0,
-      max_users: 10,
-      max_storage_mb: 100,
-      features: [],
+  private resetDurationForm(): void {
+    this.formData = {
+      months: 1,
+      label: '',
       display_order: 0,
-      active: true,
-      is_default: false
+      active: true
     };
-    this.cdr.markForCheck();
   }
 
-  openEditPlanModal(plan: SubscriptionPlan): void {
-    this.editingPlan = plan;
-    this.planFormData = { ...plan };
-    this.cdr.markForCheck();
-    this.showEditPlanModal = true;
-  }
-
-  closeEditPlanModal(): void {
-    this.showEditPlanModal = false;
-    this.editingPlan = null;
-    this.planFormData = {
-      key: '',
-      name: '',
-      description: '',
-      price: 0,
-      max_users: 10,
-      max_storage_mb: 100,
-      features: [],
-      display_order: 0,
-      active: true,
-      is_default: false
-    };
-    this.cdr.markForCheck();
-  }
-
-  openDeletePlanModal(plan: SubscriptionPlan): void {
-    this.deletingPlan = plan;
-    this.showDeletePlanModal = true;
-    this.cdr.markForCheck();
-  }
-
-  closeDeletePlanModal(): void {
-    this.showDeletePlanModal = false;
-    this.deletingPlan = null;
-    this.cdr.markForCheck();
-  }
-
-  createPlan(): void {
-    if (!this.validatePlanForm()) {
-      return;
+  private extractErrorMessage(err: unknown): string | null {
+    if (!err || typeof err !== 'object') {
+      return null;
     }
-
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.createPlan(this.planFormData)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Subscription plan created successfully', 'Success');
-            this.closeAddPlanModal();
-            this.loadPlans();
-          } else {
-            this.toastService.error(response.message || 'Failed to create subscription plan', 'Error');
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to create subscription plan', 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      });
+    const e = err as { message?: string; error?: { message?: string } };
+    return e.message || e.error?.message || null;
   }
 
-  updatePlan(): void {
-    if (!this.editingPlan || !this.validatePlanForm()) {
-      return;
+  private friendlyError(message: string | null | undefined, fallback: string): string {
+    if (message && !/exception|stack|sqlstate|\bSQL\b|internal server/i.test(message)) {
+      return message;
     }
-
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.updatePlan(this.editingPlan.id!, this.planFormData)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Subscription plan updated successfully', 'Success');
-            this.closeEditPlanModal();
-            this.loadPlans();
-          } else {
-            this.toastService.error(response.message || 'Failed to update subscription plan', 'Error');
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to update subscription plan', 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  deletePlan(): void {
-    if (!this.deletingPlan) {
-      return;
-    }
-
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.deletePlan(this.deletingPlan.id!)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Subscription plan deleted successfully', 'Success');
-            this.closeDeletePlanModal();
-            this.loadPlans();
-          } else {
-            this.toastService.error(response.message || 'Failed to delete subscription plan', 'Error');
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to delete subscription plan', 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  validatePlanForm(): boolean {
-    if (!this.planFormData.key || this.planFormData.key.trim().length === 0) {
-      this.toastService.error('Plan key is required', 'Validation Error');
-      return false;
-    }
-
-    if (!this.planFormData.name || this.planFormData.name.trim().length === 0) {
-      this.toastService.error('Plan name is required', 'Validation Error');
-      return false;
-    }
-
-    if (this.planFormData.price < 0) {
-      this.toastService.error('Price cannot be negative', 'Validation Error');
-      return false;
-    }
-
-    if (this.planFormData.max_users < 1) {
-      this.toastService.error('Max users must be at least 1', 'Validation Error');
-      return false;
-    }
-
-    if (this.planFormData.max_storage_mb < 1) {
-      this.toastService.error('Max storage must be at least 1 MB', 'Validation Error');
-      return false;
-    }
-
-    // Check for duplicate key (excluding current editing plan)
-    const existingPlan = this.plans.find(
-      p => p.key === this.planFormData.key && 
-      (!this.editingPlan || p.id !== this.editingPlan.id)
-    );
-
-    if (existingPlan) {
-      this.toastService.error('A plan with this key already exists', 'Validation Error');
-      return false;
-    }
-
-    return true;
-  }
-
-  toggleFeature(feature: string): void {
-    if (!this.planFormData.features) {
-      this.planFormData.features = [];
-    }
-    const index = this.planFormData.features.indexOf(feature);
-    if (index > -1) {
-      this.planFormData.features.splice(index, 1);
-    } else {
-      this.planFormData.features.push(feature);
-    }
-    this.cdr.markForCheck();
-  }
-
-  isFeatureSelected(feature: string): boolean {
-    return this.planFormData.features?.includes(feature) || false;
-  }
-
-  getStatusBadgeClass(active: boolean): string {
-    return active ? 'status-badge status-active' : 'status-badge status-inactive';
-  }
-
-  getStatusText(active: boolean): string {
-    return active ? 'Active' : 'Inactive';
-  }
-
-  /**
-   * Navigate back to settings
-   */
-  goBack(): void {
-    this.router.navigate(['/settings']);
+    return fallback;
   }
 }

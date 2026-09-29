@@ -10,11 +10,13 @@ import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationCategory, DonationEntry, DonationReceiptPreview, Donor } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
-
+import { localDateOnly } from '../utils/local-date-only';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-register',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, CfCurrencyPipe, CfActionIconComponent],
   template: `
     <section class="register cf-page">
       <header class="cf-hero">
@@ -28,8 +30,14 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
           <span>{{ decisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-          <a routerLink="/donations/collection-day" class="cf-btn">Collection Day</a>
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+          </button>
+          <a routerLink="/donations/collection-day" class="cf-btn cf-btn-icon" aria-label="Collection Day" title="Collection Day">
+            <app-cf-action-icon name="calendar-check" />
+          </a>
         </div>
       </div>
 
@@ -43,7 +51,7 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
         <select formControlName="donation_id" (change)="onPledgeSelected()">
           <option value="">New donation</option>
           <option *ngFor="let entry of pledgedEntries" [value]="entry.id">
-            {{ entry.title || entry.category?.name || 'Pledge' }} — Outstanding {{ outstanding(entry) | number:'1.2-2' }}
+            {{ entry.title || entry.category?.name || 'Pledge' }} — Outstanding {{ outstanding(entry) | cfCurrency }}
           </option>
         </select>
 
@@ -80,7 +88,11 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
         </select>
 
         <label class="checkbox"><input type="checkbox" formControlName="is_anonymous" /> Anonymous donation</label>
-        <button type="submit" class="cf-btn cf-btn-primary" [disabled]="collectForm.invalid || saving">{{ saving ? 'Collecting...' : 'Collect Donation' }}</button>
+        <button
+          aria-label="Record payment"
+          title="Record payment" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="collectForm.invalid || saving">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
       </form>
         </div>
       </details>
@@ -90,9 +102,9 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
       <div *ngIf="lastReceipt" class="receipt-preview cf-preview">
         <h3>Receipt {{ lastReceipt.receipt.receipt_number }}</h3>
         <p><strong>Payer:</strong> {{ lastReceipt.payer.name }}</p>
-        <p><strong>Amount:</strong> {{ lastReceipt.totals.amount | number:'1.2-2' }} {{ lastReceipt.totals.currency }}</p>
+        <p><strong>Amount:</strong> {{ lastReceipt.totals.amount | cfCurrency }}</p>
         <p *ngIf="lastReceipt.tax_acknowledgement.has_tax_deductible_portion">
-          Tax-deductible portion: {{ lastReceipt.tax_acknowledgement.tax_deductible_amount | number:'1.2-2' }}
+          Tax-deductible portion: {{ lastReceipt.tax_acknowledgement.tax_deductible_amount | cfCurrency }}
         </p>
         <p *ngIf="lastReceipt.tax_acknowledgement.note">{{ lastReceipt.tax_acknowledgement.note }}</p>
       </div>
@@ -107,7 +119,16 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
           <option value="cancelled">Cancelled</option>
         </select>
         <label class="checkbox"><input type="checkbox" [(ngModel)]="anonymousOnly" (change)="loadEntries()" /> Anonymous only</label>
-        <button *ngIf="canExport" type="button" class="cf-btn" (click)="export()">Export</button>
+        <button
+          *ngIf="canExport"
+          type="button"
+          class="cf-btn cf-btn-icon"
+          (click)="export()"
+          aria-label="Export"
+          title="Export"
+        >
+          <app-cf-action-icon name="download" />
+        </button>
       </div>
 
       <table class="table cf-table" *ngIf="entries.length">
@@ -126,8 +147,8 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
             <td>{{ row.title || row.category?.name || '-' }}</td>
             <td>{{ row.is_anonymous ? 'Anonymous' : (row.donor?.name || '-') }}</td>
             <td>{{ row.status }}</td>
-            <td>{{ row.pledged_amount | number:'1.2-2' }}</td>
-            <td>{{ row.collected_amount | number:'1.2-2' }}</td>
+            <td>{{ row.pledged_amount | cfCurrency }}</td>
+            <td>{{ row.collected_amount | cfCurrency }}</td>
             <td>{{ row.is_anonymous ? 'Yes' : 'No' }}</td>
           </tr>
         </tbody>
@@ -139,7 +160,11 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
         title="No offerings recorded yet"
         description="Collect a voluntary gift using Quick Collect, or expand the form above for pledges and anonymous donations."
       >
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
       </app-cf-empty-state>
     </section>
   `,
@@ -171,7 +196,7 @@ export class DonationsRegisterComponent implements OnInit {
     title: [''],
     amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
     method: ['cash', Validators.required],
-    payment_date: [new Date().toISOString().slice(0, 10), Validators.required],
+    payment_date: [localDateOnly(), Validators.required],
     donor_id: [''],
     donor_name: [''],
     donor_email: [''],

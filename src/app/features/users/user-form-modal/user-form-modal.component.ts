@@ -1,36 +1,32 @@
 import { Component, EventEmitter, Input, OnInit, OnChanges, SimpleChanges, Output, inject, ViewChild, ElementRef, AfterViewChecked, OnDestroy, ChangeDetectorRef, ChangeDetectionStrategy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { User, Role, Permission, UserRequest } from '@core/models';
+import { User, Role, UserRequest, LinkableClergy } from '@core/models';
 import { UsersService } from '@core/services/users.service';
 import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
-import { PhoneInputComponent, ButtonComponent } from '@shared/components';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
-import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { PhoneInputComponent, ModalShellComponent, ImageViewerComponent, CfMediaUploadComponent } from '@shared/components';
+import { Subject, of } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap, takeUntil, tap, catchError, finalize } from 'rxjs/operators';
+import { trapFocus, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import {
+  USER_PROFILE_IMAGE_ACCEPT,
+  resolveUserProfileImageUrl,
+  validateUserProfileImageFileAsync,
+} from '@core/utils/user-profile-image.util';
 
 /**
  * UserFormModalComponent - Create/Edit User with Multi-Role Selection
- * 
- * This component provides a modal interface for creating and editing users
- * with support for assigning multiple roles simultaneously.
- * 
- * Features:
- * - Create and Edit modes
- * - Multi-role selection with checkboxes
- * - Form validation
- * - Password complexity requirements
- * - Responsive design
- * 
- * @author Development Team
- * @date 2025-10-25
+ *
+ * Category-style large sectioned modal (enterprise-modal-style-guide.md §14).
+ * Role assignment remains multi-select checkboxes; presentation only.
  */
 @Component({
   selector: 'app-user-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, PhoneInputComponent, ButtonComponent],
+  imports: [CommonModule, FormsModule, PhoneInputComponent, ModalShellComponent, ImageViewerComponent, CfMediaUploadComponent],
   templateUrl: './user-form-modal.component.html',
   styleUrl: './user-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -42,11 +38,13 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   @Output() saved = new EventEmitter<User>();
 
   @ViewChild('modalContainer', { static: false }) modalContainerRef?: ElementRef<HTMLElement>;
+  @ViewChild('profileMediaUpload') profileMediaUpload?: CfMediaUploadComponent;
 
   private usersService = inject(UsersService);
   private rolesService = inject(RolesService);
   private toastService = inject(ToastService);
   private authService = inject(AuthService);
+  private subscriptionAccess = inject(SubscriptionAccessService);
   private cdr = inject(ChangeDetectorRef);
 
   // Form state
@@ -73,8 +71,17 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     contact_number: '',
     user_type: 1,
     role_ids: [] as number[],
-    active: 1
+    active: 1,
+    person_id: null as string | null
   };
+
+  // Parish leader linking (optional)
+  clergyQuery = '';
+  clergyResults: LinkableClergy[] = [];
+  clergySearching = false;
+  showClergyResults = false;
+  selectedClergy: LinkableClergy | null = null;
+  private clergySearch$ = new Subject<string>();
 
   // Validation state
   validationErrors: { [key: string]: string } = {};
@@ -89,9 +96,53 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   // Configuration
   passwordMinLength = 8;
   passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/;
+  readonly profileImageAccept = USER_PROFILE_IMAGE_ACCEPT;
+
+  // Profile image state
+  selectedProfileImage: File | null = null;
+  profileImagePreviewUrl: string | null = null;
+  existingProfileImageUrl: string | null = null;
+  removeProfileImage = false;
+  profileImageError: string | null = null;
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+  private profileImageObjectUrl: string | null = null;
 
   ngOnInit(): void {
     this.loadRoles();
+    this.setupClergySearch();
+  }
+
+  private setupClergySearch(): void {
+    this.clergySearch$.pipe(
+      debounceTime(250),
+      distinctUntilChanged(),
+      tap(() => {
+        this.clergySearching = true;
+        this.cdr.markForCheck();
+      }),
+      switchMap((query) => {
+        const trimmed = query.trim();
+        if (trimmed.length < 2) {
+          this.clergyResults = [];
+          this.clergySearching = false;
+          this.showClergyResults = false;
+          this.cdr.markForCheck();
+          return of({ success: true, data: [] as LinkableClergy[] });
+        }
+
+        return this.usersService.getLinkableClergy(trimmed).pipe(
+          catchError((err) => {
+            return of({ success: false, data: [] as LinkableClergy[] });
+          })
+        );
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe((response) => {
+      this.clergyResults = Array.isArray(response.data) ? response.data : [];
+      this.clergySearching = false;
+      this.showClergyResults = this.clergyQuery.trim().length >= 2;
+      this.cdr.markForCheck();
+    });
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -123,6 +174,7 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       this.errorMessage = null;
       this.validationErrors = {};
       this.touchedFields.clear();
+      this.resetProfileImageState();
     }
     
     if (changes['user'] && this.user) {
@@ -146,8 +198,11 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
         contact_number: this.user.contact_number || '',
         user_type: this.user.user_type || 1,
         role_ids: this.user.roles?.map(r => r.id) || [],
-        active: this.user.active
+        active: this.user.active,
+        person_id: this.user.person_id ?? null
       };
+
+      this.setSelectedClergyFromUser();
       
       // Initialize selected roles
       this.selectedRoleIds.clear();
@@ -170,14 +225,20 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       contact_number: this.user.contact_number || '',
       user_type: this.user.user_type || 1,
       role_ids: this.user.roles?.map(r => r.id) || [],
-      active: this.user.active
+      active: this.user.active,
+      person_id: this.user.person_id ?? null
     };
+
+    this.setSelectedClergyFromUser();
     
     // Populate selected roles
     this.selectedRoleIds.clear();
     if (this.user.roles) {
       this.user.roles.forEach(role => this.selectedRoleIds.add(role.id));
     }
+
+    this.existingProfileImageUrl = resolveUserProfileImageUrl(this.user);
+    this.resetProfileImageSelection();
   }
 
   private loadRoles(): void {
@@ -205,8 +266,90 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     });
   }
 
+  onClergyQueryInput(): void {
+    if (this.isEditingSelf) {
+      return;
+    }
+    this.clergySearch$.next(this.clergyQuery);
+  }
+
+  onClergySearchEnter(event: Event): void {
+    event.preventDefault();
+    this.onClergyQueryInput();
+  }
+
+  selectClergy(clergy: LinkableClergy, event?: Event): void {
+    event?.preventDefault();
+    this.selectedClergy = clergy;
+    this.formData.person_id = clergy.person_id;
+    this.clergyQuery = clergy.person_name;
+    this.showClergyResults = false;
+    this.clergyResults = [];
+
+    if (clergy.person_name) {
+      this.formData.name = clergy.person_name;
+    }
+    if (clergy.email) {
+      this.formData.email = clergy.email;
+    }
+    if (clergy.phone) {
+      this.formData.contact_number = clergy.phone;
+    }
+
+    this.suggestParishPriestRole();
+    this.validateField('name');
+    this.validateField('email');
+    this.cdr.markForCheck();
+  }
+
+  clearSelectedClergy(): void {
+    this.selectedClergy = null;
+    this.formData.person_id = null;
+    this.clergyQuery = '';
+    this.clergyResults = [];
+    this.showClergyResults = false;
+    this.cdr.markForCheck();
+  }
+
+  private setSelectedClergyFromUser(): void {
+    if (!this.user?.person_id) {
+      this.selectedClergy = null;
+      this.clergyQuery = '';
+      return;
+    }
+
+    const person = this.user.person;
+    this.selectedClergy = {
+      assignment_id: '',
+      person_id: this.user.person_id,
+      person_name: person?.full_name_display
+        || [person?.first_name, person?.last_name].filter(Boolean).join(' ')
+        || this.user.name,
+      first_name: person?.first_name,
+      last_name: person?.last_name,
+      email: person?.email ?? this.user.email,
+      phone: person?.phone ?? this.user.contact_number ?? null,
+      role_id: '',
+      role_title: undefined
+    };
+    this.clergyQuery = this.selectedClergy.person_name;
+  }
+
+  private suggestParishPriestRole(): void {
+    const parishPriest = this.availableRoles.find((role) => role.name === 'Parish Priest');
+    if (parishPriest && !this.selectedRoleIds.has(parishPriest.id)) {
+      this.selectedRoleIds.add(parishPriest.id);
+      this.formData.role_ids = Array.from(this.selectedRoleIds);
+      this.validateField('role_ids');
+    }
+  }
+
   // Role selection handlers
   toggleRole(roleId: number): void {
+    if (this.isEditingSelf) {
+      return;
+    }
+
     if (this.selectedRoleIds.has(roleId)) {
       this.selectedRoleIds.delete(roleId);
     } else {
@@ -215,12 +358,20 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     
     this.formData.role_ids = Array.from(this.selectedRoleIds);
     this.validateField('role_ids');
+    this.cdr.markForCheck();
   }
 
   isRoleSelected(roleId: number): boolean {
     return this.selectedRoleIds.has(roleId);
   }
 
+  onActiveToggle(): void {
+    if (this.isEditingSelf) {
+      return;
+    }
+    this.formData.active = this.formData.active === 1 ? 0 : 1;
+    this.cdr.markForCheck();
+  }
 
   // Form validation
   markFieldAsTouched(fieldName: string): void {
@@ -326,8 +477,177 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     return this.validationErrors[fieldName] || '';
   }
 
+  get displayProfileImageUrl(): string | null {
+    if (this.profileImagePreviewUrl) {
+      return this.profileImagePreviewUrl;
+    }
+
+    if (this.removeProfileImage) {
+      return null;
+    }
+
+    return this.existingProfileImageUrl;
+  }
+
+  get canEditProfileImage(): boolean {
+    return !this.isEditingSelf;
+  }
+
+  get isTenantAdminSelf(): boolean {
+    return this.isEditingSelf && this.authService.isTenantAdmin();
+  }
+
+  get existingProfileImagePreviewUrl(): string | null {
+    return this.removeProfileImage ? null : this.existingProfileImageUrl;
+  }
+
+  get hasProfileImageChange(): boolean {
+    return !!this.selectedProfileImage || this.removeProfileImage;
+  }
+
+  onProfileImageValidationError(message: string): void {
+    this.profileImageError = message;
+    this.cdr.markForCheck();
+  }
+
+  onCfProfileImageSelected(file: File): void {
+    void this.applyProfileImageFile(file);
+  }
+
+  private async applyProfileImageFile(file: File): Promise<void> {
+    const error = await validateUserProfileImageFileAsync(file);
+    if (error) {
+      this.profileImageError = error;
+      this.profileMediaUpload?.clearLocalPreview();
+      this.cdr.markForCheck();
+      return;
+    }
+
+    this.revokeProfileImageObjectUrl();
+    this.selectedProfileImage = file;
+    this.removeProfileImage = false;
+    this.profileImageError = null;
+    this.profileImageObjectUrl = URL.createObjectURL(file);
+    this.profileImagePreviewUrl = this.profileImageObjectUrl;
+    this.cdr.markForCheck();
+  }
+
+  removeSelectedProfileImage(): void {
+    this.profileMediaUpload?.clearLocalPreview();
+    this.revokeProfileImageObjectUrl();
+    this.selectedProfileImage = null;
+    this.profileImagePreviewUrl = null;
+    this.removeProfileImage = !!this.existingProfileImageUrl;
+    this.profileImageError = null;
+    this.cdr.markForCheck();
+  }
+
+  openSavedProfilePhotoViewer(): void {
+    const url = this.displayProfileImageUrl;
+    if (!url || this.selectedProfileImage) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: url,
+      alt: this.formData.name || this.user?.name || 'User',
+      title: this.formData.name || this.user?.name || 'User',
+      subtitle: this.user?.email || this.formData.email || '',
+    };
+    this.cdr.markForCheck();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.markForCheck();
+  }
+
+  private resetProfileImageSelection(): void {
+    this.profileMediaUpload?.clearLocalPreview();
+    this.revokeProfileImageObjectUrl();
+    this.selectedProfileImage = null;
+    this.profileImagePreviewUrl = null;
+    this.removeProfileImage = false;
+    this.profileImageError = null;
+  }
+
+  private resetProfileImageState(): void {
+    this.existingProfileImageUrl = this.user ? resolveUserProfileImageUrl(this.user) : null;
+    this.resetProfileImageSelection();
+    this.photoViewer = null;
+  }
+
+  private revokeProfileImageObjectUrl(): void {
+    if (this.profileImageObjectUrl) {
+      URL.revokeObjectURL(this.profileImageObjectUrl);
+      this.profileImageObjectUrl = null;
+    }
+  }
+
+  private syncProfileImage(userId: number) {
+    if (this.isEditingSelf || !this.hasProfileImageChange) {
+      return of(null);
+    }
+
+    if (this.removeProfileImage && !this.selectedProfileImage) {
+      return this.usersService.deleteProfileImage(userId).pipe(
+        catchError((error) => {
+          this.toastService.warning(
+            error.error?.message || 'User saved, but removing the profile image failed.',
+            'Profile image'
+          );
+          return of(null);
+        })
+      );
+    }
+
+    if (this.selectedProfileImage) {
+      return this.usersService.uploadProfileImage(userId, this.selectedProfileImage).pipe(
+        catchError((error) => {
+          this.toastService.warning(
+            error.error?.message || 'User saved, but uploading the profile image failed.',
+            'Profile image'
+          );
+          return of(null);
+        })
+      );
+    }
+
+    return of(null);
+  }
+
+  private handleSaveSuccess(savedUser: User, successMessage: string): void {
+    this.syncProfileImage(savedUser.id).pipe(
+      finalize(() => {
+        this.isSubmitting = false;
+        this.cdr.markForCheck();
+      }),
+      takeUntil(this.destroy$)
+    ).subscribe((photoResponse) => {
+      const user = photoResponse?.data ?? savedUser;
+      this.toastService.success(successMessage);
+      this.saved.emit(user);
+      this.closeModal();
+    });
+  }
+
+  private handleSaveError(error: unknown, fallbackMessage: string): void {
+    console.error(fallbackMessage, error);
+    const err = error as { error?: { message?: string } };
+    this.errorMessage = err.error?.message || fallbackMessage;
+    if (this.errorMessage) {
+      this.toastService.error(this.errorMessage);
+    }
+    this.isSubmitting = false;
+    this.cdr.markForCheck();
+  }
+
   // Form submission
   onSubmit(): void {
+    if (this.subscriptionAccess.isReadOnly()) {
+      this.toastService.warning('Read-only mode: renew subscription to save users.', 'Read-only');
+      return;
+    }
     // Mark all fields as touched
     Object.keys(this.formData).forEach(key => this.markFieldAsTouched(key));
     
@@ -346,7 +666,8 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       contact_number: this.formData.contact_number || undefined,
       user_type: this.formData.user_type as 1 | 2,
       role_ids: Array.from(this.selectedRoleIds),
-      active: this.formData.active as 0 | 1
+      active: this.formData.active as 0 | 1,
+      person_id: this.formData.person_id
     };
     
     // Only include password if it's provided
@@ -356,62 +677,40 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
     }
     
     if (this.isEditMode && this.user) {
-      // Update existing user
       this.usersService.updateUser(this.user.id, requestData).pipe(
         takeUntil(this.destroy$)
       ).subscribe({
         next: (response) => {
-          if (response.success) {
-            this.toastService.success('User updated successfully');
-            this.saved.emit(response.data);
-            this.closeModal();
+          if (response.success && response.data) {
+            this.handleSaveSuccess(response.data, 'User updated successfully');
           } else {
             this.errorMessage = response.message || 'Failed to update user';
             if (this.errorMessage) {
               this.toastService.error(this.errorMessage);
             }
+            this.isSubmitting = false;
+            this.cdr.markForCheck();
           }
-          this.isSubmitting = false;
-          this.cdr.markForCheck();
         },
-        error: (error) => {
-          console.error('Error updating user:', error);
-          this.errorMessage = error.error?.message || 'An error occurred while updating the user';
-          if (this.errorMessage) {
-            this.toastService.error(this.errorMessage);
-          }
-          this.isSubmitting = false;
-          this.cdr.markForCheck();
-        }
+        error: (error) => this.handleSaveError(error, 'An error occurred while updating the user'),
       });
     } else {
-      // Create new user
       this.usersService.createUser(requestData as UserRequest).pipe(
         takeUntil(this.destroy$)
       ).subscribe({
         next: (response) => {
-          if (response.success) {
-            this.toastService.success('User created successfully');
-            this.saved.emit(response.data);
-            this.closeModal();
+          if (response.success && response.data) {
+            this.handleSaveSuccess(response.data, 'User created successfully');
           } else {
             this.errorMessage = response.message || 'Failed to create user';
             if (this.errorMessage) {
               this.toastService.error(this.errorMessage);
             }
+            this.isSubmitting = false;
+            this.cdr.markForCheck();
           }
-          this.isSubmitting = false;
-          this.cdr.markForCheck();
         },
-        error: (error) => {
-          console.error('Error creating user:', error);
-          this.errorMessage = error.error?.message || 'An error occurred while creating the user';
-          if (this.errorMessage) {
-            this.toastService.error(this.errorMessage);
-          }
-          this.isSubmitting = false;
-          this.cdr.markForCheck();
-        }
+        error: (error) => this.handleSaveError(error, 'An error occurred while creating the user'),
       });
     }
   }
@@ -449,6 +748,7 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
   }
   
   ngOnDestroy(): void {
+    this.revokeProfileImageObjectUrl();
     // Clean up subscriptions
     this.destroy$.next();
     this.destroy$.complete();
@@ -473,12 +773,18 @@ export class UserFormModalComponent implements OnInit, OnChanges, AfterViewCheck
       contact_number: '',
       user_type: 1,
       role_ids: [],
-      active: 1
+      active: 1,
+      person_id: null
     };
+    this.selectedClergy = null;
+    this.clergyQuery = '';
+    this.clergyResults = [];
+    this.showClergyResults = false;
     this.selectedRoleIds.clear();
     this.validationErrors = {};
     this.touchedFields.clear();
     this.errorMessage = null;
+    this.resetProfileImageState();
   }
 
   // Utility methods

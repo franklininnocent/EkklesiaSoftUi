@@ -44,7 +44,7 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "1.65MB",
+                  "maximumWarning": "2.2MB",
                   "maximumError": "2.5MB"
                 },
                 {
@@ -71,6 +71,9 @@
         },
         "serve": {
           "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.js"
+          },
           "configurations": {
             "production": {
               "buildTarget": "ekklesia-soft-ui:build:production"

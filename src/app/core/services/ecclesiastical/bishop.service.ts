@@ -8,9 +8,53 @@ import {
   BishopCreateRequest, 
   BishopUpdateRequest,
   BishopListParams,
-  BishopStatistics 
+  BishopStatistics,
+  BishopAppointment,
+  CreateAppointmentRequest,
+  EndAppointmentRequest,
 } from '@core/models/ecclesiastical';
 import { ApiResponse, PaginatedResponse } from '@core/models';
+
+/**
+ * Bishop list API may return paginated rows at `data.data` or, if mis-wrapped,
+ * at `data.data.data`. This helper normalizes both shapes.
+ */
+export function extractBishopList(response: ApiResponse<any> | null | undefined): Bishop[] {
+  const payload = response?.data;
+  if (Array.isArray(payload)) {
+    return payload;
+  }
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const first = payload.data;
+  if (Array.isArray(first)) {
+    return first;
+  }
+  if (first && typeof first === 'object' && Array.isArray(first.data)) {
+    return first.data;
+  }
+
+  return [];
+}
+
+export function extractBishopPagination(response: ApiResponse<any> | null | undefined): {
+  total: number;
+  currentPage: number;
+  lastPage: number;
+} {
+  const payload = response?.data;
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return { total: 0, currentPage: 1, lastPage: 1 };
+  }
+
+  return {
+    total: payload.total ?? 0,
+    currentPage: payload.current_page ?? 1,
+    lastPage: payload.last_page ?? 1,
+  };
+}
 
 @Injectable({
   providedIn: 'root'
@@ -54,21 +98,27 @@ export class BishopService {
    * Create new bishop
    */
   createBishop(data: BishopCreateRequest): Observable<ApiResponse<Bishop>> {
-    return this.http.post<ApiResponse<Bishop>>(this.baseUrl, data);
+    return this.http.post<ApiResponse<Bishop>>(this.baseUrl, data).pipe(
+      tap(() => this.clearCache())
+    );
   }
 
   /**
    * Update existing bishop
    */
   updateBishop(id: number, data: BishopUpdateRequest): Observable<ApiResponse<Bishop>> {
-    return this.http.put<ApiResponse<Bishop>>(`${this.baseUrl}/${id}`, data);
+    return this.http.put<ApiResponse<Bishop>>(`${this.baseUrl}/${id}`, data).pipe(
+      tap(() => this.clearCache())
+    );
   }
 
   /**
    * Delete bishop
    */
   deleteBishop(id: number): Observable<ApiResponse<void>> {
-    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`);
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${id}`).pipe(
+      tap(() => this.clearCache())
+    );
   }
 
   /**
@@ -109,8 +159,12 @@ export class BishopService {
   /**
    * Get bishops by diocese
    */
-  getBishopsByDiocese(dioceseId: number): Observable<ApiResponse<Bishop[]>> {
-    return this.http.get<ApiResponse<Bishop[]>>(`${this.baseUrl}/diocese/${dioceseId}`);
+  getBishopsByDiocese(dioceseId: number, currentOnly = true): Observable<ApiResponse<Bishop[]>> {
+    let params = new HttpParams();
+    if (!currentOnly) {
+      params = params.set('current_only', 'false');
+    }
+    return this.http.get<ApiResponse<Bishop[]>>(`${this.baseUrl}/diocese/${dioceseId}`, { params });
   }
 
   /**
@@ -118,6 +172,72 @@ export class BishopService {
    */
   getBishopsByTitle(titleId: number): Observable<ApiResponse<Bishop[]>> {
     return this.http.get<ApiResponse<Bishop[]>>(`${this.baseUrl}/title/${titleId}`);
+  }
+
+  getAppointments(bishopId: number, params?: { page?: number; per_page?: number }): Observable<ApiResponse<{
+    data: BishopAppointment[];
+    total: number;
+    current_page: number;
+    last_page: number;
+    per_page: number;
+  }>> {
+    let httpParams = new HttpParams();
+    if (params?.page) {
+      httpParams = httpParams.set('page', String(params.page));
+    }
+    if (params?.per_page) {
+      httpParams = httpParams.set('per_page', String(params.per_page));
+    }
+    return this.http.get<ApiResponse<any>>(`${this.baseUrl}/${bishopId}/appointments`, { params: httpParams });
+  }
+
+  createAppointment(bishopId: number, data: CreateAppointmentRequest): Observable<ApiResponse<BishopAppointment>> {
+    return this.http.post<ApiResponse<BishopAppointment>>(`${this.baseUrl}/${bishopId}/appointments`, data).pipe(
+      tap(() => this.clearCache())
+    );
+  }
+
+  endAppointment(appointmentId: string, data: EndAppointmentRequest): Observable<ApiResponse<BishopAppointment>> {
+    return this.http.post<ApiResponse<BishopAppointment>>(
+      `${environment.apiUrl}/ecclesiastical/appointments/${appointmentId}/end`,
+      data
+    ).pipe(tap(() => this.clearCache()));
+  }
+
+  activateAppointment(appointmentId: string): Observable<ApiResponse<BishopAppointment>> {
+    return this.http.post<ApiResponse<BishopAppointment>>(
+      `${environment.apiUrl}/ecclesiastical/appointments/${appointmentId}/activate`,
+      {}
+    ).pipe(tap(() => this.clearCache()));
+  }
+
+  getAuditHistory(bishopId: number): Observable<ApiResponse<unknown[]>> {
+    return this.http.get<ApiResponse<unknown[]>>(`${this.baseUrl}/${bishopId}/audit-history`);
+  }
+
+  uploadPhoto(bishopId: number, file: File): Observable<ApiResponse<{
+    photo_path: string;
+    photo_url?: string;
+    photo_public_url: string;
+    has_photo?: boolean;
+  }>> {
+    const formData = new FormData();
+    formData.append('image', file);
+    return this.http.post<ApiResponse<{
+      photo_path: string;
+      photo_url?: string;
+      photo_public_url: string;
+      has_photo?: boolean;
+    }>>(
+      `${this.baseUrl}/${bishopId}/upload-photo`,
+      formData
+    ).pipe(tap(() => this.clearCache()));
+  }
+
+  deletePhoto(bishopId: number): Observable<ApiResponse<void>> {
+    return this.http.delete<ApiResponse<void>>(`${this.baseUrl}/${bishopId}/photo`).pipe(
+      tap(() => this.clearCache())
+    );
   }
 }
 

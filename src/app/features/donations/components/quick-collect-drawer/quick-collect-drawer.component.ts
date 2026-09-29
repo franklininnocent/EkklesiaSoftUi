@@ -10,12 +10,17 @@ import { ToastService } from '@core/services/toast.service';
 import { DonationsService } from '../../services/donations.service';
 import { QuickCollectRecentFamily, QuickCollectService } from '../../services/quick-collect.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
+import { localDateOnly, requiresGatewayReference } from '../../utils/local-date-only';
+import { formatPaymentDateTime } from '../../utils/payment-datetime';
 import {
   DonationFamilyFinancialProfile,
   DonationPayment,
   DonationReceiptPreview,
   UpiPaymentIntent
 } from '../../models/donation.model';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 
 type CollectPhase = 'collect' | 'success';
 type CollectType = 'general' | 'mandatory' | 'project' | 'offering';
@@ -40,7 +45,7 @@ interface ActivityRow {
 @Component({
   selector: 'app-quick-collect-drawer',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, CfCurrencyPipe, CfActionIconComponent],
   template: `
     <div class="qc-backdrop" *ngIf="isOpen" (click)="close()" aria-hidden="true"></div>
 
@@ -68,7 +73,7 @@ interface ActivityRow {
               <h3>Payment recorded successfully</h3>
               <dl class="qc-success__details">
                 <div><dt>Family</dt><dd>{{ lastSuccess.familyName }}</dd></div>
-                <div><dt>Amount</dt><dd>₹{{ lastSuccess.amount | number:'1.0-0' }}</dd></div>
+                <div><dt>Amount</dt><dd>{{ lastSuccess.amount | cfCurrency : null : 0 }}</dd></div>
                 <div><dt>Category</dt><dd>{{ lastSuccess.categoryLabel }}</dd></div>
                 <div *ngIf="lastSuccess.receiptNumber"><dt>Receipt #</dt><dd>{{ lastSuccess.receiptNumber }}</dd></div>
                 <div *ngIf="!lastSuccess.receiptNumber"><dt>Receipt</dt><dd>{{ lastSuccess.receiptGenerated ? 'Generating…' : 'Not requested' }}</dd></div>
@@ -77,10 +82,44 @@ interface ActivityRow {
                 Print a receipt for the payer now, or find it later under Stewardship → Receipts.
               </p>
               <div class="qc-success__actions">
-                <button type="button" class="cf-btn cf-btn-primary" *ngIf="lastPaymentId" (click)="printReceipt()">Print receipt</button>
-                <button type="button" class="cf-btn" *ngIf="lastPaymentId" (click)="viewReceipt()">Preview receipt</button>
-                <button type="button" class="cf-btn" (click)="collectAnother()">Collect another payment</button>
-                <a class="cf-btn" routerLink="/donations/receipts" (click)="close()">All receipts</a>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon cf-btn-primary"
+                  *ngIf="lastPaymentId"
+                  (click)="printReceipt()"
+                  aria-label="Print receipt"
+                  title="Print receipt"
+                >
+                  <app-cf-action-icon name="print" />
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon"
+                  *ngIf="lastPaymentId"
+                  (click)="viewReceipt()"
+                  aria-label="Preview receipt"
+                  title="Preview receipt"
+                >
+                  <app-cf-action-icon name="eye" />
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon"
+                  (click)="collectAnother()"
+                  aria-label="Collect another payment"
+                  title="Collect another payment"
+                >
+                  <app-cf-action-icon name="collect-payment" />
+                </button>
+                <a
+                  class="cf-btn cf-btn-icon"
+                  routerLink="/donations/receipts"
+                  (click)="close()"
+                  aria-label="All receipts"
+                  title="All receipts"
+                >
+                  <app-cf-action-icon name="book-open" />
+                </a>
               </div>
             </section>
 
@@ -149,11 +188,19 @@ interface ActivityRow {
                       <strong>{{ selectedFamily.family_name }}</strong>
                       <span>{{ selectedFamily.family_code }}</span>
                     </div>
-                    <button type="button" class="qc-link" (click)="clearFamily()">Change</button>
+                    <button
+                      type="button"
+                      class="cf-btn cf-btn-icon cf-btn--sm qc-link"
+                      (click)="clearFamily()"
+                      aria-label="Change family"
+                      title="Change family"
+                    >
+                      <app-cf-action-icon name="x" />
+                    </button>
                   </div>
                   <p *ngIf="familyProfile" class="qc-selected__meta">
-                    Outstanding ₹{{ familyProfile.totals.pending_due | number:'1.0-0' }}
-                    · Paid ₹{{ familyProfile.totals.total_paid | number:'1.0-0' }}
+                    Outstanding {{ familyProfile.totals.pending_due | cfCurrency : null : 0 }}
+                    · Paid {{ familyProfile.totals.total_paid | cfCurrency : null : 0 }}
                   </p>
                 </article>
 
@@ -167,7 +214,7 @@ interface ActivityRow {
                       [class.active]="selectedAllocation?.allocatable_id === option.allocatable_id"
                       (click)="applyAllocation(option)"
                     >
-                      {{ option.label }} · ₹{{ option.amount | number:'1.0-0' }}
+                      {{ option.label }} · {{ option.amount | cfCurrency : null : 0 }}
                     </button>
                   </div>
                 </div>
@@ -180,7 +227,7 @@ interface ActivityRow {
                   <label class="qc-field">
                     <span>Amount <span class="req" aria-hidden="true">*</span></span>
                     <div class="qc-amount" [class.is-invalid]="submitAttempted && (!amount || amount <= 0)">
-                      <span aria-hidden="true">₹</span>
+                      <span aria-hidden="true">{{ currencySymbol }}</span>
                       <input
                         #amountInput
                         type="number"
@@ -214,6 +261,11 @@ interface ActivityRow {
                     </select>
                   </label>
 
+                  <label class="qc-field" *ngIf="needsReference">
+                    <span>{{ method === 'cheque' ? 'Cheque number' : 'Transfer reference' }} <span class="req" aria-hidden="true">*</span></span>
+                    <input type="text" [(ngModel)]="gatewayReference" placeholder="Required for this method" />
+                  </label>
+
                   <label class="qc-field">
                     <span>Collection date</span>
                     <input type="date" [(ngModel)]="paymentDate" />
@@ -234,7 +286,7 @@ interface ActivityRow {
                   <p *ngIf="upiLoading" class="qc-upi__hint">Generating UPI QR…</p>
                   <ng-container *ngIf="!upiLoading && upiIntent?.available">
                     <img [src]="upiIntent!.qr_data_uri" alt="UPI payment QR code" width="180" height="180" />
-                    <p class="qc-upi__hint">{{ upiIntent!.payee_name }} · ₹{{ upiIntent!.amount | number:'1.0-0' }}</p>
+                    <p class="qc-upi__hint">{{ upiIntent!.payee_name }} · {{ upiIntent!.amount | cfCurrency : null : 0 }}</p>
                   </ng-container>
                   <p *ngIf="!upiLoading && upiIntent && !upiIntent.available" class="qc-upi__hint">
                     {{ upiIntent.message || 'Configure UPI in Donations Settings to enable QR collection.' }}
@@ -244,10 +296,10 @@ interface ActivityRow {
 
               <section class="qc-section qc-section--compact" *ngIf="selectedFamily" aria-labelledby="qc-receipt-heading">
                 <h3 id="qc-receipt-heading" class="qc-section__title">Receipt</h3>
-                <label class="qc-check">
-                  <input type="checkbox" [(ngModel)]="generateReceipt" />
-                  <span>Generate receipt automatically</span>
-                </label>
+                <p class="qc-meta">A receipt is issued automatically when the payment is recorded.</p>
+                <p class="qc-meta" *ngIf="familyCreditAmount > 0">
+                  {{ familyCreditAmount | cfCurrency }} beyond the selected due or project will be stored as family credit for the next collection.
+                </p>
               </section>
             </ng-container>
 
@@ -261,7 +313,7 @@ interface ActivityRow {
               <li *ngFor="let row of activityRows">
                 <div class="qc-activity__row">
                   <strong>{{ row.family_name }}</strong>
-                  <span>₹{{ row.amount | number:'1.0-0' }}</span>
+                  <span>{{ row.amount | cfCurrency : null : 0 }}</span>
                 </div>
                 <div class="qc-activity__meta">
                   <span>{{ row.time_label }}</span>
@@ -279,30 +331,41 @@ interface ActivityRow {
           <span>Keep Quick Collect open</span>
         </label>
         <div class="qc-footer__actions">
-          <button type="button" class="cf-btn" (click)="close()">{{ phase === 'success' ? 'Close' : 'Cancel' }}</button>
           <button
             type="button"
-            class="cf-btn cf-btn-primary"
+            class="cf-btn cf-btn-icon"
+            (click)="close()"
+            [attr.aria-label]="phase === 'success' ? 'Close' : 'Cancel'"
+            [attr.title]="phase === 'success' ? 'Close' : 'Cancel'"
+          >
+            <app-cf-action-icon name="x" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon cf-btn-primary"
             *ngIf="phase === 'collect'"
             [disabled]="!canSubmit || saving"
             (click)="submit()"
+            [attr.aria-label]="submitLabel"
+            [attr.title]="submitLabel"
           >
-            {{ submitLabel }}
+            <app-cf-action-icon name="collect-payment" />
           </button>
         </div>
       </footer>
     </aside>
   `,
+  styleUrls: ['../../styles/stewardship-action-icons.scss'],
   styles: [`
     .sr-only {
       position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
       overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
     }
     .qc-backdrop {
-      position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 1200;
+      position: fixed; inset: 0; background: var(--cf-overlay-bg); z-index: var(--cf-z-drawer);
     }
     .qc-drawer {
-      position: fixed; top: 0; right: 0; width: min(760px, 100vw); height: 100vh; z-index: 1201;
+      position: fixed; top: 0; right: 0; width: min(760px, 100vw); height: 100vh; z-index: var(--cf-z-drawer);
       background: var(--cf-panel-bg); box-shadow: var(--cf-shadow-lg);
       display: flex; flex-direction: column; font-family: var(--cf-font-sans);
     }
@@ -321,7 +384,7 @@ interface ActivityRow {
       color: var(--cf-muted); padding: 0.15rem 0.45rem; cursor: pointer;
     }
     .qc-body { padding: 1rem 1.15rem; overflow: auto; flex: 1; }
-    .qc-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 1rem; align-items: start; }
+    .qc-workspace { display: grid; grid-template-columns: minmax(0, 1fr) 240px; gap: 1rem; align-items: start; }
     .qc-main { display: grid; gap: 1rem; min-width: 0; }
     .qc-section { display: grid; gap: 0.75rem; }
     .qc-section--compact { gap: 0.5rem; }
@@ -393,6 +456,7 @@ interface ActivityRow {
       border-color: var(--cf-primary); background: var(--cf-indigo-soft);
     }
     .qc-check { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.85rem; color: var(--cf-slate-700); cursor: pointer; }
+    .qc-meta { margin: 0; font-size: 0.85rem; color: var(--cf-muted, #64748b); line-height: 1.4; }
     .qc-check input { width: auto; }
     .qc-check--footer { margin-right: auto; }
     .qc-upi {
@@ -427,6 +491,7 @@ interface ActivityRow {
     .qc-activity__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.55rem; }
     .qc-activity__row { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.84rem; }
     .qc-activity__meta { display: flex; justify-content: space-between; gap: 0.5rem; font-size: 0.75rem; color: var(--cf-muted); margin-top: 0.1rem; }
+    .qc-activity__meta span { white-space: nowrap; }
     .qc-footer__actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-left: auto; }
     .cf-btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
     @media (max-width: 720px) {
@@ -441,7 +506,12 @@ export class QuickCollectDrawerComponent implements OnInit {
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
   @ViewChild('amountInput') amountInput?: ElementRef<HTMLInputElement>;
 
+  private readonly churchCurrency = inject(ChurchCurrencyService);
   private readonly quickCollectService = inject(QuickCollectService);
+
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? '';
+  }
   private readonly familyService = inject(FamilyService);
   private readonly donationsService = inject(DonationsService);
   private readonly receiptPrintService = inject(ReceiptPrintService);
@@ -465,9 +535,9 @@ export class QuickCollectDrawerComponent implements OnInit {
   payerName = '';
   amount: number | null = null;
   method = 'cash';
-  paymentDate = new Date().toISOString().slice(0, 10);
+  paymentDate = localDateOnly();
   notes = '';
-  generateReceipt = true;
+  gatewayReference = '';
   keepQuickCollectOpen = true;
   saving = false;
   submitAttempted = false;
@@ -492,7 +562,19 @@ export class QuickCollectDrawerComponent implements OnInit {
       && !!this.payerName.trim()
       && !!this.amount
       && this.amount > 0
-      && !!this.fundId;
+      && !!this.fundId
+      && (!this.needsReference || !!this.gatewayReference.trim());
+  }
+
+  get needsReference(): boolean {
+    return requiresGatewayReference(this.mapMethodForApi(this.method));
+  }
+
+  get familyCreditAmount(): number {
+    if (!this.amount || !this.selectedAllocation || this.selectedAllocation.allocatable_type === 'fund') {
+      return 0;
+    }
+    return Math.max(0, Number(this.amount) - Number(this.selectedAllocation.amount || 0));
   }
 
   get submitLabel(): string {
@@ -644,6 +726,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           this.fundId = this.funds[0].id;
         }
         this.allocationOptions = this.buildAllocationOptions(this.familyProfile);
+        this.autoSelectCollectableAllocation();
         if (this.familyProfile && !this.amount) {
           const pending = this.familyProfile.totals.pending_due;
           this.amount = pending > 0 ? pending : null;
@@ -717,6 +800,10 @@ export class QuickCollectDrawerComponent implements OnInit {
       notes: this.notes.trim() || null
     };
 
+    if (this.needsReference) {
+      payload['gateway_reference'] = this.gatewayReference.trim();
+    }
+
     const allocations = this.buildAllocations();
     if (allocations?.length) {
       payload['allocations'] = allocations;
@@ -731,7 +818,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           familyName: this.selectedFamily!.family_name,
           amount: this.amount!,
           categoryLabel,
-          receiptGenerated: this.generateReceipt,
+          receiptGenerated: true,
           receiptNumber: null
         };
 
@@ -803,7 +890,10 @@ export class QuickCollectDrawerComponent implements OnInit {
       return [];
     }
     const options: AllocationOption[] = [];
-    for (const due of profile.mandatory_contributions?.outstanding_dues?.slice(0, 3) ?? []) {
+    const collectDues = profile.mandatory_contributions?.collect_allocation_dues
+      ?? profile.mandatory_contributions?.outstanding_dues
+      ?? [];
+    for (const due of collectDues.slice(0, 3)) {
       options.push({
         label: due.plan?.name || due.period_label || 'Mandatory due',
         amount: due.outstanding_amount ?? Math.max(0, due.amount_due - due.amount_paid),
@@ -824,8 +914,8 @@ export class QuickCollectDrawerComponent implements OnInit {
     if (this.fundId) {
       const fund = this.funds.find((item) => item.id === this.fundId);
       if (fund) {
-        options.unshift({
-          label: fund.name,
+        options.push({
+          label: `${fund.name} (general gift)`,
           amount: profile.totals.pending_due > 0 ? profile.totals.pending_due : 500,
           type: 'general',
           allocatable_type: 'fund',
@@ -836,11 +926,28 @@ export class QuickCollectDrawerComponent implements OnInit {
     return options;
   }
 
+  private firstCollectableOption(): AllocationOption | null {
+    return this.allocationOptions.find(
+      (option) => option.allocatable_type === 'due' || option.allocatable_type === 'project_installment'
+    ) ?? null;
+  }
+
+  private autoSelectCollectableAllocation(): void {
+    const collectable = this.firstCollectableOption();
+    if (collectable) {
+      this.applyAllocation(collectable);
+      return;
+    }
+    this.selectedAllocation = null;
+    this.collectType = 'general';
+  }
+
   private buildAllocations(): Array<{ allocatable_type: string; allocatable_id: string; amount: number }> | undefined {
-    if (this.selectedAllocation) {
+    const target = this.selectedAllocation ?? this.firstCollectableOption();
+    if (target) {
       return [{
-        allocatable_type: this.selectedAllocation.allocatable_type,
-        allocatable_id: this.selectedAllocation.allocatable_id,
+        allocatable_type: target.allocatable_type,
+        allocatable_id: target.allocatable_id,
         amount: Number(this.amount)
       }];
     }
@@ -886,6 +993,9 @@ export class QuickCollectDrawerComponent implements OnInit {
         }
         if (this.familyProfile) {
           this.allocationOptions = this.buildAllocationOptions(this.familyProfile);
+          if (!this.selectedAllocation) {
+            this.autoSelectCollectableAllocation();
+          }
         }
       },
       error: () => {
@@ -895,8 +1005,7 @@ export class QuickCollectDrawerComponent implements OnInit {
   }
 
   private loadRecentActivity(): void {
-    const today = new Date().toISOString().slice(0, 10);
-    this.donationsService.getPayments({ payment_date_from: today, payment_date_to: today, per_page: '8' }).subscribe({
+    this.donationsService.getPayments({ today_only: '1', per_page: '8' }).subscribe({
       next: (res) => {
         const rows = res.data?.data ?? [];
         this.activityRows = rows.map((payment) => ({
@@ -904,7 +1013,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           family_name: payment.family?.family_name || payment.payer_name || 'Family',
           amount: payment.amount,
           method: payment.method,
-          time_label: this.formatTime(payment.created_at || payment.payment_date),
+          time_label: formatPaymentDateTime(payment.created_at || payment.payment_date),
           status: payment.status
         }));
       },
@@ -912,17 +1021,6 @@ export class QuickCollectDrawerComponent implements OnInit {
         this.activityRows = [];
       }
     });
-  }
-
-  private formatTime(value?: string): string {
-    if (!value) {
-      return 'Today';
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return 'Today';
-    }
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   }
 
   private clearAutoReset(): void {
@@ -948,6 +1046,7 @@ export class QuickCollectDrawerComponent implements OnInit {
     this.collectType = 'general';
     this.allocationOptions = [];
     this.selectedAllocation = null;
+    this.gatewayReference = '';
     this.upiIntent = null;
     this.searchResults = [];
     this.highlightedIndex = -1;

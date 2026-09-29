@@ -65,7 +65,7 @@ describe('FocExpenseModalComponent', () => {
     });
     fixture.componentRef.setInput('recordedAt', new Date().toISOString());
     fixture.detectChanges();
-    expect(fixture.nativeElement.textContent).toContain('Disbursement recorded successfully');
+    expect(fixture.nativeElement.textContent).toContain('Disbursement Recorded');
     expect(fixture.nativeElement.textContent).toContain('exp-99');
   });
 });

@@ -27,6 +27,7 @@ export class BCCService {
     
     if (filters.search) params = params.set('search', filters.search);
     if (filters.status) params = params.set('status', filters.status);
+    if (filters.meeting_day) params = params.set('meeting_day', filters.meeting_day);
     if (filters.has_space !== undefined) params = params.set('has_space', filters.has_space.toString());
     if (filters.sort_by) params = params.set('sort_by', filters.sort_by);
     if (filters.sort_order) params = params.set('sort_order', filters.sort_order);
@@ -97,7 +98,7 @@ export class BCCService {
   /**
    * Update a BCC leader
    */
-  updateLeader(bccId: string, leaderId: string, leader: Partial<BCCLeader>): Observable<ApiResponse<BCCLeader>> {
+  updateLeader(bccId: string, leaderId: string, leader: Record<string, unknown>): Observable<ApiResponse<BCCLeader>> {
     return this.http.put<ApiResponse<BCCLeader>>(`${this.apiUrl}/${bccId}/leaders/${leaderId}`, leader);
   }
 
@@ -126,6 +127,113 @@ export class BCCService {
     return this.http.post<ApiResponse<any>>(`${this.apiUrl}/remove-families`, {
       family_ids: familyIds
     });
+  }
+
+  getDashboard(params: Record<string, string | number | undefined | null> = {}): Observable<ApiResponse<unknown>> {
+    const cleaned: Record<string, string | number> = {};
+    Object.entries(params).forEach(([key, value]) => {
+      if (value === undefined || value === null || value === '' || value === 'all') {
+        return;
+      }
+      cleaned[key] = value;
+    });
+    return this.http.get<ApiResponse<unknown>>(`${this.apiUrl}/dashboard`, {
+      params: this.toParams(cleaned),
+    });
+  }
+
+  getOverview(bccId: string): Observable<ApiResponse<unknown>> {
+    return this.http.get<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/dashboard`);
+  }
+
+  getMembers(bccId: string, params: Record<string, string | number | undefined> = {}): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/${bccId}/members`, { params: this.toParams(params) });
+  }
+
+  assignMembers(
+    bccId: string,
+    familyIds: string[],
+    options: { transfer?: boolean; joined_date?: string } = {}
+  ): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/members`, {
+      family_ids: familyIds,
+      transfer: options.transfer ?? false,
+      joined_date: options.joined_date,
+    });
+  }
+
+  removeMember(
+    bccId: string,
+    membershipId: string,
+    body: { exit_date?: string; exit_reason?: string } = {}
+  ): Observable<ApiResponse<unknown>> {
+    return this.http.delete<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/members/${membershipId}`, {
+      body,
+    });
+  }
+
+  getPeople(bccId: string, params: Record<string, string | number | undefined> = {}): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/${bccId}/people`, { params: this.toParams(params) });
+  }
+
+  lookupFamilies(params: Record<string, string | number | undefined> = {}): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/families/lookup`, { params: this.toParams(params) });
+  }
+
+  getMemberHistory(bccId: string, params: Record<string, string | number | undefined> = {}): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/${bccId}/member-history`, { params: this.toParams(params) });
+  }
+
+  getLeadershipCurrent(bccId: string): Observable<ApiResponse<unknown>> {
+    return this.http.get<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/leadership/current`);
+  }
+
+  getLeadershipTimeline(
+    bccId: string,
+    params: Record<string, string | number | undefined> = {}
+  ): Observable<unknown> {
+    return this.http.get(`${this.apiUrl}/${bccId}/leadership/timeline`, { params: this.toParams(params) });
+  }
+
+  getEligibleLeaders(bccId: string): Observable<ApiResponse<unknown>> {
+    return this.http.get<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/leadership/eligible`);
+  }
+
+  assignLeadership(bccId: string, payload: Record<string, unknown>): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/leadership/assign`, payload);
+  }
+
+  terminateLeadership(
+    bccId: string,
+    leaderId: string,
+    payload: Record<string, unknown> = {}
+  ): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(
+      `${this.apiUrl}/${bccId}/leadership/${leaderId}/terminate`,
+      payload
+    );
+  }
+
+  handoverLeadership(bccId: string, payload: Record<string, unknown>): Observable<ApiResponse<unknown>> {
+    return this.http.post<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/leadership/handover`, payload);
+  }
+
+  getAuditLogs(
+    params: Record<string, string | number | undefined> = {},
+    bccId?: string
+  ): Observable<unknown> {
+    const url = bccId ? `${this.apiUrl}/${bccId}/audit-logs` : `${this.apiUrl}/audit-logs`;
+    return this.http.get(url, { params: this.toParams(params) });
+  }
+
+  private toParams(values: Record<string, string | number | undefined>): HttpParams {
+    let params = new HttpParams();
+    Object.entries(values).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+    return params;
   }
 }
 

@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, ChangeDetectionStrategy, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, ChangeDetectionStrategy, Component, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FamilyService } from '../../../../core/services/family.service';
@@ -6,12 +6,14 @@ import { Family, FamilyMember } from '../../../../core/models/family.model';
 import { FamilyFormComponent } from '../family-form/family-form';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
 import { ToastService } from '../../../../core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { CountryCode, getCountryCallingCode, parsePhoneNumber } from 'libphonenumber-js';
 import { SacramentEditModalComponent, SacramentFormType } from '../sacrament-edit-modal/sacrament-edit-modal.component';
 import { Store } from '@ngrx/store';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import { Tenant, Address } from '@core/models/tenant.model';
 import { Subject, takeUntil } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { ChurchProfileService } from '@core/services/church/church-profile.service';
 import { ChurchProfile } from '@core/models/church';
 import { SacramentTypeLookupService, SacramentTypeDto } from '@core/services/sacrament-type-lookup.service';
@@ -19,6 +21,12 @@ import { FamilyRelationshipNavigatorComponent } from '../family-relationship-nav
 import { FamilyMemberDetailPanelComponent } from '../family-member-detail-panel/family-member-detail-panel.component';
 import { DonationsService } from '@features/donations/services/donations.service';
 import { FamilyFinancialDashboardComponent } from '../family-financial-dashboard/family-financial-dashboard.component';
+import { BccTransferModalComponent } from '../bcc-transfer-modal/bcc-transfer-modal.component';
+import { MarriageHouseholdModalComponent } from '../marriage-household-modal/marriage-household-modal.component';
+import { FamilyTransitionHistoryPanelComponent } from '../family-transition-history-panel/family-transition-history-panel.component';
+import { RequestVisitModalComponent } from '@features/pastoral-care/components/request-visit-modal/request-visit-modal.component';
+import { PastoralCareService } from '@features/pastoral-care/services/pastoral-care.service';
+import { PastoralCareRequest } from '@features/pastoral-care/models/pastoral-care.model';
 import { DonationFamilyFinancialProfile } from '@features/donations/models/donation.model';
 import { NavigatorFilterKey } from '../../models/family-navigator.model';
 import {
@@ -33,10 +41,16 @@ import {
   prepareFamilyMemberPayload
 } from '../../utils/prepare-family-member-payload.util';
 import { PhoneCodeService } from '@core/services/phone-code.service';
+import { AuthService } from '@core/services/auth.service';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { SacramentService } from '@features/settings/sacraments/services/sacrament.service';
+import { ParishPersonService } from '@features/settings/sacraments/services/person.service';
+import { Sacrament } from '@features/settings/sacraments/models/sacrament.model';
+import { findFamilyMemberIndexByPersonId } from '../../utils/member-parent-display.util';
 
-type FamilyWorkspaceView = 'members' | 'financial';
+type FamilyWorkspaceView = 'members' | 'financial' | 'history';
 
-const WORKSPACE_TABS: FamilyWorkspaceView[] = ['members', 'financial'];
+const WORKSPACE_TABS: FamilyWorkspaceView[] = ['members', 'financial', 'history'];
 
 const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
   { id: -1, name: 'Baptism', code: 'baptism', display_order: 1, active: true },
@@ -55,13 +69,20 @@ const DEFAULT_SACRAMENT_TYPES: SacramentTypeDto[] = [
     SacramentEditModalComponent,
     FamilyRelationshipNavigatorComponent,
     FamilyMemberDetailPanelComponent,
-    FamilyFinancialDashboardComponent
+    FamilyFinancialDashboardComponent,
+    BccTransferModalComponent,
+    MarriageHouseholdModalComponent,
+    FamilyTransitionHistoryPanelComponent,
+    RequestVisitModalComponent
   ],
   templateUrl: './family-detail.html',
   styleUrls: ['./family-detail.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FamilyDetail implements OnInit, OnDestroy {
+  private readonly subscriptionAccess = inject(SubscriptionAccessService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
+
   family: Family | null = null;
   loading = true;
   error: string | null = null;
@@ -87,18 +108,42 @@ export class FamilyDetail implements OnInit, OnDestroy {
   homeParishAddress: string | null = null;
   homeParishPriest: string | null = null;
   familyFinancialProfile: DonationFamilyFinancialProfile | null = null;
+  memberRegisterSacraments: Sacrament[] = [];
+  canViewRegisterSacraments = false;
+  canRelocateBcc = false;
+  canMarriageTransition = false;
+  canViewTransitionHistory = false;
+  canCreatePastoralVisit = false;
+  canViewPastoralCare = false;
+  showBccTransferModal = false;
+  showMarriageHouseholdModal = false;
+  showRequestVisitModal = false;
+  pastoralVisits: PastoralCareRequest[] = [];
   workspaceView: FamilyWorkspaceView = 'members';
   readonly workspaceTabs = WORKSPACE_TABS;
   readonly workspaceTabLabels: Record<FamilyWorkspaceView, string> = {
     members: 'Members',
-    financial: 'Financial 360°'
+    financial: 'Financial 360°',
+    history: 'History'
   };
+
+  get visibleWorkspaceTabs(): FamilyWorkspaceView[] {
+    return this.workspaceTabs.filter((tab) => tab !== 'history' || this.canViewTransitionHistory);
+  }
 
   private currentTenant: Tenant | null = null;
   private readonly destroy$ = new Subject<void>();
 
   get callingCode(): string {
     return this.phoneCodeService.getPhoneCodeSync();
+  }
+
+  private guardWrite(action: string): boolean {
+    if (!this.subscriptionAccess.isReadOnly()) {
+      return true;
+    }
+    this.toastService.warning(`Read-only mode: renew subscription to ${action}.`, 'Read-only');
+    return false;
   }
 
   constructor(
@@ -111,10 +156,20 @@ export class FamilyDetail implements OnInit, OnDestroy {
     private churchProfileService: ChurchProfileService,
     private sacramentTypeLookup: SacramentTypeLookupService,
     private donationsService: DonationsService,
+    private authService: AuthService,
+    private sacramentService: SacramentService,
+    private personService: ParishPersonService,
+    private pastoralCareService: PastoralCareService,
     private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
+    this.canViewRegisterSacraments = this.authService.hasPermission('sacraments.view');
+    this.canRelocateBcc = this.authService.hasPermission('families.bcc.relocate');
+    this.canMarriageTransition = this.authService.hasPermission('families.marriage.transition');
+    this.canViewTransitionHistory = this.authService.hasPermission('families.history.view');
+    this.canCreatePastoralVisit = this.authService.hasPermission('pastoral.care.create');
+    this.canViewPastoralCare = this.authService.canAccessPastoral();
     this.initializeHomeParishContext();
     this.loadSacramentTypes();
     this.initializeWorkspaceView();
@@ -127,6 +182,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
     }
     this.loadFamily(id);
     this.loadFamilyFinancialSummary(id);
+    this.donationsService.ledgerMutated$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => this.reloadFamilyFinancialSummary());
   }
 
   ngOnDestroy(): void {
@@ -401,13 +459,14 @@ export class FamilyDetail implements OnInit, OnDestroy {
   loadFamily(id: string): void {
     this.loading = true;
     this.error = null;
-    const previousSelectedId = this.selectedMemberId;
+    const preferredMemberId =
+      this.route.snapshot.queryParamMap.get('member') || this.selectedMemberId;
     this.cdr.markForCheck();
 
     this.familyService.getFamily(id)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
-        next: (res) => this.applyFamilyLoadResponse(res, previousSelectedId, true),
+        next: (res) => this.applyFamilyLoadResponse(res, preferredMemberId, true),
         error: (err) => this.applyFamilyLoadError(err)
       });
   }
@@ -498,16 +557,123 @@ export class FamilyDetail implements OnInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe((params) => {
         this.applyWorkspaceViewFromQuery(params.get('tab'));
+        this.applyMemberFromQuery(params.get('member'));
       });
   }
 
+  private applyMemberFromQuery(memberId: string | null): void {
+    if (!memberId || !this.family?.members?.length) {
+      return;
+    }
+    const exists = this.family.members.some((member) => member.id === memberId);
+    if (!exists || this.selectedMemberId === memberId) {
+      return;
+    }
+    this.selectedMemberId = memberId;
+    this.cdr.markForCheck();
+  }
+
   private applyWorkspaceViewFromQuery(tab: string | null): void {
-    const view: FamilyWorkspaceView = tab === 'financial' ? 'financial' : 'members';
+    const view: FamilyWorkspaceView =
+      tab === 'financial' ? 'financial' : tab === 'history' ? 'history' : 'members';
     if (this.workspaceView === view) {
       return;
     }
 
     this.workspaceView = view;
+    this.cdr.markForCheck();
+  }
+
+  openBccTransferModal(): void {
+    if (!this.guardWrite('transfer BCC')) {
+      return;
+    }
+    if (!this.family || !this.canRelocateBcc) {
+      return;
+    }
+    this.showBccTransferModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeBccTransferModal(): void {
+    this.showBccTransferModal = false;
+    this.cdr.markForCheck();
+  }
+
+  onBccTransferCompleted(): void {
+    this.showBccTransferModal = false;
+    this.toastService.success('Family BCC updated successfully.', 'Success', 4000);
+    if (this.family?.id) {
+      this.loadFamily(this.family.id);
+    }
+    this.cdr.markForCheck();
+  }
+
+  openRequestVisitModal(): void {
+    if (!this.guardWrite('request a visit')) {
+      return;
+    }
+    if (!this.family || !this.canCreatePastoralVisit) {
+      return;
+    }
+    this.showRequestVisitModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeRequestVisitModal(): void {
+    this.showRequestVisitModal = false;
+    this.cdr.markForCheck();
+  }
+
+  onRequestVisitCompleted(): void {
+    this.showRequestVisitModal = false;
+    this.toastService.success('Visit requested.', 'Success', 4000);
+    this.loadPastoralVisits();
+    this.cdr.markForCheck();
+  }
+
+  private loadPastoralVisits(): void {
+    if (!this.family?.id || !this.canViewPastoralCare) {
+      this.pastoralVisits = [];
+      return;
+    }
+    this.pastoralCareService
+      .list({ family_id: this.family.id })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (rows) => {
+          this.pastoralVisits = (rows || []).filter((row) => row.status === 'open' || row.status === 'assigned');
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.pastoralVisits = [];
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  openMarriageHouseholdModal(): void {
+    if (!this.guardWrite('record marriage changes')) {
+      return;
+    }
+    if (!this.family || !this.canMarriageTransition) {
+      return;
+    }
+    this.showMarriageHouseholdModal = true;
+    this.cdr.markForCheck();
+  }
+
+  closeMarriageHouseholdModal(): void {
+    this.showMarriageHouseholdModal = false;
+    this.cdr.markForCheck();
+  }
+
+  onMarriageHouseholdCompleted(): void {
+    this.showMarriageHouseholdModal = false;
+    this.toastService.success('Marriage household change recorded.', 'Success', 4000);
+    if (this.family?.id) {
+      this.loadFamily(this.family.id);
+    }
     this.cdr.markForCheck();
   }
 
@@ -563,6 +729,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
       if (!this.homeParishPriest) {
         this.homeParishPriest = this.currentTenant?.pastor_name || this.homeParishPriest;
       }
+
+      this.loadMemberRegisterSacraments();
+      this.loadPastoralVisits();
     } else if (fromFullPageLoad) {
       this.family = null;
       this.error = (res.message && res.message.trim().length > 0) ? res.message : 'Failed to load family';
@@ -585,6 +754,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   openEdit(): void {
+    if (!this.guardWrite('edit families')) {
+      return;
+    }
     this.showEdit = true;
   }
 
@@ -1038,9 +1210,111 @@ export class FamilyDetail implements OnInit, OnDestroy {
   onNavigatorSelectMember(index: number): void {
     const member = this.family?.members?.[index];
     if (member?.id) {
-      this.selectedMemberId = member.id;
-      this.cdr.markForCheck();
+      this.selectMemberById(member.id);
     }
+  }
+
+  onLinkedParentSelected(personId: string): void {
+    const trimmedPersonId = String(personId || '').trim();
+    if (!trimmedPersonId || !this.family?.members?.length) {
+      return;
+    }
+
+    const localIndex = findFamilyMemberIndexByPersonId(this.family.members, trimmedPersonId);
+    if (localIndex !== null) {
+      this.onNavigatorSelectMember(localIndex);
+      return;
+    }
+
+    this.personService
+      .get(trimmedPersonId)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const linkedMember = response.data?.active_family_member;
+          if (!linkedMember?.id || !linkedMember.family_id) {
+            this.toastService.warning(
+              'This person is not linked to an active family member record.',
+              'Cannot open profile',
+              5000,
+            );
+            return;
+          }
+
+          if (linkedMember.family_id === this.family?.id) {
+            this.selectMemberById(linkedMember.id);
+            return;
+          }
+
+          void this.router.navigate(['/families', linkedMember.family_id], {
+            queryParams: { member: linkedMember.id },
+          });
+        },
+        error: () => {
+          this.toastService.error('Could not open the linked family member.', 'Error', 5000);
+        },
+      });
+  }
+
+  private selectMemberById(memberId: string): void {
+    if (!this.family?.members?.some((member) => member.id === memberId)) {
+      return;
+    }
+
+    if (this.workspaceView !== 'members') {
+      this.workspaceView = 'members';
+    }
+
+    this.selectedMemberId = memberId;
+    this.loadMemberRegisterSacraments();
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { member: memberId, tab: null },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.cdr.markForCheck();
+  }
+
+  private loadMemberRegisterSacraments(): void {
+    if (!this.canViewRegisterSacraments) {
+      this.memberRegisterSacraments = [];
+      return;
+    }
+
+    const member = this.getSelectedMember();
+    if (!member?.id) {
+      this.memberRegisterSacraments = [];
+      return;
+    }
+
+    this.sacramentService
+      .getSacraments({
+        family_member_id: member.id,
+        per_page: 50,
+        sort_by: 'date_administered',
+        sort_dir: 'desc'
+      })
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const paginated = response?.data;
+          this.memberRegisterSacraments = Array.isArray(paginated?.data) ? paginated.data : [];
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.memberRegisterSacraments = [];
+          this.cdr.markForCheck();
+        }
+      });
+  }
+
+  private getSelectedMember(): FamilyMember | null {
+    const index = this.getSelectedMemberIndex();
+    if (index === null || !this.family?.members?.[index]) {
+      return null;
+    }
+    return this.family.members[index];
   }
 
   onNavigatorSearchChange(query: string): void {
@@ -1059,6 +1333,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   onNavigatorAddMember(): void {
+    if (!this.guardWrite('add members')) {
+      return;
+    }
     this.memberToEditIndex = null;
     this.memberToEdit = null;
     this.isHeadMemberMode = false;
@@ -1077,6 +1354,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
 
   openSacramentModal(memberIndex: number, sacrament: string, event?: Event): void {
     event?.stopPropagation();
+    if (!this.guardWrite('update sacraments')) {
+      return;
+    }
 
     const modalSacrament = this.resolveCanonicalSacrament(sacrament);
     if (!modalSacrament) {
@@ -1285,6 +1565,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * This method handles both adding a new head and editing an existing head
    */
   openAddOrEditHeadMember(): void {
+    if (!this.guardWrite('edit members')) {
+      return;
+    }
     const head = this.getFamilyHead();
     this.isHeadMemberMode = true; // Set flag to lock relationship dropdown
     
@@ -1362,6 +1645,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   openEditMember(index: number): void {
+    if (!this.guardWrite('edit members')) {
+      return;
+    }
     this.memberToEditIndex = index;
     this.isHeadMemberMode = false; // Regular member edit, not head mode
     // Store the member data once when opening the modal to prevent re-patching the form
@@ -1380,6 +1666,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
     return {
       // CRITICAL: Keep ID as string (UUID), don't convert to Number
       id: m.id ? String(m.id).trim() : null,
+      person_id: m.person_id ? String(m.person_id).trim() : (m.person?.id ? String(m.person.id).trim() : null),
       first_name: m.first_name || '',
       middle_name: m.middle_name || '',
       last_name: m.last_name || '',
@@ -1391,6 +1678,10 @@ export class FamilyDetail implements OnInit, OnDestroy {
       email: m.email || '',
       occupation: m.occupation || '',
       education: m.education || '',
+      father_person_id: m.person?.father_person_id ?? m.father_person_id ?? null,
+      father_name: m.display_father_name ?? m.father_name ?? m.person?.father_name ?? null,
+      mother_person_id: m.person?.mother_person_id ?? m.mother_person_id ?? null,
+      mother_name: m.display_mother_name ?? m.mother_name ?? m.person?.mother_name ?? null,
       baptism_date: m.baptism_date || '',
       first_communion_date: m.first_communion_date || '',
       confirmation_date: m.confirmation_date || '',
@@ -1399,6 +1690,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
   }
 
   onMemberModalSave(value: FamilyMemberFormValue): void {
+    if (!this.guardWrite('save members')) {
+      return;
+    }
     this.memberModalError = null;
 
     // CRITICAL: If this is head member mode, ensure relationship is always 'self'
@@ -1560,9 +1854,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
       const file = input.files[0];
       
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        this.toastService.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'Error', 5000);
+        this.toastService.error('Please select a valid image file (JPEG, PNG, or WebP)', 'Error', 5000);
         input.value = '';
         return;
       }
@@ -1585,6 +1879,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Upload family profile image
    */
   uploadProfileImage(file: File): void {
+    if (!this.guardWrite('upload images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;
@@ -1625,16 +1922,25 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Delete family profile image
    */
   deleteProfileImage(): void {
+    if (!this.guardWrite('delete images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;
     }
 
-    if (!confirm('Are you sure you want to delete the family profile image?')) {
-      return;
-    }
-
-    this.familyService.deleteProfileImage(this.family.id)
+    this.confirmationDialog.confirm({
+      title: 'Remove Profile Image',
+      message: 'Are you sure you want to delete the family profile image?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+    const familyId = this.family!.id;
+    this.familyService.deleteProfileImage(familyId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
@@ -1656,6 +1962,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
   /**
@@ -1679,9 +1986,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
       const file = input.files[0];
       
       // Validate file type
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
       if (!allowedTypes.includes(file.type)) {
-        this.toastService.error('Please select a valid image file (JPEG, PNG, GIF, or WebP)', 'Error', 5000);
+        this.toastService.error('Please select a valid image file (JPEG, PNG, or WebP)', 'Error', 5000);
         input.value = '';
         return;
       }
@@ -1704,6 +2011,9 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Upload family head profile image
    */
   uploadHeadProfileImage(file: File): void {
+    if (!this.guardWrite('upload images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;
@@ -1745,16 +2055,25 @@ export class FamilyDetail implements OnInit, OnDestroy {
    * Delete family head profile image
    */
   deleteHeadProfileImage(): void {
+    if (!this.guardWrite('delete images')) {
+      return;
+    }
     if (!this.family?.id) {
       this.toastService.error('Family not loaded. Please refresh and try again.', 'Error', 5000);
       return;
     }
 
-    if (!confirm('Are you sure you want to delete the family head profile image?')) {
-      return;
-    }
-
-    this.familyService.deleteHeadProfileImage(this.family.id)
+    this.confirmationDialog.confirm({
+      title: 'Remove Head Profile Image',
+      message: 'Are you sure you want to delete the family head profile image?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+    const familyId = this.family!.id;
+    this.familyService.deleteHeadProfileImage(familyId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (res) => {
@@ -1777,6 +2096,7 @@ export class FamilyDetail implements OnInit, OnDestroy {
           this.cdr.markForCheck();
         }
       });
+    });
   }
 
   /**

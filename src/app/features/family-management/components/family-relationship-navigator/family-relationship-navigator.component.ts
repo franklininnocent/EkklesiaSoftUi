@@ -33,6 +33,7 @@ import { FamilyNavSearchComponent } from '../family-nav-search/family-nav-search
 import { FamilyHierarchyGroupComponent } from '../family-hierarchy-group/family-hierarchy-group.component';
 import { MemberNavRowComponent } from '../member-nav-row/member-nav-row.component';
 import { AddMemberIconButtonComponent } from '@shared/components/add-member-icon-button/add-member-icon-button.component';
+import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
 
 const VIRTUAL_SCROLL_THRESHOLD = 15;
 const ROW_HEIGHT_PX = 90;
@@ -48,7 +49,8 @@ const VIRTUAL_BUFFER_ROWS = 4;
     FamilyNavSearchComponent,
     FamilyHierarchyGroupComponent,
     MemberNavRowComponent,
-    AddMemberIconButtonComponent
+    AddMemberIconButtonComponent,
+    ImageViewerComponent
   ],
   templateUrl: './family-relationship-navigator.component.html',
   styleUrls: ['./family-relationship-navigator.component.scss'],
@@ -95,6 +97,8 @@ export class FamilyRelationshipNavigatorComponent implements OnChanges {
 
   virtualPaddingTop = 0;
   virtualPaddingBottom = 0;
+
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
 
   readonly virtualRowHeight = ROW_HEIGHT_PX;
   readonly groupHeaderHeight = GROUP_HEADER_HEIGHT_PX;
@@ -338,5 +342,15 @@ export class FamilyRelationshipNavigatorComponent implements OnChanges {
     if (flatIdx >= 0) {
       this.focusedFlatIndex = flatIdx;
     }
+  }
+
+  openPhotoViewer(payload: { src: string; alt: string; title: string; subtitle: string }): void {
+    this.photoViewer = payload;
+    this.cdr.detectChanges();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.detectChanges();
   }
 }

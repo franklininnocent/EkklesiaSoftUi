@@ -101,18 +101,66 @@ describe('DonationsService', () => {
     });
   });
 
-  it('runs due recurring schedules', () => {
-    service.runDueRecurringSchedules().subscribe((response) => {
-      expect(response.success).toBe(true);
-      expect(response.data.processed).toBe(2);
+    it('runs due recurring schedules', () => {
+      service.runDueRecurringSchedules().subscribe((response) => {
+        expect(response.success).toBe(true);
+        expect(response.data.processed).toBe(2);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/recurring-schedules/run-due`);
+      expect(req.request.method).toBe('POST');
+      req.flush({
+        success: true,
+        message: 'ok',
+        data: { processed: 2, succeeded: 2, failed: 0 }
+      });
     });
 
-    const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/recurring-schedules/run-due`);
-    expect(req.request.method).toBe('POST');
-    req.flush({
-      success: true,
-      message: 'ok',
-      data: { processed: 2, succeeded: 2, failed: 0 }
+    it('sends today_only on the payments list request', () => {
+      service.getPayments({ today_only: '1', per_page: '20' }).subscribe((response) => {
+        expect(response.meta?.date_basis).toBe('payment_date');
+        expect(response.meta?.totals.payment_count).toBe(2);
+      });
+
+      const req = httpMock.expectOne((request) =>
+        request.url === `${environment.apiUrl}/tenant/donations/payments`
+        && request.params.get('today_only') === '1'
+        && request.params.get('per_page') === '20'
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush({
+        success: true,
+        data: { data: [], current_page: 1, last_page: 1, total: 2, per_page: 20 },
+        meta: {
+          totals: { payment_count: 2, collected_gross: 10, refunded_total: 0, net_collected: 10, families_count: 1, currency_code: 'INR' },
+          business_date: '2026-09-28',
+          timezone: 'Asia/Kolkata',
+          date_basis: 'payment_date',
+          date_mode: 'today'
+        }
+      });
+    });
+
+    it('sends Idempotency-Key when recording a payment', () => {
+      service.createPayment({ amount: 10, method: 'cash' }).subscribe((response) => {
+        expect(response.success).toBe(true);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/payments`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.headers.get('Idempotency-Key')).toBeTruthy();
+      req.flush({ success: true, message: 'ok', data: { id: 'pay-1' } });
+    });
+
+    it('reverses a payment with an idempotency key', () => {
+      service.reversePayment('pay-1', 'Entered twice').subscribe((response) => {
+        expect(response.success).toBe(true);
+      });
+
+      const req = httpMock.expectOne(`${environment.apiUrl}/tenant/donations/payments/pay-1/reverse`);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ reason: 'Entered twice' });
+      expect(req.request.headers.get('Idempotency-Key')).toBeTruthy();
+      req.flush({ success: true, message: 'reversed' });
     });
   });
-});

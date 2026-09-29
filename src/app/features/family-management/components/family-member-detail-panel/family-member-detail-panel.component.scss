@@ -16,6 +16,12 @@
     display: block;
     width: 100%;
   }
+
+  app-family-affiliations-panel {
+    display: block;
+    width: 100%;
+    margin-top: 12px;
+  }
 }
 
 .head-empty-card {
@@ -58,28 +64,6 @@
     margin: 0;
     font-size: 13px;
     color: #64748b;
-  }
-}
-
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  line-height: 1;
-  padding: 8px 14px;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-
-  &--primary {
-    background: var(--primary-color, #4f46e5);
-    color: #fff;
-    &:hover {
-      background: var(--primary-dark, #4338ca);
-    }
   }
 }
 

@@ -1,0 +1,5 @@
+/* Panel container matching Add organization / Members / BCC list `.cf-panel` content block. */
+.bcc-audit__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+}

@@ -4,13 +4,14 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Subject, takeUntil } from 'rxjs';
 import { FamilyMember } from '@core/models/family.model';
 import { FamilyService } from '../../../../core/services/family.service';
+import { ModalShellComponent } from '@shared/components';
 
 export type SacramentFormType = 'baptism' | 'first_communion' | 'confirmation' | 'marriage';
 
 @Component({
   selector: 'app-sacrament-edit-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
   templateUrl: './sacrament-edit-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./sacrament-edit-modal.component.scss']

@@ -4,11 +4,37 @@ import { Observable } from 'rxjs';
 import { environment } from '@environments/environment';
 import { FamilyMember, PaginatedResponse, ApiResponse } from '@core/models/family.model';
 
+export interface MemberCelebrationItem {
+  id: string;
+  family_id?: string;
+  name: string;
+  day_label: string;
+  date_label: string;
+  detail: string;
+  event_date: string;
+}
+
+export interface MemberCelebrationsResponse {
+  week: {
+    start: string;
+    end: string;
+    label: string;
+    timezone: string;
+  };
+  birthdays: MemberCelebrationItem[];
+  anniversaries: MemberCelebrationItem[];
+}
+
 export interface MemberFilters {
   search?: string;
   status?: string;
   bcc_id?: string;
   is_head?: boolean | string;
+  progression?:
+    | 'baptized_without_communion'
+    | 'baptized_without_confirmation'
+    | 'female_unmarried_over_18'
+    | 'male_unmarried_over_23';
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
   per_page?: number;
@@ -35,6 +61,16 @@ export class MemberService {
   }
 
   /**
+   * Birthdays and anniversaries for the current parish week (server-side, tenant timezone).
+   */
+  getCelebrations(): Observable<ApiResponse<MemberCelebrationsResponse>> {
+    return this.http.get<ApiResponse<MemberCelebrationsResponse>>(
+      `${this.apiUrl}/celebrations`,
+      this.buildTenantCountryHeaders()
+    );
+  }
+
+  /**
    * Get paginated list of all members across families
    */
   getMembers(filters: MemberFilters = {}): Observable<PaginatedResponse<FamilyMember>> {
@@ -50,8 +86,9 @@ export class MemberService {
         : filters.is_head.toString();
       params = params.set('is_head', isHeadValue);
     }
-    if (filters.sort_by) params = params.set('sort_by', filters.sort_by);
-    if (filters.sort_order) params = params.set('sort_order', filters.sort_order);
+    if (filters.progression) params = params.set('progression', filters.progression);
+    params = params.set('sort_by', filters.sort_by || 'name');
+    params = params.set('sort_order', filters.sort_order || 'asc');
     // Always set per_page and page to ensure pagination works
     params = params.set('per_page', (filters.per_page || 20).toString());
     params = params.set('page', (filters.page || 1).toString());

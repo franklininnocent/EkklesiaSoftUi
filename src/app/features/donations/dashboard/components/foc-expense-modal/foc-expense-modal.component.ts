@@ -10,8 +10,11 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ParishExpenseRecord } from '../../../models/donation.model';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { formatFocCurrency } from '../../utils/foc-format.util';
+import { localDateOnly } from '../../../utils/local-date-only';
 
 export interface FocExpenseFormValue {
   category: string;
@@ -45,18 +48,24 @@ export interface FocExpenseMethodOption {
 @Component({
   selector: 'app-foc-expense-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, ModalShellComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './foc-expense-modal.component.html',
   styleUrl: './foc-expense-modal.component.scss'
 })
 export class FocExpenseModalComponent {
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly churchCurrency = inject(ChurchCurrencyService);
 
   @Input() open = false;
   @Input() saving = false;
   @Input({ required: true }) form!: FocExpenseFormValue;
   @Input() currencyCode = 'INR';
+
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? this.currencyCode;
+  }
+
   @Input() operatorName = 'Administrator';
   @Input() operatorRole = 'Administrator';
   @Input() financialYear: string | null = null;
@@ -110,7 +119,7 @@ export class FocExpenseModalComponent {
   }
 
   get todayExpenses(): number {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = localDateOnly();
     if (this.form.expense_date === today) {
       return this.previewAmount;
     }
@@ -192,12 +201,6 @@ export class FocExpenseModalComponent {
 
   onFieldChange(): void {
     this.touch();
-  }
-
-  onBackdropClick(event: MouseEvent): void {
-    if ((event.target as HTMLElement).classList.contains('foc-disb-backdrop')) {
-      this.close.emit();
-    }
   }
 
   saveDraft(): void {

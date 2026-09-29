@@ -1,0 +1,129 @@
+<app-modal-shell
+  title="Assign leadership"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <div class="assign-leadership-modal__body cf-loading-block" *ngIf="loading" role="status" aria-live="polite">
+    <p class="cf-loading-block__label">Loading assignment options…</p>
+  </div>
+
+  <div class="cf-inline-alert" *ngIf="!loading && loadError" role="alert">
+    <p>{{ loadError }}</p>
+  </div>
+
+  <form
+    id="assign-leadership-form"
+    class="assign-leadership-modal__body"
+    *ngIf="!loading && !loadError"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+  >
+    <div class="assign-leadership-modal__grid cf-form-grid">
+      <app-form-field
+        label="Position"
+        [required]="true"
+        fieldId="assign-position"
+        [errorText]="submitted && form.controls.position_id.invalid ? 'Position is required.' : null"
+      >
+        <select id="assign-position" formControlName="position_id">
+          <option value="">Select position…</option>
+          <option *ngFor="let position of positions" [value]="position.id">
+            {{ position.name }}
+          </option>
+        </select>
+      </app-form-field>
+
+      <app-leadership-member-picker
+        formControlName="membership_id"
+        [members]="members"
+        [guestsCanHoldOffice]="guestsCanHoldOffice"
+        [showRequiredError]="submitted && form.controls.membership_id.invalid"
+      ></app-leadership-member-picker>
+    </div>
+
+    <div class="assign-leadership-modal__grid cf-form-grid">
+      <app-form-field
+        label="Appointment date"
+        [required]="true"
+        fieldId="assign-appointment-date"
+        [errorText]="submitted && form.controls.appointment_date.invalid ? 'Appointment date is required.' : null"
+      >
+        <input id="assign-appointment-date" type="date" formControlName="appointment_date" />
+      </app-form-field>
+
+      <app-form-field
+        label="Effective from"
+        [required]="true"
+        fieldId="assign-effective-from"
+        [errorText]="submitted && form.controls.effective_from.invalid ? 'Effective from date is required.' : null"
+      >
+        <input id="assign-effective-from" type="date" formControlName="effective_from" />
+      </app-form-field>
+    </div>
+
+    <p
+      class="cf-form-field__error"
+      *ngIf="submitted && form.hasError('appointmentAfterEffective')"
+      role="alert"
+    >
+      Appointment date must be on or before the effective from date.
+    </p>
+
+    <div class="assign-leadership-modal__grid cf-form-grid">
+      <app-form-field
+        label="Effective to"
+        fieldId="assign-effective-to"
+        [errorText]="submitted && form.hasError('effectiveToBeforeFrom') ? 'Effective to must be on or after the effective from date.' : null"
+      >
+        <input id="assign-effective-to" type="date" formControlName="effective_to" />
+      </app-form-field>
+
+      <app-form-field label="Term label" fieldId="assign-term-label">
+        <input id="assign-term-label" type="text" formControlName="term_label" maxlength="50" />
+      </app-form-field>
+    </div>
+
+    <app-form-field label="Appointment reference" fieldId="assign-appointment-reference">
+      <input id="assign-appointment-reference" type="text" formControlName="appointment_reference" maxlength="100" />
+    </app-form-field>
+
+    <label class="assign-leadership-modal__check">
+      <input type="checkbox" formControlName="is_interim" />
+      Interim appointment
+    </label>
+
+    <app-form-field label="Remarks" fieldId="assign-remarks">
+      <textarea id="assign-remarks" formControlName="remarks" rows="2"></textarea>
+    </app-form-field>
+
+    <div class="cf-inline-alert" *ngIf="conflictError" role="alert">
+      <p>{{ conflictError }}</p>
+    </div>
+    <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button
+      *ngIf="!loading && loadError"
+      type="button"
+      class="cf-btn"
+      (click)="onCancel()"
+    >
+      Cancel
+    </button>
+    <button
+      *ngIf="!loading && loadError"
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="retryLoad()"
+    >
+      Try again
+    </button>
+    <ng-container *ngIf="!loading && !loadError">
+      <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+      <button type="submit" form="assign-leadership-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+        {{ saving ? 'Assigning…' : 'Assign leadership' }}
+      </button>
+    </ng-container>
+  </ng-container>
+</app-modal-shell>

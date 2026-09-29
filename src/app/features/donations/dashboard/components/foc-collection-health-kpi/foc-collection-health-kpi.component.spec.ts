@@ -19,7 +19,7 @@ describe('FocCollectionHealthKpiComponent', () => {
     primary_reason: '12 families require follow-up',
     secondary_reason: 'Building Fund behind by INR 45,000.00',
     action_label: 'Review Issues',
-    action_route: '/donations/collection-health',
+    action_route: '/donations',
     factors: [
       { key: 'completion', label: 'Collection Completion Rate', score: 68, weight_pct: 35, status: 'attention' },
       { key: 'participation', label: 'Family Participation Rate', score: 72, weight_pct: 35, status: 'attention' },

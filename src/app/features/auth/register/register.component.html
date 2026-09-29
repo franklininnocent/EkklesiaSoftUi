@@ -5,74 +5,103 @@
       <p class="auth-subtitle">Sign up to get started</p>
     </div>
 
-    <app-card>
+    <div class="auth-card">
       <form [formGroup]="registerForm" (ngSubmit)="onSubmit()">
-        <div class="form-group">
-          <app-input
+        <div class="form-group cf-form-field">
+          <label class="cf-form-field__label" for="register-name">
+            <span>Full Name</span>
+            <span class="cf-form-field__required" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="register-name"
             type="text"
-            label="Full Name"
+            class="auth-native-input"
             placeholder="Enter your full name"
             formControlName="name"
-            [error]="getErrorMessage('name')"
-            [required]="true"
-            aria-label="Full name"
-            aria-describedby="name-error"
-          ></app-input>
+            autocomplete="name"
+            aria-required="true"
+            [class.cf-form-field__control--invalid]="!!getErrorMessage('name')"
+            [attr.aria-invalid]="getErrorMessage('name') ? 'true' : null"
+            [attr.aria-describedby]="getErrorMessage('name') ? 'register-name-error' : null"
+          />
+          <p *ngIf="getErrorMessage('name') as message" id="register-name-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
-        <div class="form-group">
-          <app-input
+        <div class="form-group cf-form-field">
+          <label class="cf-form-field__label" for="register-email">
+            <span>Email Address</span>
+            <span class="cf-form-field__required" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="register-email"
             type="email"
-            label="Email Address"
+            class="auth-native-input"
             placeholder="Enter your email"
             formControlName="email"
-            [error]="getErrorMessage('email')"
-            [required]="true"
-            aria-label="Email address"
-            aria-describedby="email-error"
-          ></app-input>
+            autocomplete="email"
+            aria-required="true"
+            [class.cf-form-field__control--invalid]="!!getErrorMessage('email')"
+            [attr.aria-invalid]="getErrorMessage('email') ? 'true' : null"
+            [attr.aria-describedby]="getErrorMessage('email') ? 'register-email-error' : null"
+          />
+          <p *ngIf="getErrorMessage('email') as message" id="register-email-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
-        <div class="form-group">
-          <app-input
+        <div class="form-group cf-form-field">
+          <label class="cf-form-field__label" for="register-password">
+            <span>Password</span>
+            <span class="cf-form-field__required" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="register-password"
             type="password"
-            label="Password"
+            class="auth-native-input"
             placeholder="Enter your password"
             formControlName="password"
-            [error]="getErrorMessage('password')"
-            [required]="true"
-            aria-label="Password"
-            aria-describedby="password-error"
-          ></app-input>
+            autocomplete="new-password"
+            aria-required="true"
+            [class.cf-form-field__control--invalid]="!!getErrorMessage('password')"
+            [attr.aria-invalid]="getErrorMessage('password') ? 'true' : null"
+            [attr.aria-describedby]="getErrorMessage('password') ? 'register-password-error' : null"
+          />
+          <p *ngIf="getErrorMessage('password') as message" id="register-password-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
-        <div class="form-group">
-          <app-input
+        <div class="form-group cf-form-field">
+          <label class="cf-form-field__label" for="register-password-confirmation">
+            <span>Confirm Password</span>
+            <span class="cf-form-field__required" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="register-password-confirmation"
             type="password"
-            label="Confirm Password"
+            class="auth-native-input"
             placeholder="Confirm your password"
             formControlName="password_confirmation"
-            [error]="getErrorMessage('password_confirmation')"
-            [required]="true"
-            aria-label="Confirm password"
-            aria-describedby="password-confirmation-error"
-          ></app-input>
+            autocomplete="new-password"
+            aria-required="true"
+            [class.cf-form-field__control--invalid]="!!getErrorMessage('password_confirmation')"
+            [attr.aria-invalid]="getErrorMessage('password_confirmation') ? 'true' : null"
+            [attr.aria-describedby]="getErrorMessage('password_confirmation') ? 'register-password-confirmation-error' : null"
+          />
+          <p *ngIf="getErrorMessage('password_confirmation') as message" id="register-password-confirmation-error" class="cf-form-field__error">{{ message }}</p>
         </div>
 
         <div *ngIf="error$ | async as error" class="error-banner" role="alert" aria-live="polite">
           {{ error }}
         </div>
 
-        <app-button
-          type="submit"
-          variant="primary"
-          size="lg"
-          [fullWidth]="true"
-          [loading]="(loading$ | async) ?? false"
-          aria-label="Create new account"
-        >
-          Create Account
-        </app-button>
+        <ng-container *ngIf="{ busy: (loading$ | async) ?? false } as state">
+          <button
+            type="submit"
+            class="cf-btn cf-btn-primary auth-submit"
+            [disabled]="state.busy"
+            [attr.aria-busy]="state.busy"
+          >
+            <span *ngIf="state.busy" class="cf-spinner" aria-hidden="true"></span>
+            Create Account
+          </button>
+        </ng-container>
 
         <div class="auth-footer">
           <p>
@@ -81,7 +110,6 @@
           </p>
         </div>
       </form>
-    </app-card>
+    </div>
   </div>
 </div>
-

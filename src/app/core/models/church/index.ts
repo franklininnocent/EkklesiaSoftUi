@@ -58,6 +58,9 @@ export interface Bishop {
   phone?: string;
   biography?: string;
   photo_url?: string;
+  photo_path?: string;
+  photo_public_url?: string;
+  has_photo?: boolean;
   active: number;
   created_at?: string;
   updated_at?: string;
@@ -247,6 +250,30 @@ export interface UpdateChurchProfileRequest {
   patron_name?: string;
 }
 
+export type ChurchStatusMetricStatus = 'available' | 'unavailable';
+
+export interface ChurchStatusMetric {
+  key: string;
+  label: string;
+  status: ChurchStatusMetricStatus;
+  percent: number | null;
+  display: string;
+  tooltip: string;
+  summary?: string;
+  empty_message?: string;
+  details?: Record<string, unknown>;
+}
+
+export interface ChurchStatusMetrics {
+  membership_health: ChurchStatusMetric;
+  sacramental_records: ChurchStatusMetric;
+  volunteer_engagement: ChurchStatusMetric;
+  profile_completeness: ChurchStatusMetric;
+  generated_at: string;
+}
+
+export type ChurchStatusMetricsResponse = ChurchDataResponse<ChurchStatusMetrics>;
+
 /**
  * Pope Details Model
  * Represents global Pope information for display in General Information section.
@@ -265,4 +292,6 @@ export interface UpdatePopeDetailsRequest {
   pope_title?: string;
   pope_effective_from?: string;
 }
+
+export * from './leadership-governance.model';
 

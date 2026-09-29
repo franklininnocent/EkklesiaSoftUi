@@ -1,17 +1,14 @@
-<div class="sacrament-type-list-container">
-  <!-- Header -->
-  <div class="list-header">
-    <div class="header-content">
-      <h2 class="page-title">Sacrament Types</h2>
-      <p class="page-subtitle">Manage sacrament type master data</p>
-    </div>
-    <div class="header-actions">
-      <button class="btn btn-primary" (click)="onCreate()">
+<div class="sacrament-type-list-container cf-page">
+  <app-page-header
+    title="Sacrament Types"
+    subtitle="Manage sacrament type master data">
+    <div class="sacrament-type-page-header-actions">
+      <button class="cf-btn cf-btn-primary" (click)="onCreate()">
         <span class="btn-icon">+</span>
         Create Sacrament Type
       </button>
     </div>
-  </div>
+  </app-page-header>
 
   <!-- Filters -->
   <div class="filters-section">
@@ -24,10 +21,10 @@
         placeholder="Search by name, code, or description..."
         class="search-input"
       />
-      <button class="btn btn-secondary" (click)="onSearch()">
+      <button class="cf-btn" (click)="onSearch()">
         🔍 Search
       </button>
-      <button *ngIf="searchTerm" class="btn btn-link" (click)="clearSearch()">
+      <button *ngIf="searchTerm" class="cf-btn-link" (click)="clearSearch()">
         Clear
       </button>
     </div>
@@ -55,7 +52,7 @@
 
       <div class="filter-actions">
         <button *ngIf="searchTerm || selectedCategory || selectedStatus" 
-                class="btn btn-link" 
+                class="cf-btn-link" 
                 (click)="clearFilters()">
           Clear All Filters
         </button>
@@ -141,13 +138,13 @@
     <app-loading-skeleton *ngIf="loading" type="table" [rows]="10" [columns]="8"></app-loading-skeleton>
 
     <!-- Empty State -->
-    <app-empty-state
+    <app-cf-empty-state
       *ngIf="!loading && sacramentTypes.length === 0"
+      icon="📭"
       title="No sacrament types found"
-      description="Get started by creating your first sacrament type"
-      buttonText="Create First Sacrament Type"
-      (action)="onCreate()"
-    ></app-empty-state>
+      description="Get started by creating your first sacrament type">
+      <button type="button" class="cf-btn cf-btn-primary" (click)="onCreate()">Create First Sacrament Type</button>
+    </app-cf-empty-state>
   </div>
 
   <!-- Pagination -->
@@ -162,21 +159,19 @@
 </div>
 
 <!-- Delete Confirmation Modal -->
-<div class="modal-overlay" *ngIf="showDeleteModal" (click)="cancelDelete()">
-  <div class="modal-dialog modal-sm" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h3 class="modal-title">Confirm Delete</h3>
-      <button class="close-button" (click)="cancelDelete()">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p>Are you sure you want to delete the sacrament type <strong>{{ selectedType?.name }}</strong>?</p>
-      <p class="warning-text">This action cannot be undone. The sacrament type can only be deleted if it's not being used by any sacrament records.</p>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
-      <button class="btn btn-danger" (click)="confirmDelete()">Delete</button>
-    </div>
+<app-modal-shell
+  *ngIf="showDeleteModal"
+  title="Confirm Delete"
+  size="xs"
+  [isSubmitting]="false"
+  (closeRequested)="cancelDelete()"
+>
+  <p>Are you sure you want to delete the sacrament type <strong>{{ selectedType?.name }}</strong>?</p>
+  <p class="warning-text">This action cannot be undone. The sacrament type can only be deleted if it's not being used by any sacrament records.</p>
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="cancelDelete()">Cancel</button>
+    <button type="button" class="cf-btn cf-btn-danger" (click)="confirmDelete()">Delete</button>
   </div>
-</div>
+</app-modal-shell>
 
 

@@ -16,6 +16,9 @@ export class FocRollupPanelComponent {
   @Input() currencyCode = 'INR';
 
   formatCurrency(value: number | null | undefined): string {
+    if (value == null) {
+      return '—';
+    }
     return formatFocCurrency(value, this.currencyCode);
   }
 }

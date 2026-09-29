@@ -1,0 +1,104 @@
+<div class="insights-tenants__toolbar">
+  <div class="insights-tenants__windows" role="group" aria-label="Activity window">
+    <button
+      type="button"
+      class="cf-btn cf-btn-sm"
+      *ngFor="let days of windows"
+      [class.cf-btn-primary]="filters.window_days === days"
+      [attr.aria-pressed]="filters.window_days === days"
+      (click)="setWindow(days)"
+    >
+      {{ days }}D
+    </button>
+  </div>
+  <div class="insights-tenants__toolbar-actions">
+    <app-list-toolbar
+      searchPlaceholder="Tenant name or slug"
+      [searchValue]="filters.search || ''"
+      [filterCount]="drawerFilterCount"
+      (searchChange)="onSearchChange($event)"
+      (filtersOpened)="openFilters()"
+    ></app-list-toolbar>
+    <button type="button" class="cf-btn cf-btn-sm cf-btn-secondary" (click)="exportCsv()" [disabled]="exporting">
+      {{ exporting ? 'Exporting…' : 'Export CSV' }}
+    </button>
+  </div>
+</div>
+
+<div class="cf-inline-alert cf-panel" *ngIf="error" role="alert">
+  <p>{{ error }}</p>
+</div>
+
+<div *ngIf="loading">
+  <app-loading-skeleton type="table" [rows]="8" [columns]="8"></app-loading-skeleton>
+</div>
+
+<ng-container *ngIf="!loading && !error">
+  <p class="insights-tenants__meta" *ngIf="total > 0">{{ total }} tenant{{ total === 1 ? '' : 's' }}</p>
+
+  <app-cf-empty-state
+    *ngIf="!rows.length"
+    title="No tenants match"
+    description="Try clearing filters or widening the activity window."
+    [hasActions]="false"
+  ></app-cf-empty-state>
+
+  <app-data-table *ngIf="rows.length" [clickableRows]="true" [ariaBusy]="loading">
+    <thead>
+      <tr>
+        <th scope="col" [appSortable]="'tenant_name'" [direction]="sortDirectionFor('tenant_name')" (sort)="onSort($event)">Tenant</th>
+        <th scope="col">Module</th>
+        <th scope="col">Adoption</th>
+        <th scope="col">Health</th>
+        <th scope="col" [appSortable]="'organizations_count'" [direction]="sortDirectionFor('organizations_count')" (sort)="onSort($event)">Orgs</th>
+        <th scope="col" [appSortable]="'members_count'" [direction]="sortDirectionFor('members_count')" (sort)="onSort($event)">Members</th>
+        <th scope="col" [appSortable]="'leaders_count'" [direction]="sortDirectionFor('leaders_count')" (sort)="onSort($event)">Leaders</th>
+        <th scope="col" [appSortable]="'active_users_count'" [direction]="sortDirectionFor('active_users_count')" (sort)="onSort($event)">Active users</th>
+        <th scope="col" [appSortable]="'current_events'" [direction]="sortDirectionFor('current_events')" (sort)="onSort($event)">{{ filters.window_days }}D actions</th>
+        <th scope="col">Trend</th>
+        <th scope="col" [appSortable]="'last_activity_at'" [direction]="sortDirectionFor('last_activity_at')" (sort)="onSort($event)">Last activity</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr
+        *ngFor="let row of rows"
+        tabindex="0"
+        (click)="openDetail(row)"
+        (keydown)="onRowKeydown($event, row)"
+      >
+        <td>
+          <strong>{{ row.tenant_name }}</strong>
+          <div class="insights-tenants__slug">{{ row.tenant_slug }}</div>
+        </td>
+        <td><app-status-badge [label]="statusLabel(row.module_status)" [tone]="toneForStatus(row.module_status)"></app-status-badge></td>
+        <td><app-status-badge [label]="statusLabel(row.adoption_status)" [tone]="toneForStatus(row.adoption_status)"></app-status-badge></td>
+        <td><app-status-badge [label]="statusLabel(row.health_flag)" [tone]="toneForStatus(row.health_flag)"></app-status-badge></td>
+        <td>{{ row.organizations_count }}</td>
+        <td>{{ row.members_count }}</td>
+        <td>{{ row.leaders_count }}</td>
+        <td>{{ row.active_users_count }}</td>
+        <td>{{ row.window_actions }}</td>
+        <td><app-status-badge [label]="statusLabel(row.usage_trend)" [tone]="toneForStatus(row.usage_trend)"></app-status-badge></td>
+        <td>{{ row.last_activity_at ? (row.last_activity_at | date: 'short') : '—' }}</td>
+      </tr>
+    </tbody>
+  </app-data-table>
+
+  <app-pagination
+    *ngIf="total > 0"
+    [currentPage]="page"
+    [pageSize]="perPage"
+    [totalItems]="total"
+    (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
+  ></app-pagination>
+</ng-container>
+
+<app-advanced-search-panel
+  mode="sidepanel"
+  [fields]="searchFields"
+  [isExpanded]="showFilters"
+  (search)="onAdvancedSearch($event)"
+  (clear)="onClearAdvancedSearch()"
+  (close)="showFilters = false"
+></app-advanced-search-panel>

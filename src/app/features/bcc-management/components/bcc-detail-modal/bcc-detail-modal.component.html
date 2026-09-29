@@ -1,0 +1,83 @@
+<app-modal-shell
+  [title]="title"
+  size="md"
+  closeAriaLabel="Close BCC details"
+  (closeRequested)="onClose()"
+>
+  <div class="bcc-detail" *ngIf="loading">
+    <p class="cf-meta">Loading BCC details…</p>
+  </div>
+
+  <div class="bcc-detail" *ngIf="!loading && bcc as detail">
+    <div class="bcc-detail__identity cf-context-card">
+      <div class="bcc-detail__identity-row">
+        <strong class="bcc-detail__code">{{ detail.bcc_code }}</strong>
+        <app-status-badge
+          [label]="statusLabel(detail.status)"
+          [tone]="statusTone(detail.status)"
+        ></app-status-badge>
+      </div>
+      <span class="bcc-detail__meta">{{ familyCountLabel() }}</span>
+    </div>
+
+    <div class="bcc-detail__meeting" *ngIf="hasMeetingInfo()">
+      <p class="bcc-detail__meeting-line" *ngIf="meetingSummaryParts().length">
+        <ng-container *ngFor="let part of meetingSummaryParts(); let last = last">
+          <span>{{ part }}</span>
+          <span class="bcc-detail__sep" *ngIf="!last" aria-hidden="true"> · </span>
+        </ng-container>
+      </p>
+      <p class="bcc-detail__meeting-place" *ngIf="detail.meeting_place">
+        {{ detail.meeting_place }}
+      </p>
+    </div>
+
+    <dl class="bcc-detail__kv" *ngIf="hasKvRows()">
+      <div class="bcc-detail__kv-wide" *ngIf="detail.description">
+        <dt>Description</dt>
+        <dd class="bcc-detail__prose">{{ detail.description }}</dd>
+      </div>
+      <div *ngIf="detail.location">
+        <dt>Location</dt>
+        <dd>{{ detail.location }}</dd>
+      </div>
+      <div *ngIf="detail.established_date">
+        <dt>Established</dt>
+        <dd>{{ detail.established_date | date:'mediumDate' }}</dd>
+      </div>
+      <div class="bcc-detail__kv-wide" *ngIf="detail.notes">
+        <dt>Notes</dt>
+        <dd class="bcc-detail__prose">{{ detail.notes }}</dd>
+      </div>
+    </dl>
+
+    <div class="bcc-detail__leaders" *ngIf="detail.leaders?.length">
+      <h3 class="cf-subsection-title">Leaders</h3>
+      <ul class="bcc-detail__leader-list">
+        <li class="bcc-detail__leader" *ngFor="let leader of detail.leaders">
+          <div class="bcc-detail__leader-text">
+            <span class="bcc-detail__leader-name">{{ leader.leader_name }}</span>
+            <span class="cf-meta" *ngIf="leader.role">{{ leader.role }}</span>
+          </div>
+          <app-status-badge
+            *ngIf="leader.is_current"
+            label="Current"
+            tone="info"
+          ></app-status-badge>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onClose()">Close</button>
+    <button
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="onEdit()"
+      *ngIf="bcc && !loading"
+    >
+      Edit BCC
+    </button>
+  </ng-container>
+</app-modal-shell>

@@ -1,0 +1,214 @@
+<section class="default-seeds cf-page" [attr.aria-busy]="executing">
+  <app-page-header
+    title="Recommended defaults"
+    subtitle="Add the starting lists for offerings and ministries. Names your parish already uses stay as they are."
+    backLink="/settings"
+    backLabel="Settings"
+    [statusLabel]="headerStatusLabel"
+    [statusTone]="headerStatusTone"
+  ></app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!canView" role="alert">
+    <p>You do not have permission to view recommended lists.</p>
+  </div>
+
+  <ng-container *ngIf="canView">
+    <div class="cf-inline-alert cf-panel" *ngIf="error" role="alert">
+      <p>{{ error }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Try again</button>
+    </div>
+
+    <div class="cf-loading-block cf-panel" *ngIf="loading && !loaded" role="status" aria-live="polite">
+      <p class="cf-loading-block__label">Loading recommended lists…</p>
+      <app-loading-skeleton type="table" [rows]="4" [columns]="4"></app-loading-skeleton>
+    </div>
+
+    <ng-container *ngIf="loaded && !error">
+      <div class="default-seeds__filter" *ngIf="moduleFilter">
+        <app-status-badge [label]="'Showing ' + moduleFilterLabel" tone="info"></app-status-badge>
+        <a class="cf-link" routerLink="/settings/default-seeds">Show all lists</a>
+      </div>
+
+      <p class="cf-meta default-seeds__note" *ngIf="seeders.length && !canRun">
+        You can review these lists. Ask a parish administrator if you need to add the missing ones.
+      </p>
+
+      <div class="cf-kpi-grid" *ngIf="visibleSeeders.length" role="group" aria-label="Recommended list status">
+        <div class="cf-kpi" [class.default-seeds__kpi--open]="displaySummary.available > 0">
+          <span>Not added yet</span>
+          <strong>{{ displaySummary.available }}</strong>
+        </div>
+        <div class="cf-kpi" [class.default-seeds__kpi--attention]="displaySummary.partially_initialized > 0">
+          <span>Some added</span>
+          <strong>{{ displaySummary.partially_initialized }}</strong>
+        </div>
+        <div class="cf-kpi" [class.default-seeds__kpi--ready]="displaySummary.initialized > 0">
+          <span>Complete</span>
+          <strong>{{ displaySummary.initialized }}</strong>
+        </div>
+      </div>
+
+      <div class="cf-decision-strip" *ngIf="hasMissing && canRun" role="region" aria-label="Suggested next step">
+        <div class="cf-decision-strip__copy">
+          <strong>{{ chooseIndividually ? 'Choose which lists to add' : decisionTitle }}</strong>
+          <span>{{ chooseIndividually ? chooseHint : decisionSubtitle }}</span>
+        </div>
+        <div class="cf-decision-strip__actions">
+          <button
+            type="button"
+            class="cf-btn"
+            *ngIf="chooseIndividually"
+            (click)="selectAllMissing()"
+            [disabled]="executing"
+          >
+            Select all missing
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-primary"
+            *ngIf="!chooseIndividually"
+            (click)="promptAddAllMissing()"
+            [disabled]="executing"
+          >
+            {{ executing ? 'Adding…' : 'Add all missing defaults' }}
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-primary"
+            *ngIf="chooseIndividually"
+            (click)="promptAddSelected()"
+            [disabled]="executing || selectedCount === 0"
+          >
+            {{ executing ? 'Adding…' : selectedCount ? 'Add ' + selectedCount + ' selected' : 'Add selected' }}
+          </button>
+          <button type="button" class="cf-btn" (click)="toggleChooseIndividually()" [disabled]="executing">
+            {{ chooseIndividually ? 'Done' : 'Choose individually' }}
+          </button>
+        </div>
+      </div>
+
+      <section class="cf-panel" *ngIf="allComplete" role="status">
+        <h2 class="cf-form-section__title">Recommended lists are in place</h2>
+        <p class="cf-form-section__intro">You can review or edit them in each module.</p>
+        <div class="default-seeds__links">
+          <a routerLink="/donations/categories" class="cf-btn">Open offering categories</a>
+          <a routerLink="/ministries/settings" class="cf-btn">Open ministry settings</a>
+        </div>
+      </section>
+
+      <app-cf-empty-state
+        *ngIf="!seeders.length"
+        title="Nothing to add here"
+        description="Your plan does not include recommended lists you can add from this page."
+        [hasActions]="false"
+      ></app-cf-empty-state>
+
+      <section
+        class="cf-panel"
+        *ngFor="let group of moduleGroups"
+        [attr.aria-labelledby]="'module-' + group.module"
+      >
+        <div class="default-seeds__module-head">
+          <h2 class="cf-form-section__title" [id]="'module-' + group.module">{{ group.label }}</h2>
+          <p class="cf-form-section__intro">{{ moduleIntro(group) }}</p>
+        </div>
+
+        <app-data-table [ariaBusy]="executing">
+          <thead>
+            <tr>
+              <th *ngIf="chooseIndividually" scope="col" class="cf-table__actions-col">Select</th>
+              <th scope="col">List</th>
+              <th scope="col">Progress</th>
+              <th scope="col">Status</th>
+              <th scope="col" class="cf-table__actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let item of group.items">
+              <td *ngIf="chooseIndividually" class="cf-table__actions-cell">
+                <input
+                  *ngIf="isSelectable(item)"
+                  type="checkbox"
+                  [checked]="isSelected(item.id)"
+                  (change)="toggleSelected(item, $any($event.target).checked)"
+                  [attr.aria-label]="'Select ' + item.display_name"
+                  [disabled]="executing"
+                />
+              </td>
+              <td>
+                <strong>{{ item.display_name }}</strong>
+                <div class="default-seeds__detail">
+                  <p class="cf-meta">{{ item.description }}</p>
+                  <p class="cf-caption" *ngIf="item.impact && item.impact !== item.description">{{ item.impact }}</p>
+                  <p class="cf-caption" *ngIf="missingLine(item) as line">{{ line }}</p>
+                  <p
+                    class="cf-caption"
+                    *ngIf="rowResult(item) as result"
+                    role="status"
+                    [class.cf-state--success]="result.result_status !== 'failed'"
+                    [class.cf-state--error]="result.result_status === 'failed'"
+                  >
+                    {{ result.message }}
+                  </p>
+                </div>
+              </td>
+              <td>
+                <div class="default-seeds__progress">
+                  <div
+                    class="cf-progress"
+                    role="progressbar"
+                    [attr.aria-valuenow]="item.matched_count"
+                    aria-valuemin="0"
+                    [attr.aria-valuemax]="item.expected_count"
+                    [attr.aria-label]="'Progress for ' + item.display_name"
+                  >
+                    <span [style.width.%]="progressPercent(item)"></span>
+                  </div>
+                  <span class="cf-caption">{{ item.matched_count }} of {{ item.expected_count }}</span>
+                </div>
+              </td>
+              <td>
+                <app-status-badge
+                  [label]="statusLabel(item.status)"
+                  [tone]="statusTone(item.status)"
+                ></app-status-badge>
+              </td>
+              <td class="cf-table__actions-cell">
+                <div class="cf-row-actions">
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    *ngIf="isSelectable(item) && canRun && !chooseIndividually"
+                    (click)="promptAddOne(item)"
+                    [disabled]="executing"
+                  >
+                    Add missing
+                  </button>
+                  <a
+                    *ngIf="canOpen(item)"
+                    class="cf-btn cf-btn--sm"
+                    [routerLink]="openLink(item)"
+                    [queryParams]="openQuery(item)"
+                  >
+                    Open
+                  </a>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </app-data-table>
+      </section>
+    </ng-container>
+  </ng-container>
+
+  <app-confirmation-modal
+    [show]="showConfirm"
+    title="Add recommended lists?"
+    [message]="confirmMessage()"
+    confirmText="Add lists"
+    cancelText="Not now"
+    (confirmed)="confirmAdd()"
+    (cancelled)="cancelConfirm()"
+    (closed)="cancelConfirm()"
+  ></app-confirmation-modal>
+</section>

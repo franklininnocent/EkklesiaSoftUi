@@ -1,15 +1,7 @@
+import { cfFormatMoney } from '@shared/utils/cf-intl.util';
+
 export function formatFocCurrency(value: number | null | undefined, currencyCode: string): string {
-  const amount = Number(value ?? 0);
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: currencyCode,
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2
-    }).format(amount);
-  } catch {
-    return amount.toFixed(2);
-  }
+  return cfFormatMoney(value, currencyCode, 2);
 }
 
 export function formatExecutiveCardValue(card: { key: string; value: number }, currencyCode: string): string {

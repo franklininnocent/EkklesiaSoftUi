@@ -1,15 +1,15 @@
 <section class="settings-page cf-page cf-split-page">
-  <header class="cf-split-page__hero cf-hero">
-    <div class="cf-split-page__hero-copy">
-      <h1>Stewardship Settings</h1>
-      <p>Receipts, UPI collection, tax acknowledgements, and AI outreach — configure once.</p>
-    </div>
-    <div class="cf-split-page__hero-actions" *ngIf="canEditSettings && settingsLoaded">
-      <button type="submit" form="settings-form" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
-        {{ saving ? 'Saving…' : 'Save settings' }}
+  <app-page-header
+    title="Stewardship Settings"
+    subtitle="Receipts, UPI collection, tax acknowledgements, and AI outreach — configure once.">
+    <ng-container *ngIf="canEditSettings && settingsLoaded">
+      <button
+          aria-label="Save"
+          title="Save" type="submit" form="settings-form" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="form.invalid || saving">
+          <app-cf-action-icon name="save" />
       </button>
-    </div>
-  </header>
+    </ng-container>
+  </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!settingsLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="cf-split-loading__label">Loading stewardship settings…</p>
@@ -30,12 +30,57 @@
           </header>
 
           <form id="settings-form" [formGroup]="form" (ngSubmit)="save()" class="cf-split-form-body" novalidate>
+            <section class="cf-split-section" aria-labelledby="settings-section-fy">
+              <h3 id="settings-section-fy" class="cf-split-section__title">Fiscal year</h3>
+              <p class="cf-meta" *ngIf="financialYearResolved?.current_label">
+                Current period: <strong>{{ financialYearResolved?.current_label }}</strong>
+                ({{ financialYearResolved?.current_start }} – {{ financialYearResolved?.current_end }}).
+              </p>
+              <label class="cf-split-toggle cf-split-toggle--block">
+                <input
+                  type="checkbox"
+                  [checked]="useCountryFinancialYear"
+                  (change)="onCountryFinancialYearToggle($any($event.target).checked)"
+                />
+                <span>
+                  Use fiscal year start from church country
+                  <small>Matches your official address country (e.g. April 1 for India). Turn off to set a custom start date.</small>
+                </span>
+              </label>
+              <div class="cf-split-grid" *ngIf="!useCountryFinancialYear">
+                <div class="cf-split-field">
+                  <label for="settings-fy-month">Start month</label>
+                  <select id="settings-fy-month" formControlName="financial_year_start_month">
+                    <option value="01">January</option>
+                    <option value="02">February</option>
+                    <option value="03">March</option>
+                    <option value="04">April</option>
+                    <option value="05">May</option>
+                    <option value="06">June</option>
+                    <option value="07">July</option>
+                    <option value="08">August</option>
+                    <option value="09">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                  </select>
+                </div>
+                <div class="cf-split-field">
+                  <label for="settings-fy-day">Start day</label>
+                  <input id="settings-fy-day" formControlName="financial_year_start_day" maxlength="2" placeholder="01" />
+                </div>
+              </div>
+            </section>
+
             <section class="cf-split-section" aria-labelledby="settings-section-receipt">
               <h3 id="settings-section-receipt" class="cf-split-section__title">Receipts & tax</h3>
               <div class="cf-split-grid">
                 <div class="cf-split-field">
-                  <label for="settings-currency">Default currency</label>
-                  <input id="settings-currency" formControlName="default_currency" placeholder="INR" />
+                  <label>Parish currency</label>
+                  <p class="cf-meta">Set from your church country (official address). Amounts are not converted when country changes.</p>
+                  <p class="cf-split-field__value" *ngIf="form.value.default_currency as code">
+                    <strong>{{ code }}</strong>
+                  </p>
                 </div>
                 <div class="cf-split-field">
                   <label for="settings-receipt-prefix">Receipt prefix</label>
@@ -78,8 +123,10 @@
             </section>
 
             <div class="cf-split-form-actions">
-              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
-                {{ saving ? 'Saving…' : 'Save settings' }}
+              <button
+          aria-label="Save"
+          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="form.invalid || saving">
+          <app-cf-action-icon name="save" />
               </button>
             </div>
           </form>

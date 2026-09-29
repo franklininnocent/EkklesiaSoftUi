@@ -1,16 +1,20 @@
 <section class="recurring-page cf-page cf-split-page">
-  <header class="cf-split-page__hero cf-hero">
-    <div class="cf-split-page__hero-copy">
-      <h1>Recurring Gifts</h1>
-      <p>Scheduled voluntary giving — create schedules and manage collections side by side.</p>
-    </div>
-    <div class="cf-split-page__hero-actions" *ngIf="canCollect && schedulesLoaded && !showForm">
-      <button type="button" class="cf-btn cf-btn-primary" (click)="runDue()" [disabled]="running">
-        {{ running ? 'Running…' : 'Run due schedules' }}
+  <app-page-header
+    title="Recurring Gifts"
+    subtitle="Scheduled voluntary giving — create schedules and manage collections side by side.">
+    <ng-container *ngIf="canCollect && schedulesLoaded && !showForm">
+      <button
+          aria-label="Run due schedules"
+          title="Run due schedules" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="runDue()" [disabled]="running">
+          <app-cf-action-icon name="play" />
       </button>
-      <button type="button" class="cf-btn" (click)="openCreateForm()">New schedule</button>
-    </div>
-  </header>
+      <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+      </button>
+    </ng-container>
+  </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!schedulesLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="cf-split-loading__label">Loading recurring schedules…</p>
@@ -26,14 +30,27 @@
               <h2>New schedule</h2>
               <p *ngIf="!showForm">Donor, category, amount, and frequency.</p>
             </div>
-            <button type="button" class="cf-btn cf-split-card__close" *ngIf="showForm" (click)="closeForm()" aria-label="Close">×</button>
+            <button
+              type="button"
+              class="cf-btn cf-btn-icon cf-split-card__close"
+              *ngIf="showForm"
+              (click)="closeForm()"
+              aria-label="Close"
+              title="Close"
+            >
+              <app-cf-action-icon name="x" />
+            </button>
           </header>
 
           <div class="cf-split-form-cta" *ngIf="!showForm">
             <div class="cf-split-form-cta__icon" aria-hidden="true">↻</div>
             <p class="cf-split-form-cta__title">Create a recurring schedule</p>
             <p class="cf-split-form-cta__text">Set up monthly or quarterly gifts for loyal supporters.</p>
-            <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">New schedule</button>
+            <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+            </button>
           </div>
 
           <form *ngIf="showForm" [formGroup]="form" (ngSubmit)="save()" class="cf-split-form-body" novalidate>
@@ -81,10 +98,12 @@
             </section>
 
             <div class="cf-split-form-actions">
-              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">
-                {{ saving ? 'Saving…' : 'Create schedule' }}
+              <button
+          aria-label="Save"
+          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="form.invalid || saving">
+          <app-cf-action-icon name="save" />
               </button>
-              <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+              <button type="button" class="cf-btn cf-btn-icon" (click)="closeForm()" [disabled]="saving" aria-label="Cancel" title="Cancel"><app-cf-action-icon name="x" /></button>
             </div>
           </form>
         </article>
@@ -116,15 +135,23 @@
                 </thead>
                 <tbody>
                   <tr *ngFor="let schedule of filteredSchedules" [class.row-due]="isDueSoon(schedule)">
-                    <td>{{ schedule.amount | number:'1.2-2' }}</td>
+                    <td>{{ schedule.amount | cfCurrency }}</td>
                     <td>{{ schedule.frequency }}</td>
                     <td>{{ schedule.next_run_on | date }}</td>
                     <td>
                       <span class="status-pill" [class.status-pill--due]="isDueSoon(schedule)">{{ schedule.status }}</span>
                     </td>
                     <td class="row-actions">
-                      <button *ngIf="canCollect && schedule.status === 'active'" type="button" class="cf-btn" (click)="pause(schedule.id)">Pause</button>
-                      <button *ngIf="canCollect && schedule.status !== 'cancelled'" type="button" class="cf-btn" (click)="cancel(schedule.id)">Cancel</button>
+                      <button
+          aria-label="Pause"
+          title="Pause" *ngIf="canCollect && schedule.status === 'active'" type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="pause(schedule.id)">
+          <app-cf-action-icon name="pause" />
+                      </button>
+                      <button
+          aria-label="Cancel"
+          title="Cancel" *ngIf="canCollect && schedule.status !== 'cancelled'" type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="cancel(schedule.id)">
+          <app-cf-action-icon name="x-circle" />
+                      </button>
                     </td>
                   </tr>
                 </tbody>
@@ -140,8 +167,14 @@
                 description="Set up monthly or quarterly gifts for loyal supporters — then run due collections in one click."
                 [hasActions]="canCollect"
               >
-                <button type="button" class="cf-btn cf-btn-primary" *ngIf="canCollect" (click)="openCreateForm()">Create schedule</button>
-                <a routerLink="/donations/donors" class="cf-btn">View donors</a>
+                <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" *ngIf="canCollect" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+                </button>
+                <a routerLink="/donations/donors" class="cf-btn cf-btn-icon" aria-label="View donors" title="View donors">
+                  <app-cf-action-icon name="users" />
+                </a>
               </app-cf-empty-state>
             </div>
           </div>

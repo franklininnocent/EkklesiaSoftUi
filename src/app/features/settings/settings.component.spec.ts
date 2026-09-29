@@ -1,38 +1,82 @@
 import { TestBed } from '@angular/core/testing';
 import { of } from 'rxjs';
+import { provideRouter } from '@angular/router';
 import { SettingsComponent } from './settings.component';
 import { Store } from '@ngrx/store';
 import { AuthService } from '@core/services';
+import { ApplicationContextService } from '@core/services/application-context.service';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { EntitlementService } from '@core/services/entitlement.service';
+
+const entitlementServiceStub = {
+  entitlements$: of(null),
+  hasAllFeatures: () => true,
+};
 
 describe('SettingsComponent (role-based visibility)', () => {
   let component: SettingsComponent;
   let authServiceMock: {
     hasAnyPermission: jest.Mock<boolean, [string[]]>;
+    hasPermission: jest.Mock<boolean, [string]>;
+    canViewMySubscription: jest.Mock<boolean, [any?]>;
     canAccessRbac: jest.Mock<boolean, [any]>;
+    hasEkklesiaRole: jest.Mock<boolean, [any?]>;
+    isPlatformActor: jest.Mock<boolean, [any?]>;
+    hasTenantPermission: jest.Mock<boolean, [string]>;
+    isSuperAdmin: jest.Mock<boolean, []>;
+    canViewPasswordRecoveryRequests: jest.Mock<boolean, [any?]>;
   };
 
   const createComponentWithUser = (user: any | null) => {
     authServiceMock = {
       hasAnyPermission: jest.fn().mockReturnValue(false),
+      hasPermission: jest.fn().mockImplementation((name: string) => {
+        return ['sacraments.settings.view', 'sacraments.settings.manage'].includes(name);
+      }),
+      canViewMySubscription: jest.fn().mockReturnValue(false),
       canAccessRbac: jest.fn().mockImplementation((targetUser: any) => {
         if (!targetUser) return false;
         const roleName = targetUser.role_name || targetUser.role?.name || '';
         if (targetUser.is_admin === true || targetUser.is_super_admin === true) return true;
         if (['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'Church Administrator', 'Administrator'].includes(roleName)) return true;
         return !!targetUser.permissions?.some((p: any) => ['roles.view', 'permissions.view'].includes(p.name));
-      })
+      }),
+      hasEkklesiaRole: jest.fn().mockImplementation((targetUser: any) => {
+        if (!targetUser) return false;
+        if (targetUser.has_ekklesia_role === true) return true;
+        return ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'].includes(targetUser.role_name || targetUser.role?.name || '');
+      }),
+      isPlatformActor: jest.fn().mockImplementation((targetUser: any) => {
+        if (!targetUser) return false;
+        if (targetUser.has_ekklesia_role === true) return true;
+        const roleName = targetUser.role_name || targetUser.role?.name || '';
+        return roleName === 'SupportAdmin' || ['SuperAdmin', 'EkklesiaAdmin', 'EkklesiaManager', 'EkklesiaUser'].includes(roleName);
+      }),
+      hasTenantPermission: jest.fn().mockReturnValue(true),
+      isSuperAdmin: jest.fn().mockReturnValue(false),
+      canViewPasswordRecoveryRequests: jest.fn().mockReturnValue(false),
     };
 
     TestBed.configureTestingModule({
       imports: [SettingsComponent],
       providers: [
+        provideRouter([]),
         {
           provide: Store,
           useValue: {
             select: () => of(user)
           }
         },
-        { provide: AuthService, useValue: authServiceMock }
+        { provide: AuthService, useValue: authServiceMock },
+        {
+          provide: ApplicationContextService,
+          useValue: {},
+        },
+        {
+          provide: SupportSessionService,
+          useValue: { isSessionLive: false, sessionId: null },
+        },
+        { provide: EntitlementService, useValue: entitlementServiceStub },
       ]
     });
     const fixture = TestBed.createComponent(SettingsComponent);
@@ -97,12 +141,12 @@ describe('SettingsComponent (role-based visibility)', () => {
     permissions: [{ name: 'permissions.view' }]
   };
 
-  it('hasEkklesiaRole() should be false for any user with tenant_id', () => {
+  it('hasEkklesiaRole() should be false for tenant administrator', () => {
     createComponentWithUser(tenantUser);
     expect(component.hasEkklesiaRole(tenantUser as any)).toBe(false);
   });
 
-  it('hasEkklesiaRole() should be true for ekklesia roles without tenant', () => {
+  it('hasEkklesiaRole() should be true for ekklesia roles', () => {
     createComponentWithUser(ekklesiaAdmin);
     expect(component.hasEkklesiaRole(ekklesiaAdmin as any)).toBe(true);
   });
@@ -160,10 +204,22 @@ describe('SettingsComponent (role-based visibility)', () => {
     expect(tenantVisible.find(s => s.title === 'Ecclesiastical Data')).toBeUndefined();
     expect(tenantVisible.find(s => s.title === 'Sacrament Types')).toBeUndefined();
 
-    // Ekklesia admin should see ecclesiastical sections but not tenant-only Sacraments
+    // Ekklesia admin should see ecclesiastical sections but not tenant-only Sacrament Settings
     expect(ekklesiaVisible.find(s => s.title === 'Ecclesiastical Data')).toBeDefined();
     expect(ekklesiaVisible.find(s => s.title === 'Sacrament Types')).toBeDefined();
-    expect(ekklesiaVisible.find(s => s.title === 'Sacraments')).toBeUndefined();
+    expect(ekklesiaVisible.find(s => s.title === 'Sacrament Settings')).toBeUndefined();
+
+    const sacramentsCard = tenantVisible.find(s => s.title === 'Sacrament Settings');
+    expect(sacramentsCard).toBeDefined();
+    expect(sacramentsCard?.route).toBe('/settings/sacraments');
+    expect(sacramentsCard?.description).toContain('availability');
+  });
+
+  it('shows Sacrament Settings card to tenant users even without settings permissions', () => {
+    createComponentWithUser(tenantUser);
+    authServiceMock.hasPermission.mockReturnValue(false);
+    const visible = component.getVisibleSections(tenantUser as any);
+    expect(visible.find(s => s.title === 'Sacrament Settings')).toBeDefined();
   });
 
   it('shows Roles & Permissions card for tenant admin with RBAC view permission', () => {
@@ -176,6 +232,48 @@ describe('SettingsComponent (role-based visibility)', () => {
     createComponentWithUser(tenantNonAdminNoPermission);
     const visible = component.getVisibleSections(tenantNonAdminNoPermission as any);
     expect(visible.find(s => s.title === 'Roles & Permissions')).toBeUndefined();
+  });
+
+  it('keeps platform settings sections visible during active support session', () => {
+    TestBed.resetTestingModule();
+    authServiceMock = {
+      hasAnyPermission: jest.fn().mockReturnValue(false),
+      hasPermission: jest.fn().mockReturnValue(false),
+      canViewMySubscription: jest.fn().mockReturnValue(false),
+      canAccessRbac: jest.fn().mockReturnValue(true),
+      hasEkklesiaRole: jest.fn().mockReturnValue(true),
+      isPlatformActor: jest.fn().mockReturnValue(true),
+      hasTenantPermission: jest.fn().mockReturnValue(true),
+      isSuperAdmin: jest.fn().mockReturnValue(false),
+      canViewPasswordRecoveryRequests: jest.fn().mockReturnValue(false),
+    };
+
+    TestBed.configureTestingModule({
+      imports: [SettingsComponent],
+      providers: [
+        provideRouter([]),
+        { provide: Store, useValue: { select: () => of(ekklesiaAdmin) } },
+        { provide: AuthService, useValue: authServiceMock },
+        {
+          provide: ApplicationContextService,
+          useValue: {},
+        },
+        {
+          provide: SupportSessionService,
+          useValue: { isSessionLive: true, sessionId: 'sess-1' },
+        },
+        { provide: EntitlementService, useValue: entitlementServiceStub },
+      ],
+    });
+
+    const fixture = TestBed.createComponent(SettingsComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    const visible = component.getVisibleSections(ekklesiaAdmin as any);
+    expect(visible.find(s => s.title === 'Tenants')).toBeDefined();
+    expect(visible.find(s => s.title === 'Ecclesiastical Data')).toBeDefined();
+    expect(visible.find(s => s.title === 'Sacrament Settings')).toBeUndefined();
   });
 });
 

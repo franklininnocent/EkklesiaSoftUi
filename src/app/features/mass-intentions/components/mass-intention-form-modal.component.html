@@ -1,0 +1,234 @@
+<app-modal-shell
+  *ngIf="open"
+  [title]="recordId ? 'Edit intention' : 'New intention'"
+  [description]="
+    recordId
+      ? 'Update details while the intention is still open.'
+      : 'Record a Mass intention for the parish register.'
+  "
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close intention form"
+  [isSubmitting]="saving()"
+  (closeRequested)="close()"
+>
+  <form
+    id="mass-intention-modal-form"
+    class="cf-split-form-body mass-intention-modal-form"
+    [formGroup]="form"
+    (ngSubmit)="submit()"
+    novalidate
+  >
+    <section class="cf-split-section" aria-labelledby="mass-intention-section-core">
+      <h3 id="mass-intention-section-core" class="cf-split-section__title">Intention details</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full mass-intention-modal-form__for">
+          <label for="mass-intention-beneficiary">
+            For <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            id="mass-intention-beneficiary"
+            type="text"
+            formControlName="beneficiary_name"
+            autocomplete="off"
+            placeholder="Name of the person or intention"
+            aria-required="true"
+            (input)="onBeneficiaryInput()"
+          />
+          @if (personResults().length) {
+            <ul class="mass-intention-modal-form__suggestions" role="listbox" aria-label="Parish people">
+              @for (person of personResults(); track person.id) {
+                <li>
+                  <button type="button" class="mass-intention-modal-form__suggestion" (click)="pickPerson(person)">
+                    <strong class="mass-intention-modal-form__suggestion-name">{{ personDisplay(person) }}</strong>
+                    @if (familyLabel(person) || bccLabel(person)) {
+                      <span class="mass-intention-modal-form__suggestion-meta">
+                        @if (familyLabel(person); as familyText) {
+                          {{ familyText }}
+                        }
+                        @if (bccLabel(person); as bccText) {
+                          @if (familyLabel(person)) {
+                            ·
+                          }
+                          {{ bccText }}
+                        }
+                      </span>
+                    }
+                  </button>
+                </li>
+              }
+            </ul>
+          }
+          @if (isLinkedMember()) {
+            <p class="cf-split-field__hint">
+              Parish member
+              @if (linkedBccName(); as bcc) {
+                · {{ bcc }}
+              } @else {
+                · BCC not assigned to this family
+              }
+            </p>
+          } @else {
+            <p class="cf-split-field__hint">
+              Search and select a parish member, or enter a name manually and add their place below.
+            </p>
+          }
+        </div>
+
+        @if (isLinkedMember()) {
+          <div class="cf-split-field cf-split-field--full">
+            <label for="mass-intention-bcc">BCC</label>
+            <input
+              id="mass-intention-bcc"
+              type="text"
+              readonly
+              tabindex="-1"
+              [value]="linkedBccName() || 'Not assigned'"
+              aria-readonly="true"
+            />
+            @if (!linkedBccName()) {
+              <p class="cf-split-field__hint">This member’s family is not assigned to a BCC.</p>
+            }
+          </div>
+        } @else {
+          <div class="cf-split-field cf-split-field--full">
+            <label for="mass-intention-place">
+              Place <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            <input
+              id="mass-intention-place"
+              type="text"
+              formControlName="beneficiary_place"
+              maxlength="255"
+              placeholder="Village, town, locality, or place"
+              aria-required="true"
+            />
+            <p class="cf-split-field__hint">Where this person is from (not required for parish members).</p>
+          </div>
+        }
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="mass-intention-category">
+            Intention <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <select
+            id="mass-intention-category"
+            formControlName="mass_intention_category_id"
+            aria-required="true"
+            (change)="onCategoryChange($event)"
+          >
+            <option value="" disabled>Select an intention type</option>
+            @for (cat of categories(); track cat.id) {
+              <option [value]="cat.id">{{ cat.name }}</option>
+            }
+            @if (canAddCategory()) {
+              <option [value]="addCategoryValue">Add new intention…</option>
+            }
+          </select>
+          <p class="cf-split-field__hint">General category for this Mass (for example, Thanksgiving or For the Faithful Departed).</p>
+        </div>
+
+        @if (showAddCategory()) {
+          <div class="cf-split-field cf-split-field--full mass-intention-modal-form__add-category">
+            <label for="mass-intention-new-category">New intention type <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input
+              id="mass-intention-new-category"
+              type="text"
+              formControlName="new_category_name"
+              maxlength="128"
+              placeholder="Enter the new intention type"
+            />
+            @if (addCategoryError()) {
+              <p class="mass-intention-modal-form__inline-error" role="alert">{{ addCategoryError() }}</p>
+            }
+            <div class="mass-intention-modal-form__add-actions">
+              <button type="button" class="cf-btn" (click)="cancelAddCategory()" [disabled]="addingCategory()">Cancel</button>
+              <button type="button" class="cf-btn cf-btn-primary" (click)="saveNewCategory()" [disabled]="addingCategory()">
+                Save intention type
+              </button>
+            </div>
+          </div>
+        }
+
+        @if (hasCategorySelected()) {
+          <div class="cf-split-field cf-split-field--full">
+            <label for="mass-intention-description">
+              Description <span class="cf-split-optional">optional</span>
+            </label>
+            <textarea
+              id="mass-intention-description"
+              rows="4"
+              formControlName="intention_description"
+              placeholder="Specific details: names, dates, occasions, and prayer requests for this Mass."
+            ></textarea>
+            <p class="cf-split-field__hint">
+              Explain the particular purpose of this Mass. The intention type above is the general category; this field holds the specific details.
+            </p>
+          </div>
+        }
+
+        <div class="cf-split-field">
+          <label for="mass-intention-date">
+            Scheduled day <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input id="mass-intention-date" type="date" formControlName="requested_date" aria-required="true" />
+          <p class="cf-split-field__hint">The calendar day this intention is offered at Mass.</p>
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="mass-intention-notes">Office note <span class="cf-split-optional">optional</span></label>
+          <textarea
+            id="mass-intention-notes"
+            rows="2"
+            formControlName="notes"
+            placeholder="Internal note for parish staff only"
+          ></textarea>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="mass-intention-section-publish">
+      <h3 id="mass-intention-section-publish" class="cf-split-section__title">At Mass</h3>
+      <label class="cf-split-toggle cf-split-toggle--block">
+        <input type="checkbox" formControlName="do_not_announce" />
+        <span>
+          Do not announce the name
+          <small>The intention is offered, but the name is not read aloud.</small>
+        </span>
+      </label>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="mass-intention-section-requester">
+      <h3 id="mass-intention-section-requester" class="cf-split-section__title">
+        Requester <span class="cf-split-optional">optional</span>
+      </h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="mass-intention-requester-name">Name</label>
+          <input id="mass-intention-requester-name" type="text" formControlName="requester_name" autocomplete="name" />
+        </div>
+        <div class="cf-split-field">
+          <label for="mass-intention-requester-phone">Phone</label>
+          <input
+            id="mass-intention-requester-phone"
+            type="tel"
+            formControlName="requester_phone"
+            autocomplete="tel"
+          />
+        </div>
+      </div>
+    </section>
+
+    @if (errorMessage()) {
+      <p class="cf-split-form-alert cf-split-form-alert--error" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <div class="cf-split-form-actions">
+      <button type="button" class="cf-btn" (click)="close()" [disabled]="saving()">Cancel</button>
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving() || showAddCategory()">
+        {{ recordId ? 'Save changes' : 'Create intention' }}
+      </button>
+    </div>
+  </form>
+</app-modal-shell>

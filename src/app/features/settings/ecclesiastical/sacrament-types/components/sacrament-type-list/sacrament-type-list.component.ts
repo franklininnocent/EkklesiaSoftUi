@@ -4,9 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { SacramentTypeService } from '../../services/sacrament-type.service';
 import { SacramentType, SacramentTypeListParams, SACRAMENT_CATEGORIES } from '../../models/sacrament-type.model';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
-import { EmptyStateComponent } from '@shared/components/empty-state/empty-state.component';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { ToastService } from '@core/services/toast.service';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 
 @Component({
   selector: 'app-sacrament-type-list',
@@ -15,8 +17,10 @@ import { ToastService } from '@core/services/toast.service';
     CommonModule,
     FormsModule,
     LoadingSkeletonComponent,
-    EmptyStateComponent,
-    PaginationComponent
+    CfEmptyStateComponent,
+    PaginationComponent,
+    PageHeaderComponent,
+    ModalShellComponent,
   ],
   templateUrl: './sacrament-type-list.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

@@ -7,7 +7,8 @@ import {
   UserListResponse,
   UserResponse,
   UserRequest,
-  UserPermissionsResponse
+  UserPermissionsResponse,
+  LinkableClergy
 } from '../models/user.model';
 
 /**
@@ -164,6 +165,52 @@ export class UsersService {
       }),
       catchError(error => {
         console.error('Error updating user:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  resetPassword(id: number): Observable<{ success: boolean; message: string; data: { temporary_password: string; force_password_change: boolean } }> {
+    return this.http.post<{ success: boolean; message: string; data: { temporary_password: string; force_password_change: boolean } }>(
+      `${this.apiUrl}/${id}/password/reset`,
+      {}
+    );
+  }
+
+  /**
+   * Upload or replace a user's profile image.
+   */
+  uploadProfileImage(userId: number, file: File): Observable<UserResponse> {
+    const formData = new FormData();
+    formData.append('profile_image', file);
+
+    return this.http.post<UserResponse>(`${this.apiUrl}/${userId}/profile-image`, formData).pipe(
+      map(response => {
+        if (response.data && !response.data.roles) {
+          response.data.roles = [];
+        }
+        return response;
+      }),
+      catchError(error => {
+        console.error('Error uploading user profile image:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Remove a user's profile image.
+   */
+  deleteProfileImage(userId: number): Observable<UserResponse> {
+    return this.http.delete<UserResponse>(`${this.apiUrl}/${userId}/profile-image`).pipe(
+      map(response => {
+        if (response.data && !response.data.roles) {
+          response.data.roles = [];
+        }
+        return response;
+      }),
+      catchError(error => {
+        console.error('Error deleting user profile image:', error);
         return throwError(() => error);
       })
     );
@@ -327,6 +374,26 @@ export class UsersService {
     return this.http.patch<any>(`${environment.apiUrl}/users/${userId}/status`, { active: status }).pipe(
       catchError(error => {
         console.error('Error updating user status:', error);
+        return throwError(() => error);
+      })
+    );
+  }
+
+  /**
+   * Search active parish clergy leaders available for login linking.
+   */
+  getLinkableClergy(search?: string): Observable<{ success: boolean; data: LinkableClergy[] }> {
+    let params = new HttpParams();
+    if (search && search.trim() !== '') {
+      params = params.set('search', search.trim());
+    }
+
+    return this.http.get<{ success: boolean; data: LinkableClergy[] }>(
+      `${this.apiUrl}/linkable-clergy`,
+      { params }
+    ).pipe(
+      catchError(error => {
+        console.error('Error fetching linkable clergy:', error);
         return throwError(() => error);
       })
     );

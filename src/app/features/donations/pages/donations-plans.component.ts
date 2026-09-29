@@ -2,25 +2,33 @@ import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
-import { filter, Subscription } from 'rxjs';
+import { filter, Subscription, switchMap } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { ToastService } from '@core/services/toast.service';
 import { FamilyService } from '@core/services/family.service';
 import { Family } from '@core/models/family.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { DonationsService } from '../services/donations.service';
-import { ContributionPlan, ContributionPlanAssignment } from '../models/donation.model';
+import { ContributionDue, ContributionPlan, ContributionPlanAssignment } from '../models/donation.model';
+import { localDateOnly } from '../utils/local-date-only';
+import { toDateInputValue } from '../utils/to-date-input-value';
 
-type ApiErrorBody = {
+interface ApiErrorBody {
   message?: string;
   errors?: Record<string, string[]>;
-};
+}
 
 @Component({
   selector: 'app-donations-plans',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent, EditIconButtonComponent],
   templateUrl: './donations-plans.component.html',
   styleUrl: './donations-plans.component.scss'
 })
@@ -41,15 +49,15 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
   draftAssignments: ContributionPlanAssignment[] = [];
   selectedFamilyId = '';
   assignmentAmount = 0;
-  assignmentEffectiveFrom = new Date().toISOString().slice(0, 10);
+  assignmentEffectiveFrom = localDateOnly();
   showForm = false;
   editingPlanId: string | null = null;
   saving = false;
   submitAttempted = false;
   formError: string | null = null;
-  lastCreatedPlan: ContributionPlan | null = null;
   highlightPlanId: string | null = null;
   canManage = false;
+  generatingPlanId: string | null = null;
 
   planForm = this.fb.group({
     name: ['', [Validators.required, Validators.maxLength(150)]],
@@ -70,10 +78,16 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
     private donationsService: DonationsService,
     private familyService: FamilyService,
     private authService: AuthService,
+    private confirmationDialog: ConfirmationDialogService,
     private toastService: ToastService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private churchCurrency: ChurchCurrencyService,
   ) {}
+
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? '';
+  }
 
   ngOnInit(): void {
     this.canManage = this.authService.hasPermission('donations.manage');
@@ -200,10 +214,13 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
   }
 
   onStartDateChange(): void {
+    const start = this.planForm.value.start_date;
+    if (start) {
+      this.assignmentEffectiveFrom = start;
+    }
     if (this.planForm.value.frequency !== 'one_time') {
       return;
     }
-    const start = this.planForm.value.start_date;
     if (start) {
       this.planForm.patchValue({ end_date: start });
     }
@@ -216,7 +233,6 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
     }
 
     this.editingPlanId = null;
-    this.lastCreatedPlan = null;
     this.formError = null;
     this.submitAttempted = false;
     this.showForm = true;
@@ -236,14 +252,6 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
     this.editingPlanId = null;
     this.formError = null;
     this.submitAttempted = false;
-  }
-
-  scrollToPlan(planId: string): void {
-    this.highlightPlanId = planId;
-    setTimeout(() => {
-      document.getElementById(`plan-row-${planId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 50);
-    setTimeout(() => { this.highlightPlanId = null; }, 4000);
   }
 
   loadPlans(): void {
@@ -352,26 +360,48 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
     this.showForm = true;
     this.formError = null;
     this.submitAttempted = false;
-    this.lastCreatedPlan = null;
-    this.planForm.patchValue({
-      name: plan.name,
-      code: plan.code,
-      fund_id: plan.fund_id,
-      plan_type: plan.plan_type || 'uniform',
-      frequency: plan.frequency,
-      custom_interval_days: plan.custom_interval_days || 30,
-      default_amount: plan.default_amount,
-      start_date: plan.start_date || '',
-      end_date: plan.end_date || '',
-      auto_generate: plan.auto_generate ?? true,
-      status: plan.status
-    });
     this.draftAssignments = [];
-    this.cdr.detectChanges();
-    setTimeout(() => {
-      document.getElementById('plan-form-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      document.getElementById('plan-name')?.focus();
-    }, 0);
+    this.donationsService.getPlan(plan.id).subscribe({
+      next: (res) => {
+        const loaded = res.data ?? plan;
+        this.planForm.patchValue({
+          name: loaded.name,
+          code: loaded.code,
+          fund_id: loaded.fund_id,
+          plan_type: loaded.plan_type || 'uniform',
+          frequency: loaded.frequency,
+          custom_interval_days: loaded.custom_interval_days || 30,
+          default_amount: loaded.default_amount,
+          start_date: toDateInputValue(loaded.start_date),
+          end_date: toDateInputValue(loaded.end_date),
+          auto_generate: loaded.auto_generate ?? true,
+          status: loaded.status
+        });
+        this.assignmentEffectiveFrom = toDateInputValue(loaded.start_date) || localDateOnly();
+        this.cdr.detectChanges();
+        setTimeout(() => {
+          document.getElementById('plan-form-card')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          document.getElementById('plan-name')?.focus();
+        }, 0);
+      },
+      error: () => {
+        this.planForm.patchValue({
+          name: plan.name,
+          code: plan.code,
+          fund_id: plan.fund_id,
+          plan_type: plan.plan_type || 'uniform',
+          frequency: plan.frequency,
+          custom_interval_days: plan.custom_interval_days || 30,
+          default_amount: plan.default_amount,
+          start_date: toDateInputValue(plan.start_date),
+          end_date: toDateInputValue(plan.end_date),
+          auto_generate: plan.auto_generate ?? true,
+          status: plan.status
+        });
+        this.assignmentEffectiveFrom = toDateInputValue(plan.start_date) || localDateOnly();
+        this.cdr.detectChanges();
+      }
+    });
   }
 
   savePlan(): void {
@@ -455,8 +485,8 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
         if (saved) {
           const without = this.plans.filter((p) => p.id !== saved.id);
           this.plans = [saved, ...without];
-          this.lastCreatedPlan = saved;
           this.highlightPlanId = saved.id;
+          setTimeout(() => { this.highlightPlanId = null; }, 4000);
         } else {
           this.loadPlans();
         }
@@ -478,14 +508,68 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
   }
 
   generateDues(plan: ContributionPlan): void {
-    this.donationsService.generatePlanDues(plan.id, { use_current_period: true }).subscribe({
-      next: (res) => {
-        this.toastService.success(`${res.data?.length || 0} dues created.`, 'Dues generated');
+    this.donationsService.previewPlanGeneration(plan.id).pipe(
+      switchMap((previewRes) => {
+        const preview = previewRes.data;
+        const periodCount = preview?.period_count ?? 0;
+        const familyCount = preview?.family_count ?? 0;
+        const firstPeriod = preview?.periods?.[0]?.period_label ?? '';
+        const lastPeriod = preview?.periods?.[preview.periods.length - 1]?.period_label ?? '';
+        const rangeLine = periodCount > 0
+          ? `\n\nEligible periods: ${firstPeriod} through ${lastPeriod} (${periodCount} period${periodCount === 1 ? '' : 's'}).`
+          : '\n\nNo eligible periods right now.';
+        const familyLine = familyCount > 0
+          ? `\nFamilies affected: about ${familyCount}.`
+          : '';
+
+        return this.confirmationDialog.confirm({
+          title: 'Generate contribution schedule',
+          message: `Create installment dues for "${plan.name}"?${rangeLine}${familyLine}\n\nExisting installments will be skipped.`,
+          confirmText: 'Generate schedule',
+          variant: 'primary',
+        });
+      }),
+      filter((result) => result.confirmed),
+    ).subscribe({
+      next: () => {
+        this.generatingPlanId = plan.id;
+        this.donationsService.generatePlanDues(plan.id, { generate_full_schedule: true }).subscribe({
+          next: (res) => this.handleGenerateDuesResponse(res),
+          error: (err) => {
+            this.generatingPlanId = null;
+            this.toastService.error(this.parseApiError(err), 'Could not generate dues');
+          }
+        });
       },
       error: (err) => {
-        this.toastService.error(this.parseApiError(err), 'Could not generate dues');
+        this.toastService.error(this.parseApiError(err), 'Could not preview schedule');
       }
     });
+  }
+
+  private handleGenerateDuesResponse(res: { data: { generated_count?: number; unchanged_count?: number; status?: string; period_count?: number; family_count?: number } | ContributionDue[] }): void {
+    this.generatingPlanId = null;
+    const data = res.data;
+    if (Array.isArray(data)) {
+      this.toastService.success(`${data.length} dues created.`, 'Dues generated');
+      return;
+    }
+    if (data?.status === 'queued') {
+      this.toastService.success('Schedule generation queued in the background.', 'Dues generating');
+      return;
+    }
+    const created = data?.generated_count ?? 0;
+    const skipped = data?.unchanged_count ?? 0;
+    const periods = data?.period_count ?? 0;
+    const families = data?.family_count ?? 0;
+    if (created === 0 && skipped > 0) {
+      this.toastService.success(`No new dues — ${skipped} installment(s) already on file across ${periods} period(s).`, 'Schedule up to date');
+      return;
+    }
+    this.toastService.success(
+      `New: ${created}. Already on file: ${skipped}. Families: ${families}. Periods: ${periods}.`,
+      'Schedule generated'
+    );
   }
 
   private parseApiError(err: unknown): string {
@@ -537,7 +621,7 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
       default_amount: null,
       auto_generate: true,
       status: 'active',
-      start_date: new Date().toISOString().slice(0, 10),
+      start_date: localDateOnly(),
       end_date: '',
       fund_id: this.funds[0]?.id || '',
       code: '',

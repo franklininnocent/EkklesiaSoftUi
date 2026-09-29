@@ -1,0 +1,143 @@
+<app-modal-shell
+  title="Enroll member"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <form
+    id="enroll-member-form"
+    class="enroll-member-modal__body"
+    [formGroup]="form"
+    (ngSubmit)="onSubmit()"
+  >
+    <fieldset class="enroll-member-modal__source-toggle">
+      <legend>Source</legend>
+      <label>
+        <input
+          type="radio"
+          name="memberSource"
+          value="parish"
+          [checked]="memberSource === 'parish'"
+          [disabled]="saving"
+          (change)="setMemberSource('parish')"
+        />
+        Parish member
+      </label>
+      <label>
+        <input
+          type="radio"
+          name="memberSource"
+          value="guest"
+          [checked]="memberSource === 'guest'"
+          [disabled]="saving"
+          (change)="setMemberSource('guest')"
+        />
+        Guest
+      </label>
+    </fieldset>
+
+    <ng-container *ngIf="isParishSource; else guestPicker">
+      <app-parishioner-lookup-typeahead
+        [organizationId]="organizationId"
+        [selected]="selectedParishioner"
+        (selectedChange)="onParishionerSelected($event)"
+      ></app-parishioner-lookup-typeahead>
+    </ng-container>
+
+    <ng-template #guestPicker>
+      <div class="enroll-member-modal__guest">
+        <app-form-field label="Guest" [required]="true" fieldId="enroll-guest-select">
+          <select
+            id="enroll-guest-select"
+            [value]="selectedGuestId"
+            [disabled]="guestsLoading || saving"
+            (change)="onGuestChange($any($event.target).value)"
+          >
+            <option value="">Select a guest…</option>
+            <option *ngFor="let guest of guests" [value]="guest.id">
+              {{ guestDisplayName(guest) }}
+            </option>
+          </select>
+        </app-form-field>
+
+        <p class="enroll-member-modal__muted" *ngIf="guestsLoading">Loading guests…</p>
+        <p class="cf-form-field__error" *ngIf="guestsError" role="alert">
+          {{ guestsError }}
+          <button type="button" class="cf-btn enroll-member-modal__retry" (click)="retryLoadGuests()">
+            Try again
+          </button>
+        </p>
+        <p
+          class="enroll-member-modal__muted"
+          *ngIf="guestsLoaded && !guestsLoading && !guestsError && !guests.length"
+        >
+          No guests found.
+        </p>
+
+        <button
+          type="button"
+          class="cf-link"
+          [disabled]="saving"
+          (click)="openCreateGuestModal()"
+        >
+          Create new guest
+        </button>
+      </div>
+    </ng-template>
+
+    <p class="cf-form-field__error" *ngIf="personError" role="alert">
+      {{ personError }}
+    </p>
+
+    <div class="enroll-member-modal__grid cf-form-grid">
+      <app-form-field
+        label="Joined date"
+        [required]="true"
+        fieldId="enroll-joined-date"
+        [errorText]="submitted && form.controls.joined_date.invalid ? 'Joined date is required.' : null"
+      >
+        <input id="enroll-joined-date" type="date" formControlName="joined_date" />
+      </app-form-field>
+
+      <app-form-field label="Member type" fieldId="enroll-member-type">
+        <select id="enroll-member-type" formControlName="member_type">
+          <option value="regular">Regular</option>
+          <option value="honorary">Honorary</option>
+          <option value="life">Life</option>
+          <option value="junior">Junior</option>
+        </select>
+      </app-form-field>
+    </div>
+
+    <app-form-field label="Remarks" fieldId="enroll-remarks">
+      <textarea id="enroll-remarks" formControlName="remarks" rows="2"></textarea>
+    </app-form-field>
+
+    <app-form-field
+      *ngIf="isParishSource"
+      label="Emergency contact"
+      fieldId="enroll-emergency-contact"
+      [errorText]="
+        submitted && form.controls.emergency_contact.hasError('maxlength')
+          ? 'Emergency contact must be 100 characters or fewer.'
+          : null
+      "
+    >
+      <input id="enroll-emergency-contact" type="text" formControlName="emergency_contact" maxlength="100" />
+    </app-form-field>
+
+    <p class="cf-form-field__error" *ngIf="formError" role="alert">{{ formError }}</p>
+  </form>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="enroll-member-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+      {{ saving ? 'Enrolling…' : 'Enroll member' }}
+    </button>
+  </ng-container>
+</app-modal-shell>
+
+<app-guest-member-form-modal
+  *ngIf="showCreateGuestModal"
+  (saved)="onGuestCreated($event)"
+  (cancel)="closeCreateGuestModal()"
+></app-guest-member-form-modal>

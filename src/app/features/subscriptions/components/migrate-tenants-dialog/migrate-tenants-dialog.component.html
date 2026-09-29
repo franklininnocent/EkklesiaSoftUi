@@ -1,0 +1,89 @@
+<app-modal-shell
+  [title]="'Move churches to ' + plan.name + ' v' + target.version_number"
+  size="lg"
+  [isSubmitting]="busy"
+  (closeRequested)="close()">
+  <div class="sa-stack">
+    <p class="sa-muted">
+      Moves churches from version {{ from.version_number }} to version {{ target.version_number }}
+      ({{ from.tenant_count ?? 0 }} on version {{ from.version_number }}). No church data is deleted.
+      Up to 100 churches are moved at a time.
+    </p>
+
+    <label class="cf-switch-field">
+      <input type="checkbox" [(ngModel)]="keepContractedPrice" [disabled]="busy" />
+      <span class="cf-switch-field__copy">
+        <span class="cf-switch-field__label">Keep each church's agreed price</span>
+        <small>Turn off to use the new version's list price.</small>
+      </span>
+    </label>
+
+    <div class="sa-field">
+      <label for="sa-migrate-reason">Reason <span class="required" aria-hidden="true">*</span></label>
+      <textarea
+        id="sa-migrate-reason"
+        rows="2"
+        maxlength="500"
+        [(ngModel)]="reason"
+        [disabled]="busy"
+        placeholder="e.g. Move everyone to the 2027 feature set"></textarea>
+    </div>
+
+    <section *ngIf="preview" class="cf-panel sa-section" aria-label="Preview">
+      <div class="sa-section__header">
+        <h3>Preview</h3>
+      </div>
+      <p>
+        {{ preview.eligible }} {{ preview.eligible === 1 ? 'church' : 'churches' }} can be moved.
+        <ng-container *ngIf="preview.eligible > preview.processed">The first {{ preview.processed }} will be moved now.</ng-container>
+      </p>
+      <p class="sa-warning" *ngIf="lossyCount > 0">
+        {{ lossyCount }} {{ lossyCount === 1 ? 'church loses' : 'churches lose' }} features or {{ lossyCount === 1 ? 'is' : 'are' }} over a new limit.
+        Their records stay; they cannot add more until they are within the limit.
+      </p>
+      <ul class="sa-stack" *ngIf="lossyCount > 0">
+        <ng-container *ngFor="let p of preview.preview">
+          <li *ngIf="p.requires_confirmation">
+            <strong>{{ p.tenant_name }}</strong>
+            <span class="sa-muted" *ngIf="p.features_lost.length"> · loses {{ p.features_lost.join(', ') }}</span>
+            <span class="sa-muted" *ngIf="p.over_limit.length"> · over {{ p.over_limit.join(', ') }}</span>
+          </li>
+        </ng-container>
+      </ul>
+      <label class="cf-switch-field" *ngIf="lossyCount > 0">
+        <input type="checkbox" [(ngModel)]="confirmImpact" [disabled]="busy" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">I understand and want to move these churches anyway</span>
+        </span>
+      </label>
+    </section>
+
+    <section *ngIf="result" class="cf-panel sa-section" aria-label="Result" aria-live="polite">
+      <div class="sa-section__header">
+        <h3>Done</h3>
+      </div>
+      <p>{{ result.migrated.length }} moved. {{ result.remaining }} still on version {{ from.version_number }}.</p>
+      <div *ngIf="result.skipped.length">
+        <strong>Not moved ({{ result.skipped.length }})</strong>
+        <ul>
+          <li *ngFor="let s of result.skipped">{{ s.tenant_name }}: {{ s.message }}</li>
+        </ul>
+      </div>
+    </section>
+  </div>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="close()" [disabled]="busy">Close</button>
+    <button *ngIf="!preview" type="button" class="cf-btn cf-btn-primary" (click)="runPreview()" [disabled]="busy || !reasonValid">
+      {{ busy ? 'Checking…' : result && result.remaining > 0 ? 'Preview next batch' : 'Preview' }}
+    </button>
+    <button
+      *ngIf="preview && preview.eligible > 0"
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="runMigration()"
+      [disabled]="busy || (lossyCount > 0 && !confirmImpact)">
+      {{ busy ? 'Moving…' : 'Move ' + preview.processed + (preview.processed === 1 ? ' church' : ' churches') }}
+    </button>
+  </ng-container>
+</app-modal-shell>

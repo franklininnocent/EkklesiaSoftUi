@@ -1,0 +1,39 @@
+.bishop-photo-control {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.bishop-photo-control__preview {
+  border: 4px solid #e5e7eb;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.bishop-photo-control__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+}
+
+.bishop-photo-control__upload.is-disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.bishop-photo-control__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6b7280;
+  text-align: center;
+}
+
+.bishop-photo-control__error {
+  margin: 0;
+  color: #dc2626;
+  font-size: 0.875rem;
+  text-align: center;
+}

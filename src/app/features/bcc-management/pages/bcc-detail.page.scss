@@ -1,0 +1,293 @@
+.bcc-detail {
+  display: grid;
+  gap: 1rem;
+}
+
+.bcc-detail__back {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--cf-muted);
+  text-decoration: none;
+  font-size: 0.85rem;
+  padding: 0.15rem 0;
+
+  &:hover,
+  &:focus-visible {
+    color: var(--cf-primary);
+    outline: none;
+  }
+}
+
+/*
+ * Two-column identity header: identity narrative on the left, an information
+ * rail (primary action + meeting/audit facts) on the right so the full panel
+ * width carries content instead of trailing whitespace.
+ */
+.bcc-detail__header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: var(--cf-space-4);
+}
+
+.bcc-detail__identity {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.bcc-detail__monogram {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: var(--cf-radius-sm);
+  background: var(--cf-slate-100);
+  border: 1px solid var(--cf-panel-border);
+  color: var(--cf-slate-700);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.bcc-detail__titles {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.bcc-detail__title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.bcc-detail__name {
+  margin: 0;
+  font-size: clamp(1.3rem, 1.8vw, 1.6rem);
+  line-height: 1.2;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  color: var(--cf-slate-900);
+  overflow-wrap: anywhere;
+}
+
+.bcc-detail__sub-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.82rem;
+  color: var(--cf-muted);
+}
+
+.bcc-detail__type {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.bcc-detail__dot {
+  color: var(--cf-slate-300);
+}
+
+.bcc-detail__code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.1rem 0.15rem 0.1rem 0.5rem;
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-pill);
+  background: var(--cf-slate-50);
+}
+
+.bcc-detail__code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--cf-slate-700);
+}
+
+.bcc-detail__copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: var(--cf-muted);
+  border-radius: var(--cf-radius-pill);
+  font-size: 0.72rem;
+  padding: 0.2rem 0.45rem;
+  cursor: pointer;
+  transition: color 0.12s ease, background-color 0.12s ease;
+
+  &:hover {
+    color: var(--cf-primary);
+    background: var(--cf-slate-100);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-primary);
+    outline-offset: 1px;
+  }
+}
+
+.bcc-detail__copy-text {
+  font-weight: 500;
+}
+
+.bcc-detail__description {
+  margin: 0.1rem 0 0;
+  color: var(--cf-slate-700);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  max-width: 46rem;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.bcc-detail__rail {
+  display: grid;
+  gap: 0.85rem;
+  justify-items: start;
+  min-width: 0;
+}
+
+.bcc-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.bcc-detail__facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem 1.5rem;
+  margin: 0;
+  width: 100%;
+}
+
+.bcc-detail__fact {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.bcc-detail__fact-icon {
+  margin-top: 0.15rem;
+  color: var(--cf-muted);
+  flex: 0 0 auto;
+}
+
+.bcc-detail__fact-body {
+  display: grid;
+  gap: 0.1rem;
+  min-width: 0;
+
+  dt {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    color: var(--cf-muted);
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.35;
+    color: var(--cf-slate-700);
+    overflow-wrap: anywhere;
+    /* Long free-text locations stay bounded without truncating short dates. */
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+/* Keep the primary action on the trailing edge everywhere except mobile,
+   where it becomes a full-width button. */
+@media (min-width: 641px) {
+  .bcc-detail__rail {
+    justify-items: end;
+  }
+}
+
+/* Desktop: split the panel, separating the rail with a single hairline. */
+@media (min-width: 1024px) {
+  .bcc-detail__header {
+    /* Proportional split so the rail keeps growing with the viewport instead
+       of pinning to a minimum and re-opening dead space on wide screens. */
+    grid-template-columns: minmax(0, 1.35fr) minmax(20rem, 1fr);
+    gap: var(--cf-space-4) var(--cf-space-6);
+  }
+
+  .bcc-detail__rail {
+    padding-left: var(--cf-space-6);
+    border-left: 1px solid var(--cf-panel-border);
+  }
+
+  .bcc-detail__facts {
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--cf-panel-border);
+  }
+}
+
+/* Tablet: rail sits below identity, facts keep two columns across full width. */
+@media (max-width: 1023px) {
+  .bcc-detail__rail {
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--cf-panel-border);
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .bcc-detail__monogram {
+    width: 2.25rem;
+    height: 2.25rem;
+    font-size: 0.85rem;
+  }
+
+  .bcc-detail__actions {
+    width: 100%;
+  }
+
+  .bcc-detail__actions .cf-btn {
+    width: 100%;
+  }
+
+  .bcc-detail__facts {
+    gap: 0.75rem 1rem;
+  }
+
+  .bcc-detail__copy-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 420px) {
+  .bcc-detail__facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

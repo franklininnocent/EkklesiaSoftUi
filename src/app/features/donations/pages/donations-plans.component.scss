@@ -3,29 +3,6 @@
   gap: 1rem;
 }
 
-.plans-page__hero {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-
-.plans-page__hero-copy h1 {
-  margin: 0;
-}
-
-.plans-page__hero-copy p {
-  margin: 0.35rem 0 0;
-}
-
-.plans-page__hero-actions {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
 .plans-banner {
   display: flex;
   flex-wrap: wrap;
@@ -42,16 +19,6 @@
 .plans-banner--error {
   border-color: #fecaca;
   background: var(--cf-critical-soft);
-}
-
-.plan-success-banner {
-  border-color: var(--cf-forest-soft);
-}
-
-.plan-success-banner__actions {
-  display: flex;
-  gap: 0.45rem;
-  flex-wrap: wrap;
 }
 
 .plans-workspace {
@@ -101,7 +68,7 @@
 
 .plans-card__header-copy h2 {
   margin: 0;
-  font-size: 1rem;
+  font-size: var(--cf-text-section-title, 1.05rem);
   font-weight: 600;
   color: var(--cf-slate-900);
 }
@@ -460,25 +427,8 @@
   margin-top: 0.1rem;
 }
 
-.plan-link {
-  border: 0;
-  background: none;
-  padding: 0;
-  color: var(--cf-primary);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
 .plan-row--highlight {
   background: var(--cf-indigo-soft);
-}
-
-.row-actions {
-  display: flex;
-  gap: 0.55rem;
-  align-items: center;
-  justify-content: flex-end;
-  flex-wrap: wrap;
 }
 
 .plan-load-error__text {
@@ -537,12 +487,3 @@
   }
 }
 
-@media (max-width: 640px) {
-  .plans-page__hero-actions {
-    width: 100%;
-  }
-
-  .plans-page__hero-actions .cf-btn {
-    flex: 1;
-  }
-}

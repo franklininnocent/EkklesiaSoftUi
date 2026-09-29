@@ -4,26 +4,12 @@
   margin: 0 auto;
 }
 
-.list-header {
+/* Toolbar projected into app-page-header actions */
+.sacrament-type-page-header-actions {
   display: flex;
-  justify-content: space-between;
+  flex-wrap: wrap;
   align-items: center;
-  margin-bottom: 2rem;
-  
-  .header-content {
-    .page-title {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: #1a202c;
-      margin: 0 0 0.5rem 0;
-    }
-    
-    .page-subtitle {
-      color: #718096;
-      font-size: 0.95rem;
-      margin: 0;
-    }
-  }
+  gap: var(--cf-space-2, 0.5rem);
 }
 
 .filters-section {
@@ -287,58 +273,6 @@
   }
 }
 
-.btn {
-  padding: 0.625rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.9375rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  border: none;
-  
-  &.btn-primary {
-    background: #4299e1;
-    color: #fff;
-    
-    &:hover {
-      background: #3182ce;
-    }
-  }
-  
-  &.btn-secondary {
-    background: #edf2f7;
-    color: #2d3748;
-    
-    &:hover {
-      background: #e2e8f0;
-    }
-  }
-  
-  &.btn-danger {
-    background: #fc8181;
-    color: #fff;
-    
-    &:hover {
-      background: #f56565;
-    }
-  }
-  
-  &.btn-link {
-    background: transparent;
-    color: #4299e1;
-    padding: 0.5rem 1rem;
-    
-    &:hover {
-      color: #3182ce;
-      background: #ebf8ff;
-    }
-  }
-  
-  .btn-icon {
-    margin-right: 0.5rem;
-  }
-}
-
 // Modal styles
 .modal-overlay {
   position: fixed;
@@ -422,10 +356,15 @@
 
 // Responsive
 @media (max-width: 768px) {
-  .list-header {
+  .sacrament-type-page-header-actions {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 1rem;
+    align-items: stretch;
+    width: 100%;
+
+    .cf-btn {
+      width: 100%;
+      justify-content: center;
+    }
   }
   
   .filter-row {

@@ -1,0 +1,52 @@
+.sacrament-evidence-summary {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.sacrament-evidence-summary--compact {
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+  background: transparent;
+}
+
+.sacrament-evidence-summary__title {
+  margin: 0 0 0.375rem;
+  font-size: 0.9375rem;
+}
+
+.sacrament-evidence-summary__status {
+  margin: 0 0 0.5rem;
+  color: #166534;
+  font-size: 0.875rem;
+}
+
+.sacrament-evidence-summary__advisory {
+  margin: 0 0 0.5rem;
+  color: #0f766e;
+  font-size: 0.8125rem;
+}
+
+.sacrament-evidence-summary dl {
+  margin: 0;
+  display: grid;
+  gap: 0.375rem;
+}
+
+.sacrament-evidence-summary dt {
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.sacrament-evidence-summary dd {
+  margin: 0;
+  font-size: 0.875rem;
+}
+
+.sacrament-evidence-summary__link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+}

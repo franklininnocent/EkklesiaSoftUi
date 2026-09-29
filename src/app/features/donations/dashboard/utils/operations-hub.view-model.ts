@@ -121,7 +121,7 @@ function buildHealthyPriorityCard(data: FinancialCommandCenterPayload): HubPrior
     metric: 'On track this month',
     detail: health?.summary ?? 'No outstanding collections or operational issues require attention.',
     actionLabel: 'Open Analytics',
-    route: '/donations/collection-health',
+    route: '/donations',
     level: 'clear'
   };
 }
@@ -161,7 +161,7 @@ function buildPriorities(data: FinancialCommandCenterPayload, currencyCode: stri
       metric: issue.message,
       detail: issue.detail ?? 'Review collection health indicators.',
       actionLabel: 'Investigate',
-      route: issue.cta_route || '/donations/collection-health',
+      route: issue.cta_route || '/donations',
       level: (issue.severity === 'critical' ? 'critical' : 'high') as HubPriorityLevel,
       expectedAmount: null
     }));
@@ -273,7 +273,7 @@ function buildInsights(data: FinancialCommandCenterPayload, currencyCode: string
       id: `health-${item}`,
       message: item,
       tone: 'neutral',
-      route: '/donations/collection-health'
+      route: '/donations'
     });
   }
 

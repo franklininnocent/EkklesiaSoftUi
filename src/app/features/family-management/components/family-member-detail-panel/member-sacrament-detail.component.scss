@@ -63,6 +63,33 @@
     line-height: 1.45;
     color: var(--text-secondary, #6b7280);
   }
+
+  &__section-label {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: var(--text-secondary, #6b7280);
+  }
+
+  &__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    margin-top: 4px;
+  }
+
+  &__link {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--primary-color, #2563eb);
+    text-decoration: none;
+
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
 
 .pill {
@@ -77,6 +104,16 @@
   &--active {
     background: #d1fae5;
     color: #047857;
+  }
+
+  &--warning {
+    background: #fef3c7;
+    color: #b45309;
+  }
+
+  &--critical {
+    background: #fee2e2;
+    color: #b91c1c;
   }
 
   &--muted {

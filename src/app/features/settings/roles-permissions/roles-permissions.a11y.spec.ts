@@ -45,12 +45,12 @@ describe('Roles & Permissions accessibility', () => {
     fixture.detectChanges();
 
     const host: HTMLElement = fixture.nativeElement;
-    const dialog = host.querySelector('.modal-overlay');
-    const closeButton = host.querySelector('.btn-close');
+    const dialog = host.querySelector('[role="dialog"]');
+    const closeButton = host.querySelector('.cf-modal-shell__close');
 
     expect(dialog?.getAttribute('role')).toBe('dialog');
     expect(dialog?.getAttribute('aria-modal')).toBe('true');
-    expect(closeButton?.getAttribute('aria-label')).toBe('Close assign permissions modal');
+    expect(closeButton?.getAttribute('aria-label')).toBe('Close');
   });
 
   it('announces inline and safeguard errors as alerts', () => {

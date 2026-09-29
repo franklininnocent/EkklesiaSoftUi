@@ -119,14 +119,14 @@
 
   <!-- Panel Footer -->
   <div class="panel-footer">
-    <button class="btn-cancel" (click)="onReset()" type="button" [disabled]="!hasActiveFilters()" title="Reset all filters">
+    <button class="cf-btn btn-reset" (click)="onReset()" type="button" [disabled]="!hasActiveFilters()" title="Reset all filters">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="1 4 1 10 7 10"></polyline>
         <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
       </svg>
       <span>Reset Filters</span>
     </button>
-    <button class="btn-save" (click)="onApply()" type="button" title="Apply selected filters">
+    <button class="cf-btn cf-btn-primary btn-apply" (click)="onApply()" type="button" title="Apply selected filters">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="20 6 9 17 4 12"></polyline>
       </svg>

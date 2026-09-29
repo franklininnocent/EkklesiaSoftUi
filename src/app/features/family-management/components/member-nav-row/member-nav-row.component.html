@@ -14,7 +14,13 @@
   <div class="member-nav-row__accent" aria-hidden="true"></div>
 
   <div class="member-nav-row__avatar" aria-hidden="true">
-    <img *ngIf="vm.avatarUrl" [src]="vm.avatarUrl" [alt]="" class="member-nav-row__photo" />
+    <img
+      *ngIf="vm.avatarUrl"
+      [src]="vm.avatarUrl"
+      [alt]=""
+      class="member-nav-row__photo member-nav-row__photo--previewable"
+      (click)="onPhotoClick($event)"
+    />
     <span *ngIf="!vm.avatarUrl" class="member-nav-row__initials">{{ vm.avatarInitial }}</span>
   </div>
 

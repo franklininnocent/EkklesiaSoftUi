@@ -1,0 +1,15 @@
+.sacrament-settings__meta {
+  color: var(--cf-muted, #64748b);
+  font-size: 0.85rem;
+  margin-top: 0.15rem;
+}
+
+.sacrament-settings__switch {
+  padding: var(--cf-space-2, 0.5rem);
+  margin: 0;
+}
+
+.sacrament-settings .cf-form-section__intro a {
+  color: inherit;
+  font-weight: 600;
+}

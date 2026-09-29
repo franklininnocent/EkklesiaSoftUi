@@ -1,0 +1,17 @@
+@use '../../../../../donations/styles/stewardship-split-layout.scss';
+@use '../sacrament-control-chrome' as sacramentChrome;
+
+@include sacramentChrome.sacrament-control-chrome;
+
+.cf-affiliation {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.cf-affiliation__label {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--cf-slate-700);
+}

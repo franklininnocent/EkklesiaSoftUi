@@ -1,0 +1,63 @@
+<div class="sa-stack">
+  <p class="sa-muted" *ngIf="!can.usage">You do not have access to church usage.</p>
+
+  <ng-container *ngIf="can.usage">
+    <div class="sa-toolbar">
+      <label class="sa-toolbar__filters">
+        <input type="checkbox" [(ngModel)]="attentionOnly" (ngModelChange)="applyFilter()" />
+        Only churches that are nearly full
+      </label>
+      <span class="sa-muted" *ngIf="result?.snapshot_date">Measured {{ result!.snapshot_date | date: 'mediumDate' }}</span>
+    </div>
+
+    <div *ngIf="loading && !result" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <app-loading-skeleton type="table" [rows]="6" [columns]="3"></app-loading-skeleton>
+    </div>
+
+    <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+      <div>
+        <strong>Could not load church usage</strong>
+        <p>{{ error }}</p>
+      </div>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!loading && !error && result && result.data.length === 0"
+      [title]="result.snapshot_date ? (attentionOnly ? 'No church is close to a limit' : 'No usage measured') : 'Usage has not been measured yet'"
+      description="Usage is measured once a day for every church."
+      icon="◔"
+      [hasActions]="false">
+    </app-cf-empty-state>
+
+    <app-data-table *ngIf="result && result.data.length > 0" [ariaBusy]="loading">
+      <caption class="sr-only">Church usage against plan limits</caption>
+      <thead>
+        <tr>
+          <th scope="col">Church</th>
+          <th scope="col">Most pressing</th>
+          <th scope="col">Usage</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let t of result.data; trackBy: trackByTenant">
+          <td><a [routerLink]="['/tenants', t.tenant_id]">{{ t.tenant_name }}</a></td>
+          <td><app-status-badge [label]="levelLabel(t.worst_level)" [tone]="levelTone(t.worst_level)"></app-status-badge></td>
+          <td>
+            <ul class="sa-chip-list">
+              <li class="sa-chip" *ngFor="let u of t.usage" [class.sa-chip--loss]="levelTone(u.level) === 'critical'">
+                {{ u.name }}: {{ usageText(u) }}
+              </li>
+            </ul>
+          </td>
+        </tr>
+      </tbody>
+    </app-data-table>
+
+    <nav class="sa-pager" *ngIf="result && result.meta.last_page > 1" aria-label="Pages">
+      <button type="button" class="cf-btn" (click)="goTo(page - 1)" [disabled]="loading || page <= 1">Previous</button>
+      <span>Page {{ result.meta.current_page }} of {{ result.meta.last_page }}</span>
+      <button type="button" class="cf-btn" (click)="goTo(page + 1)" [disabled]="loading || page >= result.meta.last_page">Next</button>
+    </nav>
+  </ng-container>
+</div>

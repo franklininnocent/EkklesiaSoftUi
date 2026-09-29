@@ -1,0 +1,525 @@
+<div class="insights-analytics">
+  <div class="insights-analytics__toolbar">
+    <div class="insights-analytics__sections" role="tablist" aria-label="Analytics sections">
+      <button
+        type="button"
+        class="cf-btn cf-btn-sm insights-analytics__section-btn"
+        *ngFor="let s of sections"
+        [class.cf-btn-primary]="section === s.id"
+        [attr.aria-pressed]="section === s.id"
+        (click)="setSection(s.id)"
+      >
+        {{ s.label }}
+      </button>
+    </div>
+    <div class="insights-analytics__toolbar-actions">
+      <div class="insights-analytics__windows" role="group" aria-label="Activity window">
+        <button
+          type="button"
+          class="cf-btn cf-btn-sm"
+          *ngFor="let w of windows"
+          [class.cf-btn-primary]="windowDays === w.days"
+          [attr.aria-pressed]="windowDays === w.days"
+          (click)="setWindow(w.days)"
+        >
+          {{ w.label }}
+        </button>
+      </div>
+      <app-list-toolbar
+        *ngIf="section === 'audit'"
+        [showSearch]="false"
+        [filterCount]="drawerFilterCount"
+        (filtersOpened)="openFilters()"
+      ></app-list-toolbar>
+    </div>
+  </div>
+
+  <app-loading-skeleton *ngIf="loading"></app-loading-skeleton>
+
+  <app-cf-empty-state
+    *ngIf="!loading && error"
+    [title]="unauthorized ? 'Access denied' : 'Something went wrong'"
+    [description]="error"
+    [hasActions]="false"
+  ></app-cf-empty-state>
+
+  <ng-container *ngIf="!loading && !error">
+    <!-- Adoption -->
+    <ng-container *ngIf="section === 'adoption' && adoption as a">
+      <div class="cf-decision-strip insights-analytics__decision">
+        <div class="cf-decision-strip__copy">
+          <strong>Adoption conversion rates</strong>
+          <span>
+            Conversion between funnel stages for the selected window.
+            Full funnel visualization and attention drill-down are on Overview.
+          </span>
+        </div>
+        <div class="cf-decision-strip__actions">
+          <a
+            class="cf-btn cf-btn-sm cf-btn-secondary"
+            routerLink="/platform/ministries/overview"
+          >
+            Open Overview funnel
+          </a>
+          <a
+            class="cf-btn cf-btn-sm cf-btn-primary"
+            routerLink="/platform/ministries/tenants"
+            [queryParams]="{ window_days: windowDays }"
+          >
+            Browse tenants
+          </a>
+        </div>
+      </div>
+
+      <div class="insights-analytics__kpi-band">
+        <p class="insights-analytics__kpi-caption">Conversion rates</p>
+        <section class="cf-kpi-grid insights-analytics__kpi-grid insights-analytics__kpi-grid--4" aria-label="Adoption rates">
+          <article class="cf-kpi insights-analytics__kpi">
+            <strong class="insights-analytics__kpi-value">{{ formatPercent(a.rates.enabled_of_all) }}</strong>
+            <span class="insights-analytics__kpi-label">Enabled of all</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi">
+            <strong class="insights-analytics__kpi-value">{{ formatPercent(a.rates.activated_of_enabled) }}</strong>
+            <span class="insights-analytics__kpi-label">Activated of enabled</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi insights-analytics__kpi--positive">
+            <strong class="insights-analytics__kpi-value">{{ formatPercent(a.rates.active_of_activated) }}</strong>
+            <span class="insights-analytics__kpi-label">Active of activated</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi insights-analytics__kpi--positive">
+            <strong class="insights-analytics__kpi-value">{{ formatPercent(a.rates.highly_engaged_of_active) }}</strong>
+            <span class="insights-analytics__kpi-label">Highly engaged of active</span>
+          </article>
+        </section>
+      </div>
+
+      <app-section-card title="Stage counts">
+        <ol class="insights-analytics__funnel" aria-label="Adoption stage counts">
+          <li>
+            <div class="insights-analytics__funnel-row">
+              <span>All tenants</span>
+              <strong>{{ a.funnel.all_tenants }}</strong>
+            </div>
+            <div class="insights-analytics__funnel-bar" [style.width.%]="100"></div>
+          </li>
+          <li>
+            <div class="insights-analytics__funnel-row">
+              <span>Module enabled</span>
+              <strong>{{ a.funnel.module_enabled }}</strong>
+            </div>
+            <div
+              class="insights-analytics__funnel-bar"
+              [style.width.%]="funnelPercent(a.funnel.module_enabled, a.funnel.all_tenants)"
+            ></div>
+          </li>
+          <li>
+            <div class="insights-analytics__funnel-row">
+              <span>Activated</span>
+              <strong>{{ a.funnel.activated }}</strong>
+            </div>
+            <div
+              class="insights-analytics__funnel-bar"
+              [style.width.%]="funnelPercent(a.funnel.activated, a.funnel.all_tenants)"
+            ></div>
+          </li>
+          <li>
+            <div class="insights-analytics__funnel-row">
+              <span>Active</span>
+              <strong>{{ a.funnel.active }}</strong>
+            </div>
+            <div
+              class="insights-analytics__funnel-bar insights-analytics__funnel-bar--positive"
+              [style.width.%]="funnelPercent(a.funnel.active, a.funnel.all_tenants)"
+            ></div>
+          </li>
+          <li>
+            <div class="insights-analytics__funnel-row">
+              <span>Highly engaged</span>
+              <strong>{{ a.funnel.highly_engaged }}</strong>
+            </div>
+            <div
+              class="insights-analytics__funnel-bar insights-analytics__funnel-bar--positive"
+              [style.width.%]="funnelPercent(a.funnel.highly_engaged, a.funnel.all_tenants)"
+            ></div>
+          </li>
+          <li>
+            <div class="insights-analytics__funnel-row">
+              <span>Inactive</span>
+              <strong>{{ a.funnel.inactive }}</strong>
+            </div>
+            <div
+              class="insights-analytics__funnel-bar insights-analytics__funnel-bar--attention"
+              [style.width.%]="funnelPercent(a.funnel.inactive, a.funnel.all_tenants)"
+            ></div>
+          </li>
+          <li>
+            <div class="insights-analytics__funnel-row">
+              <span>Declining</span>
+              <strong>{{ a.funnel.declining }}</strong>
+            </div>
+            <div
+              class="insights-analytics__funnel-bar insights-analytics__funnel-bar--attention"
+              [style.width.%]="funnelPercent(a.funnel.declining, a.funnel.all_tenants)"
+            ></div>
+          </li>
+        </ol>
+      </app-section-card>
+    </ng-container>
+
+    <!-- Usage -->
+    <ng-container *ngIf="section === 'usage' && usage as u">
+      <div class="cf-decision-strip insights-analytics__decision">
+        <div class="cf-decision-strip__copy">
+          <strong>How tenants used Ministries in this window</strong>
+          <span>Meaningful actions, active reach, and frequency across activated tenants.</span>
+        </div>
+      </div>
+
+      <div class="insights-analytics__kpi-band">
+        <p class="insights-analytics__kpi-caption">Usage summary</p>
+        <section class="cf-kpi-grid insights-analytics__kpi-grid insights-analytics__kpi-grid--5" aria-label="Usage summary">
+          <article class="cf-kpi insights-analytics__kpi">
+            <strong class="insights-analytics__kpi-value">{{ u.summary.meaningful_actions }}</strong>
+            <span class="insights-analytics__kpi-label">Meaningful actions</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi insights-analytics__kpi--secondary">
+            <strong class="insights-analytics__kpi-value">{{ u.summary.prior_meaningful_actions }}</strong>
+            <span class="insights-analytics__kpi-label">Prior window</span>
+          </article>
+          <article
+            class="cf-kpi insights-analytics__kpi"
+            [class.insights-analytics__kpi--positive]="u.summary.usage_trend === 'up'"
+            [class.insights-analytics__kpi--attention]="u.summary.usage_trend === 'down'"
+          >
+            <span class="insights-analytics__kpi-badge">
+              <app-status-badge [label]="statusLabel(u.summary.usage_trend)" [tone]="toneForTrend(u.summary.usage_trend)"></app-status-badge>
+            </span>
+            <span class="insights-analytics__kpi-label">Trend</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi insights-analytics__kpi--positive">
+            <strong class="insights-analytics__kpi-value">{{ u.summary.active_tenants }}</strong>
+            <span class="insights-analytics__kpi-label">Active tenants</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi">
+            <strong class="insights-analytics__kpi-value">{{ u.summary.active_users }}</strong>
+            <span class="insights-analytics__kpi-label">Active users</span>
+          </article>
+        </section>
+      </div>
+
+      <div class="insights-analytics__grid">
+        <app-section-card title="Action frequency (activated tenants)">
+          <ul class="insights-analytics__meters">
+            <li>
+              <div class="insights-analytics__meter-row">
+                <span>0 actions</span>
+                <strong>{{ u.frequency_buckets['0'] || 0 }}</strong>
+              </div>
+              <div class="insights-analytics__meter-track">
+                <div
+                  class="insights-analytics__meter-fill"
+                  [style.width.%]="bucketPercent(u.frequency_buckets['0'], u.frequency_buckets)"
+                ></div>
+              </div>
+            </li>
+            <li>
+              <div class="insights-analytics__meter-row">
+                <span>1–4</span>
+                <strong>{{ u.frequency_buckets['1_4'] || 0 }}</strong>
+              </div>
+              <div class="insights-analytics__meter-track">
+                <div
+                  class="insights-analytics__meter-fill"
+                  [style.width.%]="bucketPercent(u.frequency_buckets['1_4'], u.frequency_buckets)"
+                ></div>
+              </div>
+            </li>
+            <li>
+              <div class="insights-analytics__meter-row">
+                <span>5–9</span>
+                <strong>{{ u.frequency_buckets['5_9'] || 0 }}</strong>
+              </div>
+              <div class="insights-analytics__meter-track">
+                <div
+                  class="insights-analytics__meter-fill"
+                  [style.width.%]="bucketPercent(u.frequency_buckets['5_9'], u.frequency_buckets)"
+                ></div>
+              </div>
+            </li>
+            <li>
+              <div class="insights-analytics__meter-row">
+                <span>10+</span>
+                <strong>{{ u.frequency_buckets['10_plus'] || 0 }}</strong>
+              </div>
+              <div class="insights-analytics__meter-track">
+                <div
+                  class="insights-analytics__meter-fill insights-analytics__meter-fill--positive"
+                  [style.width.%]="bucketPercent(u.frequency_buckets['10_plus'], u.frequency_buckets)"
+                ></div>
+              </div>
+            </li>
+          </ul>
+        </app-section-card>
+        <app-section-card title="Usage trend counts">
+          <ul class="insights-analytics__meters">
+            <li>
+              <div class="insights-analytics__meter-row">
+                <span>Up</span>
+                <strong>{{ u.trend_counts['up'] || 0 }}</strong>
+              </div>
+              <div class="insights-analytics__meter-track">
+                <div
+                  class="insights-analytics__meter-fill insights-analytics__meter-fill--positive"
+                  [style.width.%]="bucketPercent(u.trend_counts['up'], u.trend_counts)"
+                ></div>
+              </div>
+            </li>
+            <li>
+              <div class="insights-analytics__meter-row">
+                <span>Flat</span>
+                <strong>{{ u.trend_counts['flat'] || 0 }}</strong>
+              </div>
+              <div class="insights-analytics__meter-track">
+                <div
+                  class="insights-analytics__meter-fill"
+                  [style.width.%]="bucketPercent(u.trend_counts['flat'], u.trend_counts)"
+                ></div>
+              </div>
+            </li>
+            <li>
+              <div class="insights-analytics__meter-row">
+                <span>Down</span>
+                <strong>{{ u.trend_counts['down'] || 0 }}</strong>
+              </div>
+              <div class="insights-analytics__meter-track">
+                <div
+                  class="insights-analytics__meter-fill insights-analytics__meter-fill--attention"
+                  [style.width.%]="bucketPercent(u.trend_counts['down'], u.trend_counts)"
+                ></div>
+              </div>
+            </li>
+          </ul>
+        </app-section-card>
+      </div>
+
+      <app-section-card title="Top tenants by activity">
+        <app-data-table *ngIf="u.top_tenants.length; else noTop" class="insights-analytics__table">
+          <table>
+            <thead>
+              <tr>
+                <th>Tenant</th>
+                <th>Actions</th>
+                <th>Prior</th>
+                <th>Users</th>
+                <th>Trend</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of u.top_tenants" class="insights-row-link" (click)="openTenant(row.tenant_id)">
+                <td><strong>{{ row.tenant_name }}</strong></td>
+                <td class="insights-analytics__num">{{ row.window_actions }}</td>
+                <td class="insights-analytics__num">{{ row.prior_actions }}</td>
+                <td class="insights-analytics__num">{{ row.active_users_count }}</td>
+                <td><app-status-badge [label]="statusLabel(row.usage_trend)" [tone]="toneForTrend(row.usage_trend)"></app-status-badge></td>
+              </tr>
+            </tbody>
+          </table>
+        </app-data-table>
+        <ng-template #noTop>
+          <app-cf-empty-state title="No activated tenants" description="Enable and activate the module to see usage." [hasActions]="false"></app-cf-empty-state>
+        </ng-template>
+      </app-section-card>
+    </ng-container>
+
+    <!-- Features -->
+    <ng-container *ngIf="section === 'features' && features as f">
+      <div class="cf-decision-strip insights-analytics__decision">
+        <div class="cf-decision-strip__copy">
+          <strong>Feature adoption</strong>
+          <span>
+            Adoption % = tenants with evidence / {{ f.enabled_tenants }} enabled tenants.
+            Click a row for drill-down.
+          </span>
+        </div>
+      </div>
+
+      <app-section-card title="Feature adoption">
+        <app-data-table class="insights-analytics__table">
+          <table>
+            <thead>
+              <tr>
+                <th>Feature</th>
+                <th>With evidence</th>
+                <th>Enabled</th>
+                <th>Adoption</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of f.categories" class="insights-row-link" (click)="onFeatureClick(row.category)">
+                <td><strong>{{ featureLabel(row.category) }}</strong></td>
+                <td class="insights-analytics__num">{{ row.tenants_with_evidence }}</td>
+                <td class="insights-analytics__num">{{ row.enabled_tenants }}</td>
+                <td class="insights-analytics__num insights-analytics__num--accent">{{ formatPercent(row.adoption_percent) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </app-data-table>
+      </app-section-card>
+
+      <app-section-card *ngIf="f.drilldown as d" [title]="'Tenants using ' + featureLabel(d.category)">
+        <ul class="insights-analytics__chips" *ngIf="d.tenants.length; else noDrill">
+          <li *ngFor="let t of d.tenants">
+            <a
+              class="insights-analytics__chip"
+              [routerLink]="['/platform/ministries/tenants', t.tenant_id]"
+            >{{ t.tenant_name }}</a>
+          </li>
+        </ul>
+        <ng-template #noDrill>
+          <p class="insights-analytics__hint">No tenants have evidence for this feature in the window.</p>
+        </ng-template>
+      </app-section-card>
+    </ng-container>
+
+    <!-- Trends -->
+    <ng-container *ngIf="section === 'trends' && trends as t">
+      <div class="cf-decision-strip insights-analytics__decision">
+        <div class="cf-decision-strip__copy">
+          <strong>Activity over time</strong>
+          <span>Compare the current window to the prior period and inspect the trend series.</span>
+        </div>
+      </div>
+
+      <div class="insights-analytics__kpi-band">
+        <p class="insights-analytics__kpi-caption">Trend comparison</p>
+        <section class="cf-kpi-grid insights-analytics__kpi-grid insights-analytics__kpi-grid--4" aria-label="Trend comparison">
+          <article class="cf-kpi insights-analytics__kpi">
+            <strong class="insights-analytics__kpi-value">{{ t.comparison.current_meaningful_actions }}</strong>
+            <span class="insights-analytics__kpi-label">Current actions</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi insights-analytics__kpi--secondary">
+            <strong class="insights-analytics__kpi-value">{{ t.comparison.prior_meaningful_actions }}</strong>
+            <span class="insights-analytics__kpi-label">Prior actions</span>
+          </article>
+          <article
+            class="cf-kpi insights-analytics__kpi"
+            [class.insights-analytics__kpi--positive]="t.comparison.usage_trend === 'up'"
+            [class.insights-analytics__kpi--attention]="t.comparison.usage_trend === 'down'"
+          >
+            <span class="insights-analytics__kpi-badge">
+              <app-status-badge [label]="statusLabel(t.comparison.usage_trend)" [tone]="toneForTrend(t.comparison.usage_trend)"></app-status-badge>
+            </span>
+            <span class="insights-analytics__kpi-label">Trend</span>
+          </article>
+          <article class="cf-kpi insights-analytics__kpi insights-analytics__kpi--secondary">
+            <strong class="insights-analytics__kpi-value insights-analytics__kpi-value--sm">{{ t.granularity }}</strong>
+            <span class="insights-analytics__kpi-label">Granularity</span>
+          </article>
+        </section>
+      </div>
+
+      <app-section-card title="Activity over time">
+        <div class="insights-chart" *ngIf="t.series.length; else noTrend">
+          <canvas #trendsCanvas aria-label="Meaningful actions trend chart"></canvas>
+        </div>
+        <ng-template #noTrend>
+          <app-cf-empty-state title="No activity in window" description="Try a wider window." [hasActions]="false"></app-cf-empty-state>
+        </ng-template>
+      </app-section-card>
+    </ng-container>
+
+    <!-- Audit -->
+    <ng-container *ngIf="section === 'audit'">
+      <div class="cf-decision-strip insights-analytics__decision">
+        <div class="cf-decision-strip__copy">
+          <strong>Meaningful activity and entitlement changes</strong>
+          <span>Review platform activity for the selected window. Use Filters to narrow by event or tenant.</span>
+        </div>
+      </div>
+
+      <div class="insights-analytics__audit-grid">
+        <app-section-card title="Activity">
+          <app-data-table *ngIf="auditRows.length; else noAudit" class="insights-analytics__table">
+            <table>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Tenant</th>
+                  <th>Event</th>
+                  <th>Actor</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of auditRows">
+                  <td>{{ row.occurred_at | date: 'medium' }}</td>
+                  <td>
+                    <a *ngIf="row.tenant" class="insights-analytics__link" [routerLink]="['/platform/ministries/tenants', row.tenant.id]">{{ row.tenant.name }}</a>
+                    <span *ngIf="!row.tenant">—</span>
+                  </td>
+                  <td>{{ row.event_label }}</td>
+                  <td>{{ row.actor?.name || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </app-data-table>
+          <ng-template #noAudit>
+            <app-cf-empty-state title="No audit events" description="No matching activity in this window." [hasActions]="false"></app-cf-empty-state>
+          </ng-template>
+          <app-pagination
+            *ngIf="auditTotal > 0"
+            [currentPage]="auditPage"
+            [pageSize]="25"
+            [totalItems]="auditTotal"
+            [showPageSizeSelector]="false"
+            (pageChange)="onAuditPage($event)"
+          ></app-pagination>
+        </app-section-card>
+
+        <app-section-card title="Governance (module entitlement)">
+          <p class="insights-analytics__hint" *ngIf="!governanceAvailable">{{ governanceReason || 'Governance metrics unavailable.' }}</p>
+          <app-data-table *ngIf="governanceAvailable && governanceItems.length; else noGov" class="insights-analytics__table">
+            <table>
+              <thead>
+                <tr>
+                  <th>When</th>
+                  <th>Tenant</th>
+                  <th>Change</th>
+                  <th>Actor</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let g of governanceItems">
+                  <td>{{ g.occurred_at | date: 'medium' }}</td>
+                  <td>
+                    <a *ngIf="g.tenant" class="insights-analytics__link" [routerLink]="['/platform/ministries/tenants', g.tenant.id]">{{ g.tenant.name }}</a>
+                  </td>
+                  <td><app-status-badge [label]="g.change" [tone]="g.change === 'enabled' ? 'success' : 'critical'"></app-status-badge></td>
+                  <td>{{ g.actor?.name || '—' }}</td>
+                  <td>{{ g.reason || '—' }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </app-data-table>
+          <ng-template #noGov>
+            <app-cf-empty-state
+              *ngIf="governanceAvailable"
+              title="No entitlement toggles"
+              description="No ministries_associations enable/disable events in subscription audits for this window."
+              [hasActions]="false"
+            ></app-cf-empty-state>
+          </ng-template>
+        </app-section-card>
+      </div>
+    </ng-container>
+  </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</div>

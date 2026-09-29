@@ -1,0 +1,48 @@
+<div class="bcc-history">
+  <div class="cf-loading-block" *ngIf="loading" role="status">
+    <p class="cf-loading-block__label">Loading membership history…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+  </div>
+  <div class="cf-inline-alert" *ngIf="loadError && !loading" role="alert">
+    <p>{{ loadError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+  <ng-container *ngIf="!loading && !loadError">
+    <app-data-table *ngIf="rows.length; else emptyHistory">
+      <thead>
+        <tr>
+          <th scope="col">Family</th>
+          <th scope="col">Joined</th>
+          <th scope="col">Left</th>
+          <th scope="col">Status</th>
+          <th scope="col">Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let row of rows">
+          <td><strong>{{ row.family?.family_name }}</strong></td>
+          <td>
+            <time *ngIf="row.joined_date; else noJoined" [attr.datetime]="row.joined_date">{{ row.joined_date }}</time>
+            <ng-template #noJoined>—</ng-template>
+          </td>
+          <td>{{ row.exit_date || '—' }}</td>
+          <td>{{ row.is_current ? 'Current' : 'Historical' }}</td>
+          <td>{{ row.exit_reason || '—' }}</td>
+        </tr>
+      </tbody>
+    </app-data-table>
+    <ng-template #emptyHistory>
+      <app-cf-empty-state
+        title="No membership history yet"
+        description="Membership changes will appear here as this BCC evolves."
+      ></app-cf-empty-state>
+    </ng-template>
+    <app-pagination
+      *ngIf="total > perPage"
+      [currentPage]="page"
+      [pageSize]="perPage"
+      [totalItems]="total"
+      (pageChange)="page = $event; load()"
+    ></app-pagination>
+  </ng-container>
+</div>

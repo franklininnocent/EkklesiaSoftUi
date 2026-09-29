@@ -1,0 +1,30 @@
+<section class="cf-review-panel" aria-labelledby="sacrament-review-title">
+  <h3 id="sacrament-review-title" class="cf-split-section__title">Review</h3>
+  <p class="cf-split-field__hint">
+    Confirm people and details before saving.
+  </p>
+
+  <dl class="cf-review-panel__meta">
+    <div>
+      <dt>Date</dt>
+      <dd>{{ dateAdministered || '—' }}</dd>
+    </div>
+    <div>
+      <dt>Place</dt>
+      <dd>{{ placeAdministered || '—' }}</dd>
+    </div>
+  </dl>
+
+  <ul class="cf-review-panel__people" *ngIf="participants.length; else empty">
+    <li *ngFor="let person of participants">
+      <strong class="cf-review-panel__role">{{ roleLabel(person.role) }}</strong>
+      <span>{{ displayName(person) }}</span>
+      <span class="cf-review-panel__source">{{ sourceLabel(person) }}</span>
+      <span class="cf-review-panel__aff" *ngIf="affiliationLabel(person)">{{ affiliationLabel(person) }}</span>
+    </li>
+  </ul>
+
+  <ng-template #empty>
+    <p class="cf-split-field__hint">No people selected yet.</p>
+  </ng-template>
+</section>

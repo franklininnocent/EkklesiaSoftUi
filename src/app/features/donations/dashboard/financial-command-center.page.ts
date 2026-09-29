@@ -3,10 +3,12 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, DestroyRef, OnIn
 import { NavigationEnd, Router } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { filter, Subject, switchMap } from 'rxjs';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { CommandCenterDataService } from './services/command-center-data.service';
 import { FinancialCommandCenterPayload, DioceseRollupDashboard } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
+import { localDateOnly } from '../utils/local-date-only';
 import { isFocLayerVisible } from './utils/foc-format.util';
 import { FocCommandBarComponent } from './components/foc-command-bar/foc-command-bar.component';
 import { FocHealthZoneComponent } from './components/foc-health-zone/foc-health-zone.component';
@@ -35,6 +37,7 @@ import { ParishExpenseRecord } from '../models/donation.model';
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class FinancialCommandCenterPageComponent implements OnInit {
+  private readonly churchCurrency = inject(ChurchCurrencyService);
   private readonly dataService = inject(CommandCenterDataService);
   private readonly quickCollectService = inject(QuickCollectService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -55,7 +58,12 @@ export class FinancialCommandCenterPageComponent implements OnInit {
   expenseForm: FocExpenseFormValue = this.createEmptyExpenseForm();
 
   get currencyCode(): string {
-    return this.data?.meta?.currency_code || this.data?.tenant_context?.currency_code || 'INR';
+    return (
+      this.churchCurrency.currencyCode()
+      ?? this.data?.meta?.currency_code
+      ?? this.data?.tenant_context?.currency_code
+      ?? 'INR'
+    );
   }
 
   get monthExpenses(): number {
@@ -243,7 +251,7 @@ export class FinancialCommandCenterPageComponent implements OnInit {
     return {
       category: '',
       amount: null,
-      expense_date: new Date().toISOString().slice(0, 10),
+      expense_date: localDateOnly(),
       payee: '',
       method: 'cash',
       notes: '',

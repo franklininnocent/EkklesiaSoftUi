@@ -1,18 +1,20 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, DestroyRef, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { IfFeatureDirective } from '@shared/directives/if-feature.directive';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { ContributionDue, WhatsAppDeliverySummary, WhatsAppOutreachPreview } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-dues',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, IfFeatureDirective, CfCurrencyPipe, CfActionIconComponent],
   template: `
     <section class="dues-page cf-page">
       <header class="cf-hero">
@@ -22,16 +24,28 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
 
       <div class="cf-decision-strip" role="region" aria-label="Suggested next step" *ngIf="!loading">
         <div class="cf-decision-strip__copy">
-          <strong>{{ overdueCount }} overdue · {{ outstandingTotal | number:'1.2-2' }} outstanding</strong>
+          <strong>{{ overdueCount }} overdue · {{ outstandingTotal | cfCurrency }} outstanding</strong>
           <span>{{ decisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-          <button type="button" class="cf-btn" *ngIf="overdueCount" (click)="showOverdueOnly()">Show overdue only</button>
-          <button type="button" class="cf-btn" *ngIf="canManage && overdueCount" (click)="queueBulkWhatsApp()" [disabled]="whatsAppQueueing">
-            {{ whatsAppQueueing ? 'Queueing…' : 'WhatsApp all overdue' }}
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
           </button>
-          <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateScheduled()">Generate dues</button>
+          <button type="button" class="cf-btn cf-btn-icon" *ngIf="overdueCount" (click)="showOverdueOnly()" aria-label="Show overdue only" title="Show overdue only"><app-cf-action-icon name="filter" /></button>
+          <button
+          aria-label="WhatsApp all overdue"
+          title="WhatsApp all overdue" type="button" class="cf-btn cf-btn-icon" *ngIf="canManage && overdueCount" (click)="queueBulkWhatsApp()" [disabled]="whatsAppQueueing">
+          <app-cf-action-icon name="message-circle" />
+          </button>
+          <ng-container *appIfFeature="'CONTRIBUTION_PLANS'">
+            <button
+          aria-label="Catch up auto plans"
+          title="Catch up auto plans" type="button" class="cf-btn cf-btn-icon" *ngIf="canManage" (click)="generateScheduled()">
+          <app-cf-action-icon name="refresh" />
+            </button>
+          </ng-container>
         </div>
       </div>
 
@@ -42,15 +56,25 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
         </div>
         <ul class="outreach-list" *ngIf="whatsAppPreview?.targets?.length">
           <li *ngFor="let target of whatsAppPreview?.targets?.slice(0, 5) ?? []">
-            <span>{{ target.family_name }} · {{ target.overdue_amount | number:'1.2-2' }}</span>
+            <span>{{ target.family_name }} · {{ target.overdue_amount | cfCurrency }}</span>
             <a *ngIf="target.whatsapp_url" [href]="target.whatsapp_url" target="_blank" rel="noopener" class="cf-link">Open</a>
           </li>
         </ul>
         <div class="outreach-actions">
-          <button type="button" class="cf-btn" (click)="loadWhatsAppPreview()" [disabled]="whatsAppLoading">Refresh preview</button>
-          <button type="button" class="cf-btn cf-btn-primary" (click)="queueBulkWhatsApp()" [disabled]="whatsAppQueueing">Queue reminders</button>
-          <button type="button" class="cf-btn" (click)="deliverPendingWhatsApp()" [disabled]="whatsAppDelivering || !(whatsAppDelivery?.queued)">
-            {{ whatsAppDelivering ? 'Delivering…' : 'Deliver queued' }}
+          <button
+          aria-label="Try again"
+          title="Try again" type="button" class="cf-btn cf-btn-icon" (click)="loadWhatsAppPreview()" [disabled]="whatsAppLoading">
+          <app-cf-action-icon name="refresh" />
+          </button>
+          <button
+          aria-label="Queue reminders"
+          title="Queue reminders" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="queueBulkWhatsApp()" [disabled]="whatsAppQueueing">
+          <app-cf-action-icon name="send" />
+          </button>
+          <button
+          aria-label="Deliver queued"
+          title="Deliver queued" type="button" class="cf-btn cf-btn-icon" (click)="deliverPendingWhatsApp()" [disabled]="whatsAppDelivering || !(whatsAppDelivery?.queued)">
+          <app-cf-action-icon name="check-check" />
           </button>
         </div>
         <p *ngIf="whatsAppMessage" class="cf-state cf-state--success">{{ whatsAppMessage }}</p>
@@ -94,14 +118,26 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
             <td>{{ due.plan?.name || due.plan_id }}</td>
             <td>{{ due.period_label }}</td>
             <td>{{ due.due_date | date }}</td>
-            <td>{{ (due.outstanding_amount ?? (due.amount_due - due.amount_paid)) | number:'1.2-2' }}</td>
+            <td>{{ (due.outstanding_amount ?? (due.amount_due - due.amount_paid)) | cfCurrency }}</td>
             <td>
               <span class="status-pill" [class.status-pill--overdue]="isDueOverdue(due)">{{ isDueOverdue(due) ? 'Overdue' : due.status }}</span>
             </td>
             <td class="row-actions">
-              <button type="button" class="cf-btn cf-btn-primary" *ngIf="due.family_id" (click)="collectForFamily(due.family_id)">Collect</button>
-              <button type="button" class="cf-btn" (click)="remind(due)">Remind</button>
-              <button type="button" class="cf-btn" *ngIf="canManage && (due.status === 'pending' || due.status === 'partially_paid')" (click)="waive(due)">Waive</button>
+              <button
+          aria-label="Collect"
+          title="Collect" type="button" class="cf-btn cf-btn-icon cf-btn-primary cf-btn--sm" *ngIf="due.family_id" (click)="collectForFamily(due.family_id)">
+          <app-cf-action-icon name="collect-payment" />
+              </button>
+              <button
+          aria-label="Remind"
+          title="Remind" type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="remind(due)">
+          <app-cf-action-icon name="message-circle" />
+              </button>
+              <button
+          aria-label="Waive"
+          title="Waive" type="button" class="cf-btn cf-btn-icon cf-btn--sm" *ngIf="canManage && (due.status === 'pending' || due.status === 'partially_paid')" (click)="waive(due)">
+          <app-cf-action-icon name="badge-minus" />
+              </button>
             </td>
           </tr>
         </tbody>
@@ -115,8 +151,14 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
         title="All caught up"
         description="No outstanding contributions match your filters. Families are up to date — or try clearing filters to see paid history."
       >
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-        <a routerLink="/families" class="cf-btn">Browse Families</a>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
+        <a routerLink="/families" class="cf-btn cf-btn-icon" aria-label="Browse Families" title="Browse Families">
+          <app-cf-action-icon name="users" />
+        </a>
       </app-cf-empty-state>
     </section>
   `,
@@ -154,12 +196,17 @@ export class DonationsDuesComponent implements OnInit {
     private authService: AuthService,
     private quickCollectService: QuickCollectService,
     private router: Router,
+    private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
     private destroyRef: DestroyRef
   ) {}
 
   ngOnInit(): void {
     this.canManage = this.authService.hasPermission('donations.manage');
+    const overdueParam = this.route.snapshot.queryParamMap.get('overdue_only');
+    if (overdueParam === '1' || overdueParam === 'true') {
+      this.overdueOnly = true;
+    }
     this.loadDues();
     setupStewardshipRouteReload(this.router, this.destroyRef, '/donations/dues', () => this.loadDues());
   }
@@ -222,17 +269,20 @@ export class DonationsDuesComponent implements OnInit {
   }
 
   isDueOverdue(due: ContributionDue): boolean {
+    if (due.is_overdue !== undefined) {
+      return !!due.is_overdue;
+    }
     if (due.status === 'paid' || due.status === 'waived' || due.status === 'cancelled') {
       return false;
     }
-    return new Date(due.due_date).getTime() < Date.now();
+    return due.schedule_state === 'overdue';
   }
 
   loadDues(): void {
     this.loading = true;
     this.error = null;
     refreshStewardshipView(this.cdr);
-    const filters: Record<string, string | boolean> = { per_page: '100' };
+    const filters: Record<string, string | boolean> = { per_page: '100', actionable: true };
     if (this.overdueOnly) {
       filters['overdue_only'] = true;
     }
@@ -331,7 +381,7 @@ export class DonationsDuesComponent implements OnInit {
   generateScheduled(): void {
     this.donationsService.generateScheduledContributions().subscribe({
       next: (res) => {
-        this.message = `${res.message} Generated ${res.data.generated} due(s).`;
+        this.message = `${res.message} Created ${res.data.generated} new due(s) across auto-generate plans.`;
         this.loadDues();
       },
       error: (err) => {

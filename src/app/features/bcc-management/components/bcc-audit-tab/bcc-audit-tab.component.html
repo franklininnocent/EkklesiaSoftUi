@@ -1,0 +1,52 @@
+<div class="bcc-audit">
+  <div class="cf-loading-block" *ngIf="loading" role="status">
+    <p class="cf-loading-block__label">Loading audit…</p>
+    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+  </div>
+  <div class="cf-inline-alert" *ngIf="loadError && !loading" role="alert">
+    <p>{{ loadError }}</p>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+  <ng-container *ngIf="!loading && !loadError">
+    <div class="cf-panel bcc-audit__panel" *ngIf="rows.length; else emptyAudit">
+      <app-data-table>
+        <thead>
+          <tr>
+            <th scope="col">Action</th>
+            <th *ngIf="!bccId" scope="col">BCC</th>
+            <th scope="col">Entity</th>
+            <th scope="col">User</th>
+            <th scope="col">When</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let row of rows">
+            <td>{{ row.event }}</td>
+            <td *ngIf="!bccId">{{ row.bcc_name || '—' }}</td>
+            <td>{{ row.target_type || '—' }}</td>
+            <td>{{ row.actor_name || 'System' }}</td>
+            <td>
+              <time *ngIf="row.created_at; else noWhen" [attr.datetime]="row.created_at">
+                {{ row.created_at | date: 'medium' }}
+              </time>
+              <ng-template #noWhen>—</ng-template>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+      <app-pagination
+        *ngIf="total > perPage"
+        [currentPage]="page"
+        [pageSize]="perPage"
+        [totalItems]="total"
+        (pageChange)="page = $event; load()"
+      ></app-pagination>
+    </div>
+    <ng-template #emptyAudit>
+      <app-cf-empty-state
+        title="No audit events recorded yet"
+        description="Administrative changes to this BCC will appear here."
+      ></app-cf-empty-state>
+    </ng-template>
+  </ng-container>
+</div>

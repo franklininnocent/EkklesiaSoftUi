@@ -5,13 +5,14 @@
         *ngIf="!isLast(i)" 
         (click)="navigateTo(breadcrumb.url)"
         class="breadcrumb-link"
+        [attr.title]="breadcrumb.label"
         [attr.aria-current]="isLast(i) ? 'page' : null"
       >
         <span *ngIf="breadcrumb.icon" class="breadcrumb-icon">{{ breadcrumb.icon }}</span>
         <span class="breadcrumb-label">{{ breadcrumb.label }}</span>
       </a>
       
-      <span *ngIf="isLast(i)" class="breadcrumb-current">
+      <span *ngIf="isLast(i)" class="breadcrumb-current" [attr.title]="breadcrumb.label">
         <span *ngIf="breadcrumb.icon" class="breadcrumb-icon">{{ breadcrumb.icon }}</span>
         <span class="breadcrumb-label">{{ breadcrumb.label }}</span>
       </span>

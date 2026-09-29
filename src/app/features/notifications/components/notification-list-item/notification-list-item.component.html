@@ -1,0 +1,77 @@
+<div
+  class="cf-notif-row"
+  [class.cf-notif-row--compact]="variant === 'compact'"
+  [class.cf-notif-row--unread]="item.status === 'unread'"
+  [class.cf-notif-row--action]="actionRequired(item)"
+  [class.cf-notif-row--selected]="selected"
+>
+  @if (selectable) {
+    <label class="cf-notif-row__select" data-notification-action>
+      <span class="sr-only">Select {{ item.title }}</span>
+      <input
+        type="checkbox"
+        [checked]="selected"
+        (change)="onSelectChange($event)"
+        (click)="$event.stopPropagation()"
+      />
+    </label>
+  }
+
+  <span class="cf-notif-row__avatar" aria-hidden="true">{{ moduleInitial(item.module) }}</span>
+
+  @if (detailLink) {
+    <a [routerLink]="detailLink" class="cf-notif-row__main">
+      <ng-container *ngTemplateOutlet="content"></ng-container>
+    </a>
+  } @else {
+    <button type="button" class="cf-notif-row__main" (click)="onRowClick($event)">
+      <ng-container *ngTemplateOutlet="content"></ng-container>
+    </button>
+  }
+
+  <div class="cf-notif-row__aside" data-notification-action>
+    @if (item.status === 'unread') {
+      <button
+        type="button"
+        class="cf-notif-row__mark-read"
+        aria-label="Mark as read"
+        title="Mark as read"
+        (click)="onMarkRead($event)"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+      </button>
+    }
+  </div>
+</div>
+
+<ng-template #content>
+  <span class="cf-notif-row__head">
+    <span class="cf-notif-row__title-wrap">
+      @if (item.status === 'unread') {
+        <span class="cf-notif-row__unread-dot" aria-hidden="true"></span>
+      }
+      <span class="cf-notif-row__title">{{ item.title }}</span>
+    </span>
+    <time class="cf-notif-row__time" [attr.datetime]="item.created_at">{{ relativeTime(item.created_at) }}</time>
+  </span>
+  <span class="cf-notif-row__body">{{ item.body }}</span>
+  <span class="cf-notif-row__meta">
+    @if (actionRequired(item)) {
+      <app-status-badge label="Action needed" tone="warning"></app-status-badge>
+    }
+    @if (item.priority === 'high' || item.priority === 'critical') {
+      <app-status-badge [label]="item.priority === 'critical' ? 'Urgent' : 'Important'" [tone]="priorityTone(item.priority)"></app-status-badge>
+    }
+    @if (item.is_mention) {
+      <app-status-badge label="Mention" tone="info"></app-status-badge>
+    }
+    <span class="cf-notif-row__source">
+      {{ item.module }}
+      @if (item.actor_display_name) {
+        · {{ item.actor_display_name }}
+      }
+    </span>
+  </span>
+</ng-template>

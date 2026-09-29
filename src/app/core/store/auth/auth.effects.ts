@@ -1,9 +1,11 @@
 import { Injectable, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
+import { Store } from '@ngrx/store';
 import { of } from 'rxjs';
-import { map, catchError, switchMap, tap } from 'rxjs/operators';
+import { map, catchError, switchMap, tap, filter } from 'rxjs/operators';
 import { AuthService } from '@core/services/auth.service';
+import { AppState } from '@core/store';
 import * as AuthActions from './auth.actions';
 import * as TenantActions from '../tenant/tenant.actions';
 
@@ -12,17 +14,19 @@ export class AuthEffects {
   private actions$ = inject(Actions);
   private authService = inject(AuthService);
   private router = inject(Router);
+  private store = inject(Store<AppState>);
+
+  /** Set before post-login/register user fetch; consumed after loadUserSuccess is in the store. */
+  private postAuthRedirect: 'dashboard' | 'profile' | null = null;
 
   login$ = createEffect(() =>
     this.actions$.pipe(
       ofType(AuthActions.login),
-      tap(action => console.log('🔐 Login attempt for:', action.credentials.email)),
       switchMap(({ credentials }) =>
         this.authService.login(credentials).pipe(
-          tap(response => console.log('✅ Login success:', response)),
           map(response => AuthActions.loginSuccess({ response })),
           catchError(error => {
-            console.error('❌ Login failed:', error);
+            console.error('Login failed:', error);
             return of(AuthActions.loginFailure({ error: error.message }));
           })
         )
@@ -34,16 +38,23 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(AuthActions.loginSuccess),
       tap((action) => {
-        console.log('🎉 Login successful! Redirecting to dashboard...');
-        console.log('📊 Token info:', {
-          user_id: action.response.user_id,
-          role_id: action.response.role_id,
-          expiry_time: action.response.expiry_time
-        });
-        // Navigate to dashboard
-        this.router.navigate(['/dashboard']);
+        this.postAuthRedirect = action.response.force_password_change ? 'profile' : 'dashboard';
       }),
-      map(() => AuthActions.loadUser())
+      switchMap(() =>
+        this.authService.getCurrentUser().pipe(
+          tap((user) => this.authService.syncCurrentUser(user)),
+          map((user) => AuthActions.loadUserSuccess({ user })),
+          catchError((error) => {
+            this.postAuthRedirect = null;
+            console.error('Login succeeded but user load failed:', error);
+            return of(
+              AuthActions.loadUserFailure({
+                error: error?.message || 'Failed to load user',
+              })
+            );
+          })
+        )
+      )
     )
   );
 
@@ -63,11 +74,42 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(AuthActions.registerSuccess),
       tap(() => {
-        console.log('🎉 Registration successful! Redirecting to dashboard...');
-        this.router.navigate(['/dashboard']);
+        this.postAuthRedirect = 'dashboard';
       }),
-      map(() => AuthActions.loadUser())
+      switchMap(() =>
+        this.authService.getCurrentUser().pipe(
+          tap((user) => this.authService.syncCurrentUser(user)),
+          map((user) => AuthActions.loadUserSuccess({ user })),
+          catchError((error) => {
+            this.postAuthRedirect = null;
+            return of(
+              AuthActions.loadUserFailure({
+                error: error?.message || 'Failed to load user',
+              })
+            );
+          })
+        )
+      )
     )
+  );
+
+  /** Navigate only after loadUserSuccess reducer has populated the store. */
+  navigateAfterAuthUserLoad$ = createEffect(
+    () =>
+      this.actions$.pipe(
+        ofType(AuthActions.loadUserSuccess),
+        filter(() => this.postAuthRedirect !== null),
+        tap(({ user }) => {
+          const redirect = this.postAuthRedirect;
+          this.postAuthRedirect = null;
+          if (redirect === 'profile') {
+            this.router.navigate(['/profile'], { queryParams: { forcePassword: '1' } });
+          } else if (redirect === 'dashboard') {
+            this.router.navigate(['/dashboard']);
+          }
+        })
+      ),
+    { dispatch: false }
   );
 
   logout$ = createEffect(() =>
@@ -95,11 +137,7 @@ export class AuthEffects {
       switchMap(() =>
         this.authService.getCurrentUser().pipe(
           tap(user => {
-            console.log('👤 User loaded:', user);
-            // Set tenant in store if user has tenant data
-            if (user.tenant) {
-              console.log('🏢 Setting current tenant:', user.tenant);
-            }
+            this.authService.syncCurrentUser(user);
           }),
           map(user => AuthActions.loadUserSuccess({ user })),
           catchError(error => of(AuthActions.loadUserFailure({ error: error.message })))
@@ -112,12 +150,10 @@ export class AuthEffects {
     this.actions$.pipe(
       ofType(AuthActions.loadUserSuccess),
       switchMap(({ user }) => {
-        // If user has tenant data, dispatch setCurrentTenant action
         if (user.tenant) {
-          console.log('🏢 Dispatching setCurrentTenant:', user.tenant);
           return of(TenantActions.setCurrentTenant({ tenant: user.tenant }));
         }
-        return of(); // Return empty observable if no tenant
+        return of();
       })
     )
   );
@@ -126,14 +162,23 @@ export class AuthEffects {
     () =>
       this.actions$.pipe(
         ofType(AuthActions.loadUserFailure),
-        tap(() => {
-          console.error('❌ Failed to load user - clearing session');
-          // Clear localStorage and redirect to login
-          localStorage.clear();
-          this.router.navigate(['/auth/login']);
+        tap(({ error }) => {
+          const message = String(error || '');
+          const isAuthFailure = /unauthorized|unauthenticated|401/i.test(message);
+          const hasToken = !!this.authService.getToken();
+
+          // Only wipe the session on real auth failures. Transient/network errors must not
+          // bounce a freshly logged-in user back to login and clear their token.
+          if (!isAuthFailure && hasToken) {
+            console.error('Failed to load user - session kept:', error);
+            return;
+          }
+
+          console.error('Failed to load user - clearing session');
+          this.authService.clearAuthState();
+          this.store.dispatch(AuthActions.logoutSuccess());
         })
       ),
     { dispatch: false }
   );
 }
-

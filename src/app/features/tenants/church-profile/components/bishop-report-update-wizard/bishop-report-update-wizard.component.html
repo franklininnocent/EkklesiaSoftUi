@@ -1,0 +1,199 @@
+<app-modal-shell
+  [title]="modalTitle"
+  [description]="stepTitle"
+  size="lg"
+  [isSubmitting]="saving"
+  (closeRequested)="onCancel()"
+>
+  <div class="bishop-wizard__steps" aria-hidden="true">
+    <span
+      *ngFor="let n of [1, 2, 3]"
+      class="bishop-wizard__step"
+      [class.is-active]="step === n"
+      [class.is-complete]="step > n"
+      [class.is-hidden]="skipsTypeStep && n === 1"
+    >
+      Step {{ n }}
+    </span>
+  </div>
+
+  <form class="bishop-wizard__body" [formGroup]="form" (ngSubmit)="goNext()">
+    <p class="bishop-wizard__error" *ngIf="formError" role="alert">{{ formError }}</p>
+
+    <ng-container *ngIf="step === 1">
+      <p class="bishop-wizard__lead">
+        Your parish cannot change bishop records directly. Choose what you noticed so our team can review it.
+      </p>
+
+      <div class="bishop-wizard__type-grid">
+        <label
+          *ngFor="let option of requestTypes"
+          class="bishop-wizard__type-card"
+          [class.is-selected]="form.controls.request_type.value === option.value"
+        >
+          <input type="radio" formControlName="request_type" [value]="option.value" />
+          <span class="bishop-wizard__type-label">{{ option.label }}</span>
+          <span class="bishop-wizard__type-desc">{{ option.description }}</span>
+        </label>
+      </div>
+      <small *ngIf="form.controls.request_type.touched && form.controls.request_type.invalid">
+        Please choose an update type.
+      </small>
+    </ng-container>
+
+    <ng-container *ngIf="step === 2">
+      <label class="bishop-wizard__block">
+        <span>Diocese / Archdiocese</span>
+        <input type="text" [value]="dioceseLabel" readonly class="bishop-wizard__readonly" />
+        <em class="bishop-wizard__hint">This is the diocese linked to your church. You can only suggest a bishop for this diocese.</em>
+      </label>
+
+      <app-bishop-photo-control
+        [name]="form.controls.full_name.value || 'Suggested bishop'"
+        [source]="photoSource"
+        [disabled]="saving"
+        [uploading]="saving"
+        [canManage]="true"
+        (stateChange)="onPhotoStateChange($event)"
+        (error)="onPhotoError($event)"
+      ></app-bishop-photo-control>
+
+      <label class="bishop-wizard__block">
+        <span>Bishop name <abbr title="required">*</abbr></span>
+        <input type="text" formControlName="full_name" maxlength="255" placeholder="Full name as announced" />
+        <small *ngIf="form.controls.full_name.touched && form.controls.full_name.invalid">
+          Please enter the bishop name.
+        </small>
+      </label>
+
+      <label class="bishop-wizard__block" *ngIf="requiresEffectiveDate()">
+        <span>Effective date <abbr title="required">*</abbr></span>
+        <input type="date" formControlName="effective_date" />
+      </label>
+
+      <label class="bishop-wizard__block" *ngIf="requiresEndReason()">
+        <span>What happened to the previous bishop? <abbr title="required">*</abbr></span>
+        <select formControlName="end_reason">
+          <option value="">Select one</option>
+          <option *ngFor="let reason of endReasons" [value]="reason.value">{{ reason.label }}</option>
+        </select>
+      </label>
+
+      <label class="bishop-wizard__block">
+        <span>Source link (optional)</span>
+        <input type="url" formControlName="source_reference" placeholder="Diocese bulletin or news page" />
+      </label>
+
+      <label class="bishop-wizard__block">
+        <span>What you noticed (optional)</span>
+        <textarea formControlName="supporting_information" rows="3" placeholder="Short note for the reviewer"></textarea>
+      </label>
+
+      <button type="button" class="cf-btn cf-btn-link" (click)="showMoreDetails = !showMoreDetails">
+        {{ showMoreDetails ? 'Hide extra details' : 'Add more details' }}
+      </button>
+
+      <div class="bishop-wizard__more" *ngIf="showMoreDetails">
+        <label class="bishop-wizard__block">
+          <span>Given name</span>
+          <input type="text" formControlName="given_name" maxlength="100" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Family name</span>
+          <input type="text" formControlName="family_name" maxlength="100" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Religious name</span>
+          <input type="text" formControlName="religious_name" maxlength="100" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Date of birth</span>
+          <input type="date" formControlName="date_of_birth" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Ordained priest</span>
+          <input type="date" formControlName="ordained_priest_date" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Ordained bishop</span>
+          <input type="date" formControlName="ordained_bishop_date" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Email</span>
+          <input type="email" formControlName="email" maxlength="255" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Phone</span>
+          <input type="tel" formControlName="phone" maxlength="50" />
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Education</span>
+          <textarea formControlName="education" rows="2"></textarea>
+        </label>
+        <label class="bishop-wizard__block">
+          <span>Biography</span>
+          <textarea formControlName="biography" rows="3"></textarea>
+        </label>
+      </div>
+    </ng-container>
+
+    <ng-container *ngIf="step === 3">
+      <dl class="bishop-wizard__review">
+        <div>
+          <dt>Diocese</dt>
+          <dd>{{ dioceseLabel }}</dd>
+        </div>
+        <div>
+          <dt>Update type</dt>
+          <dd>{{ selectedTypeLabel() }}</dd>
+        </div>
+        <div>
+          <dt>Bishop name</dt>
+          <dd>{{ form.controls.full_name.value }}</dd>
+        </div>
+        <div *ngIf="form.controls.effective_date.value">
+          <dt>Effective date</dt>
+          <dd>{{ form.controls.effective_date.value | date:'longDate' }}</dd>
+        </div>
+        <div *ngIf="form.controls.end_reason.value">
+          <dt>Previous bishop</dt>
+          <dd>{{ endReasonLabel() }}</dd>
+        </div>
+        <div *ngIf="pendingPhoto">
+          <dt>Photo</dt>
+          <dd>A portrait will be sent with this suggestion.</dd>
+        </div>
+        <div *ngIf="form.controls.source_reference.value">
+          <dt>Source</dt>
+          <dd>{{ form.controls.source_reference.value }}</dd>
+        </div>
+      </dl>
+
+      <label class="bishop-wizard__block">
+        <span>Note for reviewer (optional)</span>
+        <textarea formControlName="submission_notes" rows="2" placeholder="Anything else we should know"></textarea>
+      </label>
+
+      <p class="bishop-wizard__confirm" role="note">
+        By sending this suggestion, you confirm that your parish cannot change the official bishop record directly.
+        Ekklesia Admin will review your submission against authoritative diocesan records before any change is applied.
+      </p>
+    </ng-container>
+
+    <div class="bishop-wizard__actions">
+      <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
+      <button
+        type="button"
+        class="cf-btn"
+        *ngIf="step > 1 && !(skipsTypeStep && step === 2)"
+        (click)="goBack()"
+        [disabled]="saving"
+      >
+        Back
+      </button>
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
+        {{ step < totalSteps ? 'Continue' : (saving ? 'Sending…' : 'Send for review') }}
+      </button>
+    </div>
+  </form>
+</app-modal-shell>

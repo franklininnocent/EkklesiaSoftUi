@@ -1,81 +1,187 @@
 /**
- * Tenant Detail/Management Component
- * Comprehensive tenant management page with details, subscription, and actions
+ * Platform-admin 360° Tenant Details & Management
  */
 
 import { Component, OnInit, OnDestroy, inject, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { NgSelectModule } from '@ng-select/ng-select';
 import { TenantService } from '@core/services/tenant.service';
+import { ArchdioceseService } from '@core/services/church/archdiocese.service';
+import { DenominationService } from '@core/services/church/denomination.service';
+import { Archdiocese, Denomination } from '@core/models/church';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
+import { UsersService } from '@core/services/users.service';
 import { AuthService } from '@core/services/auth.service';
-import { Tenant } from '@core/models/tenant.model';
+import { Tenant, TenantDetailsSnapshot, TenantDetailsUserPreview } from '@core/models/tenant.model';
+import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
+import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
+import { resolveMediaDisplaySrc } from '@core/utils/media-url.util';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { TenantPlanPanelComponent } from '@features/subscriptions/components/tenant-plan-panel/tenant-plan-panel.component';
 import { Subject, takeUntil } from 'rxjs';
+import { filter } from 'rxjs/operators';
 import { environment } from '@environments/environment';
+
+type TenantDetailTab =
+  | 'overview'
+  | 'subscription'
+  | 'modules'
+  | 'users'
+  | 'church'
+  | 'security'
+  | 'history'
+  | 'technical';
 
 @Component({
   selector: 'app-tenant-detail',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [
+    CommonModule,
+    FormsModule,
+    NgSelectModule,
+    PageHeaderComponent,
+    StatusBadgeComponent,
+    TabStripComponent,
+    ModalShellComponent,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    DataTableComponent,
+    UserAvatarComponent,
+    ImageViewerComponent,
+    TenantPlanPanelComponent,
+  ],
   templateUrl: './tenant-detail.component.html',
   styleUrls: ['./tenant-detail.component.scss'],
-  changeDetection: ChangeDetectionStrategy.OnPush
+  changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class TenantDetailComponent implements OnInit, OnDestroy {
   private route = inject(ActivatedRoute);
   private router = inject(Router);
   private tenantService = inject(TenantService);
+  private archdioceseService = inject(ArchdioceseService);
+  private denominationService = inject(DenominationService);
   private toastService = inject(ToastService);
+  private confirmationDialog = inject(ConfirmationDialogService);
+  private usersService = inject(UsersService);
   private authService = inject(AuthService);
   private cdr = inject(ChangeDetectorRef);
   private destroy$ = new Subject<void>();
+  private archdioceseLoadSeq = 0;
 
+  details: TenantDetailsSnapshot | null = null;
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+  tenantAdminResetPassword: string | null = null;
+  /** Minimal tenant shim for subscription modals and legacy edit flows. */
   tenant: Tenant | null = null;
   loading = false;
   error: string | null = null;
   tenantId: number | null = null;
 
-  // Tab management
-  activeTab: 'details' | 'subscription' | 'actions' = 'details';
+  activeTab: TenantDetailTab = 'overview';
 
-  // Edit mode
+  get canViewSubscriptionAuditHistory(): boolean {
+    return this.authService.canViewPlatformCompleteAudit();
+  }
+
+  readonly tabs: TabStripItem[] = [
+    { id: 'overview', label: 'Overview' },
+    { id: 'subscription', label: 'Subscription' },
+    { id: 'modules', label: 'Modules' },
+    { id: 'users', label: 'Users' },
+    { id: 'church', label: 'Church' },
+    { id: 'security', label: 'Security' },
+    { id: 'history', label: 'History' },
+    { id: 'technical', label: 'Technical' },
+  ];
+
   isEditing = false;
+  saving = false;
   editForm: Partial<Tenant> = {};
-
-  // Logo upload
+  editDenominationId: number | null = null;
+  editArchdioceseId: number | null = null;
+  editDenomination: Denomination | null = null;
+  editArchdiocese: Archdiocese | null = null;
+  editWebsite = '';
+  denominations: Denomination[] = [];
+  denominationOptions: Denomination[] | null = null;
+  loadingDenominations = false;
+  archdioceses: Archdiocese[] = [];
+  archdioceseOptions: Archdiocese[] | null = null;
+  loadingArchdioceses = false;
+  compareSelectItems = (
+    left: Denomination | Archdiocese | null,
+    right: Denomination | Archdiocese | null,
+  ): boolean => {
+    if (!left || !right) {
+      return left === right;
+    }
+    return Number(left.id) === Number(right.id);
+  };
   logoFile: File | null = null;
   logoPreview: string | null = null;
 
-  // Subscription management
-  availablePlans: Record<string, any> = {};
-  currency: string = 'INR';
-  durationOptions: Array<{value: number; label: string}> = [];
-  selectedPlan: string = '';
-  subscriptionDuration: number = 12;
-  showUpgradeModal = false;
+  durationOptions: Array<{ value: number; label: string }> = [];
+  subscriptionDuration = 12;
   showRenewModal = false;
+  showSuspendModal = false;
+  showReactivateModal = false;
+  subscriptionReason = '';
+  subscriptionActionSaving = false;
+  plansLoading = false;
+  plansLoadError: string | null = null;
+
+  subscriptionAudits: Array<{
+    id: number;
+    operation: string;
+    operation_label: string;
+    source: string;
+    reason: string | null;
+    actor_name: string | null;
+    actor_role: string | null;
+    summary: string;
+    before_state: Record<string, unknown>;
+    after_state: Record<string, unknown>;
+    created_at: string | null;
+  }> = [];
+  auditOperations: Record<string, string> = {};
+  auditFilterOperation = '';
+  auditsLoading = false;
+  auditsError: string | null = null;
+  auditsPage = 1;
+  auditsLastPage = 1;
+  auditsTotal = 0;
+  expandedAuditId: number | null = null;
 
   ngOnInit(): void {
-    this.route.params
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(params => {
-        this.tenantId = +params['id'];
-        if (this.tenantId) {
-          this.loadTenant();
-          this.loadSubscriptionPlans();
-        }
-      });
+    this.loadDenominations();
+    this.loadArchdioceses();
 
-    // Check for tab query parameter to set active tab
-    this.route.queryParams
-      .pipe(takeUntil(this.destroy$))
-      .subscribe(queryParams => {
-        if (queryParams['tab'] && ['details', 'subscription', 'actions'].includes(queryParams['tab'])) {
-          this.activeTab = queryParams['tab'] as 'details' | 'subscription' | 'actions';
-          this.cdr.markForCheck();
+    this.route.params.pipe(takeUntil(this.destroy$)).subscribe(params => {
+      this.tenantId = +params['id'];
+      if (this.tenantId) {
+        this.loadDetails();
+        this.loadSubscriptionPlans();
+        if (this.activeTab === 'subscription' || this.activeTab === 'history') {
+          this.loadSubscriptionAudits(true);
         }
-      });
+      }
+    });
+
+    this.route.queryParams.pipe(takeUntil(this.destroy$)).subscribe(queryParams => {
+      const tab = this.normalizeTab(queryParams['tab']);
+      if (tab) {
+        this.setActiveTab(tab);
+      }
+    });
   }
 
   ngOnDestroy(): void {
@@ -83,144 +189,387 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
-  /**
-   * Load tenant details
-   */
-  loadTenant(): void {
+  loadDetails(): void {
     if (!this.tenantId) return;
 
     this.loading = true;
     this.error = null;
     this.cdr.markForCheck();
 
-    this.tenantService.getTenant(this.tenantId)
+    this.tenantService.getTenantDetails(this.tenantId)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            this.tenant = response.data;
-            this.editForm = { ...response.data };
+            this.details = response.data;
+            this.syncTenantShim(response.data);
+            this.editForm = { ...this.tenant };
           } else {
-            this.error = response.message || 'Failed to load tenant';
+            this.error = response.message || 'Failed to load tenant details';
           }
           this.loading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.error = err.error?.message || 'Failed to load tenant details';
+          const status = err?.status ?? err?.error?.status;
+          if (status === 404) {
+            this.error = 'Tenant details could not be loaded. The details API may be missing — ensure the backend is updated and try again.';
+          } else if (status === 403) {
+            this.error = 'You do not have permission to view this tenant.';
+          } else {
+            this.error = err.error?.message || err.message || 'Failed to load tenant details';
+          }
           this.loading = false;
           this.cdr.markForCheck();
-        }
+        },
       });
   }
 
-  /**
-   * Switch active tab
-   */
-  setActiveTab(tab: 'details' | 'subscription' | 'actions'): void {
+  private syncTenantShim(snapshot: TenantDetailsSnapshot): void {
+    const sub = snapshot.subscription;
+    this.tenant = {
+      id: snapshot.identity.id,
+      name: snapshot.identity.name,
+      slogan: snapshot.identity.slogan ?? null,
+      slug: snapshot.identity.slug,
+      domain: snapshot.identity.domain ?? null,
+      plan: sub.plan_key ?? '',
+      max_users: sub.max_users ?? snapshot.administration.max_users,
+      max_storage_mb: sub.max_storage_mb ?? 0,
+      trial_ends_at: sub.trial_ends_at ?? null,
+      subscription_ends_at: sub.subscription_ends_at ?? null,
+      subscription_suspended_at: sub.subscription_suspended_at ?? null,
+      subscription_status: sub.status ?? null,
+      access_mode: sub.access_mode ?? null,
+      active: snapshot.operational.active_flag,
+      features: sub.features ?? snapshot.meta.features ?? null,
+      logo_url: snapshot.identity.logo_url ?? null,
+      logo_full_url: snapshot.identity.logo_full_url ?? null,
+      primary_color: snapshot.identity.primary_color ?? '#000000',
+      secondary_color: snapshot.identity.secondary_color ?? '#ffffff',
+      created_at: snapshot.identity.created_at ?? '',
+      updated_at: snapshot.identity.updated_at ?? '',
+    };
+  }
+
+  setActiveTab(tab: TenantDetailTab): void {
     this.activeTab = tab;
+    if (tab === 'subscription' || tab === 'history') {
+      this.loadSubscriptionAudits(true);
+    }
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
     this.cdr.markForCheck();
   }
 
-  /**
-   * Toggle edit mode
-   */
+  onTabChange(tabId: string): void {
+    if (this.isValidTab(tabId)) {
+      this.setActiveTab(tabId as TenantDetailTab);
+    }
+  }
+
+  private isValidTab(tab: string): boolean {
+    return this.tabs.some(t => t.id === tab);
+  }
+
+  /** Map legacy ?tab= values from the pre-360 page to current tabs. */
+  private normalizeTab(tab: string | undefined): TenantDetailTab | null {
+    if (!tab) {
+      return null;
+    }
+    const legacy: Record<string, TenantDetailTab> = {
+      details: 'overview',
+      actions: 'overview',
+    };
+    const resolved = legacy[tab] ?? tab;
+    return this.isValidTab(resolved) ? (resolved as TenantDetailTab) : null;
+  }
+
+  loadSubscriptionAudits(resetPage = false): void {
+    if (!this.tenantId || !this.canViewSubscriptionAuditHistory) return;
+    if (resetPage) this.auditsPage = 1;
+
+    this.auditsLoading = true;
+    this.auditsError = null;
+    this.cdr.markForCheck();
+
+    this.tenantService.getSubscriptionAudits(this.tenantId, {
+      page: this.auditsPage,
+      per_page: 10,
+      operation: this.auditFilterOperation || null,
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        if (response.success && Array.isArray(response.data)) {
+          this.subscriptionAudits = response.data;
+          this.auditsPage = response.pagination?.current_page || 1;
+          this.auditsLastPage = response.pagination?.last_page || 1;
+          this.auditsTotal = response.pagination?.total || 0;
+          if (response.meta?.operations) {
+            this.auditOperations = response.meta.operations;
+          }
+        } else {
+          this.auditsError = response.message || 'Unable to load subscription history.';
+          this.subscriptionAudits = [];
+        }
+        this.auditsLoading = false;
+        this.cdr.markForCheck();
+      },
+      error: (err) => {
+        this.auditsError = err?.message || err?.error?.message || 'Unable to load subscription history.';
+        this.subscriptionAudits = [];
+        this.auditsLoading = false;
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  loadDenominations(): void {
+    this.loadingDenominations = true;
+    this.cdr.markForCheck();
+
+    this.denominationService.getDenominations()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const rows = Array.isArray(response.data) ? response.data : [];
+          this.denominationOptions = response.success ? [...rows] : [];
+          this.denominations = this.denominationOptions ?? [];
+          this.syncEditSelectValues();
+          this.loadingDenominations = false;
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.denominationOptions = [];
+          this.denominations = [];
+          this.loadingDenominations = false;
+          this.toastService.error('Could not load denominations for editing.', 'Error');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  loadArchdioceses(denominationId?: number | null): void {
+    this.loadingArchdioceses = true;
+    this.cdr.markForCheck();
+
+    const filterId = this.coerceOptionalId(
+      denominationId ?? (this.isEditing ? this.editDenominationId : null),
+    );
+    const filters = filterId ? { denomination_id: filterId } : undefined;
+    const seq = ++this.archdioceseLoadSeq;
+    const selectedBefore = this.editArchdioceseId;
+
+    this.archdioceseService.getArchdioceses(filters)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          const rows = Array.isArray(response.data) ? response.data : [];
+          const stale = seq !== this.archdioceseLoadSeq;
+          this.applyArchdioceseOptions(response.success ? rows : []);
+          this.loadingArchdioceses = false;
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.archdioceseOptions = [];
+          this.archdioceses = [];
+          this.loadingArchdioceses = false;
+          this.toastService.error('Could not load dioceses for editing.', 'Error');
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  onEditDenominationChange(value: Denomination | null): void {
+    const previous = this.editDenominationId;
+    this.editDenomination = value;
+    this.editDenominationId = this.coerceOptionalId(value?.id);
+    if (previous === this.editDenominationId) {
+      return;
+    }
+    this.loadArchdioceses(this.editDenominationId);
+  }
+
+  onEditArchdioceseChange(value: Archdiocese | null): void {
+    this.editArchdiocese = value;
+    this.editArchdioceseId = this.coerceOptionalId(value?.id);
+  }
+
   toggleEdit(): void {
     this.isEditing = !this.isEditing;
     if (this.isEditing && this.tenant) {
       this.editForm = { ...this.tenant };
+      this.editDenominationId = this.coerceOptionalId(this.details?.identity.denomination_id);
+      this.editArchdioceseId = this.coerceOptionalId(this.details?.identity.diocese_id);
+      this.editWebsite = this.details?.contact.website ?? '';
+      this.syncEditSelectValues();
+      this.loadArchdioceses(this.editDenominationId);
     }
     this.cdr.markForCheck();
   }
 
-  /**
-   * Save tenant changes
-   */
   saveTenant(): void {
     if (!this.tenantId || !this.tenant) return;
 
-    this.loading = true;
+    this.saving = true;
     this.cdr.markForCheck();
 
-    this.tenantService.updateTenant(this.tenantId, this.editForm as any)
+    const payload: Record<string, unknown> = {
+      tenant_name: this.editForm.name ?? this.tenant.name,
+      slogan: this.editForm.slogan ?? undefined,
+      domain: this.editForm.domain ?? undefined,
+      denomination_id: this.editDenominationId ?? null,
+      archdiocese_id: this.editArchdioceseId ?? null,
+      website: this.normalizeWebsite(this.editWebsite),
+    };
+
+    this.tenantService.updateTenant(this.tenantId, payload)
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success) {
-            this.tenant = response.data;
             this.isEditing = false;
             this.toastService.success('Tenant updated successfully', 'Success');
+            this.loadDetails();
           } else {
             this.toastService.error(response.message || 'Failed to update tenant', 'Error');
           }
-          this.loading = false;
+          this.saving = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to update tenant', 'Error');
-          this.loading = false;
+          this.toastService.error(err.message || err.error?.message || 'Failed to update tenant', 'Error');
+          this.saving = false;
           this.cdr.markForCheck();
-        }
+        },
       });
   }
 
-  /**
-   * Cancel editing
-   */
   cancelEdit(): void {
     this.isEditing = false;
-    if (this.tenant) {
-      this.editForm = { ...this.tenant };
-    }
+    if (this.tenant) this.editForm = { ...this.tenant };
+    this.editDenominationId = this.coerceOptionalId(this.details?.identity.denomination_id);
+    this.editArchdioceseId = this.coerceOptionalId(this.details?.identity.diocese_id);
+    this.syncEditSelectValues();
+    this.editWebsite = this.details?.contact.website ?? '';
     this.cdr.markForCheck();
   }
 
-  /**
-   * Toggle tenant active status
-   */
+  private coerceOptionalId(value: unknown): number | null {
+    if (value === null || value === undefined || value === '') {
+      return null;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  private syncEditSelectValues(): void {
+    this.editDenominationId = this.coerceOptionalId(this.editDenominationId);
+    this.editArchdioceseId = this.coerceOptionalId(this.editArchdioceseId);
+    this.editDenomination = this.resolveDenominationSelection(this.editDenominationId);
+    this.editArchdiocese = this.resolveArchdioceseSelection(this.editArchdioceseId);
+  }
+
+  private resolveDenominationSelection(id: number | null): Denomination | null {
+    if (id == null) {
+      return null;
+    }
+    return this.denominationOptions?.find(d => Number(d.id) === id)
+      ?? this.fallbackDenomination(id);
+  }
+
+  private resolveArchdioceseSelection(id: number | null): Archdiocese | null {
+    if (id == null) {
+      return null;
+    }
+    return this.archdioceseOptions?.find(a => Number(a.id) === id)
+      ?? this.fallbackArchdiocese(id);
+  }
+
+  private fallbackDenomination(id: number): Denomination | null {
+    const name = this.details?.identity.denomination_name;
+    if (!name) {
+      return null;
+    }
+    return { id, name, code: '', active: 1, display_order: 0 };
+  }
+
+  private fallbackArchdiocese(id: number): Archdiocese | null {
+    const name = this.details?.identity.diocese_name;
+    if (!name) {
+      return null;
+    }
+    return { id, name, country: '', active: 1 };
+  }
+
+  private applyArchdioceseOptions(rows: Archdiocese[]): void {
+    this.archdioceseOptions = [...rows].sort((a, b) => a.name.localeCompare(b.name));
+    this.archdioceses = this.archdioceseOptions;
+    if (
+      this.editArchdioceseId != null
+      && !this.archdioceseOptions.some(a => Number(a.id) === Number(this.editArchdioceseId))
+    ) {
+      this.editArchdioceseId = null;
+    }
+    this.editArchdiocese = this.resolveArchdioceseSelection(this.editArchdioceseId);
+  }
+
+  private normalizeWebsite(value: string | null | undefined): string | null {
+    const website = (value ?? '').trim();
+    if (!website) {
+      return null;
+    }
+    if (/^https?:\/\//i.test(website)) {
+      return website;
+    }
+    return `https://${website.replace(/^\/+/, '')}`;
+  }
+
   toggleTenantStatus(): void {
-    if (!this.tenantId || !this.tenant) return;
+    if (!this.tenantId || !this.details) return;
 
-    const newStatus: 0 | 1 = this.tenant.active === 1 ? 0 : 1;
+    const newStatus: 0 | 1 = this.details.operational.active_flag === 1 ? 0 : 1;
     const statusText = newStatus === 1 ? 'activate' : 'deactivate';
+    const dialog$ = newStatus === 1
+      ? this.confirmationDialog.confirmActivate('Tenant')
+      : this.confirmationDialog.confirmDeactivate('Tenant');
 
-    if (!confirm(`Are you sure you want to ${statusText} this tenant?`)) {
-      return;
-    }
+    dialog$.pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      this.loading = true;
+      this.cdr.markForCheck();
 
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.updateTenantStatus(this.tenantId, newStatus)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.tenant = response.data;
-            this.toastService.success(`Tenant ${statusText}d successfully`, 'Success');
-          } else {
-            this.toastService.error(response.message || `Failed to ${statusText} tenant`, 'Error');
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          this.toastService.error(err.error?.message || `Failed to ${statusText} tenant`, 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      });
+      this.tenantService.updateTenantStatus(this.tenantId!, newStatus)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.toastService.success(`Tenant ${statusText}d successfully`, 'Success');
+              this.loadDetails();
+            } else {
+              this.toastService.error(response.message || `Failed to ${statusText} tenant`, 'Error');
+            }
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.toastService.error(err.error?.message || `Failed to ${statusText} tenant`, 'Error');
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+        });
+    });
   }
 
-  /**
-   * Handle logo file selection
-   */
   onLogoSelected(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (input.files && input.files[0]) {
+    if (input.files?.[0]) {
       this.logoFile = input.files[0];
-      
-      // Create preview
       const reader = new FileReader();
       reader.onload = (e) => {
         this.logoPreview = e.target?.result as string;
@@ -230,9 +579,6 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
     }
   }
 
-  /**
-   * Upload logo
-   */
   uploadLogo(): void {
     if (!this.tenantId || !this.logoFile) return;
 
@@ -244,13 +590,10 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           if (response.success) {
-            if (this.tenant) {
-              this.tenant.logo_url = response.data.logo_url;
-              this.tenant.logo_full_url = response.data.logo_full_url;
-            }
             this.logoFile = null;
             this.logoPreview = null;
             this.toastService.success('Logo uploaded successfully', 'Success');
+            this.loadDetails();
           } else {
             this.toastService.error(response.message || 'Failed to upload logo', 'Error');
           }
@@ -261,363 +604,426 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
           this.toastService.error(err.error?.message || 'Failed to upload logo', 'Error');
           this.loading = false;
           this.cdr.markForCheck();
-        }
-      });
-  }
-
-  /**
-   * Delete logo
-   */
-  deleteLogo(): void {
-    if (!this.tenantId || !this.tenant) return;
-
-    if (!confirm('Are you sure you want to delete the tenant logo?')) {
-      return;
-    }
-
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.deleteLogo(this.tenantId)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            if (this.tenant) {
-              this.tenant.logo_url = null;
-              this.tenant.logo_full_url = null;
-            }
-            this.toastService.success('Logo deleted successfully', 'Success');
-          } else {
-            this.toastService.error(response.message || 'Failed to delete logo', 'Error');
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
         },
-        error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to delete logo', 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
       });
   }
 
-  /**
-   * Navigate back to tenants list
-   */
-  goBack(): void {
-    this.router.navigate(['/tenants']);
-  }
+  deleteLogo(): void {
+    if (!this.tenantId) return;
 
-  /**
-   * Get tenant logo URL
-   */
-  getLogoUrl(): string {
-    if (!this.tenant) return '';
-    
-    if (this.tenant.logo_full_url) {
-      return this.tenant.logo_full_url;
-    }
-    
-    if (this.tenant.logo_url) {
-      if (this.tenant.logo_url.startsWith('http://') || this.tenant.logo_url.startsWith('https://')) {
-        return this.tenant.logo_url;
-      }
-      const baseUrl = environment.apiUrl.replace('/api', '');
-      const cleanLogoUrl = this.tenant.logo_url.startsWith('/') 
-        ? this.tenant.logo_url.substring(1) 
-        : this.tenant.logo_url;
-      return `${baseUrl}/${cleanLogoUrl}`;
-    }
-    
-    return '';
-  }
+    this.confirmationDialog.confirm({
+      title: 'Remove Logo',
+      message: 'Are you sure you want to delete the tenant logo?',
+      confirmText: 'Confirm Remove',
+      variant: 'danger',
+    }).pipe(
+      filter((result) => result.confirmed),
+      takeUntil(this.destroy$),
+    ).subscribe(() => {
+      this.loading = true;
+      this.cdr.markForCheck();
 
-  /**
-   * Format date
-   */
-  formatDate(dateString: string | null | undefined): string {
-    if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
+      this.tenantService.deleteLogo(this.tenantId!)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.toastService.success('Logo deleted successfully', 'Success');
+              this.loadDetails();
+            } else {
+              this.toastService.error(response.message || 'Failed to delete logo', 'Error');
+            }
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.toastService.error(err.error?.message || 'Failed to delete logo', 'Error');
+            this.loading = false;
+            this.cdr.markForCheck();
+          },
+        });
     });
   }
 
-  /**
-   * Get status badge class
-   */
-  getStatusBadgeClass(active: 0 | 1): string {
-    return active === 1 ? 'status-active' : 'status-inactive';
+  get headerStatusLabel(): string | undefined {
+    if (!this.details) return undefined;
+    const op = this.details.operational.active ? 'Active' : 'Inactive';
+    const sub = this.formatSubscriptionStatus(this.details.subscription.status ?? null);
+    return `${op} · ${sub}`;
   }
 
-  /**
-   * Get status text
-   */
-  getStatusText(active: 0 | 1): string {
-    return active === 1 ? 'Active' : 'Inactive';
+  get headerStatusTone(): StatusBadgeTone {
+    if (!this.details) return 'neutral';
+    const status = this.details.subscription.status;
+    if (!this.details.operational.active) return 'critical';
+    return this.subscriptionStatusTone(status ?? null);
   }
 
-  /**
-   * Load available subscription plans
-   */
+  getLogoUrl(): string {
+    if (this.logoPreview) return this.logoPreview;
+    const signed = resolveMediaDisplaySrc(this.details?.identity.logo_full_url);
+    if (signed) return signed;
+    const storageKey = this.details?.identity.logo_url;
+    if (!storageKey) return '';
+    if (storageKey.startsWith('http')) return resolveMediaDisplaySrc(storageKey) ?? storageKey;
+    const baseUrl = environment.apiUrl.replace('/api', '');
+    return `${baseUrl}/${storageKey.replace(/^\//, '')}`;
+  }
+
+  formatDate(dateString: string | null | undefined): string {
+    if (!dateString) return 'N/A';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric', month: 'short', day: 'numeric',
+    });
+  }
+
+  formatDateTime(value: string | null | undefined): string {
+    if (!value) return '—';
+    try {
+      return new Date(value).toLocaleString(undefined, {
+        year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
+      });
+    } catch {
+      return value;
+    }
+  }
+
+  formatSubscriptionStatus(status: string | null): string {
+    if (!status) return '—';
+    const labels: Record<string, string> = {
+      TRIAL: 'Trial', ACTIVE: 'Active', LIFETIME: 'Lifetime', EXPIRING: 'Expiring soon',
+      GRACE_PERIOD: 'Grace period', EXPIRED: 'Expired', SUSPENDED: 'Suspended',
+    };
+    return labels[status] || status;
+  }
+
+  subscriptionStatusTone(status: string | null): StatusBadgeTone {
+    switch (status) {
+      case 'ACTIVE': case 'LIFETIME': case 'TRIAL': return 'success';
+      case 'EXPIRING': case 'GRACE_PERIOD': return 'warning';
+      case 'EXPIRED': case 'SUSPENDED': return 'critical';
+      default: return 'neutral';
+    }
+  }
+
+  accessModeLabel(mode: string | null | undefined): string {
+    if (!mode) return '—';
+    return mode === 'read_only' ? 'Read only' : 'Full access';
+  }
+
+  moduleStatusLabel(mod: { entitled: boolean; accessible: boolean; access_mode: string }): string {
+    if (!mod.entitled) return 'Not entitled';
+    if (!mod.accessible) return 'Entitled · Blocked';
+    if (mod.access_mode === 'read_only') return 'Entitled · Read only';
+    return 'Entitled · Active';
+  }
+
+  moduleStatusTone(mod: { entitled: boolean; accessible: boolean; access_mode: string }): StatusBadgeTone {
+    if (!mod.entitled) return 'neutral';
+    if (!mod.accessible) return 'critical';
+    if (mod.access_mode === 'read_only') return 'warning';
+    return 'success';
+  }
+
+  warningTone(severity: string): StatusBadgeTone {
+    if (severity === 'critical') return 'critical';
+    if (severity === 'warning') return 'warning';
+    return 'info';
+  }
+
+  kpiEntries(): Array<{ label: string; value: string }> {
+    if (!this.details) return [];
+    const k = this.details.kpis;
+    const entries: Array<{ label: string; value: string }> = [];
+
+    if (k['families'] != null) entries.push({ label: 'Families', value: String(k['families']) });
+    if (k['members'] != null) entries.push({ label: 'Members', value: String(k['members']) });
+    if (k['users'] != null) entries.push({ label: 'Users', value: String(k['users']) });
+    if (k['active_users'] != null) entries.push({ label: 'Active users', value: String(k['active_users']) });
+    if (k['frequent_users_30d'] != null) entries.push({ label: 'Frequent (30d)', value: String(k['frequent_users_30d']) });
+    if (k['seen_last_7d'] != null) entries.push({ label: 'Seen (7d)', value: String(k['seen_last_7d']) });
+    if (k['enabled_modules'] != null) entries.push({ label: 'Modules', value: String(k['enabled_modules']) });
+    if (k['days_until_end'] != null) entries.push({ label: 'Days left', value: String(k['days_until_end']) });
+    if (k['storage_used_mb'] != null && k['storage_max_mb'] != null) {
+      entries.push({ label: 'Storage', value: `${k['storage_used_mb']} / ${k['storage_max_mb']} MB` });
+    }
+
+    return entries;
+  }
+
+  onAuditFilterChange(): void { this.loadSubscriptionAudits(true); }
+
+  goToAuditPage(page: number): void {
+    if (page < 1 || page > this.auditsLastPage || page === this.auditsPage) return;
+    this.auditsPage = page;
+    this.loadSubscriptionAudits(false);
+  }
+
+  toggleAuditDetails(auditId: number): void {
+    this.expandedAuditId = this.expandedAuditId === auditId ? null : auditId;
+    this.cdr.markForCheck();
+  }
+
+  auditOperationEntries(): Array<{ value: string; label: string }> {
+    return Object.entries(this.auditOperations).map(([value, label]) => ({ value, label }));
+  }
+
   loadSubscriptionPlans(): void {
+    this.plansLoading = true;
+    this.plansLoadError = null;
+    this.cdr.markForCheck();
+
     this.tenantService.getSubscriptionPlans()
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            this.availablePlans = response.data;
-            // Get currency from response if available
-            if ((response as any).currency) {
-              this.currency = (response as any).currency;
-            }
-            // Get duration options from response if available
             if ((response as any).duration_options) {
               this.durationOptions = (response as any).duration_options;
-              // Set default duration to first option or 12 months
-              if (this.durationOptions.length > 0) {
-                const defaultOption = this.durationOptions.find(opt => opt.value === 12) || this.durationOptions[0];
-                this.subscriptionDuration = defaultOption.value;
-              }
+              this.resetSubscriptionDuration();
             }
+            this.plansLoadError = null;
+          } else {
+            this.plansLoadError = (response as { message?: string }).message || 'Unable to load subscription plans.';
           }
+          this.plansLoading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          console.error('Error loading subscription plans:', err);
+          this.plansLoadError = this.extractErrorMessage(err, 'Failed to load subscription plans');
+          this.plansLoading = false;
           this.cdr.markForCheck();
-        }
+        },
       });
   }
 
-  /**
-   * Open upgrade modal
-   */
-  openUpgradeModal(): void {
-    if (this.tenant) {
-      this.selectedPlan = this.tenant.plan;
+  openRenewModal(): void {
+    this.subscriptionReason = '';
+    this.resetSubscriptionDuration();
+    this.showRenewModal = true;
+    if (!this.plansLoading && (this.plansLoadError || this.durationOptions.length === 0)) {
+      this.loadSubscriptionPlans();
     }
-    this.showUpgradeModal = true;
     this.cdr.markForCheck();
   }
 
-  /**
-   * Close upgrade modal
-   */
-  closeUpgradeModal(): void {
-    this.showUpgradeModal = false;
-    this.selectedPlan = '';
-    this.loading = false; // Ensure loading state is reset when modal closes
+  closeRenewModal(): void {
+    if (this.subscriptionActionSaving) return;
+    this.showRenewModal = false;
+    this.subscriptionReason = '';
     this.cdr.markForCheck();
   }
 
-  /**
-   * Upgrade subscription (or switch to Free plan)
-   */
-  upgradeSubscription(): void {
-    if (!this.tenantId || !this.selectedPlan) return;
-
-    // Allow upgrades or downgrades to Free plan (for grace periods/exceptions)
-    const planOrder = ['free', 'basic', 'premium', 'enterprise'];
-    const currentPlanIndex = planOrder.indexOf(this.tenant?.plan || 'free');
-    const newPlanIndex = planOrder.indexOf(this.selectedPlan);
-
-    // Only prevent downgrades to non-Free plans
-    if (newPlanIndex < currentPlanIndex && this.selectedPlan !== 'free') {
-      this.toastService.error('Only downgrades to Free plan are allowed for special cases', 'Invalid Selection');
+  renewSubscription(): void {
+    if (!this.tenantId || this.subscriptionActionSaving) return;
+    if (this.durationOptions.length === 0) {
+      this.toastService.error('Duration options are not available.', 'Error');
       return;
     }
 
-    this.loading = true;
+    this.subscriptionActionSaving = true;
     this.cdr.markForCheck();
 
-    this.tenantService.upgradeSubscription(this.tenantId, this.selectedPlan, this.subscriptionDuration)
+    this.tenantService.renewSubscription(this.tenantId, this.subscriptionDuration, this.normalizedReason())
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
           if (response.success) {
-            // Backend returns data.tenant for upgrade response
-            const responseData = response.data as any;
-            this.tenant = responseData?.tenant || response.data;
-            this.closeUpgradeModal();
-            this.toastService.success('Subscription upgraded successfully', 'Success');
+            this.subscriptionActionSaving = false;
+            this.toastService.success('Subscription renewed', 'Saved');
+            this.closeRenewModal();
+            this.loadDetails();
+            this.loadSubscriptionAudits(true);
+            this.setActiveTab('subscription');
           } else {
-            this.toastService.error(response.message || 'Failed to upgrade subscription', 'Error');
+            this.toastService.error(response.message || 'Failed to renew subscription', 'Error');
+            this.subscriptionActionSaving = false;
           }
-          this.loading = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to upgrade subscription', 'Error');
-          this.loading = false;
+          this.toastService.error(this.extractErrorMessage(err, 'Failed to renew subscription'), 'Error');
+          this.subscriptionActionSaving = false;
           this.cdr.markForCheck();
-        }
+        },
       });
   }
 
-  /**
-   * Open renew modal
-   */
-  openRenewModal(): void {
-    this.showRenewModal = true;
-    // Set default duration to 12 months (1 year) if available, otherwise first option
+  openSuspendModal(): void { this.subscriptionReason = ''; this.showSuspendModal = true; this.cdr.markForCheck(); }
+  closeSuspendModal(): void { if (!this.subscriptionActionSaving) { this.showSuspendModal = false; this.subscriptionReason = ''; this.cdr.markForCheck(); } }
+  openReactivateModal(): void { this.subscriptionReason = ''; this.showReactivateModal = true; this.cdr.markForCheck(); }
+  closeReactivateModal(): void { if (!this.subscriptionActionSaving) { this.showReactivateModal = false; this.subscriptionReason = ''; this.cdr.markForCheck(); } }
+
+  isSubscriptionSuspended(): boolean {
+    return !!this.details?.subscription.subscription_suspended_at
+      || this.details?.subscription.status === 'SUSPENDED';
+  }
+
+  suspendSubscription(): void {
+    if (!this.tenantId || this.subscriptionActionSaving) return;
+    this.subscriptionActionSaving = true;
+    this.cdr.markForCheck();
+
+    this.tenantService.suspendSubscription(this.tenantId, this.normalizedReason())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.subscriptionActionSaving = false;
+            this.closeSuspendModal();
+            this.toastService.success('Subscription access suspended', 'Saved');
+            this.loadDetails();
+            this.loadSubscriptionAudits(true);
+          } else {
+            this.toastService.error(response.message || 'Failed to suspend subscription', 'Error');
+            this.subscriptionActionSaving = false;
+          }
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.toastService.error(this.extractErrorMessage(err, 'Failed to suspend subscription'), 'Error');
+          this.subscriptionActionSaving = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  reactivateSubscription(): void {
+    if (!this.tenantId || this.subscriptionActionSaving) return;
+    this.subscriptionActionSaving = true;
+    this.cdr.markForCheck();
+
+    this.tenantService.reactivateSubscription(this.tenantId, this.normalizedReason())
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.subscriptionActionSaving = false;
+            this.closeReactivateModal();
+            this.toastService.success('Subscription access reactivated', 'Saved');
+            this.loadDetails();
+            this.loadSubscriptionAudits(true);
+          } else {
+            this.toastService.error(response.message || 'Failed to reactivate subscription', 'Error');
+            this.subscriptionActionSaving = false;
+          }
+          this.cdr.markForCheck();
+        },
+        error: (err) => {
+          this.toastService.error(this.extractErrorMessage(err, 'Failed to reactivate subscription'), 'Error');
+          this.subscriptionActionSaving = false;
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private resetSubscriptionDuration(): void {
     if (this.durationOptions.length > 0) {
-      const defaultOption = this.durationOptions.find(opt => opt.value === 12) || this.durationOptions[0];
-      this.subscriptionDuration = defaultOption.value;
+      const def = this.durationOptions.find(o => o.value === 12) || this.durationOptions[0];
+      this.subscriptionDuration = def.value;
     } else {
       this.subscriptionDuration = 12;
     }
-    this.cdr.markForCheck();
   }
 
-  /**
-   * Close renew modal
-   */
-  closeRenewModal(): void {
-    this.showRenewModal = false;
-    this.subscriptionDuration = 12;
-    this.loading = false; // Ensure loading state is reset when modal closes
-    this.cdr.markForCheck();
-  }
-
-  /**
-   * Renew subscription
-   */
-  renewSubscription(): void {
-    if (!this.tenantId) return;
-
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.tenantService.renewSubscription(this.tenantId, this.subscriptionDuration)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.loading = false;
-            this.cdr.markForCheck();
-            this.toastService.success('Subscription renewed successfully', 'Success');
-            this.closeRenewModal();
-            // Refresh tenant data to show updated subscription information
-            this.loadTenant();
-            // Ensure subscription tab is active
-            this.activeTab = 'subscription';
-            this.cdr.markForCheck();
-          } else {
-            this.toastService.error(response.message || 'Failed to renew subscription', 'Error');
-            this.loading = false;
-            this.cdr.markForCheck();
-          }
-        },
-        error: (err) => {
-          this.toastService.error(err.error?.message || 'Failed to renew subscription', 'Error');
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  /**
-   * Get plan name
-   */
-  getPlanName(planKey: string): string {
-    return this.availablePlans[planKey]?.name || planKey;
-  }
-
-  /**
-   * Get plan price
-   */
-  getPlanPrice(planKey: string): number {
-    return this.availablePlans[planKey]?.price || 0;
-  }
-
-  /**
-   * Format price with currency symbol
-   */
-  formatPrice(price: number): string {
-    if (price === 0) return 'Free';
-    
-    // Format based on currency
-    if (this.currency === 'INR') {
-      return `₹${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    } else if (this.currency === 'USD') {
-      return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    } else {
-      // Default formatting
-      return `${this.getCurrencySymbol()}${price.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-  }
-
-  /**
-   * Get currency symbol
-   */
-  getCurrencySymbol(): string {
-    const currencyMap: Record<string, string> = {
-      'INR': '₹',
-      'USD': '$',
-      'EUR': '€',
-      'GBP': '£',
-    };
-    return currencyMap[this.currency] || '₹';
-  }
-
-  /**
-   * Check if plan is available for upgrade
-   */
-  canUpgradeTo(planKey: string): boolean {
-    if (!this.tenant) return false;
-    
-    const planOrder = ['free', 'basic', 'premium', 'enterprise'];
-    const currentIndex = planOrder.indexOf(this.tenant.plan);
-    const targetIndex = planOrder.indexOf(planKey);
-    
-    // Allow upgrades (higher plans) and downgrades to Free plan (for grace periods/exceptions)
-    return targetIndex > currentIndex || planKey === 'free';
-  }
-
-  /**
-   * Check if a plan can be selected (upgrade, downgrade to Free, or current plan)
-   */
-  canSelectPlan(planKey: string): boolean {
-    if (!this.tenant) return false;
-    
-    // Always allow selecting current plan
-    if (this.tenant.plan === planKey) return true;
-    
-    // Allow upgrades (higher plans) or downgrades to Free plan
-    return this.canUpgradeTo(planKey);
-  }
-
-  /**
-   * Get available plans for upgrade
-   */
-  getAvailablePlans(): string[] {
-    return Object.keys(this.availablePlans);
-  }
-
-  /**
-   * Calculate new end date for renewal
-   */
   getNewEndDate(currentEndDate: string | null, months: number): string {
+    const monthsNum = Number(months) || 12;
     if (!currentEndDate) {
-      const newDate = new Date();
-      newDate.setMonth(newDate.getMonth() + months);
-      return this.formatDate(newDate.toISOString());
+      const d = new Date();
+      d.setMonth(d.getMonth() + monthsNum);
+      return this.formatDate(d.toISOString());
     }
-    
     const current = new Date(currentEndDate);
-    const isExpired = current < new Date();
-    
-    if (isExpired) {
-      const newDate = new Date();
-      newDate.setMonth(newDate.getMonth() + months);
-      return this.formatDate(newDate.toISOString());
-    } else {
-      current.setMonth(current.getMonth() + months);
-      return this.formatDate(current.toISOString());
+    if (current < new Date()) {
+      const d = new Date();
+      d.setMonth(d.getMonth() + monthsNum);
+      return this.formatDate(d.toISOString());
     }
+    current.setMonth(current.getMonth() + monthsNum);
+    return this.formatDate(current.toISOString());
+  }
+
+  /** Plan changes happen in the Subscriptions panel; refresh lifecycle state and history afterwards. */
+  onPlanPanelChanged(): void {
+    this.loadDetails();
+    this.loadSubscriptionAudits(true);
+  }
+
+  private normalizedReason(): string | undefined {
+    const reason = this.subscriptionReason.trim();
+    return reason.length ? reason.slice(0, 500) : undefined;
+  }
+
+  private extractErrorMessage(err: unknown, fallback: string): string {
+    if (!err || typeof err !== 'object') return fallback;
+    const e = err as { message?: string; error?: { message?: string } };
+    return e.message || e.error?.message || fallback;
+  }
+
+  getUserPreviewPhotoUrl(user: TenantDetailsUserPreview): string | null {
+    return resolveUserProfileImageUrl(user);
+  }
+
+  openPhotoViewer(user: TenantDetailsUserPreview, event: Event): void {
+    event.stopPropagation();
+    const url = this.getUserPreviewPhotoUrl(user);
+    if (!url) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: url,
+      alt: user.name,
+      title: user.name,
+      subtitle: user.email,
+    };
+    this.cdr.markForCheck();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.markForCheck();
+  }
+
+  canResetTenantAdministrator(): boolean {
+    const adminId = this.details?.administration?.primary_admin?.id;
+    if (!adminId) {
+      return false;
+    }
+
+    return this.authService.hasPermission('tenant.admin_password.reset')
+      || this.authService.hasPermission('users.password.reset_subordinates')
+      || this.authService.isSuperAdmin();
+  }
+
+  resetTenantAdministratorPassword(): void {
+    const admin = this.details?.administration?.primary_admin;
+    if (!admin?.id) {
+      return;
+    }
+
+    this.confirmationDialog.confirm({
+      title: 'Reset Tenant Administrator Password',
+      message: `Generate a temporary password for ${admin.name}?`,
+      confirmText: 'Reset Password',
+      variant: 'primary',
+    }).pipe(takeUntil(this.destroy$)).subscribe((result) => {
+      if (!result.confirmed) {
+        return;
+      }
+
+      this.usersService.resetPassword(admin.id)
+        .pipe(takeUntil(this.destroy$))
+        .subscribe({
+          next: (response) => {
+            this.tenantAdminResetPassword = response.data.temporary_password;
+            this.toastService.success(response.message || 'Password reset successfully.', 'Security');
+            this.cdr.markForCheck();
+          },
+          error: (err) => {
+            this.toastService.error(err.error?.message || 'Unable to reset tenant administrator password.', 'Security');
+          },
+        });
+    });
   }
 }
-

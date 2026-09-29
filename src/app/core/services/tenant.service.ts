@@ -19,7 +19,8 @@ import {
   CreateTenantRequest,
   UpdateTenantRequest,
   TenantListParams,
-  TenantState
+  TenantState,
+  TenantDetailsResponse
 } from '@core/models/tenant.model';
 
 @Injectable({
@@ -76,6 +77,16 @@ export class TenantService {
         catchError(error => this.handleError(error)),
         finalize(() => this.setLoading(false))
       );
+  }
+
+  /**
+   * Platform-admin 360° tenant snapshot for /tenants/:id.
+   */
+  getTenantDetails(id: number): Observable<TenantDetailsResponse> {
+    this.clearError();
+
+    return this.http.get<TenantDetailsResponse>(`${this.apiUrl}/${id}/details`)
+      .pipe(catchError(error => this.handleError(error)));
   }
 
   /**
@@ -294,25 +305,36 @@ export class TenantService {
   /**
    * Upgrade tenant subscription plan
    */
-  upgradeSubscription(id: number, plan: string, durationMonths?: number): Observable<TenantResponse> {
+  upgradeSubscription(
+    id: number,
+    plan: string,
+    durationMonths?: number,
+    reason?: string
+  ): Observable<TenantResponse> {
     this.setLoading(true);
     this.clearError();
 
-    const payload: any = { plan };
+    const payload: Record<string, unknown> = { plan };
     if (durationMonths) {
-      payload.subscription_duration_months = durationMonths;
+      payload['subscription_duration_months'] = durationMonths;
+    }
+    if (reason?.trim()) {
+      payload['reason'] = reason.trim();
     }
 
     return this.http.post<TenantResponse>(`${this.apiUrl}/${id}/subscription/upgrade`, payload)
       .pipe(
         tap(response => {
           if (response.success && response.data) {
-            // Update tenant in the list
-            const currentTenants = this.tenantsSubject.value;
-            const updatedTenants = currentTenants.map(t => 
-              t.id === id ? response.data : t
-            );
-            this.tenantsSubject.next(updatedTenants);
+            const payloadData = response.data as any;
+            const tenant = payloadData?.tenant ?? payloadData;
+            if (tenant?.id) {
+              const currentTenants = this.tenantsSubject.value;
+              const updatedTenants = currentTenants.map(t =>
+                t.id === id ? { ...t, ...tenant } : t
+              );
+              this.tenantsSubject.next(updatedTenants);
+            }
           }
         }),
         catchError(error => this.handleError(error)),
@@ -323,25 +345,35 @@ export class TenantService {
   /**
    * Renew tenant subscription
    */
-  renewSubscription(id: number, durationMonths?: number): Observable<TenantResponse> {
+  renewSubscription(
+    id: number,
+    durationMonths?: number,
+    reason?: string
+  ): Observable<TenantResponse> {
     this.setLoading(true);
     this.clearError();
 
-    const payload: any = {};
+    const payload: Record<string, unknown> = {};
     if (durationMonths) {
-      payload.duration_months = durationMonths;
+      payload['duration_months'] = durationMonths;
+    }
+    if (reason?.trim()) {
+      payload['reason'] = reason.trim();
     }
 
     return this.http.post<TenantResponse>(`${this.apiUrl}/${id}/subscription/renew`, payload)
       .pipe(
         tap(response => {
           if (response.success && response.data) {
-            // Update tenant in the list
-            const currentTenants = this.tenantsSubject.value;
-            const updatedTenants = currentTenants.map(t => 
-              t.id === id ? response.data : t
-            );
-            this.tenantsSubject.next(updatedTenants);
+            const payloadData = response.data as any;
+            const tenant = payloadData?.tenant ?? payloadData;
+            if (tenant?.id) {
+              const currentTenants = this.tenantsSubject.value;
+              const updatedTenants = currentTenants.map(t =>
+                t.id === id ? { ...t, ...tenant } : t
+              );
+              this.tenantsSubject.next(updatedTenants);
+            }
           }
         }),
         catchError(error => this.handleError(error)),
@@ -362,7 +394,10 @@ export class TenantService {
       const value = (request as any)[key];
 
       if (value === null || value === undefined) {
-        return; // Skip null/undefined values
+        if (key === 'archdiocese_id' || key === 'website') {
+          formData.append(key, '');
+        }
+        return; // Skip other null/undefined values
       }
 
       if (key === 'tenant_logo' && value instanceof File) {
@@ -419,6 +454,100 @@ export class TenantService {
   }
 
   /**
+   * Super Admin: platform subscription settings (grace days, etc.)
+   */
+  getSubscriptionSettings(): Observable<{success: boolean; data: {grace_period_days: number; expiring_warning_days: number}; message?: string}> {
+    return this.http.get<{success: boolean; data: {grace_period_days: number; expiring_warning_days: number}; message?: string}>(
+      `${this.apiUrl.replace('/tenant', '')}/subscription/settings`
+    ).pipe(catchError(error => this.handleError(error)));
+  }
+
+  /**
+   * Super Admin: update grace / expiring warning days
+   */
+  updateSubscriptionSettings(data: {grace_period_days: number; expiring_warning_days: number}): Observable<{success: boolean; data: {grace_period_days: number; expiring_warning_days: number}; message?: string}> {
+    return this.http.put<{success: boolean; data: {grace_period_days: number; expiring_warning_days: number}; message?: string}>(
+      `${this.apiUrl.replace('/tenant', '')}/subscription/settings`,
+      data
+    ).pipe(catchError(error => this.handleError(error)));
+  }
+
+  /**
+   * Tenant: lightweight subscription access (any tenant user)
+   */
+  getSubscriptionAccess(): Observable<{success: boolean; data: any; message?: string}> {
+    return this.http.get<{success: boolean; data: any; message?: string}>(`${this.apiUrl}/subscription-access`)
+      .pipe(catchError(error => this.handleError(error)));
+  }
+
+  /**
+   * Tenant: read-only My Subscription summary
+   */
+  getMySubscription(): Observable<{success: boolean; data: any; message?: string}> {
+    return this.http.get<{success: boolean; data: any; message?: string}>(`${this.apiUrl}/my-subscription`)
+      .pipe(catchError(error => this.handleError(error)));
+  }
+
+  suspendSubscription(id: number, reason?: string): Observable<TenantResponse> {
+    return this.http.post<TenantResponse>(`${this.apiUrl}/${id}/subscription/suspend`, { reason })
+      .pipe(catchError(error => this.handleError(error)));
+  }
+
+  reactivateSubscription(id: number, reason?: string): Observable<TenantResponse> {
+    return this.http.post<TenantResponse>(`${this.apiUrl}/${id}/subscription/reactivate`, { reason })
+      .pipe(catchError(error => this.handleError(error)));
+  }
+
+  /**
+   * Super Admin: paginated subscription audit history for a tenant
+   */
+  getSubscriptionAudits(
+    id: number,
+    params?: { page?: number; per_page?: number; operation?: string | null }
+  ): Observable<{
+    success: boolean;
+    data: any[];
+    pagination?: {
+      current_page: number;
+      last_page: number;
+      per_page: number;
+      total: number;
+      from: number | null;
+      to: number | null;
+    };
+    meta?: { operations?: Record<string, string> };
+    message?: string;
+  }> {
+    const queryParams: Record<string, string> = {};
+    if (params?.page != null) {
+      queryParams['page'] = String(params.page);
+    }
+    if (params?.per_page != null) {
+      queryParams['per_page'] = String(params.per_page);
+    }
+    if (params?.operation) {
+      queryParams['operation'] = params.operation;
+    }
+
+    return this.http
+      .get<{
+        success: boolean;
+        data: any[];
+        pagination?: {
+          current_page: number;
+          last_page: number;
+          per_page: number;
+          total: number;
+          from: number | null;
+          to: number | null;
+        };
+        meta?: { operations?: Record<string, string> };
+        message?: string;
+      }>(`${this.apiUrl}/${id}/subscription/audits`, { params: queryParams })
+      .pipe(catchError(error => this.handleError(error)));
+  }
+
+  /**
    * Create a new subscription duration option
    */
   createDurationOption(data: {months: number; label: string; display_order?: number; active?: boolean}): Observable<{success: boolean; data: any; message?: string}> {
@@ -461,62 +590,6 @@ export class TenantService {
   }
 
   /**
-   * Get all subscription plans
-   */
-  getPlans(): Observable<{success: boolean; data: any[]; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.get<{success: boolean; data: any[]; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans`)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
-   * Create a new subscription plan
-   */
-  createPlan(data: {key: string; name: string; description?: string; price: number; max_users: number; max_storage_mb: number; features?: string[]; display_order?: number; active?: boolean; is_default?: boolean}): Observable<{success: boolean; data: any; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.post<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans`, data)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
-   * Update a subscription plan
-   */
-  updatePlan(id: number, data: Partial<{key: string; name: string; description?: string; price: number; max_users: number; max_storage_mb: number; features?: string[]; display_order?: number; active?: boolean; is_default?: boolean}>): Observable<{success: boolean; data: any; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.put<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans/${id}`, data)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
-   * Delete a subscription plan
-   */
-  deletePlan(id: number): Observable<{success: boolean; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.delete<{success: boolean; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans/${id}`)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
    * Build query parameters from TenantListParams
    */
   private buildQueryParams(params?: TenantListParams): Record<string, string> {
@@ -538,6 +611,15 @@ export class TenantService {
     if (params.plan) {
       queryParams['plan'] = params.plan;
     }
+    if (params.tenant_tier) {
+      queryParams['tenant_tier'] = params.tenant_tier;
+    }
+    if (params.archdiocese_id !== undefined) {
+      queryParams['archdiocese_id'] = String(params.archdiocese_id);
+    }
+    if (params.subscription_status) {
+      queryParams['subscription_status'] = params.subscription_status;
+    }
     if (params.search) {
       queryParams['search'] = params.search;
     }
@@ -552,25 +634,30 @@ export class TenantService {
   }
 
   /**
-   * Handle HTTP errors with proper error messages
+   * Handle HTTP errors with proper error messages.
+   * Preserves structured shape from errorInterceptor ({ message, status, errors }).
    */
   private handleError(error: any): Observable<never> {
     let errorMessage = 'An unexpected error occurred';
 
-    if (error.error) {
-      if (error.error.message) {
-        errorMessage = error.error.message;
-      } else if (error.error.errors) {
-        // Laravel validation errors
-        const errors = error.error.errors;
-        errorMessage = Object.values(errors).flat().join(', ');
-      }
-    } else if (error.message) {
+    if (error?.error?.message) {
+      errorMessage = error.error.message;
+    } else if (error?.error?.errors) {
+      const errors = error.error.errors;
+      errorMessage = Object.values(errors).flat().join(', ');
+    } else if (error?.errors) {
+      errorMessage = Object.values(error.errors).flat().join(', ');
+    } else if (error?.message) {
       errorMessage = error.message;
     }
 
     this.setError(errorMessage);
-    return throwError(() => new Error(errorMessage));
+    return throwError(() => ({
+      message: errorMessage,
+      status: error?.status,
+      errors: error?.errors ?? error?.error?.errors,
+      error: error?.error ?? { message: errorMessage },
+    }));
   }
 
   /**

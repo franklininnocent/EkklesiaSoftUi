@@ -1,10 +1,9 @@
 import { Component, inject, OnInit, OnDestroy, HostListener, ElementRef, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, NavigationEnd } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { Observable, Subject } from 'rxjs';
-import { filter, take, takeUntil } from 'rxjs/operators';
-import { trigger, transition, style, animate } from '@angular/animations';
+import { filter, takeUntil } from 'rxjs/operators';
 
 import { AppState } from '@core/store';
 import { User, Tenant } from '@core/models';
@@ -12,79 +11,163 @@ import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { selectCurrentTenant } from '@core/store/tenant/tenant.selectors';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import { AuthService } from '@core/services/auth.service';
-import { ThemeService, FontSize, FontSizeConfig } from '@core/services/theme.service';
+import { ApplicationContextService } from '@core/services/application-context.service';
+import { NavMenuService, NavMenuId } from '@core/services/nav-menu.service';
 import { BreadcrumbComponent } from '@shared/components/breadcrumb/breadcrumb';
 import { QuickCollectDrawerComponent } from '@features/donations/components/quick-collect-drawer/quick-collect-drawer.component';
 import { QuickCollectService } from '@features/donations/services/quick-collect.service';
 import { CommandPaletteComponent } from '@shared/components/command-palette/command-palette.component';
 import { GlobalFamilySearchComponent } from '@shared/components/global-family-search/global-family-search.component';
-
+import { SupportSessionBannerComponent } from '@features/support-center/components/support-session-banner/support-session-banner.component';
+import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { SubscriptionStatusBannerComponent } from '@shared/components/subscription-status-banner/subscription-status-banner.component';
+import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { EntitlementService } from '@core/services/entitlement.service';
+import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
+import { resolveUserProfileImageUrl } from '@core/utils/user-profile-image.util';
+import { SidebarNavForestComponent } from '../sidebar-nav/sidebar-nav-forest.component';
+import { NotificationBellComponent } from '@features/notifications/components/notification-bell/notification-bell.component';
+import { NotificationPopoverComponent } from '@features/notifications/components/notification-popover/notification-popover.component';
+import {
+  buildAppSidebarSections,
+  filterSidebarSections,
+} from '../sidebar-nav/app-sidebar.config';
+import { SidebarNavSection } from '../sidebar-nav/sidebar-nav.model';
 @Component({
   selector: 'app-main-layout',
   standalone: true,
-  imports: [CommonModule, RouterModule, BreadcrumbComponent, QuickCollectDrawerComponent, CommandPaletteComponent, GlobalFamilySearchComponent],
+  imports: [
+    CommonModule,
+    RouterModule,
+    BreadcrumbComponent,
+    QuickCollectDrawerComponent,
+    CommandPaletteComponent,
+    GlobalFamilySearchComponent,
+    SupportSessionBannerComponent,
+    SubscriptionStatusBannerComponent,
+    UserAvatarComponent,
+    ImageViewerComponent,
+    SidebarNavForestComponent,
+    NotificationBellComponent,
+    NotificationPopoverComponent,
+  ],
   templateUrl: './main-layout.component.html',
   styleUrl: './main-layout.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
-  animations: [
-    trigger('slideIn', [
-      transition(':enter', [
-        style({ opacity: 0, transform: 'scale(0.9) translateY(10px)' }),
-        animate('300ms cubic-bezier(0.16, 1, 0.3, 1)', style({ opacity: 1, transform: 'scale(1) translateY(0)' }))
-      ]),
-      transition(':leave', [
-        animate('200ms cubic-bezier(0.4, 0, 1, 1)', style({ opacity: 0, transform: 'scale(0.9) translateY(10px)' }))
-      ])
-    ]),
-    trigger('slideDown', [
-      transition(':enter', [
-        style({ height: 0, opacity: 0, overflow: 'hidden' }),
-        animate('300ms cubic-bezier(0.16, 1, 0.3, 1)', style({ height: '*', opacity: 1 }))
-      ]),
-      transition(':leave', [
-        animate('200ms cubic-bezier(0.4, 0, 1, 1)', style({ height: 0, opacity: 0, overflow: 'hidden' }))
-      ])
-    ])
-  ]
 })
 export class MainLayoutComponent implements OnInit, OnDestroy {
   private store = inject(Store<AppState>);
   private router = inject(Router);
   private authService = inject(AuthService);
+  private appContext = inject(ApplicationContextService);
+  private navMenu = inject(NavMenuService);
   private elementRef = inject(ElementRef);
   private cdr = inject(ChangeDetectorRef);
-  public themeService = inject(ThemeService);
   private destroy$ = new Subject<void>();
   private quickCollectService = inject(QuickCollectService);
+  private supportSessions = inject(SupportSessionService);
+  private subscriptionAccess = inject(SubscriptionAccessService);
+  private entitlements = inject(EntitlementService);
 
   currentUser$: Observable<User | null>;
   currentTenant$: Observable<Tenant | null>;
   isSidebarCollapsed = false;
+  isMobileNavOpen = false;
+  isMobileViewport = false;
   isUserMenuOpen = false;
   isUserMenuClosing = false;
   currentYear = new Date().getFullYear();
-  
-  // Theme settings panel
-  isThemePanelOpen = false;
-  currentFontSize$: Observable<FontSize>;
-  fontSizeOptions: FontSizeConfig[];
+  currentUser: User | null = null;
+  visibleSidebarSections: SidebarNavSection[] = [];
+  private readonly sidebarSections = buildAppSidebarSections();
 
   constructor() {
     this.currentUser$ = this.store.select(selectCurrentUser);
     this.currentTenant$ = this.store.select(selectCurrentTenant);
-    this.currentFontSize$ = this.themeService.fontSize$;
-    this.fontSizeOptions = this.themeService.fontSizeOptions;
   }
 
   ngOnInit(): void {
-    // Load user data if authenticated but user is not in store (e.g., after page refresh)
-    this.currentUser$.pipe(take(1), takeUntil(this.destroy$)).subscribe(user => {
-      if (!user && this.authService.isAuthenticated()) {
-        // User is authenticated but not loaded in store, dispatch loadUser action
-        this.store.dispatch(AuthActions.loadUser());
+    // #region agent log
+    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'ae66ec' },
+      body: JSON.stringify({
+        sessionId: 'ae66ec',
+        runId: 'pre-fix',
+        hypothesisId: 'C',
+        location: 'main-layout.component.ts:ngOnInit',
+        message: 'MainLayout ngOnInit',
+        data: { href: location.href, authenticated: this.authService.isAuthenticated() },
+        timestamp: Date.now(),
+      }),
+    }).catch(() => {});
+    // #endregion
+    // Soft refresh of profile on layout entry. loadUserFailure no longer wipes the
+    // session on transient errors, so this is safe after post-login navigation.
+    if (this.authService.isAuthenticated()) {
+      this.store.dispatch(AuthActions.loadUser());
+    }
+
+    this.currentUser$.pipe(takeUntil(this.destroy$)).subscribe(user => {
+      this.currentUser = user;
+      this.refreshVisibleSidebar();
+      if (this.appContext.hasParishResourceContext(user)) {
+        this.subscriptionAccess.ensureLoaded();
+        this.entitlements.load().pipe(takeUntil(this.destroy$)).subscribe();
+      } else {
+        this.subscriptionAccess.clear();
+        this.entitlements.clear();
       }
       this.cdr.markForCheck();
     });
+
+    this.subscriptionAccess.snapshot$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.refreshVisibleSidebar();
+      this.cdr.markForCheck();
+    });
+
+    this.entitlements.entitlements$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.refreshVisibleSidebar();
+      this.cdr.markForCheck();
+    });
+
+    this.supportSessions.session$.pipe(takeUntil(this.destroy$)).subscribe(() => {
+      this.cdr.markForCheck();
+    });
+
+    if (!this.authService.isPlatformActor()) {
+      this.supportSessions.clearSession();
+    } else if (this.authService.canAccessSupportCenter()) {
+      this.supportSessions.syncWithServer().pipe(takeUntil(this.destroy$)).subscribe();
+    }
+
+    // Breadcrumb audit: when a support session is active, log navigations.
+    this.router.events
+      .pipe(
+        filter((event): event is NavigationEnd => event instanceof NavigationEnd),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((event) => {
+        if (this.isMobileNavOpen) {
+          this.closeMobileNav();
+        }
+
+        if (!this.supportSessions.isSessionLive) {
+          return;
+        }
+        const url = event.urlAfterRedirects || event.url;
+        const module = this.moduleFromUrl(url);
+        this.supportSessions
+          .recordEvent({
+            event_type: 'page_view',
+            module,
+            page: url,
+            action: 'navigate',
+          })
+          .subscribe();
+      });
+
+    this.updateViewportState();
   }
 
   ngOnDestroy(): void {
@@ -101,19 +184,50 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
         this.closeUserMenu();
       }
     }
+  }
 
-    // Close theme panel when clicking outside
-    if (this.isThemePanelOpen) {
-      const themeFab = this.elementRef.nativeElement.querySelector('.theme-settings-fab');
-      const clickedInsideThemeFab = themeFab?.contains(event.target);
-      if (!clickedInsideThemeFab) {
-        this.isThemePanelOpen = false;
-      }
-    }
+  @HostListener('window:resize')
+  onWindowResize(): void {
+    this.updateViewportState();
   }
 
   toggleSidebar(): void {
+    if (this.isMobileViewport) {
+      this.toggleMobileNav();
+      return;
+    }
     this.isSidebarCollapsed = !this.isSidebarCollapsed;
+    this.cdr.markForCheck();
+  }
+
+  toggleMobileNav(): void {
+    this.isMobileNavOpen = !this.isMobileNavOpen;
+    this.cdr.markForCheck();
+  }
+
+  closeMobileNav(): void {
+    if (!this.isMobileNavOpen) {
+      return;
+    }
+    this.isMobileNavOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  private refreshVisibleSidebar(): void {
+    this.visibleSidebarSections = filterSidebarSections(
+      this.sidebarSections,
+      (menuId) => this.navMenu.isVisible(menuId as NavMenuId, this.currentUser),
+      (route) => this.navMenu.isRouteAllowed(route)
+    );
+  }
+
+  private updateViewportState(): void {
+    const wasMobile = this.isMobileViewport;
+    this.isMobileViewport = window.innerWidth <= 768;
+    if (wasMobile && !this.isMobileViewport) {
+      this.isMobileNavOpen = false;
+    }
+    this.cdr.markForCheck();
   }
 
   toggleUserMenu(event?: MouseEvent): void {
@@ -141,6 +255,33 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }, 300); // Match animation duration
   }
 
+  photoViewer: { src: string; alt: string; title: string; subtitle: string } | null = null;
+
+  getUserPhotoUrl(user: User): string | null {
+    return resolveUserProfileImageUrl(user);
+  }
+
+  openPhotoViewer(user: User, event: Event): void {
+    event.stopPropagation();
+    const url = this.getUserPhotoUrl(user);
+    if (!url) {
+      return;
+    }
+
+    this.photoViewer = {
+      src: url,
+      alt: user.name,
+      title: user.name,
+      subtitle: user.email,
+    };
+    this.cdr.markForCheck();
+  }
+
+  closePhotoViewer(): void {
+    this.photoViewer = null;
+    this.cdr.markForCheck();
+  }
+
   getInitials(name: string): string {
     if (!name) return '?';
     
@@ -159,6 +300,13 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
+  navigateToChangePassword(): void {
+    this.closeUserMenu();
+    setTimeout(() => {
+      this.router.navigate(['/profile'], { queryParams: { changePassword: '1' } });
+    }, 100);
+  }
+
   logout(): void {
     this.closeUserMenu();
     setTimeout(() => {
@@ -166,61 +314,61 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
     }, 100);
   }
 
-  // Theme Panel Methods
-  toggleThemePanel(): void {
-    this.isThemePanelOpen = !this.isThemePanelOpen;
+  isVisible(id: NavMenuId, user: User | null): boolean {
+    return this.navMenu.isVisible(id, user);
   }
 
-  closeThemePanel(): void {
-    this.isThemePanelOpen = false;
-  }
-
-  selectFontSize(size: FontSize): void {
-    this.themeService.setFontSize(size);
-    // Optionally close the panel after selection
-    // this.isThemePanelOpen = false;
-  }
-
-  isCurrentFontSize(size: FontSize): boolean {
-    return this.themeService.getCurrentFontSize() === size;
-  }
-
-  /**
-   * Check if the current user can manage tenants.
-   * Only SuperAdmin and EkklesiaAdmin can see the Tenants menu.
-   */
   canManageTenants(user: User | null): boolean {
-    if (!user) return false;
-    
-    // Check by role name (primary method)
-    if (user.role_name === 'SuperAdmin' || user.role_name === 'EkklesiaAdmin') {
-      return true;
-    }
-    
-    // Fallback: Check by role object
-    if (user.role?.name === 'SuperAdmin' || user.role?.name === 'EkklesiaAdmin') {
-      return true;
-    }
-    
-    // Tenant users (with tenant_id) cannot manage tenants
-    return false;
+    return this.isVisible('tenants', user);
   }
 
-  /**
-   * Check if the current user can manage roles and permissions.
-   * SuperAdmin, EkklesiaAdmin, and tenant Administrators can manage roles.
-   */
   canManageRoles(user: User | null): boolean {
-    if (!user) return false;
-    return this.authService.canAccessRbac(user);
+    return this.isVisible('roles-permissions', user);
+  }
+
+  canAccessSupport(user: User | null): boolean {
+    return this.isVisible('support', user);
+  }
+
+  canAccessSupportCenter(user: User | null): boolean {
+    return this.isVisible('support-center', user);
+  }
+
+  canAccessApplicationAccess(user: User | null): boolean {
+    return this.isVisible('application-access', user);
   }
 
   canViewDonations(user: User | null): boolean {
-    return this.authService.canAccessDonations(user);
+    return this.isVisible('donations', user);
+  }
+
+  canAccessBcc(user: User | null): boolean {
+    return this.isVisible('bccs', user);
+  }
+
+  canAccessMinistries(user: User | null): boolean {
+    return this.isVisible('ministries', user);
+  }
+
+  hasParishContext(user: User | null): boolean {
+    return !!user?.tenant_id && !this.authService.isPlatformActor(user);
+  }
+
+  isSubscriptionReadOnly(): boolean {
+    return this.subscriptionAccess.isReadOnly();
   }
 
   openQuickCollect(): void {
+    if (this.isSubscriptionReadOnly()) {
+      return;
+    }
     this.quickCollectService.open();
+  }
+
+  private moduleFromUrl(url: string): string {
+    const path = url.split('?')[0].replace(/^\//, '');
+    const first = path.split('/')[0] || 'app';
+    return first;
   }
 }
 

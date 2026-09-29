@@ -1,6 +1,6 @@
-import { TestBed } from '@angular/core/testing';
+import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
 import { CollectionDayComponent } from './collection-day.component';
 import { FamilyService } from '@core/services/family.service';
 import { DonationsService } from '../services/donations.service';
@@ -9,8 +9,31 @@ import { AuthService } from '@core/services/auth.service';
 
 describe('CollectionDayComponent', () => {
   let component: CollectionDayComponent;
+  let fixture: ComponentFixture<CollectionDayComponent>;
+  let ledgerMutated$: Subject<void>;
+  let getPayments: jest.Mock;
 
   beforeEach(async () => {
+    ledgerMutated$ = new Subject<void>();
+    getPayments = jest.fn().mockReturnValue(of({
+      success: true,
+      data: { data: [] },
+      meta: {
+        totals: {
+          payment_count: 0,
+          collected_gross: 0,
+          refunded_total: 0,
+          net_collected: 0,
+          families_count: 0,
+          currency_code: 'INR'
+        },
+        business_date: '2026-09-28',
+        timezone: 'Asia/Kolkata',
+        date_basis: 'payment_date',
+        date_mode: 'today'
+      }
+    }));
+
     await TestBed.configureTestingModule({
       imports: [CollectionDayComponent],
       providers: [
@@ -24,7 +47,8 @@ describe('CollectionDayComponent', () => {
         {
           provide: DonationsService,
           useValue: {
-            getPayments: jest.fn().mockReturnValue(of({ success: true, data: { data: [] } })),
+            getPayments,
+            ledgerMutated$,
             getDashboardSummary: jest.fn().mockReturnValue(of({ success: true, data: {} })),
             getSettings: jest.fn().mockReturnValue(of({ success: true, data: { default_currency: 'INR' } })),
             getFamilyFinancialProfile: jest.fn().mockReturnValue(of({ success: true, data: null })),
@@ -43,9 +67,22 @@ describe('CollectionDayComponent', () => {
       ]
     }).compileComponents();
 
-    const fixture = TestBed.createComponent(CollectionDayComponent);
+    fixture = TestBed.createComponent(CollectionDayComponent);
     component = fixture.componentInstance;
     fixture.detectChanges();
+  });
+
+  it('renders the command header hierarchy', () => {
+    const text = fixture.nativeElement.textContent;
+    expect(text).toContain('Collection Operations Center');
+    expect(text).toContain('Real-time contribution collection and payment processing workspace');
+    expect(text).toContain('Session Active');
+    expect(text).toContain('Operator');
+    expect(text).toContain('Test Operator');
+    expect(text).toContain('Collection Date');
+    expect(fixture.nativeElement.querySelector('[aria-label="Quick Actions"]')).toBeTruthy();
+    expect(text).toContain('Export');
+    expect(text).toContain('Exit Workspace');
   });
 
   it('requires family, payer, and amount before submit', () => {
@@ -70,6 +107,59 @@ describe('CollectionDayComponent', () => {
     } as unknown as KeyboardEvent);
 
     expect(component.collectType).toBe('general');
+  });
+
+  it('labels unallocated collection-day amounts as family credit', () => {
+    component.amount = 250;
+    component.collectType = 'general';
+    expect(component.allocationPreview[0].label).toContain('Family credit');
+  });
+
+  it('makes Today\'s Collections a navigable KPI and loads parish-today payments', () => {
+    const donations = TestBed.inject(DonationsService) as unknown as {
+      getPayments: jest.Mock;
+      getDashboardSummary: jest.Mock;
+    };
+    expect(donations.getPayments).toHaveBeenCalledWith({ today_only: '1', per_page: '12' });
+
+    donations.getPayments.mockReturnValue(of({
+      success: true,
+      data: { data: [{ id: 'pay-1', amount: 10, method: 'cash', payment_number: 'PAY-1' }] },
+      meta: {
+        totals: {
+          payment_count: 7,
+          collected_gross: 125,
+          refunded_total: 0,
+          net_collected: 125,
+          families_count: 4,
+          currency_code: 'INR'
+        },
+        business_date: '2026-09-28',
+        timezone: 'Asia/Kolkata',
+        date_basis: 'payment_date',
+        date_mode: 'today'
+      }
+    }));
+    donations.getDashboardSummary.mockReturnValue(of({ success: true, data: {} }));
+    component.refreshSession();
+    fixture.detectChanges();
+
+    expect(component.sessionCount).toBe(7);
+    expect(component.sessionTotal).toBe(125);
+    expect(component.familiesProcessedToday).toBe(4);
+    expect(component.todayPayments.length).toBe(1);
+
+    const link = fixture.nativeElement.querySelector('a.coc-kpi--link');
+    expect(link).toBeTruthy();
+    expect(link.getAttribute('href')).toContain('/donations/today-collections');
+    expect(link.getAttribute('aria-label')).toBe("View Today's Collections");
+    expect(fixture.nativeElement.querySelectorAll('a.coc-kpi--link').length).toBe(1);
+  });
+
+  it('refreshes session when the donations ledger mutates (e.g. Quick Collect)', () => {
+    getPayments.mockClear();
+    ledgerMutated$.next();
+    expect(getPayments).toHaveBeenCalledWith({ today_only: '1', per_page: '12' });
   });
 
   it('opens shortcuts with question mark outside editable fields', () => {

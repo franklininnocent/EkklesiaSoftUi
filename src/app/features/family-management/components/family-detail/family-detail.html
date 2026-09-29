@@ -19,27 +19,68 @@
     </aside>
 
     <main class="family-360-detail" aria-label="Family profile workspace">
-      <div
-        class="family-360-workspace"
-        role="tablist"
-        aria-label="Family profile views"
-      >
-        <button
-          *ngFor="let tab of workspaceTabs"
-          type="button"
-          class="family-360-workspace__tab"
-          role="tab"
-          [id]="workspaceTabId(tab)"
-          [class.active]="workspaceView === tab"
-          [attr.aria-selected]="workspaceView === tab"
-          [attr.aria-controls]="workspacePanelId(tab)"
-          [attr.tabindex]="workspaceView === tab ? 0 : -1"
-          (click)="setWorkspaceView(tab)"
-          (keydown)="handleWorkspaceTabKeydown($event, tab)"
+      <div class="family-360-actions">
+        <div
+          class="family-360-workspace family-360-actions__group"
+          role="group"
+          aria-label="Family actions"
+          *ngIf="canRelocateBcc || canMarriageTransition || canCreatePastoralVisit"
         >
-          {{ workspaceTabLabels[tab] }}
-        </button>
+          <button
+            *ngIf="canCreatePastoralVisit"
+            type="button"
+            class="family-360-workspace__tab"
+            (click)="openRequestVisitModal()"
+          >
+            Request a visit
+          </button>
+          <button
+            *ngIf="canRelocateBcc"
+            type="button"
+            class="family-360-workspace__tab"
+            (click)="openBccTransferModal()"
+          >
+            Move BCC
+          </button>
+          <button
+            *ngIf="canMarriageTransition"
+            type="button"
+            class="family-360-workspace__tab"
+            (click)="openMarriageHouseholdModal()"
+          >
+            Marriage household
+          </button>
+        </div>
+
+        <div
+          class="family-360-workspace"
+          role="tablist"
+          aria-label="Family profile views"
+        >
+          <button
+            *ngFor="let tab of visibleWorkspaceTabs"
+            type="button"
+            class="family-360-workspace__tab"
+            role="tab"
+            [id]="workspaceTabId(tab)"
+            [class.active]="workspaceView === tab"
+            [attr.aria-selected]="workspaceView === tab"
+            [attr.aria-controls]="workspacePanelId(tab)"
+            [attr.tabindex]="workspaceView === tab ? 0 : -1"
+            (click)="setWorkspaceView(tab)"
+            (keydown)="handleWorkspaceTabKeydown($event, tab)"
+          >
+            {{ workspaceTabLabels[tab] }}
+          </button>
+        </div>
       </div>
+
+      <ul class="family-care-strip" *ngIf="canViewPastoralCare && pastoralVisits.length">
+        <li *ngFor="let visit of pastoralVisits">
+          <strong>{{ visit.summary }}</strong>
+          <span>{{ visit.assignee }} · {{ visit.due }}</span>
+        </li>
+      </ul>
 
       <div
         *ngIf="workspaceView === 'members'"
@@ -55,6 +96,8 @@
           [headSacramentsExpanded]="headSacramentsExpanded"
           [editingHeadImage]="editingHeadImage"
           [showHeadWithoutMember]="showHeadWithoutMemberPanel()"
+          [memberRegisterSacraments]="memberRegisterSacraments"
+          [canViewRegisterSacraments]="canViewRegisterSacraments"
           (editHead)="openAddOrEditHeadMember()"
           (editMember)="openEditMember($event)"
           (addHead)="openAddOrEditHeadMember()"
@@ -64,6 +107,7 @@
           (deleteHeadProfileImage)="deleteHeadProfileImage()"
           (openSacramentModal)="onPanelSacramentModal($event)"
           (openHeadSacramentModal)="onPanelHeadSacramentModal($event)"
+          (linkedParentSelected)="onLinkedParentSelected($event)"
         />
       </div>
 
@@ -78,6 +122,15 @@
           [profile]="familyFinancialProfile"
           (refresh)="reloadFamilyFinancialSummary()"
         ></app-family-financial-dashboard>
+      </div>
+
+      <div
+        *ngIf="workspaceView === 'history' && canViewTransitionHistory"
+        role="tabpanel"
+        [id]="workspacePanelId('history')"
+        [attr.aria-labelledby]="workspaceTabId('history')"
+      >
+        <app-family-transition-history-panel [familyId]="family.id" />
       </div>
     </main>
               </div>
@@ -113,6 +166,27 @@
     (close)="closeSacramentModal()"
   (saved)="onSacramentSaved($event)"
 ></app-sacrament-edit-modal>
+
+  <app-request-visit-modal
+    *ngIf="showRequestVisitModal && family"
+    [family]="family"
+    (completed)="onRequestVisitCompleted()"
+    (cancel)="closeRequestVisitModal()"
+  />
+
+  <app-bcc-transfer-modal
+    *ngIf="showBccTransferModal && family"
+    [family]="family"
+    (completed)="onBccTransferCompleted()"
+    (cancel)="closeBccTransferModal()"
+  />
+
+  <app-marriage-household-modal
+    *ngIf="showMarriageHouseholdModal && family"
+    [sourceFamily]="family"
+    (completed)="onMarriageHouseholdCompleted()"
+    (cancel)="closeMarriageHouseholdModal()"
+  />
 
 <div class="loading-container" *ngIf="loading" role="status" aria-live="polite">
   <div class="spinner"></div>

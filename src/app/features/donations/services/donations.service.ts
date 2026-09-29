@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
+import { Observable, Subject, map, tap } from 'rxjs';
+import { newIdempotencyKey } from '../utils/local-date-only';
 import { environment } from '@environments/environment';
 import {
   ContributionDue,
@@ -13,11 +14,13 @@ import {
   DonationSavedViewResult,
   FinancialGlobalSearchResult,
   DonationDashboardSummary,
+  DonationDashboardDateQuery,
   FinancialCommandCenterPayload,
   ParishExpenseRecord,
   OperationsDashboardSummary,
   FinancialActivityTimeline,
   ExecutiveReportSummary,
+  ReportDrillDownResponse,
   ParishComparisonReport,
   FinancialAiStatus,
   DonationEntry,
@@ -31,11 +34,13 @@ import {
   PaymentBatch,
   DonationNotificationLog,
   DonationPayment,
+  DonationPaymentListMeta,
   DonationProject,
   DonationReportExport,
   DonationSettings,
   Donor,
   DonationAuditLog,
+  DonationApproval,
   DonationReceiptListItem,
   DonationReceiptPreview,
   PaginatedResponse,
@@ -49,11 +54,49 @@ import {
 @Injectable({ providedIn: 'root' })
 export class DonationsService {
   private baseUrl = `${environment.apiUrl}/tenant/donations`;
+  private readonly ledgerMutatedSubject = new Subject<void>();
+  readonly ledgerMutated$ = this.ledgerMutatedSubject.asObservable();
 
   constructor(private http: HttpClient) {}
 
-  getDashboardSummary(): Observable<{ success: boolean; data: DonationDashboardSummary }> {
-    return this.http.get<{ success: boolean; data: DonationDashboardSummary }>(`${this.baseUrl}/dashboard/summary`);
+  notifyLedgerMutated(): void {
+    this.ledgerMutatedSubject.next();
+  }
+
+  private dateRangeParams(range?: DonationDashboardDateQuery): HttpParams {
+    let params = new HttpParams();
+    if (!range) {
+      return params;
+    }
+    if (range.preset) {
+      params = params.set('preset', range.preset);
+    }
+    if (range.date_from) {
+      params = params.set('date_from', range.date_from);
+    }
+    if (range.date_to) {
+      params = params.set('date_to', range.date_to);
+    }
+    if (range.bcc_id) {
+      params = params.set('bcc_id', range.bcc_id);
+    }
+    if (range.project_id) {
+      params = params.set('project_id', range.project_id);
+    }
+    return params;
+  }
+
+  private financialPostOptions(): { headers: HttpHeaders } {
+    return { headers: new HttpHeaders({ 'Idempotency-Key': newIdempotencyKey() }) };
+  }
+
+  getDashboardSummary(
+    range?: DonationDashboardDateQuery
+  ): Observable<{ success: boolean; data: DonationDashboardSummary }> {
+    return this.http.get<{ success: boolean; data: DonationDashboardSummary }>(
+      `${this.baseUrl}/dashboard/summary`,
+      { params: this.dateRangeParams(range) }
+    );
   }
 
   getCommandCenter(period = 'month'): Observable<{ success: boolean; data: FinancialCommandCenterPayload }> {
@@ -78,8 +121,70 @@ export class DonationsService {
     return this.http.get<{ success: boolean; data: FinancialActivityTimeline }>(`${this.baseUrl}/activity/timeline`, { params });
   }
 
-  getExecutiveReportSummary(): Observable<{ success: boolean; data: ExecutiveReportSummary }> {
-    return this.http.get<{ success: boolean; data: ExecutiveReportSummary }>(`${this.baseUrl}/reports/executive-summary`);
+  getExecutiveReportSummary(
+    range?: DonationDashboardDateQuery
+  ): Observable<{ success: boolean; data: ExecutiveReportSummary }> {
+    return this.http.get<{ success: boolean; data: ExecutiveReportSummary }>(
+      `${this.baseUrl}/reports/executive-summary`,
+      { params: this.dateRangeParams(range) }
+    );
+  }
+
+  getReportDrillDown(payload: {
+    graph_id: string;
+    data_element_id: string;
+    slice_id: string;
+    search?: string;
+    sort?: string;
+    direction?: string;
+    page?: number;
+    per_page?: number;
+    bcc_id?: string;
+    project_id?: string;
+    method?: string;
+    date_from?: string;
+    date_to?: string;
+    preset?: string;
+  }): Observable<{ success: boolean; data: ReportDrillDownResponse }> {
+    let params = new HttpParams()
+      .set('graph_id', payload.graph_id)
+      .set('data_element_id', payload.data_element_id)
+      .set('slice_id', payload.slice_id);
+    if (payload.search) {
+      params = params.set('search', payload.search);
+    }
+    if (payload.sort) {
+      params = params.set('sort', payload.sort);
+    }
+    if (payload.direction) {
+      params = params.set('direction', payload.direction);
+    }
+    if (payload.page) {
+      params = params.set('page', String(payload.page));
+    }
+    if (payload.per_page) {
+      params = params.set('per_page', String(payload.per_page));
+    }
+    if (payload.bcc_id) {
+      params = params.set('filters[bcc_id]', payload.bcc_id);
+    }
+    if (payload.project_id) {
+      params = params.set('filters[project_id]', payload.project_id);
+    }
+    if (payload.method) {
+      params = params.set('filters[method]', payload.method);
+    }
+    if (payload.preset) {
+      params = params.set('preset', payload.preset);
+    }
+    if (payload.date_from) {
+      params = params.set('date_from', payload.date_from);
+    }
+    if (payload.date_to) {
+      params = params.set('date_to', payload.date_to);
+    }
+
+    return this.http.get<{ success: boolean; data: ReportDrillDownResponse }>(`${this.baseUrl}/reports/drill-down`, { params });
   }
 
   getParishComparisonReport(): Observable<{ success: boolean; data: ParishComparisonReport }> {
@@ -244,8 +349,14 @@ export class DonationsService {
     );
   }
 
-  generatePlanDues(planId: string, payload: Record<string, unknown> = {}): Observable<{ success: boolean; message: string; data: ContributionDue[] }> {
-    return this.http.post<{ success: boolean; message: string; data: ContributionDue[] }>(
+  previewPlanGeneration(planId: string): Observable<{ success: boolean; data: { period_count: number; family_count: number; estimated_new_ops: number; periods: Array<{ period_label: string; period_start: string; period_end: string; due_date: string }> } }> {
+    return this.http.get<{ success: boolean; data: { period_count: number; family_count: number; estimated_new_ops: number; periods: Array<{ period_label: string; period_start: string; period_end: string; due_date: string }> } }>(
+      `${this.baseUrl}/plans/${planId}/generation-preview`
+    );
+  }
+
+  generatePlanDues(planId: string, payload: Record<string, unknown> = {}): Observable<{ success: boolean; message: string; data: ContributionDue[] | { generated_count?: number; unchanged_count?: number; family_count?: number; period_count?: number; status?: string } }> {
+    return this.http.post<{ success: boolean; message: string; data: ContributionDue[] | { generated_count?: number; unchanged_count?: number; family_count?: number; period_count?: number; status?: string } }>(
       `${this.baseUrl}/plans/${planId}/generate-dues`,
       payload
     );
@@ -335,14 +446,22 @@ export class DonationsService {
     return this.http.post<{ success: boolean; message: string }>(`${this.baseUrl}/project-installments/${installmentId}/cancel`, { reason });
   }
 
-  getPayments(filters: Record<string, string> = {}): Observable<{ success: boolean; data: PaginatedResponse<DonationPayment> }> {
+  getPayments(filters: Record<string, string> = {}): Observable<{
+    success: boolean;
+    data: PaginatedResponse<DonationPayment>;
+    meta?: DonationPaymentListMeta;
+  }> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value) {
         params = params.set(key, value);
       }
     });
-    return this.http.get<{ success: boolean; data: PaginatedResponse<DonationPayment> }>(`${this.baseUrl}/payments`, { params });
+    return this.http.get<{
+      success: boolean;
+      data: PaginatedResponse<DonationPayment>;
+      meta?: DonationPaymentListMeta;
+    }>(`${this.baseUrl}/payments`, { params });
   }
 
   getPaymentsLegacy(): Observable<{ success: boolean; data: { data: DonationPayment[] } }> {
@@ -355,15 +474,124 @@ export class DonationsService {
   }
 
   createPayment(payload: Record<string, unknown>): Observable<{ success: boolean; message: string; data?: DonationPayment }> {
-    return this.http.post<{ success: boolean; message: string; data?: DonationPayment }>(`${this.baseUrl}/payments`, payload);
+    return this.http.post<{ success: boolean; message: string; data?: DonationPayment }>(
+      `${this.baseUrl}/payments`,
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  reversePayment(paymentId: string, reason: string): Observable<{ success: boolean; message: string; data?: DonationPayment }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationPayment }>(
+      `${this.baseUrl}/payments/${paymentId}/reverse`,
+      { reason },
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  requestRefund(
+    paymentId: string,
+    payload: { amount: number; refund_date: string; reason: string }
+  ): Observable<{ success: boolean; message: string; data?: unknown }> {
+    return this.http.post<{ success: boolean; message: string; data?: unknown }>(
+      `${this.baseUrl}/payments/${paymentId}/refunds`,
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  listApprovals(filters: Record<string, string> = {}): Observable<{ success: boolean; data: PaginatedResponse<DonationApproval> }> {
+    let params = new HttpParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        params = params.set(key, value);
+      }
+    });
+    return this.http.get<{ success: boolean; data: PaginatedResponse<DonationApproval> }>(`${this.baseUrl}/approvals`, { params });
+  }
+
+  decideApproval(
+    approvalId: string,
+    payload: { decision: 'approved' | 'rejected'; note?: string }
+  ): Observable<{ success: boolean; message: string; data?: DonationApproval }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationApproval }>(
+      `${this.baseUrl}/approvals/${approvalId}/decision`,
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  voidReceipt(receiptId: string, reason: string): Observable<{ success: boolean; message: string; data?: DonationReceiptListItem }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationReceiptListItem }>(
+      `${this.baseUrl}/receipts/${receiptId}/void`,
+      { reason },
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  reissueReceipt(receiptId: string, reason: string): Observable<{ success: boolean; message: string; data?: DonationReceiptListItem }> {
+    return this.http.post<{ success: boolean; message: string; data?: DonationReceiptListItem }>(
+      `${this.baseUrl}/receipts/${receiptId}/reissue`,
+      { reason },
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
+  }
+
+  getReportCatalog(): Observable<{
+    success: boolean;
+    data: import('../models/donation.model').DonationReportCatalogItem[];
+    meta?: { default_report?: string };
+  }> {
+    const url = `${this.baseUrl}/reports/catalog`;
+    return this.http.get<{
+      success: boolean;
+      data: import('../models/donation.model').DonationReportCatalogItem[];
+      meta?: { default_report?: string };
+    }>(url);
+  }
+
+  getReportPreview(params: Record<string, unknown>): Observable<{ success: boolean; data: import('../models/donation.model').DonationReportPreview }> {
+    let httpParams = new HttpParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        httpParams = httpParams.set(key, String(value));
+      }
+    });
+    return this.http.get<{ success: boolean; data: import('../models/donation.model').DonationReportPreview }>(
+      `${this.baseUrl}/reports/preview`,
+      { params: httpParams }
+    );
   }
 
   exportReport(payload: Record<string, unknown>): Observable<{ success: boolean; data: DonationReportExport }> {
     return this.http.post<{ success: boolean; data: DonationReportExport }>(`${this.baseUrl}/reports/export`, payload);
   }
 
-  listExports(): Observable<{ success: boolean; data: { data: DonationReportExport[] } }> {
-    return this.http.get<{ success: boolean; data: { data: DonationReportExport[] } }>(`${this.baseUrl}/reports/exports`);
+  downloadReportExport(exportId: string): Observable<Blob> {
+    return this.http.get(`${this.baseUrl}/reports/exports/${exportId}/download`, { responseType: 'blob' });
+  }
+
+  getOperationalReportPrintHtml(params: Record<string, unknown>): Observable<string> {
+    let httpParams = new HttpParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        httpParams = httpParams.set(key, String(value));
+      }
+    });
+    return this.http.get(`${this.baseUrl}/reports/print`, { params: httpParams, responseType: 'text' });
+  }
+
+  listExports(filters: Record<string, string> = {}): Observable<{ success: boolean; data: PaginatedResponse<DonationReportExport> }> {
+    let params = new HttpParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value) {
+        params = params.set(key, value);
+      }
+    });
+    return this.http.get<{ success: boolean; data: PaginatedResponse<DonationReportExport> }>(
+      `${this.baseUrl}/reports/exports`,
+      { params }
+    );
   }
 
   getReceiptPreview(paymentId: string): Observable<{ success: boolean; data: DonationReceiptPreview }> {
@@ -426,10 +654,6 @@ export class DonationsService {
     return this.http.delete<{ success: boolean; message: string }>(`${this.baseUrl}/categories/${categoryId}`);
   }
 
-  seedDefaultCategories(): Observable<{ success: boolean; message: string; data: DonationCategory[] }> {
-    return this.http.post<{ success: boolean; message: string; data: DonationCategory[] }>(`${this.baseUrl}/categories/seed-defaults`, {});
-  }
-
   getDonors(search = ''): Observable<{ success: boolean; data: PaginatedResponse<Donor> }> {
     let params = new HttpParams().set('per_page', '100');
     if (search) {
@@ -449,8 +673,9 @@ export class DonationsService {
   collectVoluntaryDonation(payload: Record<string, unknown>): Observable<{ success: boolean; message: string; data: { donation: DonationEntry; payment: DonationPayment } }> {
     return this.http.post<{ success: boolean; message: string; data: { donation: DonationEntry; payment: DonationPayment } }>(
       `${this.baseUrl}/entries/collect`,
-      payload
-    );
+      payload,
+      this.financialPostOptions()
+    ).pipe(tap(() => this.notifyLedgerMutated()));
   }
 
   updateDonationEntry(entryId: string, payload: Record<string, unknown>): Observable<{ success: boolean; message: string; data: DonationEntry }> {

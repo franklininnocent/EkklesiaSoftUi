@@ -1,0 +1,15 @@
+.re-enroll-member-modal__body {
+  display: grid;
+  gap: var(--cf-space-3);
+}
+
+.re-enroll-member-modal__member span {
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}
+
+.re-enroll-member-modal__note {
+  margin: 0;
+  color: var(--cf-muted);
+  font-size: var(--cf-text-sm);
+}

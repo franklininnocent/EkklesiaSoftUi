@@ -1,0 +1,50 @@
+.bishop-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-weight: 700;
+}
+
+.bishop-avatar--sm {
+  width: 40px;
+  height: 40px;
+  font-size: 0.75rem;
+}
+
+.bishop-avatar--md {
+  width: 48px;
+  height: 48px;
+  font-size: 0.875rem;
+}
+
+.bishop-avatar--lg {
+  width: 80px;
+  height: 80px;
+  font-size: 1.5rem;
+}
+
+.bishop-avatar--xl {
+  width: 120px;
+  height: 120px;
+  font-size: 2.5rem;
+}
+
+.bishop-avatar__image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.bishop-avatar__placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

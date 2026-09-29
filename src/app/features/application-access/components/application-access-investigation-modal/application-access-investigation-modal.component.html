@@ -1,0 +1,190 @@
+<app-modal-shell
+  *ngIf="sessionId"
+  [title]="session()?.session_reference || 'Session investigation'"
+  description="Review who signed in, where they connected from, and what they did."
+  size="xl"
+  (closeRequested)="close()"
+>
+  <div class="cf-inline-alert cf-panel" *ngIf="error()" role="alert">
+    <p>{{ error() }}</p>
+  </div>
+
+  <div *ngIf="loading()">
+    <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="!loading() && !error() && session() as s">
+    <div class="aa-investigation__actions">
+      <button
+        *ngIf="canRevokeSession && s.status === 'ACTIVE'"
+        type="button"
+        class="cf-btn cf-btn-danger"
+        [disabled]="actionBusy()"
+        (click)="requestRevoke()"
+      >
+        Sign this person out
+      </button>
+      <button
+        *ngIf="canBlockIp && s.ip_address"
+        type="button"
+        class="cf-btn cf-btn-secondary"
+        [disabled]="actionBusy()"
+        (click)="requestBlockIp()"
+      >
+        Block this IP
+      </button>
+    </div>
+
+    <div class="aa-investigation__sections">
+      <section class="aa-investigation__section" aria-labelledby="aa-who">
+        <h3 id="aa-who">Who</h3>
+        <dl class="aa-investigation__facts">
+          <dt>Name</dt><dd>{{ s.user?.name || '—' }}</dd>
+          <dt>Email</dt><dd>{{ displayEmail(s) }}</dd>
+          <dt>Identity</dt><dd>{{ identityLabel(s.identity_type) }}</dd>
+        </dl>
+      </section>
+
+      <section class="aa-investigation__section" aria-labelledby="aa-tenant">
+        <h3 id="aa-tenant">Tenant</h3>
+        <dl class="aa-investigation__facts">
+          <dt>Parish</dt><dd>{{ tenantLabel(s) }}</dd>
+          <dt>Area</dt><dd>{{ contextLabel(s.access_context) }}</dd>
+          <dt>Status</dt>
+          <dd>
+            <app-status-badge [label]="sessionStatusLabel(s.status)" [tone]="sessionStatusTone(s.status)"></app-status-badge>
+          </dd>
+        </dl>
+      </section>
+
+      <section class="aa-investigation__section" aria-labelledby="aa-device">
+        <h3 id="aa-device">Device</h3>
+        <dl class="aa-investigation__facts">
+          <dt>Device</dt><dd>{{ deviceSummary(s) }}</dd>
+          <dt>Risk</dt>
+          <dd><app-status-badge [label]="s.risk_level" [tone]="riskTone(s.risk_level)"></app-status-badge></dd>
+        </dl>
+      </section>
+
+      <section class="aa-investigation__section" aria-labelledby="aa-network">
+        <h3 id="aa-network">Network</h3>
+        <dl class="aa-investigation__facts">
+          <dt>IP address</dt><dd>{{ s.ip_address || '—' }}</dd>
+          <dt>Geo status</dt><dd>{{ s.geo_status || '—' }}</dd>
+        </dl>
+      </section>
+
+      <section class="aa-investigation__section" aria-labelledby="aa-support">
+        <h3 id="aa-support">Support</h3>
+        <dl class="aa-investigation__facts">
+          <dt>Support session</dt><dd>{{ supportLabel(s) }}</dd>
+        </dl>
+      </section>
+
+      <section class="aa-investigation__section" aria-labelledby="aa-modules">
+        <h3 id="aa-modules">Modules</h3>
+        <p *ngIf="timelineSummary.modules.length; else noModules">
+          {{ timelineSummary.modules.join(', ') }}
+        </p>
+        <ng-template #noModules><p class="aa-investigation__muted">No module activity loaded yet.</p></ng-template>
+      </section>
+
+      <section class="aa-investigation__section" aria-labelledby="aa-access">
+        <h3 id="aa-access">Allowed / blocked</h3>
+        <dl class="aa-investigation__facts">
+          <dt>Allowed</dt><dd>{{ timelineSummary.allowed }}</dd>
+          <dt>Blocked</dt><dd>{{ timelineSummary.blocked }}</dd>
+        </dl>
+      </section>
+    </div>
+
+    <section class="aa-investigation__geo" aria-labelledby="aa-geo">
+      <h3 id="aa-geo">Location</h3>
+      <app-data-table>
+        <thead>
+          <tr>
+            <th scope="col">Country</th>
+            <th scope="col">Region</th>
+            <th scope="col">City</th>
+            <th scope="col">Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>{{ s.country || '—' }}</td>
+            <td>{{ s.region || '—' }}</td>
+            <td>{{ s.city || '—' }}</td>
+            <td>{{ s.geo_status || '—' }}</td>
+          </tr>
+        </tbody>
+      </app-data-table>
+    </section>
+
+    <section class="aa-investigation__timeline" aria-labelledby="aa-timeline">
+      <h3 id="aa-timeline">Timeline</h3>
+
+      <app-cf-empty-state
+        *ngIf="!timelineLoading() && !timeline().length"
+        title="No activity recorded"
+        description="This session has no captured events yet."
+        [hasActions]="false"
+      ></app-cf-empty-state>
+
+      <app-data-table *ngIf="timeline().length" [ariaBusy]="timelineLoading()">
+        <thead>
+          <tr>
+            <th scope="col">Activity</th>
+            <th scope="col">Result</th>
+            <th scope="col">Risk</th>
+            <th scope="col">Time</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let event of timeline()">
+            <td>
+              <strong>{{ eventSummary(event) }}</strong>
+              <div class="aa-investigation__muted">{{ event.module_code || '—' }}</div>
+            </td>
+            <td>
+              <app-status-badge
+                [label]="authorizationResultLabel(event.authorization_result)"
+                [tone]="authorizationResultTone(event.authorization_result)"
+              ></app-status-badge>
+            </td>
+            <td>
+              <app-status-badge [label]="event.risk_level || 'LOW'" [tone]="riskTone(event.risk_level)"></app-status-badge>
+            </td>
+            <td>{{ event.occurred_at | date: 'short' }}</td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <div class="aa-investigation__timeline-more" *ngIf="timelineHasMore()">
+        <button
+          type="button"
+          class="cf-btn cf-btn-secondary"
+          [disabled]="timelineLoading()"
+          (click)="loadMoreTimeline()"
+        >
+          {{ timelineLoading() ? 'Loading…' : 'Load more activity' }}
+        </button>
+      </div>
+    </section>
+  </ng-container>
+
+  <div modalFooter>
+    <button type="button" class="cf-btn" (click)="close()">Close</button>
+  </div>
+</app-modal-shell>
+
+<app-confirmation-modal
+  [show]="confirmOpen()"
+  [title]="confirmTitle()"
+  [message]="confirmMessage()"
+  [confirmText]="confirmText()"
+  confirmButtonClass="btn-danger"
+  [externalSubmitting]="actionBusy()"
+  (confirmed)="onConfirmAction($event)"
+  (cancelled)="closeConfirm()"
+  (closed)="closeConfirm()"
+></app-confirmation-modal>

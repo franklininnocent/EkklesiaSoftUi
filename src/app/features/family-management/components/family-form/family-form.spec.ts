@@ -32,4 +32,57 @@ describe('FamilyFormComponent (tabs + phone validators)', () => {
     expect(component.activeTab).toBe('info');
   });
 
+  describe('shouldShowInactiveMembersWarning()', () => {
+    function addActiveMembers(component: FamilyFormComponent, count = 2): void {
+      for (let i = 0; i < count; i++) {
+        component.addMember({
+          id: `member-${i}`,
+          first_name: `Member${i}`,
+          last_name: 'Test',
+          status: 'active',
+          relationship_to_head: i === 0 ? 'self' : 'other'
+        });
+      }
+    }
+
+    it('returns false for active family with active members on load', () => {
+      const { component } = setup();
+      addActiveMembers(component);
+      component.familyForm.patchValue({ status: 'active' });
+
+      expect(component.shouldShowInactiveMembersWarning()).toBe(false);
+    });
+
+    it('returns true when user changes status to inactive', () => {
+      const { component } = setup();
+      addActiveMembers(component);
+      const statusControl = component.familyForm.get('status');
+      statusControl?.setValue('inactive');
+      statusControl?.markAsDirty();
+
+      expect(component.shouldShowInactiveMembersWarning()).toBe(true);
+    });
+
+    it('returns false when user changes back to active', () => {
+      const { component } = setup();
+      addActiveMembers(component);
+      const statusControl = component.familyForm.get('status');
+      statusControl?.setValue('inactive');
+      statusControl?.markAsDirty();
+      statusControl?.setValue('active');
+
+      expect(component.shouldShowInactiveMembersWarning()).toBe(false);
+    });
+
+    it('returns true when inactive status has hasActiveMembers validation error', () => {
+      const { component } = setup();
+      addActiveMembers(component);
+      const statusControl = component.familyForm.get('status');
+      statusControl?.setValue('inactive');
+      statusControl?.setErrors({ hasActiveMembers: true });
+
+      expect(component.shouldShowInactiveMembersWarning()).toBe(true);
+    });
+  });
+
 });

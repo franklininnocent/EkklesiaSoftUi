@@ -1,0 +1,83 @@
+.person-context-summary {
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--cf-border-subtle, #e2e8f0);
+  border-radius: 8px;
+  background: var(--cf-surface-muted, #f8fafc);
+  margin-bottom: 0.75rem;
+}
+
+.person-context-summary--error {
+  border-color: #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.person-context-summary--marriage {
+  padding: 0.625rem 0.75rem;
+  margin-bottom: 0;
+  background: transparent;
+  border: none;
+}
+
+.person-context-summary__marriage-lead {
+  margin: 0 0 0.375rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #64748b;
+}
+
+.person-context-summary--marriage .person-context-summary__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 0.75rem;
+}
+
+.person-context-summary--marriage .person-context-summary__list li {
+  font-size: 0.8125rem;
+}
+
+.person-context-summary__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.person-context-summary__badge {
+  font-size: 0.75rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 999px;
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+.person-context-summary__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 0.875rem;
+}
+
+.person-context-summary__list li {
+  display: flex;
+  gap: 0.375rem;
+  color: #64748b;
+}
+
+.person-context-summary__list li.is-found {
+  color: #166534;
+}
+
+.person-context-summary__note {
+  margin: 0.5rem 0 0;
+  font-size: 0.8125rem;
+  color: #475569;
+}
+
+.person-context-summary__loading {
+  font-size: 0.875rem;
+  color: #64748b;
+}

@@ -1,0 +1,254 @@
+<section class="data-export cf-page">
+  <app-page-header
+    title="Data Export"
+    subtitle="Download your parish business data as a portable ZIP of CSV files."
+  ></app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!canExport" role="alert">
+    <p>You do not have permission to export parish data.</p>
+  </div>
+
+  <ng-container *ngIf="canExport">
+    <div class="cf-inline-alert" *ngIf="error" role="alert"><p>{{ error }}</p></div>
+    <div class="cf-inline-alert" *ngIf="success" role="status"><p>{{ success }}</p></div>
+
+    <section class="cf-panel data-export__hero-actions">
+      <div>
+        <h2 class="cf-form-section__title">Export parish data</h2>
+        <p class="cf-form-section__intro">
+          Choose which records to include. Large exports run in the background and appear in history when ready.
+        </p>
+      </div>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="openStartModal()" [disabled]="starting">
+        Start export
+      </button>
+    </section>
+
+    <section class="cf-panel" *ngIf="activeExport && (activeExport.status === 'queued' || activeExport.status === 'processing')">
+      <div class="data-export__progress-head">
+        <h2 class="cf-form-section__title">Export in progress</h2>
+        <button type="button" class="cf-btn cf-btn-sm" (click)="openProgressModal()">View details</button>
+      </div>
+      <p class="data-export__muted">
+        Status: {{ statusLabel(activeExport.status) }}
+        <span *ngIf="activeExport.progress?.approx_percent != null">
+          · About {{ activeExport.progress?.approx_percent }}%
+        </span>
+      </p>
+      <ul class="data-export__progress-list">
+        <li *ngFor="let item of moduleProgressEntries(activeExport)">
+          <span>{{ item.key }}</span>
+          <strong>{{ statusLabel(item.status) }}</strong>
+          <span *ngIf="item.records">{{ item.records | number }} records</span>
+        </li>
+      </ul>
+    </section>
+
+    <section class="cf-panel">
+      <div class="data-export__history-head">
+        <h2 class="cf-form-section__title">Export history</h2>
+        <button type="button" class="cf-btn cf-btn-sm" (click)="reloadHistory()" [disabled]="loadingHistory">
+          {{ loadingHistory ? 'Refreshing…' : 'Refresh' }}
+        </button>
+      </div>
+
+      <app-loading-skeleton *ngIf="loadingHistory && !loadedHistory"></app-loading-skeleton>
+
+      <app-cf-empty-state
+        *ngIf="loadedHistory && !exports.length && !loadingHistory"
+        title="No exports yet"
+        description="Start an export to download your parish data as a ZIP file."
+        [hasActions]="false"
+      ></app-cf-empty-state>
+
+      <div class="data-export__table-wrap" *ngIf="exports.length">
+        <table class="cf-table">
+          <thead>
+            <tr>
+              <th>Export</th>
+              <th>Requested</th>
+              <th>Modules</th>
+              <th>Status</th>
+              <th>Records</th>
+              <th>Size</th>
+              <th>Completed</th>
+              <th>Expires</th>
+              <th class="cf-table__actions-col">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let row of exports">
+              <td>
+                <code class="data-export__id">{{ row.id | slice:0:8 }}…</code>
+              </td>
+              <td>
+                <div>{{ row.requested_by_name || '—' }}</div>
+                <div class="data-export__muted">{{ formatDate(row.created_at) }}</div>
+              </td>
+              <td>{{ modulesLabel(row.modules) }}</td>
+              <td>
+                <span class="data-export__status" [attr.data-status]="row.status">
+                  {{ statusLabel(row.status) }}
+                </span>
+                <div class="data-export__muted" *ngIf="row.error_message">{{ row.error_message }}</div>
+              </td>
+              <td>{{ row.record_count_total != null ? (row.record_count_total | number) : '—' }}</td>
+              <td>{{ formatBytes(row.file_size) }}</td>
+              <td>{{ formatDate(row.completed_at) }}</td>
+              <td>{{ formatDate(row.expires_at) }}</td>
+              <td class="cf-table__actions-cell">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-sm cf-btn-primary"
+                  *ngIf="row.downloadable"
+                  (click)="download(row)"
+                  [disabled]="downloadingId === row.id"
+                >
+                  {{ downloadingId === row.id ? 'Downloading…' : 'Download' }}
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-sm"
+                  *ngIf="row.status === 'queued'"
+                  (click)="cancel(row)"
+                  [disabled]="actionId === row.id"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-sm"
+                  *ngIf="row.status === 'failed'"
+                  (click)="retry(row)"
+                  [disabled]="actionId === row.id"
+                >
+                  Retry
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </ng-container>
+
+  <app-modal-shell
+    *ngIf="showStartModal"
+    title="Start export"
+    size="sm"
+    headerVariant="compact"
+    bodyPadding="none"
+    [isSubmitting]="starting"
+    (closeRequested)="closeStartModal()"
+  >
+    <div class="cf-split-form-body">
+      <div class="cf-inline-alert" *ngIf="error" role="alert"><p>{{ error }}</p></div>
+      <app-loading-skeleton *ngIf="loadingModules"></app-loading-skeleton>
+
+      <ng-container *ngIf="!loadingModules">
+        <section class="cf-split-section" aria-labelledby="export-modules-title">
+          <h3 id="export-modules-title" class="cf-split-section__title">Select data</h3>
+          <label class="cf-split-toggle cf-split-toggle--block">
+            <input
+              type="checkbox"
+              [checked]="allSelected"
+              (change)="toggleSelectAll($any($event.target).checked)"
+            />
+            <span>Select all</span>
+          </label>
+          <label class="cf-split-toggle cf-split-toggle--block" *ngFor="let mod of modules">
+            <input
+              type="checkbox"
+              [(ngModel)]="selectedModules[mod.key]"
+              [name]="'mod-' + mod.key"
+              (ngModelChange)="onModuleSelectionChange()"
+            />
+            <span>
+              {{ mod.label }}
+              <small>{{ mod.estimated_records | number }} estimated records</small>
+            </span>
+          </label>
+          <p class="data-export__muted" *ngIf="!modules.length">
+            No export modules are available right now. Close and try again.
+          </p>
+        </section>
+
+        <section class="cf-split-section" aria-labelledby="export-options-title">
+          <h3 id="export-options-title" class="cf-split-section__title">Export options</h3>
+          <div class="cf-split-field cf-split-field--full">
+            <label>Format</label>
+            <p class="cf-split-field__hint">CSV (opens in Excel), packaged as a ZIP</p>
+          </div>
+          <label class="cf-split-toggle cf-split-toggle--block">
+            <input
+              type="checkbox"
+              [(ngModel)]="includeMedia"
+              name="include-media"
+              (ngModelChange)="onModuleSelectionChange()"
+            />
+            <span>
+              Photos &amp; logos
+              <small>Optional. Adds parish logo, family photos, and church images from your records.</small>
+            </span>
+          </label>
+          <p class="data-export__muted">
+            {{ selectedCount }} module{{ selectedCount === 1 ? '' : 's' }} ·
+            {{ estimatedRecords | number }} estimated records
+          </p>
+        </section>
+      </ng-container>
+    </div>
+
+    <div modalFooter class="data-export__modal-actions">
+      <button type="button" class="cf-btn" (click)="closeStartModal()" [disabled]="starting">
+        Cancel
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="startExport()"
+        [disabled]="starting || loadingModules || selectedCount === 0"
+      >
+        {{ starting ? 'Starting…' : 'Start export' }}
+      </button>
+    </div>
+  </app-modal-shell>
+
+  <app-modal-shell
+    *ngIf="showProgressModal() && activeExport"
+    title="Export processing"
+    size="sm"
+    headerVariant="compact"
+    bodyPadding="none"
+    (closeRequested)="closeProgressModal()"
+  >
+    <div class="cf-split-form-body">
+      <p class="data-export__muted">
+        Status: {{ statusLabel(activeExport.status) }}
+        <span *ngIf="activeExport.progress?.approx_percent != null">
+          · About {{ activeExport.progress?.approx_percent }}%
+        </span>
+      </p>
+      <ul class="data-export__progress-list">
+        <li *ngFor="let item of moduleProgressEntries(activeExport)">
+          <span>{{ item.key }}</span>
+          <strong>{{ statusLabel(item.status) }}</strong>
+          <span *ngIf="item.records">{{ item.records | number }}</span>
+        </li>
+      </ul>
+    </div>
+
+    <div modalFooter class="data-export__modal-actions">
+      <button type="button" class="cf-btn" (click)="closeProgressModal()">Close</button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-primary"
+        *ngIf="activeExport.downloadable"
+        (click)="downloadFromProgressModal(activeExport)"
+        [disabled]="downloadingId === activeExport.id"
+      >
+        {{ downloadingId === activeExport.id ? 'Downloading…' : 'Download' }}
+      </button>
+    </div>
+  </app-modal-shell>
+</section>

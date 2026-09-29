@@ -1,15 +1,13 @@
-<div class="church-management-container" [class.church-management-container--list]="activeTab !== 'profile'">
-  <!-- Page Header -->
-  <div class="page-header" [class.page-header--compact]="activeTab !== 'profile'">
-    <div class="header-content" [class.header-content--tabs-only]="activeTab !== 'profile'">
-      <div class="header-title-section" *ngIf="activeTab === 'profile'">
-        <h1 class="page-title">
-          <span class="title-icon">⛪</span>
-          Church Management
-        </h1>
-        <p class="page-subtitle">Manage your church profile, leadership, statistics, and social media</p>
-      </div>
-      
+<div class="church-management-container cf-page" [class.church-management-container--list]="activeTab !== 'profile'">
+  <app-page-header
+    *ngIf="activeTab === 'profile'"
+    title="Church Management"
+    subtitle="Manage your church profile, leadership, statistics, and social media">
+  </app-page-header>
+
+  <!-- Page Header / tabs -->
+  <div class="page-header page-header--compact">
+    <div class="header-content header-content--tabs-only">
       <!-- Tab Navigation -->
       <div class="tab-navigation" *ngIf="!loading && churchProfile">
       <button 
@@ -25,7 +23,7 @@
         (click)="setActiveTab('leadership')">
         <span class="tab-icon">👥</span>
         <span class="tab-label">Leadership</span>
-        <span class="tab-badge" *ngIf="leaders.length > 0">{{ leaders.length }}</span>
+        <span class="tab-badge" *ngIf="leadershipTabBadgeCount > 0">{{ leadershipTabBadgeCount }}</span>
       </button>
       <button 
         class="tab-btn" 
@@ -42,6 +40,14 @@
         <span class="tab-icon">📱</span>
         <span class="tab-label">Social Media</span>
         <span class="tab-badge" *ngIf="socialMedia.length > 0">{{ socialMedia.length }}</span>
+      </button>
+      <button
+        class="tab-btn"
+        *ngIf="canViewDiocesanBishop"
+        [class.active]="activeTab === 'diocesan-bishop'"
+        (click)="setActiveTab('diocesan-bishop')">
+        <span class="tab-icon">✝</span>
+        <span class="tab-label">Diocesan Bishop</span>
       </button>
       </div>
     </div>
@@ -74,24 +80,75 @@
         <!-- Section 1: Hero Banner -->
         <section class="cp-hero">
           <div class="cp-hero__banner">
-            <div class="cp-hero__logo">
-              <img *ngIf="churchProfile.logo_full_url" [src]="churchProfile.logo_full_url" [alt]="churchProfile.name" loading="lazy" />
-              <div *ngIf="!churchProfile.logo_full_url" class="cp-hero__logo-fallback" aria-hidden="true">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
-                </svg>
+            <div class="cp-hero__col cp-hero__col--church">
+              <div class="cp-hero__logo">
+                <img *ngIf="getTenantLogoUrl()" [src]="getTenantLogoUrl()" [alt]="churchProfile.name" loading="lazy" />
+                <div *ngIf="!getTenantLogoUrl()" class="cp-hero__logo-fallback" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+              </div>
+              <div class="cp-hero__copy">
+                <h2 class="cp-hero__name">{{ churchProfile.name }}</h2>
+                <p class="cp-hero__subtitle" *ngIf="getChurchSubtitle()">{{ getChurchSubtitle() }}</p>
+                <p class="cp-hero__diocese">{{ getDenominationName() }} · {{ getArchdioceseName() }}</p>
+                <div class="cp-hero__chips">
+                  <span class="cp-chip" [class.cp-chip--active]="churchProfile.active === 1" [class.cp-chip--inactive]="churchProfile.active !== 1">
+                    {{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}
+                  </span>
+                  <span class="cp-chip cp-chip--neutral" *ngIf="getFoundedYear()">Founded {{ getFoundedYear() }}</span>
+                  <span class="cp-chip cp-chip--plan" *ngIf="planChipLabel">{{ planChipLabel }}</span>
+                </div>
               </div>
             </div>
-            <div class="cp-hero__copy">
-              <h2 class="cp-hero__name">{{ churchProfile.name }}</h2>
-              <p class="cp-hero__subtitle" *ngIf="getChurchSubtitle()">{{ getChurchSubtitle() }}</p>
-              <p class="cp-hero__diocese">{{ getDenominationName() }} · {{ getArchdioceseName() }}</p>
-              <div class="cp-hero__chips">
-                <span class="cp-chip" [class.cp-chip--active]="churchProfile.active === 1" [class.cp-chip--inactive]="churchProfile.active !== 1">
-                  {{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}
-                </span>
-                <span class="cp-chip cp-chip--neutral" *ngIf="getFoundedYear()">Founded {{ getFoundedYear() }}</span>
-                <span class="cp-chip cp-chip--plan">{{ (churchProfile.plan || 'basic') | titlecase }} Plan</span>
+
+            <div class="cp-hero__col cp-hero__col--patron">
+              <div class="cp-hero__figure" *ngIf="getPatronImageUrl() || getPatronName()">
+                <div class="cp-hero__figure-media">
+                  <img
+                    *ngIf="getPatronImageUrl()"
+                    [src]="getPatronImageUrlWithFallback()"
+                    [alt]="getPatronName() || 'Patron saint'"
+                    (error)="handlePatronImageError($event)"
+                    loading="lazy"
+                  />
+                  <div *ngIf="!getPatronImageUrl()" class="cp-hero__figure-fallback" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="cp-hero__figure-copy">
+                  <span class="cp-hero__figure-label">Our Patron</span>
+                  <span class="cp-hero__figure-name" *ngIf="getPatronName()">{{ getPatronName() }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="cp-hero__col cp-hero__col--pope">
+              <div class="cp-hero__figure" *ngIf="getPopeDisplayName()">
+                <div class="cp-hero__figure-media">
+                  <img
+                    *ngIf="getPopeImageUrl()"
+                    [src]="getPopeImageUrlWithFallback()"
+                    [alt]="getPopeDisplayName()!"
+                    (error)="handlePopeImageError($event)"
+                    loading="lazy"
+                  />
+                  <div *ngIf="!getPopeImageUrl()" class="cp-hero__figure-fallback" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                    </svg>
+                  </div>
+                </div>
+                <div class="cp-hero__figure-copy">
+                  <span class="cp-hero__figure-label">The Pope</span>
+                  <span class="cp-hero__figure-name">{{ getPopeDisplayName() }}</span>
+                  <span class="cp-hero__figure-meta" *ngIf="popeDetails?.pope_effective_from">
+                    Since {{ formatDate(popeDetails?.pope_effective_from) }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -139,28 +196,27 @@
               <button type="button" class="cp-link" (click)="setActiveTab('leadership')">View all</button>
             </header>
             <div class="cp-leadership-grid">
-              <div class="cp-leader-card" *ngIf="popeDetails?.pope_name">
-                <span class="cp-leader-card__role">Pope</span>
-                <span class="cp-leader-card__name">{{ getPopeName() }}</span>
-                <span class="cp-leader-card__meta" *ngIf="popeDetails?.pope_effective_from">Since {{ formatDate(popeDetails?.pope_effective_from) }}</span>
-              </div>
-              <div class="cp-leader-card" *ngIf="getParishPriest() as priest">
-                <span class="cp-leader-card__role">{{ priest.role }}</span>
-                <span class="cp-leader-card__name">{{ priest.full_name }}</span>
-                <span class="cp-leader-card__meta">{{ priest.title || 'Parish Administrator' }}</span>
-              </div>
-              <div class="cp-leader-card" *ngFor="let assistant of getAssistantPriests()">
-                <span class="cp-leader-card__role">{{ assistant.role }}</span>
-                <span class="cp-leader-card__name">{{ assistant.full_name }}</span>
-                <span class="cp-leader-card__meta" *ngIf="assistant.title">{{ assistant.title }}</span>
-              </div>
-              <div class="cp-leader-card" *ngIf="extendedProfile?.bishop as bishop">
+              <div class="cp-leader-card" *ngIf="getDiocesanBishop() as bishop">
+                <app-bishop-avatar
+                  [name]="bishop.full_name"
+                  [source]="bishop"
+                  size="md"
+                ></app-bishop-avatar>
                 <span class="cp-leader-card__role">Diocesan Bishop</span>
                 <span class="cp-leader-card__name">{{ bishop.full_name }}</span>
                 <span class="cp-leader-card__meta">{{ bishop.full_title || bishop.title }}</span>
+                <span class="cp-leader-card__meta" *ngIf="bishop.appointed_date">Since {{ formatDate(bishop.appointed_date) }}</span>
+                <button
+                  type="button"
+                  class="cp-link"
+                  *ngIf="canViewDiocesanBishop || canSubmitBishopUpdate"
+                  (click)="setActiveTab('diocesan-bishop')"
+                >
+                  {{ canSubmitBishopUpdate ? 'Suggest New Bishop' : 'View diocesan bishop' }}
+                </button>
               </div>
-              <p class="cp-empty" *ngIf="!popeDetails?.pope_name && !getParishPriest() && getAssistantPriests().length === 0 && !extendedProfile?.bishop">
-                No leadership records configured yet.
+              <p class="cp-empty" *ngIf="!getDiocesanBishop()">
+                No diocesan bishop configured yet.
               </p>
             </div>
           </article>
@@ -205,15 +261,37 @@
             <header class="cp-card__head">
               <h3>Church Status</h3>
             </header>
-            <ul class="cp-health-list">
+            <p class="cp-health-intro" *ngIf="statusMetricsLoading">Loading parish health metrics…</p>
+            <ul class="cp-health-list" *ngIf="!statusMetricsLoading && operationalMetrics.length">
               <li class="cp-health-item" *ngFor="let metric of operationalMetrics">
                 <div class="cp-health-item__head">
-                  <span>{{ metric.label }}</span>
-                  <strong>{{ metric.percent }}%</strong>
+                  <span class="cp-health-item__label">
+                    {{ metric.label }}
+                    <button
+                      type="button"
+                      class="cp-health-help"
+                      [attr.aria-label]="metric.tooltip"
+                      [title]="metric.tooltip"
+                    >?</button>
+                  </span>
+                  <strong
+                    class="cp-health-item__value"
+                    [class.cp-health-item__value--na]="metric.status === 'unavailable'"
+                  >{{ metric.display }}</strong>
                 </div>
-                <div class="cp-health-bar"><div class="cp-health-bar__fill" [style.width.%]="metric.percent"></div></div>
+                <p class="cp-health-item__summary" *ngIf="metric.summary">{{ metric.summary }}</p>
+                <div class="cp-health-bar" *ngIf="metric.status === 'available' && metric.percent !== null">
+                  <div class="cp-health-bar__fill" [style.width.%]="metric.percent"></div>
+                </div>
+                <div class="cp-health-bar cp-health-bar--empty" *ngIf="metric.status === 'unavailable'" aria-hidden="true"></div>
               </li>
             </ul>
+            <div class="cp-health-empty" *ngIf="!statusMetricsLoading && statusMetricsEmptyCta">
+              <p>Some metrics need parish data before they can be calculated.</p>
+              <button type="button" class="cp-action-btn cp-action-btn--primary" (click)="navigateStatusMetricsCta()">
+                {{ statusMetricsEmptyCta.label }}
+              </button>
+            </div>
           </article>
         </div>
 
@@ -271,14 +349,10 @@
       <!-- LEADERSHIP TAB -->
       <!-- ====================================================================== -->
       <div *ngIf="activeTab === 'leadership'" class="tab-pane leadership-pane">
-        <app-church-leadership-table
-          [leaders]="leaders"
-          [loading]="loadingLeaders"
-          [canEdit]="canEdit"
-          (viewLeader)="openLeaderDetail($event)"
-          (editLeader)="openEditLeaderModal($event)"
-          (addLeader)="openNewLeaderModal()"
-        ></app-church-leadership-table>
+        <app-church-leadership-governance
+          [canEdit]="canEditLeadership"
+          (currentChanged)="onGovernanceCurrentChanged($event)"
+        ></app-church-leadership-governance>
       </div>
 
       <!-- ====================================================================== -->
@@ -292,7 +366,7 @@
             <div class="header-right">
               <button 
                 *ngIf="canEdit"
-                class="btn btn-primary" 
+                class="cf-btn cf-btn-primary" 
                 (click)="openNewStatisticModal()"
                 type="button"
                 title="Add new statistic">
@@ -329,7 +403,7 @@
                   <td>{{ stat.weekly_attendance || 'N/A' }}</td>
                   <td>{{ stat.baptisms || 0 }}</td>
                   <td>{{ stat.marriages || 0 }}</td>
-                  <td>{{ stat.tithes_offerings ? '$' + stat.tithes_offerings : 'N/A' }}</td>
+                  <td>{{ stat.tithes_offerings ? (stat.tithes_offerings | cfCurrency) : 'N/A' }}</td>
                   <td *ngIf="canEdit">
                     <div class="action-buttons">
                       <button class="btn-3d-mini btn-3d-edit" (click)="openEditStatisticModal(stat)" title="Edit">
@@ -352,7 +426,7 @@
             <p>Track membership, attendance, and church metrics over time.</p>
             <button 
               *ngIf="canEdit"
-              class="btn btn-primary" 
+              class="cf-btn cf-btn-primary" 
               (click)="openNewStatisticModal()"
               type="button"
               title="Add first statistic">
@@ -382,7 +456,7 @@
             <div class="header-right">
               <button 
                 *ngIf="canEdit"
-                class="btn btn-primary" 
+                class="cf-btn cf-btn-primary" 
                 (click)="openNewSocialModal()"
                 type="button"
                 title="Add new social media account">
@@ -423,12 +497,26 @@
                 </div>
               </div>
               <div class="social-footer" *ngIf="canEdit">
-                <button class="btn-3d-mini btn-3d-edit" (click)="openEditSocialModal(social)">
-                  ✏️ Edit
-                </button>
-                <button class="btn-3d-mini btn-3d-delete" (click)="deleteSocialMedia(social)">
-                  🗑️ Delete
-                </button>
+                <div class="cf-row-actions">
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    (click)="openEditSocialModal(social)"
+                    [attr.aria-label]="'Edit ' + (social.platform | titlecase) + ' account'"
+                    [title]="'Edit ' + (social.platform | titlecase) + ' account'"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm cf-btn-danger"
+                    (click)="deleteSocialMedia(social)"
+                    [attr.aria-label]="'Delete ' + (social.platform | titlecase) + ' account'"
+                    [title]="'Delete ' + (social.platform | titlecase) + ' account'"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -440,7 +528,7 @@
             <p>Connect your church's social media presence.</p>
             <button 
               *ngIf="canEdit"
-              class="btn btn-primary" 
+              class="cf-btn cf-btn-primary" 
               (click)="openNewSocialModal()"
               type="button"
               title="Add first social media account">
@@ -457,6 +545,13 @@
 
         </div>
 
+      </div>
+
+      <!-- ====================================================================== -->
+      <!-- DIOCESAN BISHOP TAB -->
+      <!-- ====================================================================== -->
+      <div *ngIf="activeTab === 'diocesan-bishop'" class="tab-pane diocesan-bishop-pane">
+        <app-diocesan-bishop-panel></app-diocesan-bishop-panel>
       </div>
 
     </div>
@@ -485,548 +580,529 @@
   (deleteRequested)="onLeaderDetailDelete($event)"
 ></app-church-leader-detail>
 
-<!-- Statistics Modal -->
-<div *ngIf="showStatisticModal" class="modal-overlay" (click)="closeStatisticModal()">
-  <div class="modal-dialog" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>{{ selectedStatistic ? '✏️ Edit Statistic' : '➕ Add New Statistic' }}</h2>
-      <button class="modal-close" (click)="closeStatisticModal()" aria-label="Close modal">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
-      </button>
-    </div>
-    <form [formGroup]="statisticForm" (ngSubmit)="saveStatistic()" class="statistic-modal-form">
-      <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="stat_year">Year *</label>
-            <input type="number" id="stat_year" formControlName="year" class="form-control" required>
-          </div>
-          <div class="form-group">
-            <label for="stat_month">Month (optional)</label>
-            <ng-select
-              id="stat_month"
-              formControlName="month"
-              [items]="monthOptions"
-              bindLabel="label"
-              bindValue="value"
-              placeholder="Select Month"
-              [clearable]="true"
-              [searchable]="true">
-            </ng-select>
-          </div>
-          <div class="form-group">
-            <label for="stat_membership">Membership Count</label>
-            <input type="number" id="stat_membership" formControlName="membership_count" class="form-control">
-          </div>
-          <div class="form-group">
-            <label for="stat_attendance">Weekly Attendance</label>
-            <input type="number" id="stat_attendance" formControlName="weekly_attendance" class="form-control">
-          </div>
-          <div class="form-group">
-            <label for="stat_baptisms">Baptisms</label>
-            <input type="number" id="stat_baptisms" formControlName="baptisms" class="form-control">
-          </div>
-          <div class="form-group">
-            <label for="stat_confirmations">Confirmations</label>
-            <input type="number" id="stat_confirmations" formControlName="confirmations" class="form-control">
-          </div>
-          <div class="form-group">
-            <label for="stat_marriages">Marriages</label>
-            <input type="number" id="stat_marriages" formControlName="marriages" class="form-control">
-          </div>
-          <div class="form-group">
-            <label for="stat_funerals">Funerals</label>
-            <input type="number" id="stat_funerals" formControlName="funerals" class="form-control">
-          </div>
-          <div class="form-group full-width">
-            <label for="stat_tithes">Tithes & Offerings</label>
-            <input type="number" id="stat_tithes" formControlName="tithes_offerings" class="form-control">
-          </div>
-          <div class="form-group full-width">
-            <label for="stat_notes">Notes</label>
-            <textarea id="stat_notes" formControlName="notes" class="form-control" rows="2"></textarea>
-          </div>
+<!-- Statistics Modal — exact Add Category (.cf-split-*) form language inside app-modal-shell -->
+<app-modal-shell
+  *ngIf="showStatisticModal"
+  [title]="selectedStatistic ? 'Edit Statistic' : 'Add New Statistic'"
+  size="sm"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close statistic"
+  [isSubmitting]="saving"
+  (closeRequested)="closeStatisticModal()"
+>
+  <form
+    class="cf-split-form-body cp-statistic-modal"
+    [formGroup]="statisticForm"
+    (ngSubmit)="saveStatistic()"
+    novalidate
+  >
+    <section class="cf-split-section" aria-labelledby="stat-section-period">
+      <h3 id="stat-section-period" class="cf-split-section__title">Period</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="stat_year">
+            Year <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="number"
+            id="stat_year"
+            formControlName="year"
+            aria-required="true"
+          />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="stat_month">
+            Month <span class="cf-split-optional">optional</span>
+          </label>
+          <ng-select
+            id="stat_month"
+            formControlName="month"
+            [items]="monthOptions"
+            bindLabel="label"
+            bindValue="value"
+            placeholder="Select month"
+            [clearable]="true"
+            [searchable]="true"
+            class="cf-split-select"
+          ></ng-select>
         </div>
       </div>
-      <div class="modal-footer">
-        <button 
-          type="button" 
-          class="btn-cancel" 
-          (click)="closeStatisticModal()"
-          [disabled]="saving"
-          title="Cancel and close">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          <span>Cancel</span>
-        </button>
-        <button 
-          type="submit" 
-          class="btn-save" 
-          [disabled]="saving || statisticForm.invalid"
-          [title]="selectedStatistic ? 'Update statistic' : 'Create statistic'">
-          <span *ngIf="!saving">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <span>{{ selectedStatistic ? 'Update' : 'Create' }}</span>
-          </span>
-          <span *ngIf="saving" class="btn-loading">
-            <div class="spinner-small"></div>
-            <span>Saving...</span>
-          </span>
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
+    </section>
 
-<!-- Social Media Modal -->
-<div *ngIf="showSocialModal" class="modal-overlay" (click)="closeSocialModal()">
-  <div class="modal-dialog" (click)="$event.stopPropagation()">
-    <div class="modal-header">
-      <h2>{{ selectedSocialMedia ? '✏️ Edit Social Media' : '➕ Add Social Media Account' }}</h2>
-      <button class="modal-close" (click)="closeSocialModal()" aria-label="Close modal">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+    <section class="cf-split-section" aria-labelledby="stat-section-membership">
+      <h3 id="stat-section-membership" class="cf-split-section__title">Membership &amp; attendance</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="stat_membership">
+            Membership count <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="stat_membership" formControlName="membership_count" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="stat_attendance">
+            Weekly attendance <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="stat_attendance" formControlName="weekly_attendance" />
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="stat-section-sacramental">
+      <h3 id="stat-section-sacramental" class="cf-split-section__title">Sacramental counts</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="stat_baptisms">
+            Baptisms <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="stat_baptisms" formControlName="baptisms" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="stat_confirmations">
+            Confirmations <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="stat_confirmations" formControlName="confirmations" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="stat_marriages">
+            Marriages <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="stat_marriages" formControlName="marriages" />
+        </div>
+
+        <div class="cf-split-field">
+          <label for="stat_funerals">
+            Funerals <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="stat_funerals" formControlName="funerals" />
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="stat-section-offerings">
+      <h3 id="stat-section-offerings" class="cf-split-section__title">Offerings &amp; notes</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="stat_tithes">
+            Tithes &amp; offerings <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="stat_tithes" formControlName="tithes_offerings" />
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="stat_notes">
+            Notes <span class="cf-split-optional">optional</span>
+          </label>
+          <textarea id="stat_notes" formControlName="notes" rows="3" maxlength="500"></textarea>
+          <p class="cf-split-field__hint">Up to 500 characters.</p>
+        </div>
+      </div>
+    </section>
+
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        class="cf-btn cf-btn-primary"
+        [disabled]="saving || statisticForm.invalid"
+      >
+        {{
+          saving
+            ? 'Saving…'
+            : selectedStatistic
+              ? 'Update'
+              : 'Create'
+        }}
+      </button>
+      <button
+        type="button"
+        class="cf-btn"
+        (click)="closeStatisticModal()"
+        [disabled]="saving"
+      >
+        Cancel
       </button>
     </div>
-    <form [formGroup]="socialForm" (ngSubmit)="saveSocialMedia()" class="social-modal-form">
-      <div class="modal-body">
-        <div class="form-grid">
-          <div class="form-group">
-            <label for="social_platform">Platform *</label>
-            <ng-select
-              id="social_platform"
-              formControlName="platform"
-              [items]="socialPlatforms"
-              bindLabel="label"
-              bindValue="value"
-              placeholder="Select Platform"
-              [clearable]="false"
-              [searchable]="true"
-              required>
-              <ng-template ng-label-tmp let-item="item">
-                {{ item.icon }} {{ item.label }}
-              </ng-template>
-              <ng-template ng-option-tmp let-item="item">
-                {{ item.icon }} {{ item.label }}
-              </ng-template>
-            </ng-select>
-          </div>
-          <div class="form-group">
-            <label for="social_username">Username</label>
-            <input type="text" id="social_username" formControlName="username" class="form-control" placeholder="@username">
-          </div>
-          <div class="form-group full-width">
-            <label for="social_url">URL *</label>
-            <input type="url" id="social_url" formControlName="url" class="form-control" required placeholder="https://...">
-          </div>
-          <div class="form-group">
-            <label for="social_followers">Follower Count</label>
-            <input type="number" id="social_followers" formControlName="follower_count" class="form-control">
-          </div>
-          <div class="form-group">
-            <label>
-              <input type="checkbox" formControlName="is_primary" [value]="1">
-              Primary Account
+  </form>
+</app-modal-shell>
+
+<!-- Social Media Modal — exact Add Category (.cf-split-*) form language inside app-modal-shell -->
+<app-modal-shell
+  *ngIf="showSocialModal"
+  [title]="selectedSocialMedia ? 'Edit Social Media' : 'Add Social Media Account'"
+  size="sm"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close social media"
+  [isSubmitting]="saving"
+  (closeRequested)="closeSocialModal()"
+>
+  <form
+    id="social-modal-form"
+    class="cf-split-form-body cp-social-modal"
+    [formGroup]="socialForm"
+    (ngSubmit)="saveSocialMedia()"
+    novalidate
+  >
+    <section class="cf-split-section" aria-labelledby="social-section-details">
+      <h3 id="social-section-details" class="cf-split-section__title">Account details</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="social_platform">
+            Social platform <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <ng-select
+            id="social_platform"
+            formControlName="platform"
+            [items]="socialPlatforms"
+            bindLabel="label"
+            bindValue="value"
+            placeholder="Select platform"
+            [clearable]="false"
+            [searchable]="true"
+            class="cf-split-select"
+            aria-required="true"
+          >
+            <ng-template ng-label-tmp let-item="item">
+              {{ item.icon }} {{ item.label }}
+            </ng-template>
+            <ng-template ng-option-tmp let-item="item">
+              {{ item.icon }} {{ item.label }}
+            </ng-template>
+          </ng-select>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="social_username">
+            Username <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="social_username"
+            formControlName="username"
+            placeholder="@username"
+            autocomplete="off"
+          />
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="social_url">
+            Account / profile URL <span class="cf-split-req" aria-hidden="true">*</span>
+          </label>
+          <input
+            type="url"
+            id="social_url"
+            formControlName="url"
+            placeholder="https://..."
+            autocomplete="url"
+            aria-required="true"
+          />
+          <p class="cf-split-field__hint">Full link to the profile — used on the public church page.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="social-section-visibility">
+      <h3 id="social-section-visibility" class="cf-split-section__title">Reach &amp; visibility</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="social_followers">
+            Follower count <span class="cf-split-optional">optional</span>
+          </label>
+          <input type="number" id="social_followers" formControlName="follower_count" />
+        </div>
+      </div>
+
+      <label class="cf-split-toggle cf-split-toggle--block">
+        <input type="checkbox" formControlName="is_primary" [value]="1" />
+        <span>
+          Primary account
+          <small>Shown as the main profile for this platform on the church page.</small>
+        </span>
+      </label>
+
+      <label class="cf-split-toggle cf-split-toggle--block">
+        <input type="checkbox" formControlName="active" [value]="1" />
+        <span>
+          Active
+          <small>Inactive accounts are hidden from the public church profile.</small>
+        </span>
+      </label>
+    </section>
+
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        class="cf-btn cf-btn-primary"
+        [disabled]="saving || socialForm.invalid"
+      >
+        {{
+          saving
+            ? 'Saving…'
+            : selectedSocialMedia
+              ? 'Save changes'
+              : 'Add Social Media Account'
+        }}
+      </button>
+      <button
+        type="button"
+        class="cf-btn"
+        (click)="closeSocialModal()"
+        [disabled]="saving"
+      >
+        Cancel
+      </button>
+    </div>
+  </form>
+</app-modal-shell>
+
+<!-- General Information Modal — large sectioned Category-style modal (see enterprise-modal-style-guide.md §11/§14) -->
+<app-modal-shell
+  *ngIf="showGeneralModal"
+  title="Edit General Information"
+  size="lg"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close general information"
+  [isSubmitting]="saving"
+  (closeRequested)="closeGeneralModal()"
+>
+  <form
+    class="cf-split-form-body cp-general-modal"
+    [formGroup]="profileForm"
+    (ngSubmit)="saveGeneralAndContact()"
+    novalidate
+  >
+    <p class="cf-meta">Update church denomination, diocese, and contact details.</p>
+
+    <section class="cf-split-section" aria-labelledby="general-section-church">
+      <h3 id="general-section-church" class="cf-split-section__title">Church information</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <label for="modal_denomination_id">
+            Denomination <span class="cf-split-optional">optional</span>
+          </label>
+          <ng-select
+            id="modal_denomination_id"
+            name="modalDenomination"
+            [(ngModel)]="modalDenomination"
+            [ngModelOptions]="{ standalone: true }"
+            [items]="denominations"
+            bindLabel="name"
+            [compareWith]="compareSelectItems"
+            placeholder="Select denomination"
+            [clearable]="true"
+            [searchable]="true"
+            [loading]="loadingDenominations"
+            dropdownPanelClass="church-profile-select-panel"
+            class="cf-split-select"
+            (ngModelChange)="onModalDenominationChange($event)"
+          ></ng-select>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="modal_country_id">
+            Country <span class="cf-split-optional">optional</span>
+          </label>
+          <ng-select
+            id="modal_country_id"
+            formControlName="country_id"
+            [items]="countries"
+            bindLabel="name"
+            bindValue="id"
+            placeholder="Select country"
+            [clearable]="true"
+            [searchable]="true"
+            [loading]="loadingCountries"
+            [appendTo]="appendToBody"
+            class="cf-split-select"
+            (change)="onCountryChange($event)"
+          >
+            <ng-template ng-option-tmp let-item="item">
+              <span class="cp-general-modal__country">
+                <span aria-hidden="true">{{ item.emoji }}</span>
+                <span>{{ item.name }}</span>
+              </span>
+            </ng-template>
+            <ng-template ng-label-tmp let-item="item">
+              <span class="cp-general-modal__country">
+                <span aria-hidden="true">{{ item.emoji }}</span>
+                <span>{{ item.name }}</span>
+              </span>
+            </ng-template>
+          </ng-select>
+          <p class="cf-split-field__hint">Updates phone code and filters available dioceses.</p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="modal_archdiocese_id">
+            Archdiocese / Diocese <span class="cf-split-optional">optional</span>
+          </label>
+          <ng-select
+            id="modal_archdiocese_id"
+            name="modalArchdiocese"
+            [(ngModel)]="modalArchdiocese"
+            [ngModelOptions]="{ standalone: true }"
+            [items]="filteredArchdioceses"
+            bindLabel="name"
+            [compareWith]="compareSelectItems"
+            placeholder="Select archdiocese"
+            [clearable]="true"
+            [searchable]="true"
+            [disabled]="!modalDenomination"
+            dropdownPanelClass="church-profile-select-panel"
+            class="cf-split-select"
+            (ngModelChange)="onModalArchdioceseChange($event)"
+          >
+            <ng-template ng-label-tmp let-item="item">
+              {{ item.name }}
+            </ng-template>
+            <ng-template ng-option-tmp let-item="item">
+              <div class="cp-general-modal__diocese-option">
+                <strong>{{ item.name }}</strong>
+                <span class="cf-meta">{{ item.country }}</span>
+              </div>
+            </ng-template>
+          </ng-select>
+          <p class="cf-split-field__hint" *ngIf="!modalDenomination">
+            Select a denomination first to filter dioceses.
+          </p>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="modal_founded_year">
+            Founded year <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="number"
+            id="modal_founded_year"
+            formControlName="founded_year"
+            placeholder="e.g., 1985"
+            min="1000"
+            [max]="getMaxYear()"
+          />
+        </div>
+      </div>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="general-section-patron">
+      <h3 id="general-section-patron" class="cf-split-section__title">Patron saint</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <label for="patron_image_input">
+            Patron image <span class="cf-split-optional">optional</span>
+          </label>
+          <div class="cf-split-image-upload">
+            <div
+              class="cf-split-image-upload__preview"
+              *ngIf="patronImagePreview || getPatronImageUrl()"
+            >
+              <img
+                [src]="patronImagePreview || getPatronImageUrl()"
+                [alt]="extendedProfile?.patron_name || 'Patron saint'"
+                (error)="$any($event.target).style.display = 'none'"
+              />
+              <button
+                type="button"
+                class="cf-split-image-upload__remove"
+                (click)="removePatronImage()"
+                *ngIf="getPatronImageUrl()"
+                aria-label="Remove patron image"
+              >
+                Remove
+              </button>
+            </div>
+            <label class="cf-btn" for="patron_image_input">
+              {{ patronImagePreview || getPatronImageUrl() ? 'Change image' : 'Upload image' }}
             </label>
+            <input
+              type="file"
+              id="patron_image_input"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              (change)="onPatronImageSelected($event)"
+              hidden
+            />
           </div>
-          <div class="form-group">
-            <label>
-              <input type="checkbox" formControlName="active" [value]="1">
-              Active
-            </label>
-          </div>
+          <p class="cf-split-field__hint">JPG, PNG, or WEBP. Max 3MB.</p>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button 
-          type="button" 
-          class="btn-cancel" 
-          (click)="closeSocialModal()"
-          [disabled]="saving"
-          title="Cancel and close">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          <span>Cancel</span>
-        </button>
-        <button 
-          type="submit" 
-          class="btn-save" 
-          [disabled]="saving || socialForm.invalid"
-          [title]="selectedSocialMedia ? 'Update social media' : 'Create social media'">
-          <span *ngIf="!saving">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <span>{{ selectedSocialMedia ? 'Update' : 'Create' }}</span>
-          </span>
-          <span *ngIf="saving" class="btn-loading">
-            <div class="spinner-small"></div>
-            <span>Saving...</span>
-          </span>
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
 
-<!-- General Information Modal -->
-<div *ngIf="showGeneralModal" 
-     class="modal-overlay general-modal-overlay" 
-     (click)="closeGeneralModal()"
-     role="dialog"
-     aria-modal="true"
-     aria-labelledby="general-modal-title">
-  <div class="modal-dialog general-modal-dialog" 
-       (click)="$event.stopPropagation()"
-       role="document"
-       tabindex="-1">
-    <div class="modal-header general-modal-header">
-      <div class="modal-header-content">
-        <div class="modal-icon-wrapper">
-          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-          </svg>
-        </div>
-        <div class="modal-title-section">
-          <h2 id="general-modal-title">Edit General Information</h2>
-          <p class="modal-subtitle">Update church denomination, diocese, and contact details</p>
+        <div class="cf-split-field cf-split-field--full">
+          <label for="modal_patron_name">
+            Patron Name <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="text"
+            id="modal_patron_name"
+            formControlName="patron_name"
+            placeholder="e.g., Sacred Heart of Jesus"
+          />
         </div>
       </div>
-      <button class="modal-close" 
-              (click)="closeGeneralModal()" 
-              aria-label="Close modal"
-              type="button">
-        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="general-section-contact">
+      <h3 id="general-section-contact" class="cf-split-section__title">Contact information</h3>
+      <div class="cf-split-grid">
+        <div class="cf-split-field">
+          <app-phone-input
+            [label]="'Phone number'"
+            [id]="'modal_phone'"
+            [name]="'phone'"
+            [required]="false"
+            [disabled]="saving"
+            [maxLength]="15"
+            [minLength]="6"
+            formControlName="phone"
+          ></app-phone-input>
+        </div>
+
+        <div class="cf-split-field">
+          <label for="modal_email">
+            Email <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="email"
+            id="modal_email"
+            formControlName="email"
+            placeholder="info@church.org"
+            autocomplete="email"
+          />
+        </div>
+
+        <div class="cf-split-field cf-split-field--full">
+          <label for="modal_website">
+            Website <span class="cf-split-optional">optional</span>
+          </label>
+          <input
+            type="url"
+            id="modal_website"
+            formControlName="website"
+            placeholder="https://www.church.org"
+            autocomplete="url"
+          />
+        </div>
+      </div>
+    </section>
+
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        class="cf-btn cf-btn-primary"
+        [disabled]="saving"
+      >
+        {{ saving ? 'Saving…' : 'Save changes' }}
+      </button>
+      <button
+        type="button"
+        class="cf-btn"
+        (click)="closeGeneralModal()"
+        [disabled]="saving"
+      >
+        Cancel
       </button>
     </div>
-    <form [formGroup]="profileForm" (ngSubmit)="saveGeneralAndContact()" class="general-modal-form">
-      <div class="modal-body general-modal-body">
-        <!-- General Information Section -->
-        <div class="form-section">
-          <div class="form-section-header">
-            <div class="section-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                <circle cx="12" cy="10" r="3"></circle>
-              </svg>
-            </div>
-            <h3>Church Information</h3>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <label for="modal_denomination_id">
-                <span class="label-text">Denomination</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <ng-select
-                id="modal_denomination_id"
-                formControlName="denomination_id"
-                [items]="denominations"
-                bindLabel="name"
-                bindValue="id"
-                placeholder="Select Denomination"
-                [clearable]="true"
-                [searchable]="true"
-                class="form-select-enhanced"
-                (change)="onDenominationChange($event)">
-              </ng-select>
-            </div>
-
-            <div class="form-group">
-              <label for="modal_country_id">
-                <span class="label-text">Country</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <ng-select
-                id="modal_country_id"
-                formControlName="country_id"
-                [items]="countries"
-                bindLabel="name"
-                bindValue="id"
-                placeholder="Select Country"
-                [clearable]="true"
-                [searchable]="true"
-                [loading]="loadingCountries"
-                class="form-select-enhanced"
-                (change)="onCountryChange($event)">
-                <ng-template ng-option-tmp let-item="item">
-                  <span class="country-option">
-                    <span class="country-emoji">{{ item.emoji }}</span>
-                    <span class="country-name">{{ item.name }}</span>
-                  </span>
-                </ng-template>
-                <ng-template ng-label-tmp let-item="item">
-                  <span class="country-option">
-                    <span class="country-emoji">{{ item.emoji }}</span>
-                    <span class="country-name">{{ item.name }}</span>
-                  </span>
-                </ng-template>
-              </ng-select>
-              <small class="form-hint">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M12 16v-4"></path>
-                  <path d="M12 8h.01"></path>
-                </svg>
-                Updates phone code and filters available dioceses
-              </small>
-            </div>
-
-            <div class="form-group">
-              <label for="modal_archdiocese_id">
-                <span class="label-text">Archdiocese / Diocese</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <ng-select
-                id="modal_archdiocese_id"
-                formControlName="archdiocese_id"
-                [items]="filteredArchdioceses"
-                bindLabel="name"
-                bindValue="id"
-                placeholder="Select Archdiocese"
-                [clearable]="true"
-                [searchable]="true"
-                class="form-select-enhanced">
-                <ng-template ng-label-tmp let-item="item">
-                  {{ item.name }}
-                </ng-template>
-                <ng-template ng-option-tmp let-item="item">
-                  <div class="ng-option-custom">
-                    <strong>{{ item.name }}</strong>
-                    <small class="text-muted">{{ item.country }}</small>
-                  </div>
-                </ng-template>
-              </ng-select>
-              <small class="form-hint" *ngIf="!profileForm.get('denomination_id')?.value">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <path d="M12 16v-4"></path>
-                  <path d="M12 8h.01"></path>
-                </svg>
-                Select a denomination first to filter dioceses
-              </small>
-            </div>
-
-            <div class="form-group">
-              <label for="modal_founded_year">
-                <span class="label-text">Founded Year</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <div class="input-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
-                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                  <line x1="16" y1="2" x2="16" y2="6"></line>
-                  <line x1="8" y1="2" x2="8" y2="6"></line>
-                  <line x1="3" y1="10" x2="21" y2="10"></line>
-                </svg>
-                <input 
-                  type="number" 
-                  id="modal_founded_year" 
-                  formControlName="founded_year"
-                  class="form-control form-control-enhanced"
-                  placeholder="e.g., 1985"
-                  min="1000"
-                  [max]="getMaxYear()">
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Patron Information Section -->
-        <div class="form-section">
-          <div class="form-section-header">
-            <div class="section-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
-              </svg>
-            </div>
-            <h3>Patron Saint</h3>
-          </div>
-          <div class="form-grid">
-            <div class="form-group full-width">
-              <label for="modal_patron_name">
-                <span class="label-text">Patron Name</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <div class="input-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
-                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                  <circle cx="12" cy="7" r="4"></circle>
-                </svg>
-                <input 
-                  type="text" 
-                  id="modal_patron_name" 
-                  formControlName="patron_name"
-                  class="form-control form-control-enhanced"
-                  placeholder="e.g., Saint Peter, Saint Mary">
-              </div>
-            </div>
-
-            <!-- Patron Image Upload -->
-            <div class="form-group full-width">
-              <label>
-                <span class="label-text">Patron Image</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <div class="patron-image-upload-section">
-                <!-- Current Image Preview -->
-                <div class="patron-image-preview" *ngIf="patronImagePreview || getPatronImageUrl()">
-                  <div class="patron-image-wrapper">
-                    <img 
-                      [src]="patronImagePreview || getPatronImageUrl()" 
-                      [alt]="extendedProfile?.patron_name || 'Patron Saint'"
-                      class="patron-preview-image"
-                      (error)="$event.target.style.display = 'none'">
-                    <button 
-                      type="button"
-                      class="btn-remove-image"
-                      (click)="removePatronImage()"
-                      *ngIf="getPatronImageUrl()"
-                      title="Remove patron image">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="18" y1="6" x2="6" y2="18"></line>
-                        <line x1="6" y1="6" x2="18" y2="18"></line>
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-
-                <!-- Upload Button -->
-                <div class="patron-upload-controls">
-                  <label for="patron_image_input" class="btn-upload-patron">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                      <polyline points="17 8 12 3 7 8"></polyline>
-                      <line x1="12" y1="3" x2="12" y2="15"></line>
-                    </svg>
-                    <span>{{ patronImagePreview || getPatronImageUrl() ? 'Change Image' : 'Upload Image' }}</span>
-                  </label>
-                  <input 
-                    type="file" 
-                    id="patron_image_input"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    (change)="onPatronImageSelected($event)"
-                    style="display: none;">
-                  <small class="form-hint">
-                    Allowed formats: JPG, PNG, WEBP. Max size: 3MB
-                  </small>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Contact Information Section -->
-        <div class="form-section">
-          <div class="form-section-header">
-            <div class="section-icon">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                <polyline points="22,6 12,13 2,6"></polyline>
-              </svg>
-            </div>
-            <h3>Contact Information</h3>
-          </div>
-          <div class="form-grid">
-            <div class="form-group">
-              <app-phone-input
-                [label]="'Phone Number'"
-                [id]="'modal_phone'"
-                [name]="'phone'"
-                [required]="false"
-                [disabled]="saving"
-                [maxLength]="15"
-                [minLength]="6"
-                formControlName="phone"
-              ></app-phone-input>
-            </div>
-
-            <div class="form-group">
-              <label for="modal_email">
-                <span class="label-text">Email Address</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <div class="input-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
-                  <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
-                  <polyline points="22,6 12,13 2,6"></polyline>
-                </svg>
-                <input 
-                  type="email" 
-                  id="modal_email" 
-                  formControlName="email"
-                  class="form-control form-control-enhanced"
-                  placeholder="info@church.org">
-              </div>
-            </div>
-
-            <div class="form-group full-width">
-              <label for="modal_website">
-                <span class="label-text">Website URL</span>
-                <span class="label-optional">Optional</span>
-              </label>
-              <div class="input-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="input-icon">
-                  <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                  <polyline points="15 3 21 3 21 9"></polyline>
-                  <line x1="10" y1="14" x2="21" y2="3"></line>
-                </svg>
-                <input 
-                  type="url" 
-                  id="modal_website" 
-                  formControlName="website"
-                  class="form-control form-control-enhanced"
-                  placeholder="https://www.church.org">
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer general-modal-footer">
-        <button 
-          type="button" 
-          class="btn-cancel btn-cancel-enhanced" 
-          (click)="closeGeneralModal()"
-          [disabled]="saving"
-          title="Cancel and close">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-          <span>Cancel</span>
-        </button>
-        <button 
-          type="submit" 
-          class="btn-save btn-save-enhanced" 
-          [disabled]="saving"
-          [title]="'Save changes'">
-          <span *ngIf="!saving">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="20 6 9 17 4 12"></polyline>
-            </svg>
-            <span>Save Changes</span>
-          </span>
-          <span *ngIf="saving" class="btn-loading">
-            <div class="spinner-small"></div>
-            <span>Saving...</span>
-          </span>
-        </button>
-      </div>
-    </form>
-  </div>
-</div>
+  </form>
+</app-modal-shell>

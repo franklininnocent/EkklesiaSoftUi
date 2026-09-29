@@ -1,0 +1,73 @@
+<section class="organization-form cf-page">
+  <app-page-header
+    title="Add organization"
+    subtitle="Create a ministry or association for this parish."
+    backLink="/ministries"
+    backLabel="Ministries &amp; Associations"
+  ></app-page-header>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="!canAccess" role="alert">
+    <p>You do not have permission to create organizations.</p>
+    <a class="cf-btn" routerLink="/ministries">Back to list</a>
+  </div>
+
+  <ng-container *ngIf="canAccess">
+    <div
+      class="cf-loading-block cf-panel"
+      *ngIf="loading"
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+    >
+      <p class="cf-loading-block__label">Loading form options…</p>
+      <app-loading-skeleton type="card" [rows]="3" [columns]="4"></app-loading-skeleton>
+    </div>
+
+    <div class="cf-inline-alert cf-panel" *ngIf="!loading && loadError" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="cancel()">Back to list</button>
+    </div>
+
+    <div
+      class="cf-decision-strip"
+      role="region"
+      aria-label="Organization setup required"
+      *ngIf="!loading && !loadError && !hasTaxonomies"
+    >
+      <div class="cf-decision-strip__copy">
+        <strong>Set up categories and types first</strong>
+        <span>Organizations need a category and type before you can add them.</span>
+      </div>
+      <div class="cf-decision-strip__actions">
+        <a routerLink="/ministries/settings" class="cf-btn cf-btn-primary">Go to Settings</a>
+      </div>
+    </div>
+
+    <form
+      class="cf-panel organization-form__form"
+      *ngIf="!loading && !loadError && hasTaxonomies"
+      [formGroup]="form"
+      (ngSubmit)="onSubmit()"
+      [attr.aria-busy]="saving ? true : null"
+    >
+      <app-organization-form-fields
+        [form]="form"
+        [categories]="categories"
+        [types]="types"
+        [submitted]="submitted"
+        [fieldErrors]="fieldErrors"
+        [maxEstablishedDate]="maxEstablishedDate"
+        [columns]="true"
+      ></app-organization-form-fields>
+
+      <p class="organization-form__error" *ngIf="formError" role="alert">{{ formError }}</p>
+
+      <footer class="cf-form-actions">
+        <button type="button" class="cf-btn" (click)="cancel()" [disabled]="saving">Cancel</button>
+        <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving">
+          {{ submitLabel }}
+        </button>
+      </footer>
+    </form>
+  </ng-container>
+</section>

@@ -9,11 +9,12 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { Donor } from '../models/donation.model';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 
 @Component({
   selector: 'app-donations-donors',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, CfActionIconComponent],
   template: `
     <section class="donors cf-page">
       <header class="cf-hero">
@@ -33,8 +34,14 @@ import { Donor } from '../models/donation.model';
           <span>{{ donorDecisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-          <a routerLink="/donations/register" class="cf-btn">Record offering</a>
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+          </button>
+          <a routerLink="/donations/register" class="cf-btn cf-btn-icon" aria-label="Record offering" title="Record offering">
+            <app-cf-action-icon name="book-open" />
+          </a>
         </div>
       </div>
 
@@ -54,7 +61,11 @@ import { Donor } from '../models/donation.model';
               <option value="family">Family-linked</option>
               <option value="organization">Organization</option>
             </select>
-            <button type="submit" class="cf-btn cf-btn-primary" [disabled]="form.invalid || saving">{{ saving ? 'Saving…' : 'Save donor' }}</button>
+            <button
+          aria-label="Save"
+          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="form.invalid || saving">
+          <app-cf-action-icon name="save" />
+            </button>
           </form>
         </div>
       </details>
@@ -86,7 +97,11 @@ import { Donor } from '../models/donation.model';
 
       <div class="donors-load-error cf-panel" *ngIf="donorsLoadError" role="alert">
         <p class="donors-load-error__text">{{ donorsLoadError }}</p>
-        <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+        <button
+          aria-label="Try again"
+          title="Try again" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="load()">
+          <app-cf-action-icon name="refresh" />
+        </button>
       </div>
 
       <app-cf-empty-state
@@ -95,8 +110,16 @@ import { Donor } from '../models/donation.model';
         title="No donors recorded yet"
         description="Donors are created automatically when you collect offerings — or add supporters manually here."
       >
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-        <button type="button" class="cf-btn" *ngIf="canManage" (click)="showForm = true">Add donor</button>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
+        <button
+          aria-label="Add"
+          title="Add" type="button" class="cf-btn cf-btn-icon" *ngIf="canManage" (click)="showForm = true">
+          <app-cf-action-icon name="plus" />
+        </button>
       </app-cf-empty-state>
       </ng-container>
     </section>

@@ -1,14 +1,18 @@
 <section class="plans-page cf-page">
-  <header class="plans-page__hero cf-hero">
-    <div class="plans-page__hero-copy">
-      <h1>Contribution Plans</h1>
-      <p>Define what families owe and how often — create and manage plans side by side.</p>
-    </div>
-    <div class="plans-page__hero-actions" *ngIf="canManage && plansLoaded && !showForm">
-      <a routerLink="/donations/dues" class="cf-btn" *ngIf="plans.length">Outstanding</a>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">New plan</button>
-    </div>
-  </header>
+  <app-page-header
+    title="Contribution Plans"
+    subtitle="Define what families owe and how often — create and manage plans side by side.">
+    <ng-container *ngIf="canManage && plansLoaded && !showForm">
+      <a routerLink="/donations/dues" class="cf-btn cf-btn-icon" *ngIf="plans.length" aria-label="Outstanding" title="Outstanding">
+        <app-cf-action-icon name="clipboard-list" />
+      </a>
+      <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+      </button>
+    </ng-container>
+  </app-page-header>
 
   <div class="plan-loading plans-card" *ngIf="!plansLoaded" role="status" aria-live="polite" aria-busy="true">
     <p class="plan-loading__label">Loading contribution plans…</p>
@@ -16,17 +20,13 @@
   </div>
 
   <ng-container *ngIf="plansLoaded">
-    <div class="plan-success-banner plans-banner" *ngIf="lastCreatedPlan && !showForm" role="status">
-      <span><strong>{{ lastCreatedPlan.name }}</strong> created.</span>
-      <div class="plan-success-banner__actions">
-        <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">Create another</button>
-        <button type="button" class="cf-btn" (click)="scrollToPlan(lastCreatedPlan.id)">View plan</button>
-      </div>
-    </div>
-
     <div class="plan-load-error plans-banner plans-banner--error" *ngIf="plansLoadError" role="alert">
       <p class="plan-load-error__text">{{ plansLoadError }}</p>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="loadPlans()">Try again</button>
+      <button
+          aria-label="Try again"
+          title="Try again" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="loadPlans()">
+          <app-cf-action-icon name="refresh" />
+      </button>
     </div>
 
     <div
@@ -44,18 +44,25 @@
             </div>
             <button
               type="button"
-              class="cf-btn plans-card__close"
+              class="cf-btn cf-btn-icon plans-card__close"
               *ngIf="showForm"
               (click)="closeForm()"
               aria-label="Close form"
-            >×</button>
+              title="Close form"
+            >
+              <app-cf-action-icon name="x" />
+            </button>
           </header>
 
           <div class="plans-form-cta" *ngIf="!showForm">
             <div class="plans-form-cta__icon" aria-hidden="true">◎</div>
             <p class="plans-form-cta__title">Create a contribution plan</p>
             <p class="plans-form-cta__text">Monthly dues, building funds, festival collections, and more.</p>
-            <button type="button" class="cf-btn cf-btn-primary" (click)="openCreateForm()">New plan</button>
+            <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+            </button>
           </div>
 
           <form
@@ -112,8 +119,15 @@
                       aria-label="New collection purpose"
                       (keydown.enter)="$event.preventDefault(); createPurpose()"
                     />
-                    <button type="button" class="cf-btn cf-btn-primary" (click)="createPurpose()" [disabled]="creatingPurpose || !newPurposeName.trim()">
-                      {{ creatingPurpose ? 'Adding…' : 'Add purpose' }}
+                    <button
+                      type="button"
+                      class="cf-btn cf-btn-icon cf-btn-primary"
+                      (click)="createPurpose()"
+                      [disabled]="creatingPurpose || !newPurposeName.trim()"
+                      [attr.aria-label]="creatingPurpose ? 'Adding purpose…' : 'Add purpose'"
+                      [attr.title]="creatingPurpose ? 'Adding purpose…' : 'Add purpose'"
+                    >
+                      <app-cf-action-icon name="plus" />
                     </button>
                   </div>
                 </div>
@@ -126,7 +140,7 @@
                 <div class="plan-field">
                   <label for="plan-amount">Amount per family <span class="req" aria-hidden="true">*</span></label>
                   <div class="plan-amount" [class.is-invalid]="isFieldInvalid('default_amount')">
-                    <span aria-hidden="true">₹</span>
+                    <span aria-hidden="true">{{ currencySymbol }}</span>
                     <input
                       id="plan-amount"
                       formControlName="default_amount"
@@ -223,28 +237,43 @@
                   <option value="">Family</option>
                   <option *ngFor="let family of families" [value]="family.id">{{ family.family_name }}</option>
                 </select>
-                <input [(ngModel)]="assignmentAmount" [ngModelOptions]="{standalone: true}" type="number" min="0.01" step="0.01" placeholder="₹ amount" aria-label="Amount" />
+                <input [(ngModel)]="assignmentAmount" [ngModelOptions]="{standalone: true}" type="number" min="0.01" step="0.01" placeholder="Amount" aria-label="Amount" />
                 <input [(ngModel)]="assignmentEffectiveFrom" [ngModelOptions]="{standalone: true}" type="date" aria-label="Effective from" />
-                <button type="button" class="cf-btn" (click)="addAssignment()">Add</button>
+                <button type="button" class="cf-btn cf-btn-icon" (click)="addAssignment()" aria-label="Add" title="Add"><app-cf-action-icon name="plus" /></button>
               </div>
               <table *ngIf="draftAssignments.length" class="cf-table plan-assign-table">
                 <tbody>
                   <tr *ngFor="let row of draftAssignments; let i = index">
                     <td>{{ familyName(row.family_id) }}</td>
-                    <td>₹{{ row.amount | number:'1.0-0' }}</td>
+                    <td>{{ row.amount | cfCurrency : null : 0 }}</td>
                     <td>{{ row.effective_from }}</td>
-                    <td><button type="button" class="plan-link" (click)="removeAssignment(i)">Remove</button></td>
+                    <td>
+                      <button
+                        type="button"
+                        class="cf-btn cf-btn-icon cf-btn--sm"
+                        (click)="removeAssignment(i)"
+                        aria-label="Remove"
+                        title="Remove"
+                      >
+                        <app-cf-action-icon name="trash" />
+                      </button>
+                    </td>
                   </tr>
                 </tbody>
               </table>
             </details>
 
             <div class="plan-actions">
-              <button type="submit" class="cf-btn cf-btn-primary" [disabled]="saving || creatingPurpose || !fundsLoaded">
-                <span *ngIf="!saving">{{ editingPlanId ? 'Save changes' : 'Create plan' }}</span>
-                <span *ngIf="saving">Creating plan…</span>
+              <button
+                type="submit"
+                class="cf-btn cf-btn-icon cf-btn-primary"
+                [disabled]="saving || creatingPurpose || !fundsLoaded"
+                [attr.aria-label]="saving ? (editingPlanId ? 'Saving changes…' : 'Creating plan…') : (editingPlanId ? 'Save changes' : 'Create plan')"
+                [attr.title]="saving ? (editingPlanId ? 'Saving changes…' : 'Creating plan…') : (editingPlanId ? 'Save changes' : 'Create plan')"
+              >
+                <app-cf-action-icon name="save" />
               </button>
-              <button type="button" class="cf-btn" (click)="closeForm()" [disabled]="saving">Cancel</button>
+              <button type="button" class="cf-btn cf-btn-icon" (click)="closeForm()" [disabled]="saving" aria-label="Cancel" title="Cancel"><app-cf-action-icon name="x" /></button>
             </div>
           </form>
         </article>
@@ -278,7 +307,7 @@
                     <th>Frequency</th>
                     <th>Amount</th>
                     <th>Families</th>
-                    <th></th>
+                    <th class="cf-table__actions-col" scope="col"><span class="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -290,13 +319,32 @@
                     <td>
                       <strong>{{ plan.name }}</strong>
                       <span class="plan-meta">{{ plan.code }} · {{ plan.plan_type === 'individual' ? 'Varies' : 'Uniform' }}</span>
+                      <span class="plan-meta" *ngIf="plan.start_date">
+                        {{ plan.start_date | slice:0:10 }}<ng-container *ngIf="plan.end_date"> → {{ plan.end_date | slice:0:10 }}</ng-container>
+                      </span>
                     </td>
                     <td>{{ frequencyLabel(plan.frequency) }}</td>
-                    <td>₹{{ plan.default_amount | number:'1.0-0' }}</td>
+                    <td>{{ plan.default_amount | cfCurrency : null : 0 }}</td>
                     <td>{{ plan.assignments_count || '—' }}</td>
-                    <td class="row-actions">
-                      <button type="button" class="plan-link" *ngIf="canManage" (click)="editPlan(plan)">Edit</button>
-                      <button type="button" class="cf-btn" *ngIf="canManage" (click)="generateDues(plan)">Generate dues</button>
+                    <td class="cf-table__actions-cell">
+                      <div class="cf-row-actions" *ngIf="canManage">
+                        <app-edit-icon-button
+                          size="sm"
+                          [ariaLabel]="'Edit ' + plan.name"
+                          [title]="'Edit ' + plan.name"
+                          (clicked)="editPlan(plan)"
+                        ></app-edit-icon-button>
+                        <button
+                          type="button"
+                          class="cf-btn cf-btn-icon cf-btn--sm"
+                          [disabled]="generatingPlanId === plan.id"
+                          (click)="generateDues(plan)"
+                        
+          aria-label="Run due schedules"
+          title="Run due schedules">
+          <app-cf-action-icon name="play" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -312,7 +360,11 @@
                 description="Create monthly dues, building funds, festival collections, or other contribution plans for your parish."
                 [hasActions]="canManage"
               >
-                <button type="button" class="cf-btn cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">Create contribution plan</button>
+                <button
+          aria-label="New"
+          title="New" type="button" class="cf-btn cf-btn-icon cf-btn-primary" *ngIf="canManage" (click)="openCreateForm()">
+          <app-cf-action-icon name="plus" />
+                </button>
               </app-cf-empty-state>
             </div>
           </div>

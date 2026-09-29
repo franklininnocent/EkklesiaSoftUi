@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { entitlementGuard } from '@core/guards/entitlement.guard';
 import { StewardshipWorkspaceShellComponent } from './components/stewardship-workspace-shell/stewardship-workspace-shell.component';
 import { DonationsCampaignsComponent } from './pages/donations-campaigns.component';
 import { DonationsCategoriesComponent } from './pages/donations-categories.component';
@@ -16,9 +17,11 @@ import { DonationsRegisterComponent } from './pages/donations-register.component
 import { DonationsReceiptsComponent } from './pages/donations-receipts.component';
 import { DonationsSettingsComponent } from './pages/donations-settings.component';
 import { DonationsNotificationsComponent } from './pages/donations-notifications.component';
+import { DonationsDownloadHistoryComponent } from './pages/donations-download-history.component';
 import { DonationsExpensesComponent } from './pages/donations-expenses.component';
-import { CollectionHealthCenterPageComponent } from './pages/collection-health-center.page';
 import { CollectionDayComponent } from './pages/collection-day.component';
+import { TodaysCollectionsComponent } from './pages/today-collections.component';
+import { DonationsApprovalsComponent } from './pages/donations-approvals.component';
 
 export const DONATIONS_ROUTES: Routes = [
   {
@@ -26,24 +29,27 @@ export const DONATIONS_ROUTES: Routes = [
     component: StewardshipWorkspaceShellComponent,
     children: [
       { path: '', component: DonationsDashboardComponent },
-      { path: 'plans', component: DonationsPlansComponent },
+      { path: 'plans', component: DonationsPlansComponent, canActivate: [entitlementGuard], data: { feature: 'CONTRIBUTION_PLANS' } },
       { path: 'dues', component: DonationsDuesComponent },
       { path: 'projects', component: DonationsProjectsComponent },
+      { path: 'projects/:id', component: DonationsProjectsComponent },
       { path: 'campaigns', component: DonationsCampaignsComponent },
       { path: 'project-installments', component: DonationsProjectInstallmentsComponent },
       { path: 'payments', component: DonationsPaymentsComponent },
       { path: 'collection-day', component: CollectionDayComponent },
-      { path: 'collection-health', component: CollectionHealthCenterPageComponent },
+      { path: 'today-collections', component: TodaysCollectionsComponent },
       { path: 'receipts', component: DonationsReceiptsComponent },
       { path: 'register', component: DonationsRegisterComponent },
       { path: 'donors', component: DonationsDonorsComponent },
       { path: 'categories', component: DonationsCategoriesComponent },
       { path: 'recurring', component: DonationsRecurringComponent },
-      { path: 'history', component: DonationsHistoryComponent },
+      { path: 'approvals', component: DonationsApprovalsComponent },
+      { path: 'history', component: DonationsHistoryComponent, canActivate: [entitlementGuard], data: { feature: 'AUDIT_LOG' } },
       { path: 'reports', component: DonationsReportsComponent },
       { path: 'expenses', component: DonationsExpensesComponent },
       { path: 'settings', component: DonationsSettingsComponent },
-      { path: 'notifications', component: DonationsNotificationsComponent }
+      { path: 'notifications', component: DonationsNotificationsComponent },
+      { path: 'download-history', component: DonationsDownloadHistoryComponent }
     ]
   }
 ];
