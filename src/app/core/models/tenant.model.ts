@@ -111,9 +111,9 @@ export interface TenantAddress {
 }
 
 /**
- * Tenant subscription plans
+ * Subscription plan key. Plans are managed in the subscription catalog, so any key is possible.
  */
-export type TenantPlan = 'free' | 'basic' | 'premium' | 'enterprise';
+export type TenantPlan = string;
 
 /**
  * Tenant status type
@@ -434,12 +434,7 @@ export interface TenantStatisticsResponse {
     total_tenants: number;
     active_tenants: number;
     inactive_tenants: number;
-    tenants_by_plan: {
-      free: number;
-      basic: number;
-      premium: number;
-      enterprise: number;
-    };
+    tenants_by_plan: Record<string, number>;
     in_trial: number;
     subscribed: number;
     recent_tenants: Tenant[];

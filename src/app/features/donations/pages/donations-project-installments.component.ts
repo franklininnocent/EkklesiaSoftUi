@@ -8,11 +8,12 @@ import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { DonationProject, ProjectInstallmentDue } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-project-installments',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, CfCurrencyPipe, CfActionIconComponent],
   template: `
     <section class="installments-page cf-page">
       <header class="cf-hero">
@@ -22,13 +23,19 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
 
       <div class="cf-decision-strip" role="region" aria-label="Suggested next step" *ngIf="!loading">
         <div class="cf-decision-strip__copy">
-          <strong>{{ overdueCount }} overdue · {{ outstandingTotal | number:'1.2-2' }} outstanding</strong>
+          <strong>{{ overdueCount }} overdue · {{ outstandingTotal | cfCurrency }} outstanding</strong>
           <span>{{ decisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions">
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">Collect Payment</button>
-          <button type="button" class="cf-btn" *ngIf="overdueCount" (click)="showOverdueOnly()">Show overdue only</button>
-          <a routerLink="/donations/projects" class="cf-btn">View Projects</a>
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+          </button>
+          <button type="button" class="cf-btn cf-btn-icon" *ngIf="overdueCount" (click)="showOverdueOnly()" aria-label="Show overdue only" title="Show overdue only"><app-cf-action-icon name="filter" /></button>
+          <a routerLink="/donations/projects" class="cf-btn cf-btn-icon" aria-label="View Projects" title="View Projects">
+            <app-cf-action-icon name="layout-grid" />
+          </a>
         </div>
       </div>
 
@@ -73,13 +80,21 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
             <td>{{ row.project?.name || row.project_id }}</td>
             <td>{{ row.installment_label }}</td>
             <td>{{ row.due_date | date }}</td>
-            <td>{{ (row.outstanding_amount ?? (row.amount_due - row.amount_paid)) | number:'1.2-2' }}</td>
+            <td>{{ (row.outstanding_amount ?? (row.amount_due - row.amount_paid)) | cfCurrency }}</td>
             <td>
               <span class="status-pill" [class.status-pill--overdue]="isOverdue(row)">{{ isOverdue(row) ? 'Overdue' : row.status }}</span>
             </td>
             <td class="row-actions">
-              <button type="button" class="cf-btn cf-btn-primary" *ngIf="row.family_id" (click)="collectForFamily(row.family_id)">Collect</button>
-              <button type="button" class="cf-btn" *ngIf="canManage && (row.status === 'pending' || row.status === 'partially_paid')" (click)="waive(row)">Waive</button>
+              <button
+          aria-label="Collect"
+          title="Collect" type="button" class="cf-btn cf-btn-icon cf-btn-primary cf-btn--sm" *ngIf="row.family_id" (click)="collectForFamily(row.family_id)">
+          <app-cf-action-icon name="collect-payment" />
+              </button>
+              <button
+          aria-label="Waive"
+          title="Waive" type="button" class="cf-btn cf-btn-icon cf-btn--sm" *ngIf="canManage && (row.status === 'pending' || row.status === 'partially_paid')" (click)="waive(row)">
+          <app-cf-action-icon name="badge-minus" />
+              </button>
             </td>
           </tr>
         </tbody>
@@ -93,8 +108,14 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
         title="No project installments"
         description="Installments appear when families are enrolled in special projects with a payment schedule."
       >
-        <a routerLink="/donations/projects" class="cf-btn cf-btn-primary">View Projects</a>
-        <button type="button" class="cf-btn" (click)="openQuickCollect()">Collect Payment</button>
+        <a routerLink="/donations/projects" class="cf-btn cf-btn-icon cf-btn-primary">
+          <app-cf-action-icon name="layout-grid" />
+        </a>
+        <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
+        </button>
       </app-cf-empty-state>
     </section>
   `,

@@ -1,11 +1,12 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnInit, ViewChild } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { debounceTime, distinctUntilChanged, forkJoin, of, Subject, switchMap } from 'rxjs';
 import { FamilyService } from '@core/services/family.service';
 import { AuthService } from '@core/services/auth.service';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { Family } from '@core/models/family.model';
 import { DonationsService } from '../services/donations.service';
 import { ReceiptPrintService } from '../services/receipt-print.service';
@@ -18,6 +19,8 @@ import {
 } from '../models/donation.model';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
 import { localDateOnly, requiresGatewayReference } from '../utils/local-date-only';
+import { formatPaymentDateTime } from '../utils/payment-datetime';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 
 type CollectType = 'general' | 'mandatory' | 'project' | 'offering';
 type SearchMode = 'name' | 'id' | 'mobile' | 'qr';
@@ -30,6 +33,7 @@ interface KpiCard {
   tone: 'indigo' | 'emerald' | 'amber' | 'violet' | 'sky' | 'rose';
   iconPath: string;
   sparkline: string;
+  href?: string;
 }
 
 interface ActivityFeedItem {
@@ -53,9 +57,9 @@ interface AllocationRow {
 @Component({
   selector: 'app-collection-day',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, CfActionIconComponent],
   templateUrl: './collection-day.component.html',
-  styleUrls: ['./collection-day.component.scss']
+  styleUrls: ['./collection-day.component.scss', '../styles/stewardship-action-icons.scss']
 })
 export class CollectionDayComponent implements OnInit {
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
@@ -89,7 +93,8 @@ export class CollectionDayComponent implements OnInit {
   highlightedIndex = -1;
   quickActionsOpen = false;
   shortcutsOpen = false;
-  currencyCode = 'INR';
+
+  private readonly churchCurrency = inject(ChurchCurrencyService);
 
   readonly searchModes: Array<{ id: SearchMode; label: string }> = [
     { id: 'name', label: 'Name' },
@@ -149,21 +154,10 @@ export class CollectionDayComponent implements OnInit {
     }).format(new Date());
   }
 
-  get sessionStatusLabel(): string {
-    return 'Active';
-  }
+  readonly sessionStatusLabel = 'Active';
 
   get currencySymbol(): string {
-    try {
-      const parts = new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: this.currencyCode,
-        currencyDisplay: 'narrowSymbol'
-      }).formatToParts(0);
-      return parts.find((part) => part.type === 'currency')?.value || '₹';
-    } catch {
-      return '₹';
-    }
+    return this.churchCurrency.currencySymbol() ?? '';
   }
 
   get searchPlaceholder(): string {
@@ -312,7 +306,7 @@ export class CollectionDayComponent implements OnInit {
       type: 'payment' as const,
       title: payment.family?.family_name || payment.payer_name || 'Payment received',
       subtitle: `${payment.method} · ${payment.payment_number || 'Receipt pending'}`,
-      time: this.formatTime(payment.created_at || payment.payment_date),
+      time: formatPaymentDateTime(payment.created_at || payment.payment_date),
       amount: Number(payment.amount || 0)
     }));
 
@@ -336,7 +330,8 @@ export class CollectionDayComponent implements OnInit {
         trendUp: this.sessionCount > 0,
         tone: 'indigo',
         iconPath: this.iconPaths.collections,
-        sparkline: spark
+        sparkline: spark,
+        href: '/donations/today-collections'
       },
       {
         label: 'Total Collected',
@@ -398,8 +393,11 @@ export class CollectionDayComponent implements OnInit {
 
   ngOnInit(): void {
     this.refreshSession();
-    this.loadCurrency();
     setupStewardshipRouteReload(this.router, this.destroyRef, '/donations/collection-day', () => this.refreshSession());
+
+    this.donationsService.ledgerMutated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshSession());
 
     this.search$.pipe(
       debounceTime(200),
@@ -511,20 +509,38 @@ export class CollectionDayComponent implements OnInit {
     refreshStewardshipView(this.cdr);
   }
 
+  /** Instant KPI/feed update before server list refresh (Quick Collect + inline collect). */
+  private applyLocalPayment(payment: DonationPayment | undefined): void {
+    if (!payment?.id) {
+      return;
+    }
+    if (this.todayPayments.some((row) => row.id === payment.id)) {
+      return;
+    }
+    this.todayPayments = [payment, ...this.todayPayments].slice(0, 12);
+    this.sessionCount += 1;
+    this.sessionTotal += Number(payment.amount || 0);
+    const familyIds = new Set(
+      this.todayPayments.map((row) => row.family?.id).filter((id): id is string => !!id)
+    );
+    this.familiesProcessedToday = Math.max(this.familiesProcessedToday, familyIds.size);
+    refreshStewardshipView(this.cdr);
+  }
+
   refreshSession(): void {
     this.sessionLoading = true;
-    const today = localDateOnly();
 
     forkJoin({
-      payments: this.donationsService.getPayments({ payment_date_from: today, payment_date_to: today, per_page: '200' }),
+      payments: this.donationsService.getPayments({ today_only: '1', per_page: '12' }),
       dashboard: this.donationsService.getDashboardSummary()
     }).subscribe({
       next: ({ payments, dashboard }) => {
         const rows = payments.data?.data ?? [];
         this.todayPayments = rows;
-        this.sessionCount = rows.length;
-        this.sessionTotal = rows.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-        this.familiesProcessedToday = new Set(rows.map((row) => row.family?.id).filter(Boolean)).size;
+        this.sessionCount = payments.meta?.totals?.payment_count ?? rows.length;
+        this.sessionTotal = Number(payments.meta?.totals?.collected_gross ?? 0);
+        this.familiesProcessedToday = payments.meta?.totals?.families_count
+          ?? new Set(rows.map((row) => row.family?.id).filter(Boolean)).size;
         this.dashboardSummary = dashboard.data ?? null;
         this.sessionLoading = false;
         refreshStewardshipView(this.cdr);
@@ -582,21 +598,6 @@ export class CollectionDayComponent implements OnInit {
       error: () => {
         this.profileLoading = false;
         refreshStewardshipView(this.cdr);
-      }
-    });
-  }
-
-  searchAndSelectAttentionFamily(family: NonNullable<DonationDashboardSummary['families_requiring_attention']>[number]): void {
-    const query = family.family_code || family.family_name || '';
-    this.searchQuery = query;
-    this.searchMode = 'id';
-    this.search$.next(query);
-    this.familyService.getFamilies({ search: query, status: 'active', per_page: 1 }).subscribe({
-      next: (response) => {
-        const match = response.data?.[0];
-        if (match) {
-          this.selectFamily(match);
-        }
       }
     });
   }
@@ -667,7 +668,7 @@ export class CollectionDayComponent implements OnInit {
         this.saving = false;
         this.successMessage = res.message || 'Collection posted successfully.';
         this.lastPaymentId = res.data?.id ?? null;
-        this.refreshSession();
+        this.applyLocalPayment(res.data);
         if (this.lastPaymentId) {
           this.donationsService.getReceiptPreview(this.lastPaymentId).subscribe({
             next: (preview) => {
@@ -769,29 +770,7 @@ export class CollectionDayComponent implements OnInit {
   }
 
   formatCurrency(value: number | null | undefined): string {
-    const amount = Number(value ?? 0);
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: this.currencyCode,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount);
-    } catch {
-      return new Intl.NumberFormat(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount);
-    }
-  }
-
-  private loadCurrency(): void {
-    this.donationsService.getSettings().subscribe({
-      next: (res) => {
-        this.currencyCode = res.data?.default_currency || 'INR';
-        refreshStewardshipView(this.cdr);
-      }
-    });
+    return this.churchCurrency.formatAmount(value);
   }
 
   private normalizeSearchQuery(query: string): string {
@@ -802,17 +781,6 @@ export class CollectionDayComponent implements OnInit {
       return query.replace(/^family[:#]/i, '').trim();
     }
     return query;
-  }
-
-  private formatTime(value?: string): string {
-    if (!value) {
-      return 'Today';
-    }
-    try {
-      return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(value));
-    } catch {
-      return 'Today';
-    }
   }
 
   private formatTrend(amount: number): string {

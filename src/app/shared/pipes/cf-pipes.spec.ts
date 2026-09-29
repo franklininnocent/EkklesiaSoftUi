@@ -1,5 +1,6 @@
 import { Component } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { CfCurrencyPipe } from './cf-currency.pipe';
 import { CfDatePipe } from './cf-date.pipe';
 
@@ -37,8 +38,12 @@ describe('CfCurrencyPipe / CfDatePipe', () => {
   });
 
   it('transform directly', () => {
-    expect(new CfCurrencyPipe().transform(99, 'USD')).toBe('$99.00');
-    expect(new CfCurrencyPipe().transform(99, undefined)).toBe('');
-    expect(new CfDatePipe().transform('2026-01-05')).toBe('Jan 5, 2026');
+    TestBed.configureTestingModule({
+      providers: [ChurchCurrencyService, CfCurrencyPipe, CfDatePipe],
+    });
+    const pipe = TestBed.inject(CfCurrencyPipe);
+    expect(pipe.transform(99, 'USD')).toBe('$99.00');
+    expect(pipe.transform(99, undefined)).toBe('');
+    expect(TestBed.inject(CfDatePipe).transform('2026-01-05')).toBe('Jan 5, 2026');
   });
 });

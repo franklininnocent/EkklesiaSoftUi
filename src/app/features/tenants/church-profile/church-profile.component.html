@@ -98,7 +98,7 @@
                     {{ churchProfile.active === 1 ? 'Active' : 'Inactive' }}
                   </span>
                   <span class="cp-chip cp-chip--neutral" *ngIf="getFoundedYear()">Founded {{ getFoundedYear() }}</span>
-                  <span class="cp-chip cp-chip--plan" *ngIf="churchProfile.plan">{{ churchProfile.plan | titlecase }} Plan</span>
+                  <span class="cp-chip cp-chip--plan" *ngIf="planChipLabel">{{ planChipLabel }}</span>
                 </div>
               </div>
             </div>
@@ -350,7 +350,7 @@
       <!-- ====================================================================== -->
       <div *ngIf="activeTab === 'leadership'" class="tab-pane leadership-pane">
         <app-church-leadership-governance
-          [canEdit]="canEdit"
+          [canEdit]="canEditLeadership"
           (currentChanged)="onGovernanceCurrentChanged($event)"
         ></app-church-leadership-governance>
       </div>
@@ -403,7 +403,7 @@
                   <td>{{ stat.weekly_attendance || 'N/A' }}</td>
                   <td>{{ stat.baptisms || 0 }}</td>
                   <td>{{ stat.marriages || 0 }}</td>
-                  <td>{{ stat.tithes_offerings ? '$' + stat.tithes_offerings : 'N/A' }}</td>
+                  <td>{{ stat.tithes_offerings ? (stat.tithes_offerings | cfCurrency) : 'N/A' }}</td>
                   <td *ngIf="canEdit">
                     <div class="action-buttons">
                       <button class="btn-3d-mini btn-3d-edit" (click)="openEditStatisticModal(stat)" title="Edit">

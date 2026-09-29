@@ -1,8 +1,11 @@
 import { CommonModule } from '@angular/common';
+import { IfFeatureDirective } from '@shared/directives/if-feature.directive';
 import { Component, EventEmitter, Input, Output, inject } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { QuickCollectService } from '@features/donations/services/quick-collect.service';
 import { ReceiptPrintService } from '@features/donations/services/receipt-print.service';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { FinancialActivityTimelineComponent } from '@features/donations/components/financial-activity-timeline/financial-activity-timeline.component';
 import {
   ContributionDue,
@@ -15,7 +18,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
 @Component({
   selector: 'app-family-financial-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterModule, FinancialActivityTimelineComponent],
+  imports: [CommonModule, RouterModule, FinancialActivityTimelineComponent, IfFeatureDirective, CfCurrencyPipe],
   template: `
     <section class="family-financial-dashboard cf-panel" *ngIf="profile">
       <header class="dashboard-header">
@@ -94,7 +97,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
 
         <div class="contribution-plans-empty" *ngIf="!contributionPlans.length">
           <p class="empty-note cf-meta">No contribution plans are assigned to this family yet.</p>
-          <a routerLink="/donations/plans" class="cf-btn">Manage Contribution Plans</a>
+          <a *appIfFeature="'CONTRIBUTION_PLANS'" routerLink="/donations/plans" class="cf-btn">Manage Contribution Plans</a>
         </div>
 
         <div class="outstanding-dues-block" *ngIf="outstandingDues.length">
@@ -204,9 +207,9 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
             <tbody>
               <tr *ngFor="let project of profile.project_contributions?.projects">
                 <td>{{ project.project_name }}</td>
-                <td>{{ project.target_amount | number:'1.2-2' }}</td>
-                <td>{{ project.amount_collected | number:'1.2-2' }}</td>
-                <td>{{ project.outstanding_amount | number:'1.2-2' }}</td>
+                <td>{{ project.target_amount | cfCurrency }}</td>
+                <td>{{ project.amount_collected | cfCurrency }}</td>
+                <td>{{ project.outstanding_amount | cfCurrency }}</td>
                 <td>
                   Paid {{ project.installment_status?.paid || 0 }} /
                   Pending {{ project.installment_status?.pending || 0 }} /
@@ -222,8 +225,8 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
               <tr *ngFor="let row of profile.project_contributions?.installment_ledger">
                 <td>{{ row.project_name }} — {{ row.installment_label }}</td>
                 <td>{{ row.due_date | date }}</td>
-                <td>{{ row.amount_paid | number:'1.2-2' }}</td>
-                <td>{{ row.outstanding_amount | number:'1.2-2' }}</td>
+                <td>{{ row.amount_paid | cfCurrency }}</td>
+                <td>{{ row.outstanding_amount | cfCurrency }}</td>
                 <td>
                   <span
                     class="cf-badge"
@@ -241,13 +244,13 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
       <div class="cf-disclosure" *ngIf="hasDonations">
         <button type="button" class="cf-disclosure__trigger" (click)="toggleSection('donations')">
           <strong>Donations & Offerings</strong>
-          <span>{{ profile.donations_offerings?.lifetime_collected || profile.totals.voluntary_collected || 0 | number:'1.2-2' }} lifetime</span>
+          <span>{{ (profile.donations_offerings?.lifetime_collected || profile.totals.voluntary_collected || 0) | cfCurrency }} lifetime</span>
         </button>
         <div class="cf-disclosure__body" *ngIf="isExpanded('donations')">
         <div class="panel">
           <div class="mini-metrics cf-meta">
-            <span>Lifetime {{ profile.donations_offerings?.lifetime_collected || 0 | number:'1.2-2' }}</span>
-            <span>FY {{ profile.donations_offerings?.financial_year || profile.financial_year }}: {{ profile.donations_offerings?.current_financial_year_collected || 0 | number:'1.2-2' }}</span>
+            <span>Lifetime {{ (profile.donations_offerings?.lifetime_collected || 0) | cfCurrency }}</span>
+            <span>FY {{ profile.donations_offerings?.financial_year || profile.financial_year }}: {{ (profile.donations_offerings?.current_financial_year_collected || 0) | cfCurrency }}</span>
             <span>Last gift: {{ profile.donations_offerings?.last_donation_date ? (profile.donations_offerings?.last_donation_date | date) : '—' }}</span>
           </div>
           <table class="cf-table" *ngIf="profile.donations_offerings?.by_category?.length">
@@ -255,7 +258,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
             <tbody>
               <tr *ngFor="let row of profile.donations_offerings?.by_category">
                 <td>{{ row.category_name }}</td>
-                <td>{{ row.collected | number:'1.2-2' }}</td>
+                <td>{{ row.collected | cfCurrency }}</td>
               </tr>
             </tbody>
           </table>
@@ -265,7 +268,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
               <tr *ngFor="let donation of profile.donations_offerings?.recent_donations || profile.voluntary_donations?.recent_donations">
                 <td>{{ donation.title || donation.category || 'Donation' }}</td>
                 <td>{{ donation.is_anonymous ? 'Anonymous' : (donation.donor || 'Donor') }}</td>
-                <td>{{ donation.collected_amount | number:'1.2-2' }}</td>
+                <td>{{ donation.collected_amount | cfCurrency }}</td>
                 <td>{{ donation.received_at | date }}</td>
               </tr>
             </tbody>
@@ -296,14 +299,14 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
               <ul class="metric-list cf-body">
                 <li>Rank by giving: #{{ profile.analytics?.ranking?.by_total_giving || '-' }} of {{ profile.analytics?.ranking?.participating_families || 0 }}</li>
                 <li>Percentile: {{ profile.analytics?.ranking?.percentile || 0 }}%</li>
-                <li>Total giving: {{ profile.analytics?.ranking?.total_paid || 0 | number:'1.2-2' }}</li>
+                <li>Total giving: {{ (profile.analytics?.ranking?.total_paid || 0) | cfCurrency }}</li>
               </ul>
             </div>
             <div>
               <h4 class="cf-subsection-title">Comparison</h4>
               <ul class="metric-list cf-body">
-                <li>Tenant average: {{ profile.analytics?.comparison?.tenant_average_giving || 0 | number:'1.2-2' }}</li>
-                <li>Tenant median: {{ profile.analytics?.comparison?.tenant_median_giving || 0 | number:'1.2-2' }}</li>
+                <li>Tenant average: {{ (profile.analytics?.comparison?.tenant_average_giving || 0) | cfCurrency }}</li>
+                <li>Tenant median: {{ (profile.analytics?.comparison?.tenant_median_giving || 0) | cfCurrency }}</li>
                 <li>Vs average: {{ profile.analytics?.comparison?.vs_average_pct || 0 }}%</li>
                 <li>Vs median: {{ profile.analytics?.comparison?.vs_median_pct || 0 }}%</li>
               </ul>
@@ -315,10 +318,10 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
             <tbody>
               <tr *ngFor="let row of profile.analytics?.trend">
                 <td>{{ row.label }}</td>
-                <td>{{ row.mandatory_paid | number:'1.2-2' }}</td>
-                <td>{{ row.project_paid | number:'1.2-2' }}</td>
-                <td>{{ row.voluntary_paid | number:'1.2-2' }}</td>
-                <td>{{ row.total_paid | number:'1.2-2' }}</td>
+                <td>{{ row.mandatory_paid | cfCurrency }}</td>
+                <td>{{ row.project_paid | cfCurrency }}</td>
+                <td>{{ row.voluntary_paid | cfCurrency }}</td>
+                <td>{{ row.total_paid | cfCurrency }}</td>
               </tr>
             </tbody>
           </table>
@@ -360,6 +363,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
   `]
 })
 export class FamilyFinancialDashboardComponent {
+  private readonly churchCurrency = inject(ChurchCurrencyService);
   @Input({ required: true }) profile!: DonationFamilyFinancialProfile;
   @Output() refresh = new EventEmitter<void>();
 
@@ -405,7 +409,7 @@ export class FamilyFinancialDashboardComponent {
   }
 
   get currencyCode(): string {
-    return this.profile?.currency || 'INR';
+    return this.churchCurrency.currencyCode() ?? this.profile?.currency ?? 'INR';
   }
 
   get hasOverdue(): boolean {
@@ -526,20 +530,7 @@ export class FamilyFinancialDashboardComponent {
   }
 
   formatCurrency(value: number | null | undefined): string {
-    const amount = Number(value ?? 0);
-    try {
-      return new Intl.NumberFormat(undefined, {
-        style: 'currency',
-        currency: this.currencyCode,
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount);
-    } catch {
-      return new Intl.NumberFormat(undefined, {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2
-      }).format(amount);
-    }
+    return this.churchCurrency.formatAmount(value);
   }
 
   frequencyLabel(frequency?: string | null): string {

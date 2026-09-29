@@ -9,6 +9,7 @@ import { UsersService } from '@core/services/users.service';
 import { ToastService } from '@core/services/toast.service';
 import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { User } from '@core/models/user.model';
 import { PaginationComponent } from '@shared/components';
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
@@ -208,6 +209,7 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
   selectedRoleIdsForUser: number[] = [];
   savingUserRoles = false;
   private readonly confirmationDialog = inject(ConfirmationDialogService);
+  private readonly entitlements = inject(EntitlementService);
 
   constructor(
     private rolesService: RolesService,
@@ -484,7 +486,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canCreateRole(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.create');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.create')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.create');
   }
@@ -494,7 +499,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canUpdateRole(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.update');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.update')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.update');
   }
@@ -504,7 +512,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canDeleteRole(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('roles.delete');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('roles.delete')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('roles.delete');
   }
@@ -514,7 +525,10 @@ export class RolesPermissionsComponent implements OnInit, OnDestroy {
    */
   canAssignPermissions(): boolean {
     if (this.isTenantMode) {
-      return this.authService.isTenantAdmin() || this.authService.hasPermission('permissions.assign');
+      return (
+        (this.authService.isTenantAdmin() || this.authService.hasPermission('permissions.assign')) &&
+        this.entitlements.hasFeature('RBAC_ADVANCED')
+      );
     }
     return this.canManageRoles() || this.authService.hasPermission('permissions.assign');
   }

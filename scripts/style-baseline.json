@@ -88,10 +88,6 @@
       "declaration-property-value-disallowed-list": 101,
       "function-disallowed-list": 17
     },
-    "src/app/features/donations/pages/collection-health-center.page.scss": {
-      "color-no-hex": 1,
-      "declaration-property-value-disallowed-list": 19
-    },
     "src/app/features/donations/pages/donations-categories.component.scss": {
       "color-no-hex": 6,
       "declaration-property-value-disallowed-list": 1,

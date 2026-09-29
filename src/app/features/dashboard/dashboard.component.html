@@ -237,21 +237,9 @@
         </header>
         <p *ngIf="platformStatsState === 'loading'" class="cd-loading" role="status">Loading church totals…</p>
         <dl class="cd-stat-row" *ngIf="platformStatsState === 'ready' && platformStats as stats">
-          <div class="cd-stat-row__item">
-            <dt>Free plan</dt>
-            <dd>{{ stats.tenants_by_plan.free | number }}</dd>
-          </div>
-          <div class="cd-stat-row__item">
-            <dt>Basic plan</dt>
-            <dd>{{ stats.tenants_by_plan.basic | number }}</dd>
-          </div>
-          <div class="cd-stat-row__item">
-            <dt>Premium plan</dt>
-            <dd>{{ stats.tenants_by_plan.premium | number }}</dd>
-          </div>
-          <div class="cd-stat-row__item">
-            <dt>Enterprise plan</dt>
-            <dd>{{ stats.tenants_by_plan.enterprise | number }}</dd>
+          <div class="cd-stat-row__item" *ngFor="let row of planBreakdown(stats.tenants_by_plan)">
+            <dt>{{ row.label }}</dt>
+            <dd>{{ row.count | number }}</dd>
           </div>
         </dl>
         <p *ngIf="registryState === 'loading'" class="cd-loading" role="status">Loading growth metrics…</p>
@@ -572,7 +560,7 @@
           <li *ngFor="let family of operationsSummary?.families_requiring_attention ?? []">
             <button type="button" (click)="navigateToFamily(family.family_id)">
               <strong>{{ family.family_name }}</strong>
-              <span>{{ family.overdue_amount | number:'1.2-2' }} overdue · {{ family.days_overdue }} days</span>
+              <span>{{ family.overdue_amount | cfCurrency }} overdue · {{ family.days_overdue }} days</span>
             </button>
           </li>
         </ul>

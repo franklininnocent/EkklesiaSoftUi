@@ -1,0 +1,125 @@
+<app-modal-shell [title]="'Change plan for ' + current.tenant.name" size="lg" [isSubmitting]="submitting" (closeRequested)="close()">
+  <div class="sa-stack">
+    <p class="sa-muted">
+      Now on <strong>{{ current.plan?.name || 'no plan' }}</strong><ng-container *ngIf="current.plan?.version_number"> (v{{ current.plan?.version_number }})</ng-container>.
+      Changing plan never deletes church records.
+    </p>
+
+    <div *ngIf="plansLoading" class="cf-loading-block" role="status" aria-busy="true">
+      <app-loading-skeleton type="card" [rows]="2"></app-loading-skeleton>
+    </div>
+    <div *ngIf="plansError" class="cf-inline-alert" role="alert"><p>{{ plansError }}</p></div>
+
+    <fieldset class="sa-grid" *ngIf="!plansLoading && plans.length">
+      <legend class="sr-only">Choose a plan</legend>
+      <label
+        *ngFor="let p of plans"
+        class="sa-plan-card"
+        [class.sa-plan-card--featured]="selected?.id === p.id">
+        <span class="sa-plan-card__title">
+          <input type="radio" name="plan" [checked]="selected?.id === p.id" (change)="choose(p)" [disabled]="submitting" />
+          <strong>{{ p.name }}</strong>
+          <span class="sa-chip" *ngIf="p.code === current.plan?.code">Current</span>
+          <span class="sa-chip" *ngIf="!p.is_public">Private</span>
+        </span>
+        <span class="sa-muted" *ngIf="p.active_version as v">
+          <ng-container [ngSwitch]="p.pricing_type">
+            <ng-container *ngSwitchCase="'CUSTOM'">Custom pricing</ng-container>
+            <ng-container *ngSwitchCase="'FREE'">Free</ng-container>
+            <ng-container *ngSwitchDefault>{{ v.monthly_price | cfCurrency: v.currency_code : 0 }}/month</ng-container>
+          </ng-container>
+        </span>
+      </label>
+    </fieldset>
+
+    <ng-container *ngIf="selected">
+      <section class="cf-panel sa-section" aria-live="polite" aria-label="What changes">
+        <div class="sa-section__header"><h3>What changes</h3></div>
+        <div *ngIf="previewLoading" class="cf-loading-block" role="status" aria-busy="true">
+          <app-loading-skeleton type="text" [rows]="3"></app-loading-skeleton>
+        </div>
+        <ng-container *ngIf="preview && !previewLoading">
+          <p class="sa-muted" *ngIf="!preview.features_gained.length && !preview.features_lost.length && !preview.limit_changes.length">
+            {{ isCurrentPlan ? 'Same plan. Use this to update the version, billing or agreed price.' : 'No feature or limit differences.' }}
+          </p>
+          <ul class="sa-chip-list" *ngIf="preview.features_gained.length">
+            <li class="sa-chip sa-chip--gain" *ngFor="let f of preview.features_gained">+ {{ f.name }}</li>
+          </ul>
+          <ul class="sa-chip-list" *ngIf="preview.features_lost.length">
+            <li class="sa-chip sa-chip--loss" *ngFor="let f of preview.features_lost">− {{ f.name }}</li>
+          </ul>
+          <dl class="sa-kv" *ngIf="preview.limit_changes.length">
+            <ng-container *ngFor="let c of preview.limit_changes">
+              <dt>{{ c.name }}</dt>
+              <dd>
+                {{ formatChange(c.from) }} → {{ formatChange(c.to) }}
+                <span class="sa-muted" *ngIf="c.usage !== null && c.usage !== undefined"> (using {{ c.usage.toLocaleString() }})</span>
+              </dd>
+            </ng-container>
+          </dl>
+          <p class="sa-warning" *ngFor="let o of preview.over_limit">
+            Already {{ o.over_by.toLocaleString() }} over the new {{ o.name }} limit. Existing records stay; new ones are blocked until below the limit.
+          </p>
+          <p class="sa-muted" *ngIf="preview.revoked_backfill_overrides > 0">
+            {{ preview.revoked_backfill_overrides }} temporary migration override(s) will end with this change.
+          </p>
+          <label class="cf-switch-field" *ngIf="preview.requires_confirmation">
+            <input type="checkbox" [(ngModel)]="confirmImpact" [disabled]="submitting" />
+            <span class="cf-switch-field__copy">
+              <span class="cf-switch-field__label">I understand what this church will lose and want to continue</span>
+            </span>
+          </label>
+        </ng-container>
+      </section>
+
+      <div class="sa-form-grid">
+        <div class="sa-field" *ngIf="intervals.length > 1">
+          <label for="sa-cp-interval">Billing</label>
+          <select id="sa-cp-interval" [(ngModel)]="interval" [disabled]="submitting">
+            <option *ngFor="let i of intervals" [ngValue]="i">{{ intervalLabel(i) }}</option>
+          </select>
+        </div>
+        <div class="sa-field">
+          <label for="sa-cp-price">Agreed price</label>
+          <input id="sa-cp-price" inputmode="decimal" [(ngModel)]="contractedPrice" [disabled]="submitting || selected.pricing_type === 'FREE'" />
+          <small *ngIf="listPrice && selected.active_version as v">Leave empty to use the list price ({{ listPrice | cfCurrency: v.currency_code }}).</small>
+          <small *ngIf="selected.pricing_type === 'CUSTOM'">Leave empty if the price is still being agreed.</small>
+          <small *ngIf="interval === 'CUSTOM'">For custom billing, enter the agreed yearly amount.</small>
+        </div>
+        <div class="sa-field">
+          <label for="sa-cp-months">Subscription length (months)</label>
+          <input id="sa-cp-months" type="number" min="1" max="120" [(ngModel)]="durationMonths" [disabled]="submitting" />
+        </div>
+        <div class="sa-field">
+          <span class="sa-field__label">Options</span>
+          <label class="cf-switch-field" *ngIf="selected.active_version?.trial_days">
+            <input type="checkbox" [(ngModel)]="startTrial" [disabled]="submitting" />
+            <span class="cf-switch-field__copy">
+              <span class="cf-switch-field__label">Start with the {{ selected.active_version?.trial_days }}-day trial</span>
+            </span>
+          </label>
+          <label class="cf-switch-field">
+            <input type="checkbox" [(ngModel)]="scheduleLater" [disabled]="submitting" />
+            <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Change on a later date</span></span>
+          </label>
+          <input *ngIf="scheduleLater" type="datetime-local" aria-label="Change date" [(ngModel)]="scheduledFor" [disabled]="submitting" />
+        </div>
+        <div class="sa-field sa-field--full">
+          <label for="sa-cp-reason">Reason <span class="required" aria-hidden="true">*</span></label>
+          <textarea id="sa-cp-reason" rows="2" maxlength="500" [(ngModel)]="reason" [disabled]="submitting" placeholder="e.g. Parish grew past 250 people"></textarea>
+        </div>
+      </div>
+    </ng-container>
+  </div>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="close()" [disabled]="submitting">Cancel</button>
+    <button
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="submit()"
+      [disabled]="!selected || submitting || previewLoading || !preview || (preview.requires_confirmation && !confirmImpact)">
+      {{ submitting ? 'Saving…' : scheduleLater ? 'Schedule change' : 'Change plan' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

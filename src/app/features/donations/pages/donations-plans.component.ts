@@ -4,6 +4,8 @@ import { AbstractControl, FormBuilder, FormsModule, ReactiveFormsModule, Validat
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription, switchMap } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { ToastService } from '@core/services/toast.service';
 import { FamilyService } from '@core/services/family.service';
@@ -11,20 +13,22 @@ import { Family } from '@core/models/family.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { EditIconButtonComponent } from '@shared/components/edit-icon-button/edit-icon-button.component';
 import { DonationsService } from '../services/donations.service';
 import { ContributionDue, ContributionPlan, ContributionPlanAssignment } from '../models/donation.model';
 import { localDateOnly } from '../utils/local-date-only';
 import { toDateInputValue } from '../utils/to-date-input-value';
 
-type ApiErrorBody = {
+interface ApiErrorBody {
   message?: string;
   errors?: Record<string, string[]>;
-};
+}
 
 @Component({
   selector: 'app-donations-plans',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, PageHeaderComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent, EditIconButtonComponent],
   templateUrl: './donations-plans.component.html',
   styleUrl: './donations-plans.component.scss'
 })
@@ -77,8 +81,13 @@ export class DonationsPlansComponent implements OnInit, OnDestroy {
     private confirmationDialog: ConfirmationDialogService,
     private toastService: ToastService,
     private router: Router,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private churchCurrency: ChurchCurrencyService,
   ) {}
+
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? '';
+  }
 
   ngOnInit(): void {
     this.canManage = this.authService.hasPermission('donations.manage');

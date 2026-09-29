@@ -27,7 +27,8 @@ import { QuickCollectService } from '../services/quick-collect.service';
 import { ReceiptPrintService } from '../services/receipt-print.service';
 
 type ReceiptVoidFilter = '' | 'active' | 'void';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-receipts',
   standalone: true,
@@ -45,7 +46,8 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
     CfIconActionButtonComponent,
     LoadingSkeletonComponent,
     StewardshipConfirmDialogComponent,
-  ],
+    CfCurrencyPipe,
+    CfActionIconComponent],
   template: `
     <section class="receipts-hub cf-page">
       <app-page-header
@@ -59,8 +61,10 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
           (searchChange)="onSearchChange($event)"
           (filtersOpened)="showFilters = true"
         >
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">
-            Collect Payment
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
           </button>
         </app-list-toolbar>
       </app-page-header>
@@ -85,8 +89,14 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
             </button>
           </span>
         </div>
-        <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllFilters()">
-          Clear all
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon cf-btn--sm"
+          (click)="clearAllFilters()"
+          aria-label="Clear all filters"
+          title="Clear all filters"
+        >
+          <app-cf-action-icon name="filter" />
         </button>
       </div>
 
@@ -101,7 +111,7 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
           <span>{{ decisionHint }}</span>
         </div>
         <div class="cf-decision-strip__actions" *ngIf="hasActiveFilters">
-          <button type="button" class="cf-btn" (click)="clearAllFilters()">Clear filters</button>
+          <button type="button" class="cf-btn cf-btn-icon" (click)="clearAllFilters()" aria-label="Clear filters" title="Clear filters"><app-cf-action-icon name="filter" /></button>
         </div>
       </div>
 
@@ -118,7 +128,11 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
 
       <div class="cf-inline-alert cf-panel" *ngIf="receiptsLoaded && loadError" role="alert">
         <p>{{ loadError }}</p>
-        <button type="button" class="cf-btn cf-btn-primary" (click)="loadReceipts()">Try again</button>
+        <button
+          aria-label="Try again"
+          title="Try again" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="loadReceipts()">
+          <app-cf-action-icon name="refresh" />
+        </button>
       </div>
 
       <ng-container *ngIf="receiptsLoaded && !loadError">
@@ -163,7 +177,7 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
                 </td>
                 <td>{{ receipt.payer_name }}</td>
                 <td>{{ methodLabel(receipt.method) }}</td>
-                <td>{{ receipt.amount | number:'1.2-2' }}</td>
+                <td>{{ receipt.amount | cfCurrency }}</td>
                 <td class="cf-table__actions-cell">
                   <div class="cf-row-actions">
                     <app-cf-icon-action-button
@@ -186,7 +200,6 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
                       *ngIf="canManageReceipts && !receipt.is_void"
                       action="void"
                       size="sm"
-                      label="Void"
                       [ariaLabel]="'Void receipt ' + receipt.receipt_number"
                       [title]="'Void receipt ' + receipt.receipt_number"
                       (clicked)="openVoid(receipt)"
@@ -195,7 +208,6 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
                       *ngIf="canManageReceipts && !receipt.is_void"
                       action="reissue"
                       size="sm"
-                      label="Reissue"
                       [ariaLabel]="'Reissue receipt ' + receipt.receipt_number"
                       [title]="'Reissue receipt ' + receipt.receipt_number"
                       (clicked)="openReissue(receipt)"
@@ -227,11 +239,20 @@ type ReceiptVoidFilter = '' | 'active' | 'void';
               : 'Collect a payment — a receipt is generated automatically.'
           "
         >
-          <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect()">
-            Collect Payment
+          <button
+          aria-label="Collect Payment"
+          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
+          <app-cf-action-icon name="collect-payment" />
           </button>
-          <button type="button" class="cf-btn" *ngIf="hasActiveFilters" (click)="clearAllFilters()">
-            Clear filters
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            *ngIf="hasActiveFilters"
+            (click)="clearAllFilters()"
+            aria-label="Clear filters"
+            title="Clear filters"
+          >
+            <app-cf-action-icon name="filter" />
           </button>
         </app-cf-empty-state>
       </ng-container>

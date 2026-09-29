@@ -24,8 +24,8 @@ const mockSnapshot: TenantDetailsSnapshot = {
   subscription: {
     status: 'EXPIRED',
     access_mode: 'read_only',
-    plan_key: 'basic',
-    plan_name: 'Basic Plan',
+    plan_key: 'starter',
+    plan_name: 'Starter',
     subscription_ends_at: '2024-01-01T00:00:00Z',
     max_users: 50,
     max_storage_mb: 1000,
@@ -108,7 +108,7 @@ describe('TenantDetailComponent', () => {
       getTenantDetails: jest.fn().mockReturnValue(of({ success: true, data: mockSnapshot })),
       getSubscriptionPlans: jest.fn().mockReturnValue(of({
         success: true,
-        data: { basic: { name: 'Basic', price: 29.99, max_users: 50, max_storage_mb: 1000 } },
+        data: { starter: { name: 'Starter', price: 1499, max_users: 250, max_storage_mb: 2048 } },
         duration_options: [{ value: 12, label: '12 months' }],
       })),
       getSubscriptionAudits: jest.fn().mockReturnValue(of({

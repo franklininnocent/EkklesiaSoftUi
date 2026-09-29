@@ -1,0 +1,54 @@
+<div class="sa-stack">
+  <p class="sa-muted">
+    Compare what each plan includes. Columns show the live version, or the draft for plans not yet published.
+    To change a plan, open it from the Plans tab.
+  </p>
+
+  <div *ngIf="loading && !matrix" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+    <app-loading-skeleton type="table" [rows]="8" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <div>
+      <strong>Could not load the comparison</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <div class="sa-matrix cf-panel" *ngIf="matrix && matrix.plans.length > 0">
+    <app-data-table [ariaBusy]="loading">
+      <caption class="sr-only">Features included in each plan</caption>
+      <thead>
+        <tr>
+          <th scope="col">Feature</th>
+          <th scope="col" *ngFor="let col of matrix.plans">
+            <a [routerLink]="['/settings/subscription/plans', col.plan.id]">{{ col.plan.name }}</a>
+            <div class="sa-muted" *ngIf="col.version">
+              v{{ col.version.version_number }}{{ col.version.status === 'DRAFT' ? ' (draft)' : '' }}
+            </div>
+            <div class="sa-muted" *ngIf="!col.version">No version</div>
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let group of groups">
+          <tr>
+            <th scope="colgroup" [attr.colspan]="matrix.plans.length + 1" class="sa-category">{{ group.category }}</th>
+          </tr>
+          <tr *ngFor="let f of group.features; trackBy: trackFeature">
+            <th scope="row">
+              {{ f.name }}
+              <span class="sa-muted" *ngIf="f.is_core"> · always included</span>
+            </th>
+            <td class="sa-matrix__cell" *ngFor="let col of matrix.plans">
+              <ng-container *ngIf="cell(col, f) as c">
+                <span [class.sa-muted]="!c.included" [attr.aria-label]="c.included ? (c.text === '✓' ? 'Included' : c.text) : 'Not included'">{{ c.text }}</span>
+              </ng-container>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </app-data-table>
+  </div>
+</div>

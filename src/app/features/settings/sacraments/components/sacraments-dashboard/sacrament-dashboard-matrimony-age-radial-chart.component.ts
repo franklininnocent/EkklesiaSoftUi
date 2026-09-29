@@ -185,9 +185,7 @@ export class SacramentDashboardMatrimonyAgeRadialChartComponent implements After
     return this.bucketTotal(this.brideBuckets) > 0 || this.bucketTotal(this.groomBuckets) > 0;
   }
 
-  get ariaLabel(): string {
-    return 'Bride and groom age at marriage radial bar chart';
-  }
+  readonly ariaLabel = 'Bride and groom age at marriage radial bar chart';
 
   get dataSummary(): string {
     return this.panels.map((panel) => panel.summary).join('. ');

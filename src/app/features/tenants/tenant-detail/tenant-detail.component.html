@@ -8,7 +8,7 @@
     [statusTone]="headerStatusTone">
     <div class="tenant-detail__header-actions" *ngIf="details">
       <button type="button" class="cf-btn cf-btn--sm" (click)="toggleEdit()" *ngIf="!isEditing">Edit</button>
-      <button type="button" class="cf-btn cf-btn--sm" (click)="openUpgradeModal()">Manage plan</button>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="setActiveTab('subscription')">Manage plan</button>
       <button type="button" class="cf-btn cf-btn--sm" (click)="toggleTenantStatus()">
         {{ details.operational.active ? 'Deactivate' : 'Activate' }}
       </button>
@@ -258,12 +258,13 @@
         <div class="tenant-detail__section-header">
           <h2>Subscription &amp; lifecycle</h2>
           <div class="tenant-detail__actions">
-            <button type="button" class="cf-btn cf-btn--sm" (click)="openUpgradeModal()">Change plan</button>
             <button type="button" class="cf-btn cf-btn--sm" (click)="openRenewModal()">Renew</button>
             <button type="button" class="cf-btn cf-btn--sm" *ngIf="!isSubscriptionSuspended()" (click)="openSuspendModal()">Suspend</button>
             <button type="button" class="cf-btn cf-btn--sm cf-btn-primary" *ngIf="isSubscriptionSuspended()" (click)="openReactivateModal()">Reactivate</button>
           </div>
         </div>
+
+        <app-tenant-plan-panel *ngIf="tenantId" [tenantId]="tenantId" (planChanged)="onPlanPanelChanged()"></app-tenant-plan-panel>
 
         <div class="tenant-detail__grid tenant-detail__grid--2">
           <div class="tenant-detail__card">
@@ -290,10 +291,6 @@
             <dl>
               <dt>Tenant active</dt>
               <dd>{{ details.operational.active ? 'Yes' : 'No' }}</dd>
-              <dt>Max users</dt>
-              <dd>{{ formatUsersLimit(details.subscription.max_users) }}</dd>
-              <dt>Max storage</dt>
-              <dd>{{ formatStorageLimit(details.subscription.max_storage_mb) }}</dd>
               <dt>Suspended at</dt>
               <dd>{{ formatDateTime(details.subscription.subscription_suspended_at) }}</dd>
             </dl>
@@ -549,41 +546,6 @@
 </div>
 
 <!-- Subscription modals (preserved) -->
-<app-modal-shell *ngIf="showUpgradeModal" title="Change plan" [isSubmitting]="subscriptionActionSaving" (closeRequested)="closeUpgradeModal()">
-  <div class="sub-modal-body">
-    <p class="modal-description">Choose a new plan. Catalog price is for reference only — this does not process payment.</p>
-    <div *ngIf="plansLoading" class="cf-loading-block"><p>Loading plans…</p></div>
-    <div *ngIf="!plansLoading && plansLoadError" class="cf-inline-alert" role="alert">
-      <p>{{ plansLoadError }}</p>
-      <button type="button" class="cf-btn cf-btn--sm" (click)="loadSubscriptionPlans()">Retry</button>
-    </div>
-    <div *ngIf="!plansLoading && !plansLoadError && getAvailablePlanKeys().length" class="plans-grid">
-      <button type="button" *ngFor="let planKey of getAvailablePlanKeys()" class="plan-card"
-        [class.selected]="selectedPlan === planKey" [disabled]="!canSelectPlan(planKey) || subscriptionActionSaving"
-        (click)="selectPlan(planKey)">
-        <h3>{{ getPlanName(planKey) }}</h3>
-        <span>{{ formatPrice(getPlanPrice(planKey)) }}</span>
-      </button>
-    </div>
-    <div class="duration-selector" *ngIf="durationOptions.length">
-      <label for="subscription-duration">Access duration</label>
-      <select id="subscription-duration" [(ngModel)]="subscriptionDuration" class="cf-input" [disabled]="subscriptionActionSaving">
-        <option *ngFor="let option of durationOptions" [ngValue]="option.value">{{ option.label }}</option>
-      </select>
-    </div>
-    <div class="reason-field">
-      <label for="upgrade-reason">Reason <span class="optional">optional</span></label>
-      <textarea id="upgrade-reason" [(ngModel)]="subscriptionReason" rows="2" maxlength="500" class="cf-input" [disabled]="subscriptionActionSaving"></textarea>
-    </div>
-  </div>
-  <ng-container modalFooter>
-    <button class="cf-btn" (click)="closeUpgradeModal()" type="button" [disabled]="subscriptionActionSaving">Cancel</button>
-    <button class="cf-btn cf-btn-primary" (click)="upgradeSubscription()" [disabled]="!canConfirmPlanChange()" type="button">
-      {{ subscriptionActionSaving ? 'Saving…' : confirmPlanActionLabel() }}
-    </button>
-  </ng-container>
-</app-modal-shell>
-
 <app-modal-shell *ngIf="showRenewModal" title="Renew access" size="sm" [isSubmitting]="subscriptionActionSaving" (closeRequested)="closeRenewModal()">
   <div class="sub-modal-body">
     <p class="modal-description">Extend this church's subscription period.</p>

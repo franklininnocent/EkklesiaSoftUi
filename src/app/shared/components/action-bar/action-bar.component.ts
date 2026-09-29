@@ -1,13 +1,16 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, EventEmitter, Input, Output } from '@angular/core';
+import { ActionBarIconComponent, ActionBarIconId } from './action-bar-icon.component';
 
-export type ActionBarTier = 'primary' | 'secondary' | 'danger' | 'text';
+export type ActionBarTier = 'primary' | 'secondary' | 'ghost' | 'danger' | 'text';
 export type ActionBarSize = 'md' | 'sm';
+export type { ActionBarIconId };
 
 export interface ActionBarItem {
   id: string;
   label: string;
   tier?: ActionBarTier;
+  icon?: ActionBarIconId;
   disabled?: boolean;
   hidden?: boolean;
 }
@@ -26,7 +29,7 @@ export interface ActionBarItem {
 @Component({
   selector: 'app-action-bar',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ActionBarIconComponent],
   templateUrl: './action-bar.component.html',
   styleUrl: './action-bar.component.scss',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -36,6 +39,8 @@ export class ActionBarComponent {
   @Input() layout: 'inline' | 'stacked' = 'inline';
   /** `sm` for dense table rows; `md` for section-level action groups. */
   @Input() size: ActionBarSize = 'md';
+  /** Icon-only buttons; label shown as native tooltip and aria-label. */
+  @Input() iconOnly = false;
 
   @Output() actionClicked = new EventEmitter<string>();
 
@@ -44,12 +49,19 @@ export class ActionBarComponent {
   }
 
   buttonClass(action: ActionBarItem): string {
+    if (this.iconOnly) {
+      const sizeClass = this.size === 'sm' ? ' cf-btn--sm' : '';
+      return `cf-btn-icon${sizeClass}`;
+    }
+
     const sizeClass = this.size === 'sm' ? ' cf-btn--sm' : '';
     switch (action.tier) {
       case 'primary':
         return `cf-btn cf-btn-primary${sizeClass}`;
       case 'danger':
         return `cf-btn-danger${sizeClass}`;
+      case 'ghost':
+        return `cf-btn-ghost${sizeClass}`;
       case 'text':
         return `cf-btn-text${sizeClass}`;
       case 'secondary':

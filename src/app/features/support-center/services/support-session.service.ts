@@ -3,8 +3,10 @@ import { Injectable, inject } from '@angular/core';
 import { BehaviorSubject, Observable, catchError, map, of, tap } from 'rxjs';
 import { ChurchProfileService } from '@core/services/church/church-profile.service';
 import { PhoneCodeService } from '@core/services/phone-code.service';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { FamilyAffiliationsPanelComponent } from '@features/family-management/components/family-affiliations-panel/family-affiliations-panel.component';
 import { environment } from '@environments/environment';
+import type { ChurchCurrency } from '@core/models/church-currency.model';
 import {
   ApiEnvelope,
   PaginatedPayload,
@@ -30,6 +32,7 @@ export class SupportSessionService {
   private readonly http = inject(HttpClient);
   private readonly churchProfile = inject(ChurchProfileService);
   private readonly phoneCode = inject(PhoneCodeService);
+  private readonly churchCurrency = inject(ChurchCurrencyService);
   private readonly base = `${environment.apiUrl}/support`;
 
   private readonly sessionSubject = new BehaviorSubject<SupportSession | null>(this.readStored());
@@ -443,6 +446,21 @@ export class SupportSessionService {
     this.sessionSubject.next(null);
     this.bumpApplyEpoch();
     this.resetParishScopedCaches();
+    this.restoreHomeChurchCurrency();
+  }
+
+  private restoreHomeChurchCurrency(): void {
+    try {
+      const raw = localStorage.getItem(environment.userKey);
+      if (!raw) {
+        this.churchCurrency.clear();
+        return;
+      }
+      const user = JSON.parse(raw) as { tenant?: { currency?: ChurchCurrency | null } };
+      this.churchCurrency.hydrate(user?.tenant?.currency);
+    } catch {
+      this.churchCurrency.clear();
+    }
   }
 
   private readCurrentSessionId(): string | null {
@@ -470,6 +488,7 @@ export class SupportSessionService {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     this.sessionSubject.next(session);
     this.bumpApplyEpoch();
+    this.churchCurrency.hydrate(session.currency);
 
     if (tenantChanged) {
       this.resetParishScopedCaches();
@@ -510,6 +529,7 @@ export class SupportSessionService {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
     this.sessionSubject.next(session);
     this.bumpApplyEpoch();
+    this.churchCurrency.hydrate(session.currency);
 
     if (tenantChanged) {
       this.resetParishScopedCaches();

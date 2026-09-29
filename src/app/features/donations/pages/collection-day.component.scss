@@ -26,8 +26,8 @@
 }
 
 .coc {
-  min-height: calc(100vh - 8rem);
-  padding: 1.25rem 1.35rem 2rem;
+  min-height: 0;
+  padding: 0 var(--cf-page-pad) 2rem;
   background:
     radial-gradient(ellipse 80% 50% at 50% -20%, rgba(79, 70, 229, 0.08), transparent),
     var(--coc-bg);
@@ -301,6 +301,22 @@
   background: var(--coc-surface);
   box-shadow: var(--coc-shadow-sm);
   min-width: 0;
+}
+
+.coc-kpi--link {
+  color: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.coc-kpi--link:hover {
+  border-color: var(--coc-accent);
+  box-shadow: var(--coc-shadow);
+}
+
+.coc-kpi--link:focus-visible {
+  outline: 2px solid var(--coc-accent);
+  outline-offset: 2px;
 }
 
 .coc-kpi__icon {
@@ -1001,11 +1017,27 @@
   font-size: 0.84rem;
 }
 
-.coc-feed__content span,
-.coc-feed__content small {
-  display: block;
+.coc-feed__meta {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+  margin-top: 0.15rem;
   font-size: 0.75rem;
   color: var(--coc-muted);
+}
+
+.coc-feed__meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.coc-feed__meta small {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .coc-feed__amount {
@@ -1019,37 +1051,6 @@
   color: var(--coc-muted);
   text-align: center;
   padding: 1.5rem 0.5rem;
-}
-
-.coc-alerts {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.coc-alerts__item {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
-  align-items: center;
-  padding: 0.55rem 0;
-  border-bottom: 1px solid var(--coc-border);
-}
-
-.coc-alerts__item:last-child {
-  border-bottom: 0;
-}
-
-.coc-alerts__item strong {
-  display: block;
-  font-size: 0.84rem;
-}
-
-.coc-alerts__item span {
-  font-size: 0.75rem;
-  color: var(--coc-critical);
 }
 
 /* Shortcuts Drawer */

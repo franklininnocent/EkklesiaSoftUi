@@ -1,0 +1,134 @@
+<app-modal-shell
+  [title]="(mode === 'publish' ? 'Review & publish ' : 'Preview ') + plan.name + ' v' + version.version_number"
+  size="lg"
+  [isSubmitting]="submitting"
+  (closeRequested)="close()">
+  <div *ngIf="loading" class="cf-loading-block" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-loading-block__label">Loading…</p>
+    <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert" role="alert">
+    <div>
+      <strong>Could not load this version</strong>
+      <p>{{ error }}</p>
+    </div>
+  </div>
+
+  <div class="sa-stack" *ngIf="preview && !loading">
+    <section class="sa-plan-card" [class.sa-plan-card--featured]="preview.card.is_featured" aria-label="What churches see">
+      <div class="sa-plan-card__title">
+        <h3>{{ preview.card.name }}</h3>
+        <span class="sa-chip" *ngIf="preview.card.badge_label">{{ preview.card.badge_label }}</span>
+      </div>
+      <div class="sa-plan-card__price">
+        <ng-container *ngIf="preview.card.pricing_type === 'CUSTOM'">Custom pricing</ng-container>
+        <ng-container *ngIf="preview.card.pricing_type === 'FREE'">Free</ng-container>
+        <ng-container *ngIf="preview.card.pricing_type === 'FIXED'">
+          {{ preview.card.monthly_price | cfCurrency: preview.card.currency_code : 0 }} <small>/ month</small>
+          <div *ngIf="preview.card.annual_price">
+            <small>{{ preview.card.annual_price | cfCurrency: preview.card.currency_code : 0 }} / year</small>
+          </div>
+        </ng-container>
+      </div>
+      <p class="sa-muted">
+        {{ preview.card.tax.label }} {{ preview.card.tax.rate_percent }}%
+        {{ preview.card.tax.prices_include_tax ? 'included in price' : 'added to price' }}
+        <ng-container *ngIf="preview.card.trial_days"> · {{ preview.card.trial_days }}-day trial</ng-container>
+      </p>
+    </section>
+
+    <section>
+      <h3 class="sa-category">Limits</h3>
+      <dl class="sa-kv">
+        <ng-container *ngFor="let l of preview.limits">
+          <dt>{{ l.name }}</dt>
+          <dd>{{ formatLimit(l) }}</dd>
+        </ng-container>
+      </dl>
+    </section>
+
+    <section>
+      <h3 class="sa-category">Included ({{ includedModules.length }})</h3>
+      <ul class="sa-chip-list">
+        <li class="sa-chip sa-chip--gain" *ngFor="let m of includedModules">{{ m.name }}</li>
+      </ul>
+    </section>
+
+    <section *ngIf="excludedModules.length">
+      <h3 class="sa-category">Not included ({{ excludedModules.length }})</h3>
+      <ul class="sa-chip-list">
+        <li class="sa-chip" *ngFor="let m of excludedModules">{{ m.name }}</li>
+      </ul>
+    </section>
+
+    <ng-container *ngIf="mode === 'publish' && impact">
+      <section class="cf-panel sa-section" aria-label="Who is affected">
+        <div class="sa-section__header">
+          <h3>Who is affected</h3>
+        </div>
+        <p class="sa-muted">
+          Publishing makes this version the one used for new assignments. Churches already on this plan
+          ({{ impact.tenants_on_other_versions }}) stay on their current version and keep all their data.
+          You can move them afterwards from the Versions tab.
+        </p>
+        <div *ngFor="let g of impact.groups" class="sa-stack">
+          <strong>If the {{ g.tenant_count }} {{ g.tenant_count === 1 ? 'church' : 'churches' }} on version {{ g.from_version_number }} were moved:</strong>
+          <ul class="sa-chip-list" *ngIf="g.features_gained.length">
+            <li class="sa-chip sa-chip--gain" *ngFor="let f of g.features_gained">+ {{ f.name }}</li>
+          </ul>
+          <ul class="sa-chip-list" *ngIf="g.features_lost.length">
+            <li class="sa-chip sa-chip--loss" *ngFor="let f of g.features_lost">− {{ f.name }}</li>
+          </ul>
+          <dl class="sa-kv" *ngIf="g.limit_changes.length">
+            <ng-container *ngFor="let c of g.limit_changes">
+              <dt>{{ c.name }}</dt>
+              <dd>{{ formatChange(c.from) }} → {{ formatChange(c.to) }}</dd>
+            </ng-container>
+          </dl>
+          <p class="sa-warning" *ngFor="let o of g.over_limit">
+            {{ o.tenant_count }} {{ o.tenant_count === 1 ? 'church is' : 'churches are' }} already above the new {{ o.name }} limit ({{ o.limit.toLocaleString() }}).
+            Nothing is deleted; they could not add more until they are below the limit.
+          </p>
+          <p class="sa-muted" *ngIf="!g.features_gained.length && !g.features_lost.length && !g.limit_changes.length">
+            No feature or limit differences.
+          </p>
+        </div>
+      </section>
+
+      <fieldset class="sa-stack">
+        <legend class="sa-field__label">When should this version go live?</legend>
+        <label class="cf-switch-field">
+          <input type="radio" name="when" value="now" [(ngModel)]="when" [disabled]="submitting" />
+          <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Publish now</span></span>
+        </label>
+        <label class="cf-switch-field">
+          <input type="radio" name="when" value="later" [(ngModel)]="when" [disabled]="submitting" />
+          <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Schedule for a later date</span></span>
+        </label>
+        <div class="sa-field" *ngIf="when === 'later'">
+          <label for="sa-publish-at">Go-live date and time</label>
+          <input id="sa-publish-at" type="datetime-local" [min]="minDate" [(ngModel)]="effectiveFrom" [disabled]="submitting" />
+        </div>
+        <div class="sa-field">
+          <label for="sa-publish-reason">Note for change history</label>
+          <textarea id="sa-publish-reason" rows="2" maxlength="500" [(ngModel)]="reason" [disabled]="submitting"></textarea>
+        </div>
+      </fieldset>
+    </ng-container>
+  </div>
+
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="close()" [disabled]="submitting">
+      {{ mode === 'publish' ? 'Cancel' : 'Close' }}
+    </button>
+    <button
+      *ngIf="mode === 'publish'"
+      type="button"
+      class="cf-btn cf-btn-primary"
+      (click)="publish()"
+      [disabled]="submitting || loading || !!error">
+      {{ submitting ? 'Publishing…' : when === 'later' ? 'Schedule version' : 'Publish now' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, throwError } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 function isSupportSessionAuthFailure(message: string): boolean {
@@ -33,11 +34,39 @@ function isPublicPasswordRecoveryRequest(url: string): boolean {
   return url.includes('/auth/password/recovery/request');
 }
 
+let planLimitDialogOpen = false;
+
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
   const router = inject(Router);
   const toast = inject(ToastService);
   const auth = inject(AuthService);
   const supportSessions = inject(SupportSessionService);
+  const dialogs = inject(ConfirmationDialogService);
+
+  const showPlanLimitDialog = (message: string, limit: unknown, usage: unknown): void => {
+    if (planLimitDialogOpen) return;
+    planLimitDialogOpen = true;
+    const canSeePlan = auth.canViewMySubscription();
+    const usageLine =
+      typeof usage === 'number' && typeof limit === 'number' ? ` Your church is using ${usage} of ${limit}.` : '';
+    dialogs
+      .confirm({
+        title: 'Plan limit reached',
+        message:
+          `${message}${usageLine} ` +
+          (canSeePlan
+            ? 'You can see plan options and request an upgrade from My Subscription.'
+            : 'Please ask your church administrator about a larger plan.'),
+        confirmText: canSeePlan ? 'See plan options' : 'OK',
+        cancelText: canSeePlan ? 'Not now' : 'Close',
+      })
+      .subscribe((result) => {
+        planLimitDialogOpen = false;
+        if (result.confirmed && canSeePlan) {
+          void router.navigate(['/settings/my-subscription']);
+        }
+      });
+  };
 
   return next(req).pipe(
     catchError((error: HttpErrorResponse) => {
@@ -67,7 +96,13 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             }
             break;
           case 403:
-            if (reason === 'subscription_blocked' || code === 'SUBSCRIPTION_READ_ONLY') {
+            if (code === 'FEATURE_NOT_AVAILABLE') {
+              errorMessage = error.error?.message || 'This feature is not included in your current plan.';
+              toast.warning(errorMessage, 'Not in your plan');
+            } else if (code === 'ENTITLEMENT_LIMIT_REACHED') {
+              errorMessage = error.error?.message || 'Your current plan limit has been reached.';
+              showPlanLimitDialog(errorMessage, error.error?.limit, error.error?.current_usage);
+            } else if (reason === 'subscription_blocked' || code === 'SUBSCRIPTION_READ_ONLY' || code === 'SUBSCRIPTION_EXPIRED') {
               errorMessage =
                 error.error?.message ||
                 'Your subscription has ended. You can view records, but you cannot save changes.';
@@ -114,6 +149,9 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
         context: error.error?.context,
         reason,
         subscription_status: subscriptionStatus,
+        feature: error.error?.feature as string | undefined,
+        limit: error.error?.limit as number | undefined,
+        current_usage: error.error?.current_usage as number | undefined,
       }));
     })
   );

@@ -17,14 +17,14 @@ export interface StewardshipWorkspace {
 export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
   {
     id: 'leadership',
-    label: 'Leadership',
+    label: 'Dashboard',
     hint: 'Health & decisions',
     links: [
-      { path: '/donations', label: 'Dashboard', exact: true, description: 'Financial Operations Center' },
-      { path: '/donations/collection-health', label: 'Collection Health', description: 'Score breakdown and issues' },
+      { path: '/donations', label: 'Overview', exact: true, description: 'Financial Operations Center' },
       { path: '/donations/expenses', label: 'Disbursements', description: 'Parish expense register' },
-      { path: '/donations/reports', label: 'Reports', description: 'Exports and leadership reports' },
-      { path: '/donations/notifications', label: 'Notifications', description: 'Outreach and reminders' }
+      { path: '/donations/reports', label: 'Reports', description: 'CSV exports and report previews' },
+      { path: '/donations/notifications', label: 'Notifications', description: 'Outreach and reminders' },
+      { path: '/donations/download-history', label: 'Download History', description: 'CSV exports requested for this parish' }
     ]
   },
   {
@@ -33,6 +33,7 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
     hint: 'Payments & receipts',
     links: [
       { path: '/donations/collection-day', label: 'Collection Day', description: 'Live collection workspace' },
+      { path: '/donations/today-collections', label: "Today's Collections", description: 'All payments for the parish business date' },
       { path: '/donations/payments', label: 'Payment Register', description: 'All recorded payments' },
       { path: '/donations/register', label: "Today's Register", description: 'Today’s collection log' },
       { path: '/donations/receipts', label: 'Receipts', description: 'Receipt hub and printing' },
@@ -71,6 +72,7 @@ export function resolveStewardshipWorkspace(path: string): StewardshipWorkspaceI
     '/donations/register',
     '/donations/receipts',
     '/donations/collection-day',
+    '/donations/today-collections',
     '/donations/dues',
     '/donations/donors'
   ])) {

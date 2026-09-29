@@ -27,7 +27,8 @@ describe('SETTINGS_ROUTES + rbacGuard integration', () => {
       isSuperAdmin: jest.fn().mockReturnValue(false),
       isEkklesiaAdmin: jest.fn().mockReturnValue(false),
       isTenantAdmin: jest.fn().mockReturnValue(true),
-      hasAnyPermission: jest.fn().mockReturnValue(false)
+      hasAnyPermission: jest.fn().mockReturnValue(false),
+      canAccessRbac: jest.fn().mockReturnValue(true)
     };
 
     await TestBed.configureTestingModule({
@@ -65,7 +66,8 @@ describe('SETTINGS_ROUTES + rbacGuard integration', () => {
       isSuperAdmin: jest.fn().mockReturnValue(false),
       isEkklesiaAdmin: jest.fn().mockReturnValue(false),
       isTenantAdmin: jest.fn().mockReturnValue(false),
-      hasAnyPermission: jest.fn().mockReturnValue(false)
+      hasAnyPermission: jest.fn().mockReturnValue(false),
+      canAccessRbac: jest.fn().mockReturnValue(false)
     };
 
     await TestBed.configureTestingModule({

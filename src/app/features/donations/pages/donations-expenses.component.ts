@@ -8,11 +8,12 @@ import { CommandCenterDataService } from '../dashboard/services/command-center-d
 import { ParishExpenseRecord } from '../models/donation.model';
 import { refreshStewardshipView } from '../utils/stewardship-view.util';
 import { localDateOnly } from '../utils/local-date-only';
-
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 @Component({
   selector: 'app-donations-expenses',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, PageHeaderComponent, ModalShellComponent],
+  imports: [CommonModule, FormsModule, RouterModule, PageHeaderComponent, ModalShellComponent, CfCurrencyPipe, CfActionIconComponent],
   templateUrl: './donations-expenses.component.html',
   styleUrl: './donations-expenses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

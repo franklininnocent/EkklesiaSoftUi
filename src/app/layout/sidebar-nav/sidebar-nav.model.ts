@@ -12,6 +12,7 @@ export type SidebarNavIconId =
   | 'platform-ministries'
   | 'roles-permissions'
   | 'sacraments'
+  | 'mass-intentions'
   | 'users'
   | 'support'
   | 'support-center'

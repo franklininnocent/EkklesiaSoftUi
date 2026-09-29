@@ -23,6 +23,7 @@ describe('NavMenuService', () => {
       canAccessBcc: jest.fn(),
       canAccessDonations: jest.fn(),
       canAccessMinistries: jest.fn(),
+      canAccessMassIntentions: jest.fn(),
       hasTenantPermission: jest.fn().mockReturnValue(false),
       hasPermission: jest.fn().mockReturnValue(false),
       isTenantAdmin: jest.fn().mockReturnValue(false),
@@ -221,6 +222,7 @@ describe('NavMenuService', () => {
       (authMock.isPlatformActor as jest.Mock).mockReturnValue(false);
       (authMock.canAccessDonations as jest.Mock).mockReturnValue(true);
       (authMock.canAccessMinistries as jest.Mock).mockReturnValue(true);
+      (authMock.canAccessMassIntentions as jest.Mock).mockReturnValue(true);
       (appContextMock.resolveNavigationSnapshot as jest.Mock).mockReturnValue({
         actorKind: 'tenant',
         application: 'TENANT',
@@ -234,6 +236,13 @@ describe('NavMenuService', () => {
       expect(entitlements.hasFeature).toHaveBeenCalledWith('CONTRIBUTIONS');
       expect(service.isVisible('ministries', tenantAdmin)).toBe(true);
       expect(service.isVisible('families', tenantAdmin)).toBe(true);
+    });
+
+    it('hides Mass intentions when MASS_INTENTIONS is not in the plan', () => {
+      entitlements.hasFeature = jest.fn((code: string) => code !== 'MASS_INTENTIONS');
+
+      expect(service.isVisible('mass-intentions', tenantAdmin)).toBe(false);
+      expect(entitlements.hasFeature).toHaveBeenCalledWith('MASS_INTENTIONS');
     });
 
     it('never shows a menu the role cannot see, even when the plan includes it', () => {

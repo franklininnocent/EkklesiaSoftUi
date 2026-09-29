@@ -1,0 +1,148 @@
+<div class="sa-stack">
+  <div class="sa-toolbar">
+    <div class="sa-toolbar__filters">
+      <label class="sr-only" for="sa-feature-search">Search features</label>
+      <input id="sa-feature-search" class="sa-search" type="search" placeholder="Search features" [(ngModel)]="search" />
+    </div>
+    <button *ngIf="can.features" type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">New feature</button>
+  </div>
+
+  <p class="sa-muted">
+    Features are the building blocks of plans. Core features are always included and cannot be switched off.
+    Adding a feature here does not give it to any plan until you include it in a plan version.
+  </p>
+
+  <div *ngIf="loading && features.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+    <app-loading-skeleton type="table" [rows]="8" [columns]="5"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <div>
+      <strong>Could not load features</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <app-data-table *ngIf="features.length > 0" [ariaBusy]="loading">
+    <caption class="sr-only">Feature catalog</caption>
+    <thead>
+      <tr>
+        <th scope="col">Feature</th>
+        <th scope="col">Area</th>
+        <th scope="col">Type</th>
+        <th scope="col">Needs</th>
+        <th scope="col">Status</th>
+        <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let f of filtered">
+        <td>
+          <strong>{{ f.name }}</strong>
+          <div><span class="sa-code">{{ f.code }}</span></div>
+        </td>
+        <td class="sa-muted">{{ f.category }}</td>
+        <td>{{ typeLabel(f.feature_type) }}<span class="sa-muted" *ngIf="f.unit"> ({{ f.unit }})</span></td>
+        <td class="sa-muted">{{ f.dependencies.length ? f.dependencies.join(', ') : '—' }}</td>
+        <td>
+          <app-status-badge *ngIf="f.is_core" label="Core" tone="info"></app-status-badge>
+          <app-status-badge [label]="f.is_active ? 'On' : 'Off'" [tone]="f.is_active ? 'success' : 'neutral'"></app-status-badge>
+          <app-status-badge *ngIf="!f.is_public" label="Hidden from pricing" tone="neutral"></app-status-badge>
+        </td>
+        <td class="cf-table__actions-cell">
+          <button *ngIf="can.features" type="button" class="cf-btn" (click)="openEdit(f)">Edit</button>
+        </td>
+      </tr>
+    </tbody>
+  </app-data-table>
+</div>
+
+<app-modal-shell
+  *ngIf="modalOpen"
+  [title]="creating ? 'New feature' : 'Edit ' + (editing?.name ?? '')"
+  size="lg"
+  [isSubmitting]="saving"
+  (closeRequested)="close()">
+  <form class="sa-form-grid" id="sa-feature-form" (ngSubmit)="save()">
+    <div class="sa-field">
+      <label for="sa-f-code">Code <span class="required" aria-hidden="true">*</span></label>
+      <input
+        id="sa-f-code"
+        name="code"
+        autocomplete="off"
+        [(ngModel)]="form.code"
+        (ngModelChange)="form.code = normalizeCode($event)"
+        [disabled]="!creating || saving" />
+      <small *ngIf="creating">Permanent. Used by the app to check access.</small>
+    </div>
+    <div class="sa-field">
+      <label for="sa-f-name">Name <span class="required" aria-hidden="true">*</span></label>
+      <input id="sa-f-name" name="name" maxlength="150" [(ngModel)]="form.name" [disabled]="saving" />
+    </div>
+    <div class="sa-field">
+      <label for="sa-f-type">Type</label>
+      <select id="sa-f-type" name="feature_type" [(ngModel)]="form.feature_type" [disabled]="!creating || saving">
+        <option *ngFor="let t of featureTypes" [ngValue]="t.value">{{ t.label }}</option>
+      </select>
+    </div>
+    <div class="sa-field">
+      <label for="sa-f-category">Area <span class="required" aria-hidden="true">*</span></label>
+      <input id="sa-f-category" name="category" maxlength="40" placeholder="e.g. finance" [(ngModel)]="form.category" [disabled]="saving" />
+    </div>
+    <div class="sa-field">
+      <label for="sa-f-module">App module key</label>
+      <input id="sa-f-module" name="module_key" maxlength="64" placeholder="e.g. donations" [(ngModel)]="form.module_key" [disabled]="saving" />
+    </div>
+    <div class="sa-field">
+      <label for="sa-f-unit">Unit</label>
+      <input id="sa-f-unit" name="unit" maxlength="20" placeholder="e.g. people, MB" [(ngModel)]="form.unit" [disabled]="saving" />
+    </div>
+    <div class="sa-field sa-field--full" *ngIf="form.feature_type === 'TIER'">
+      <label for="sa-f-tiers">Levels (comma separated) <span class="required" aria-hidden="true">*</span></label>
+      <input id="sa-f-tiers" name="tier_options" placeholder="e.g. BASIC, ADVANCED" [(ngModel)]="form.tier_options" [disabled]="saving" />
+    </div>
+    <div class="sa-field sa-field--full">
+      <label for="sa-f-desc">Description</label>
+      <textarea id="sa-f-desc" name="description" rows="2" maxlength="2000" [(ngModel)]="form.description" [disabled]="saving"></textarea>
+    </div>
+    <div class="sa-field">
+      <label for="sa-f-order">Display order</label>
+      <input id="sa-f-order" name="display_order" type="number" min="0" [(ngModel)]="form.display_order" [disabled]="saving" />
+    </div>
+    <div class="sa-field">
+      <span class="sa-field__label">Options</span>
+      <label class="cf-switch-field">
+        <input type="checkbox" name="is_public" [(ngModel)]="form.is_public" [disabled]="saving" />
+        <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Show on public pricing</span></span>
+      </label>
+      <label class="cf-switch-field" *ngIf="!creating">
+        <input type="checkbox" name="is_active" [(ngModel)]="form.is_active" [disabled]="saving || !!editing?.is_core" />
+        <span class="cf-switch-field__copy">
+          <span class="cf-switch-field__label">Feature is on</span>
+          <small>Switching off hides it from every plan. Church data is kept.</small>
+        </span>
+      </label>
+    </div>
+    <fieldset class="sa-field sa-field--full" *ngIf="form.feature_type !== 'LIMIT' && form.feature_type !== 'QUOTA'">
+      <legend class="sa-field__label">Only works together with</legend>
+      <div class="sa-grid">
+        <label class="cf-switch-field" *ngFor="let d of dependencyOptions">
+          <input
+            type="checkbox"
+            [name]="'requires_' + d.code"
+            [checked]="form.requires.has(d.code)"
+            (change)="toggleRequires(d.code, $any($event.target).checked)"
+            [disabled]="saving" />
+          <span class="cf-switch-field__copy"><span class="cf-switch-field__label">{{ d.name }}</span></span>
+        </label>
+      </div>
+    </fieldset>
+  </form>
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="close()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="sa-feature-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+      {{ saving ? 'Saving…' : 'Save feature' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

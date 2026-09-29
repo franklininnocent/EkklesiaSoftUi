@@ -38,6 +38,20 @@ describe('app-sidebar.config', () => {
     expect(sacraments?.children?.every((child) => child.menuId === undefined)).toBe(true);
   });
 
+  it('exposes Mass intentions dashboard and workspace links', () => {
+    const sections = buildAppSidebarSections();
+    const parish = sections.find((section) => section.id === 'parish');
+    const mass = parish?.items.find((item) => item.id === 'mass-intentions');
+
+    expect(mass?.route).toBe('/mass-intentions');
+    expect(mass?.menuId).toBe('mass-intentions');
+    expect(mass?.children?.map((child) => child.id)).toEqual([
+      'mass-intentions-dashboard',
+      'mass-intentions-intentions',
+      'mass-intentions-masses',
+    ]);
+  });
+
   it('filters items by menu visibility', () => {
     const sections = filterSidebarSections(buildAppSidebarSections(), (menuId) => menuId !== 'tenants');
     const platform = sections.find((section) => section.id === 'platform');

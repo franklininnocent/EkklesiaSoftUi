@@ -27,12 +27,16 @@ describe('stewardship-sidebar.adapter', () => {
     const leadership = tree.children?.find((c) => c.id === 'donations-leadership');
     const dashboard = leadership?.children?.find((c) => c.route === '/donations');
     expect(dashboard?.exact).toBe(true);
-    expect(dashboard?.label).toBe('Dashboard');
+    expect(dashboard?.label).toBe('Overview');
+    const leadershipLabels = leadership?.children?.map((child) => child.label) ?? [];
+    const notificationsIndex = leadershipLabels.indexOf('Notifications');
+    expect(leadershipLabels[notificationsIndex + 1]).toBe('Download History');
 
     const collect = tree.children?.find((c) => c.id === 'donations-collect');
     const routes = collect?.children?.map((c) => c.route) ?? [];
     expect(routes).toContain('/donations/dues');
     expect(routes).toContain('/donations/donors');
+    expect(routes).toContain('/donations/today-collections');
   });
 
   it('includes configure children routes', () => {

@@ -1,0 +1,210 @@
+<div class="sa-stack">
+  <div class="sa-toolbar">
+    <div class="sa-toolbar__filters">
+      <label class="cf-switch-field">
+        <input type="checkbox" [(ngModel)]="showLegacy" (ngModelChange)="load()" [disabled]="loading" />
+        <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Show legacy plans</span></span>
+      </label>
+      <label class="cf-switch-field">
+        <input type="checkbox" [(ngModel)]="showArchived" (ngModelChange)="load()" [disabled]="loading" />
+        <span class="cf-switch-field__copy"><span class="cf-switch-field__label">Show archived</span></span>
+      </label>
+    </div>
+    <button *ngIf="can.manage" type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">New plan</button>
+  </div>
+
+  <div *ngIf="loading && plans.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+    <p class="cf-loading-block__label">Loading plans…</p>
+    <app-loading-skeleton type="card" [rows]="3"></app-loading-skeleton>
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <div>
+      <strong>Could not load plans</strong>
+      <p>{{ error }}</p>
+    </div>
+    <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+  </div>
+
+  <app-cf-empty-state
+    *ngIf="!loading && !error && plans.length === 0"
+    title="No plans to show"
+    description="Plans define what each church can use and how many people, families and staff it can record."
+    icon="◎"
+    [hasActions]="can.manage">
+    <button type="button" class="cf-btn cf-btn-primary" (click)="openCreate()">New plan</button>
+  </app-cf-empty-state>
+
+  <div class="sa-grid" *ngIf="plans.length > 0" [attr.aria-busy]="loading">
+    <article
+      *ngFor="let plan of plans; trackBy: trackPlan"
+      class="sa-plan-card"
+      [class.sa-plan-card--featured]="plan.is_featured && plan.status !== 'ARCHIVED'"
+      [class.sa-plan-card--muted]="plan.status === 'ARCHIVED' || plan.is_legacy">
+      <div class="sa-plan-card__title">
+        <h3>{{ plan.name }}</h3>
+        <app-status-badge *ngIf="plan.badge_label" [label]="plan.badge_label" tone="info"></app-status-badge>
+        <app-status-badge *ngIf="plan.is_default" label="Default for new churches" tone="success"></app-status-badge>
+      </div>
+      <span class="sa-code">{{ plan.code }}</span>
+
+      <div class="sa-plan-card__price" *ngIf="plan.active_version as v; else noVersion">
+        <ng-container *ngIf="plan.pricing_type === 'CUSTOM'">Custom pricing</ng-container>
+        <ng-container *ngIf="plan.pricing_type === 'FREE'">Free</ng-container>
+        <ng-container *ngIf="plan.pricing_type === 'FIXED'">
+          {{ v.monthly_price | cfCurrency: v.currency_code : 0 }} <small>/ month</small>
+          <div *ngIf="v.annual_price"><small>{{ v.annual_price | cfCurrency: v.currency_code : 0 }} / year</small></div>
+        </ng-container>
+      </div>
+      <ng-template #noVersion>
+        <p class="sa-muted">No published version yet.</p>
+      </ng-template>
+
+      <p class="sa-muted" *ngIf="plan.short_description">{{ plan.short_description }}</p>
+
+      <div class="sa-plan-card__meta">
+        <app-status-badge [label]="statusLabel(plan).label" [tone]="statusLabel(plan).tone"></app-status-badge>
+        <span>{{ plan.tenant_count }} {{ plan.tenant_count === 1 ? 'church' : 'churches' }}</span>
+        <span *ngIf="plan.active_version as v">Version {{ v.version_number }}</span>
+        <span *ngIf="plan.active_version?.trial_days">{{ plan.active_version?.trial_days }}-day trial</span>
+      </div>
+
+      <div class="sa-plan-card__actions">
+        <a
+          *ngIf="can.manage && !plan.is_legacy"
+          class="cf-btn-icon cf-btn--sm"
+          [routerLink]="['/settings/subscription/plans', plan.id]"
+          [queryParams]="{ tab: 'details' }"
+          title="Edit Plan"
+          aria-label="Edit Plan">
+          <app-action-bar-icon icon="edit"></app-action-bar-icon>
+        </a>
+        <a
+          *ngIf="!(can.manage && !plan.is_legacy)"
+          class="cf-btn-icon cf-btn--sm"
+          [routerLink]="['/settings/subscription/plans', plan.id]"
+          title="View"
+          aria-label="View">
+          <app-action-bar-icon icon="view"></app-action-bar-icon>
+        </a>
+        <button
+          *ngIf="can.manage && !plan.is_legacy"
+          type="button"
+          class="cf-btn-icon cf-btn--sm"
+          (click)="openDuplicate(plan)"
+          title="Duplicate"
+          aria-label="Duplicate">
+          <app-action-bar-icon icon="duplicate"></app-action-bar-icon>
+        </button>
+        <button
+          *ngIf="can.publish && plan.status !== 'ARCHIVED' && !plan.is_default"
+          type="button"
+          class="cf-btn-icon cf-btn--sm"
+          (click)="archive(plan)"
+          title="Archive"
+          aria-label="Archive">
+          <app-action-bar-icon icon="archive"></app-action-bar-icon>
+        </button>
+        <button
+          *ngIf="can.publish && plan.status === 'ARCHIVED'"
+          type="button"
+          class="cf-btn-icon cf-btn--sm"
+          (click)="restore(plan)"
+          title="Restore"
+          aria-label="Restore">
+          <app-action-bar-icon icon="restore"></app-action-bar-icon>
+        </button>
+        <button
+          *ngIf="can.delete && plan.can_delete"
+          type="button"
+          class="cf-btn-icon cf-btn--sm"
+          (click)="deletePlan(plan)"
+          title="Delete"
+          aria-label="Delete">
+          <app-action-bar-icon icon="delete"></app-action-bar-icon>
+        </button>
+      </div>
+      <p
+        *ngIf="can.manage && !plan.is_editable && plan.edit_restriction"
+        class="sa-muted">
+        {{ plan.edit_restriction.message }}
+      </p>
+      <p *ngIf="can.delete && !plan.can_delete && plan.delete_restriction" class="sa-muted">
+        {{ plan.delete_restriction.message }}
+      </p>
+    </article>
+  </div>
+</div>
+
+<app-modal-shell *ngIf="createOpen" title="New plan" size="md" [isSubmitting]="saving" (closeRequested)="closeCreate()">
+  <form class="sa-form-grid" (ngSubmit)="submitCreate()" id="sa-create-plan-form">
+    <div class="sa-field">
+      <label for="sa-new-code">Plan code <span class="required" aria-hidden="true">*</span></label>
+      <input
+        id="sa-new-code"
+        name="code"
+        [(ngModel)]="createForm.code"
+        (ngModelChange)="createForm.code = normalizeCode($event)"
+        placeholder="e.g. PARISH_PLUS"
+        autocomplete="off"
+        required
+        [disabled]="saving" />
+      <small>Permanent identifier. Capital letters, numbers and underscores.</small>
+    </div>
+    <div class="sa-field">
+      <label for="sa-new-name">Plan name <span class="required" aria-hidden="true">*</span></label>
+      <input id="sa-new-name" name="name" [(ngModel)]="createForm.name" required [disabled]="saving" />
+    </div>
+    <div class="sa-field sa-field--full">
+      <label for="sa-new-pricing">Pricing</label>
+      <select id="sa-new-pricing" name="pricing_type" [(ngModel)]="createForm.pricing_type" [disabled]="saving">
+        <option *ngFor="let t of pricingTypes" [ngValue]="t.value">{{ t.label }}</option>
+      </select>
+    </div>
+    <div class="sa-field sa-field--full">
+      <label for="sa-new-summary">Short description</label>
+      <textarea id="sa-new-summary" name="short_description" rows="2" [(ngModel)]="createForm.short_description" [disabled]="saving"></textarea>
+    </div>
+    <p class="sa-muted sa-field--full">
+      The plan starts private with a draft version. Set prices and features, then publish when ready.
+    </p>
+  </form>
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="closeCreate()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="sa-create-plan-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+      {{ saving ? 'Creating…' : 'Create plan' }}
+    </button>
+  </ng-container>
+</app-modal-shell>
+
+<app-modal-shell
+  *ngIf="duplicateSource"
+  [title]="'Duplicate ' + duplicateSource.name"
+  size="sm"
+  [isSubmitting]="saving"
+  (closeRequested)="closeDuplicate()">
+  <form class="sa-stack" (ngSubmit)="submitDuplicate()" id="sa-duplicate-plan-form">
+    <p class="sa-muted">Copies prices, trial and features into a new private draft. Churches are not moved.</p>
+    <div class="sa-field">
+      <label for="sa-dup-code">New plan code <span class="required" aria-hidden="true">*</span></label>
+      <input
+        id="sa-dup-code"
+        name="code"
+        [(ngModel)]="duplicateForm.code"
+        (ngModelChange)="duplicateForm.code = normalizeCode($event)"
+        autocomplete="off"
+        required
+        [disabled]="saving" />
+    </div>
+    <div class="sa-field">
+      <label for="sa-dup-name">New plan name <span class="required" aria-hidden="true">*</span></label>
+      <input id="sa-dup-name" name="name" [(ngModel)]="duplicateForm.name" required [disabled]="saving" />
+    </div>
+  </form>
+  <ng-container modalFooter>
+    <button type="button" class="cf-btn" (click)="closeDuplicate()" [disabled]="saving">Cancel</button>
+    <button type="submit" form="sa-duplicate-plan-form" class="cf-btn cf-btn-primary" [disabled]="saving">
+      {{ saving ? 'Duplicating…' : 'Duplicate plan' }}
+    </button>
+  </ng-container>
+</app-modal-shell>

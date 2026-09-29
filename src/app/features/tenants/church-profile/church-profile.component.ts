@@ -29,6 +29,7 @@ import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ChurchLeaderWorkspaceComponent } from './components/church-leader-workspace/church-leader-workspace.component';
 import { ChurchLeaderDetailComponent } from './components/church-leader-detail/church-leader-detail.component';
@@ -100,6 +101,7 @@ interface ProfileLeaderCard {
     DiocesanBishopPanelComponent,
     PageHeaderComponent,
     BishopAvatarComponent,
+    CfCurrencyPipe,
   ],
   templateUrl: './church-profile.component.html',
   styleUrl: './church-profile.component.scss',

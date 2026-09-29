@@ -27,6 +27,7 @@ export type NavMenuId =
   | 'roles-permissions'
   | 'roles-permissions-assignments'
   | 'sacraments'
+  | 'mass-intentions'
   | 'users'
   | 'support'
   | 'support-center'
@@ -61,6 +62,7 @@ export class NavMenuService {
     { id: 'donations', label: 'Donations', route: '/donations' },
     { id: 'ministries', label: 'Ministries', route: '/ministries' },
     { id: 'sacraments', label: 'Sacraments', route: '/sacraments' },
+    { id: 'mass-intentions', label: 'Mass intentions', route: '/mass-intentions' },
     { id: 'users', label: 'Users', route: '/users' },
     { id: 'roles-permissions', label: 'Roles & Permissions', route: '/settings/roles-permissions' },
   ];
@@ -68,6 +70,7 @@ export class NavMenuService {
   static readonly MENU_FEATURE_REQUIREMENTS: Readonly<Partial<Record<NavMenuId, string>>> = {
     donations: 'CONTRIBUTIONS',
     ministries: 'MINISTRIES',
+    'mass-intentions': 'MASS_INTENTIONS',
     'ministries-audit': 'AUDIT_LOG',
     'settings-data-export': 'IMPORT_EXPORT',
   };
@@ -224,6 +227,7 @@ export class NavMenuService {
       case 'ministries-audit':
       case 'support':
       case 'sacraments':
+      case 'mass-intentions':
       case 'users':
       case 'roles-permissions-assignments':
       case 'settings-my-subscription':
@@ -270,6 +274,8 @@ export class NavMenuService {
       case 'sacraments':
       case 'users':
         return true;
+      case 'mass-intentions':
+        return this.canAccessMassIntentions(user, hasActiveSupportSession);
       default:
         return false;
     }
@@ -302,6 +308,18 @@ export class NavMenuService {
 
   private canAccessMinistries(user: User, hasActiveSupportSession = false): boolean {
     if (!this.auth.canAccessMinistries(user, { hasActiveSupportSession })) {
+      return false;
+    }
+
+    if (user.tenant_id && !this.auth.isSuperAdmin() && !this.auth.isEkklesiaAdmin()) {
+      return this.subscriptionAccess.canViewGatedModules();
+    }
+
+    return true;
+  }
+
+  private canAccessMassIntentions(user: User, hasActiveSupportSession = false): boolean {
+    if (!this.auth.canAccessMassIntentions(user, { hasActiveSupportSession })) {
       return false;
     }
 

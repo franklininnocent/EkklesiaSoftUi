@@ -6,7 +6,6 @@ import { DonationsService } from '../../services/donations.service';
 import { QuickCollectService } from '../../services/quick-collect.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
 import { ToastService } from '@core/services/toast.service';
-import { localDateOnly } from '../../utils/local-date-only';
 
 describe('QuickCollectDrawerComponent', () => {
   let component: QuickCollectDrawerComponent;
@@ -97,10 +96,8 @@ describe('QuickCollectDrawerComponent', () => {
     quickCollectService.open();
     fixture.detectChanges();
 
-    const today = localDateOnly();
     expect(donationsService.getPayments).toHaveBeenCalledWith(expect.objectContaining({
-      payment_date_from: today,
-      payment_date_to: today,
+      today_only: '1',
       per_page: '8'
     }));
 

@@ -3,12 +3,14 @@ import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
 import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { Store } from '@ngrx/store';
-import { Observable, Subject } from 'rxjs';
+import { Observable, Subject, combineLatest } from 'rxjs';
 import { map, takeUntil } from 'rxjs/operators';
 import { AppState } from '@core/store';
 import { User } from '@core/models';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { AuthService } from '@core/services';
+import { EntitlementService } from '@core/services/entitlement.service';
+import { featuresForRoute } from '@core/config/feature-requirements';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 
 @Component({
@@ -21,6 +23,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 })
 export class SettingsComponent implements OnInit, OnDestroy {
   private authService = inject(AuthService);
+  private entitlements = inject(EntitlementService);
   private cdr = inject(ChangeDetectorRef);
   private sanitizer = inject(DomSanitizer);
   private destroy$ = new Subject<void>();
@@ -83,7 +86,7 @@ export class SettingsComponent implements OnInit, OnDestroy {
     },
     { 
       title: 'Subscription', 
-      description: 'Manage subscription duration options and settings', 
+      description: 'Plans, features, limits and access settings for churches', 
       icon: 'subscription', 
       route: '/settings/subscription',
       requiresSuperAdmin: true
@@ -125,8 +128,8 @@ export class SettingsComponent implements OnInit, OnDestroy {
     private store: Store<AppState>
   ) {
     this.currentUser$ = this.store.select(selectCurrentUser);
-    this.visibleSections$ = this.currentUser$.pipe(
-      map(user => this.getVisibleSections(user)),
+    this.visibleSections$ = combineLatest([this.currentUser$, this.entitlements.entitlements$]).pipe(
+      map(([user]) => this.getVisibleSections(user)),
       takeUntil(this.destroy$)
     );
   }
@@ -248,6 +251,9 @@ export class SettingsComponent implements OnInit, OnDestroy {
       }
     }
     if (section.requiresForgotPasswordRequests && !this.canViewForgotPasswordRequests(user)) {
+      return false;
+    }
+    if (section.route && !this.entitlements.hasAllFeatures(featuresForRoute(section.route))) {
       return false;
     }
     return true;

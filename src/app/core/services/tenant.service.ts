@@ -590,62 +590,6 @@ export class TenantService {
   }
 
   /**
-   * Get all subscription plans
-   */
-  getPlans(): Observable<{success: boolean; data: any[]; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.get<{success: boolean; data: any[]; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans`)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
-   * Create a new subscription plan
-   */
-  createPlan(data: {key: string; name: string; description?: string; price: number; max_users: number; max_storage_mb: number; features?: string[]; display_order?: number; active?: boolean; is_default?: boolean}): Observable<{success: boolean; data: any; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.post<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans`, data)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
-   * Update a subscription plan
-   */
-  updatePlan(id: number, data: Partial<{key: string; name: string; description?: string; price: number; max_users: number; max_storage_mb: number; features?: string[]; display_order?: number; active?: boolean; is_default?: boolean}>): Observable<{success: boolean; data: any; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.put<{success: boolean; data: any; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans/${id}`, data)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
-   * Delete a subscription plan
-   */
-  deletePlan(id: number): Observable<{success: boolean; message?: string}> {
-    this.setLoading(true);
-    this.clearError();
-
-    return this.http.delete<{success: boolean; message?: string}>(`${this.apiUrl.replace('/tenant', '')}/subscription/plans/${id}`)
-      .pipe(
-        catchError(error => this.handleError(error)),
-        finalize(() => this.setLoading(false))
-      );
-  }
-
-  /**
    * Build query parameters from TenantListParams
    */
   private buildQueryParams(params?: TenantListParams): Record<string, string> {

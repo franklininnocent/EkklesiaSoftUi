@@ -1,0 +1,39 @@
+/* Uniform action icon size across Donations + Quick Collect */
+.stewardship-shell,
+app-quick-collect-drawer,
+app-collection-day {
+  --cf-stewardship-action-icon-size: var(--cf-icon-md);
+
+  app-cf-action-icon .cf-action-icon {
+    width: var(--cf-stewardship-action-icon-size);
+    height: var(--cf-stewardship-action-icon-size);
+  }
+
+  .cf-icon-btn__icon,
+  .cf-icon-btn--sm .cf-icon-btn__icon {
+    width: var(--cf-stewardship-action-icon-size);
+    height: var(--cf-stewardship-action-icon-size);
+  }
+
+  .app-edit-icon-btn__icon,
+  .app-edit-icon-btn--sm .app-edit-icon-btn__icon {
+    width: var(--cf-stewardship-action-icon-size);
+    height: var(--cf-stewardship-action-icon-size);
+  }
+
+  .cf-btn-icon svg:not(.cf-action-icon) {
+    width: var(--cf-stewardship-action-icon-size);
+    height: var(--cf-stewardship-action-icon-size);
+  }
+
+  .coc-command__icon-btn svg,
+  .cf-list-toolbar__filters-icon {
+    width: var(--cf-stewardship-action-icon-size);
+    height: var(--cf-stewardship-action-icon-size);
+  }
+
+  .coc-btn .cf-action-icon {
+    width: var(--cf-stewardship-action-icon-size);
+    height: var(--cf-stewardship-action-icon-size);
+  }
+}

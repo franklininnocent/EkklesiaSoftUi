@@ -40,7 +40,7 @@ describe('FinancialCommandCenterPageComponent', () => {
     persona: {
       persona: 'admin',
       label: 'Administrator View',
-      emphasis: 'Full financial visibility across the parish.',
+      emphasis: 'Collections, family follow-up, and parish operations in one place.',
       sections: ['health_overview', 'action_center', 'analytics'],
       quick_actions: [{ id: 'collect', label: 'Quick collect' }]
     }
@@ -95,7 +95,7 @@ describe('FinancialCommandCenterPageComponent', () => {
     component.data.persona = {
       persona: 'admin',
       label: 'Administrator View',
-      emphasis: 'Full financial visibility across the parish.',
+      emphasis: 'Collections, family follow-up, and parish operations in one place.',
       sections: ['layer_3_actions'],
       quick_actions: [{ id: 'collect', label: 'Quick collect' }]
     };

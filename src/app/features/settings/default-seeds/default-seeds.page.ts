@@ -215,9 +215,7 @@ export class DefaultSeedsPage implements OnInit, OnDestroy {
     return 'Add recommended lists for your church';
   }
 
-  get decisionSubtitle(): string {
-    return 'This fills in the standard categories, types, and positions your parish does not have yet.';
-  }
+  readonly decisionSubtitle = 'This fills in the standard categories, types, and positions your parish does not have yet.';
 
   toggleChooseIndividually(): void {
     this.chooseIndividually = !this.chooseIndividually;

@@ -34,6 +34,10 @@ export class BreadcrumbComponent implements OnInit {
     'ministries': 'Ministries & Associations',
     'guests': 'Guest members',
     'audit': 'Audit log',
+    'mass-intentions': 'Mass intentions',
+    'intentions': 'Intentions',
+    'masses': 'Masses',
+    'reports': 'Reports',
   };
 
   constructor(

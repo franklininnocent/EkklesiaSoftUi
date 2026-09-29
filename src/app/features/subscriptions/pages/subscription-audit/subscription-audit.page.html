@@ -1,0 +1,85 @@
+<div class="sa-stack">
+  <p class="sa-muted" *ngIf="!can.audit">You do not have access to the change history.</p>
+
+  <ng-container *ngIf="can.audit">
+    <div class="sa-toolbar">
+      <div class="sa-field">
+        <label for="sa-audit-type">Show</label>
+        <select id="sa-audit-type" class="sa-search" [(ngModel)]="entityType" (ngModelChange)="applyFilter()">
+          <option *ngFor="let t of entityTypes" [ngValue]="t.value">{{ t.label }}</option>
+        </select>
+      </div>
+      <span class="sa-muted" *ngIf="meta">{{ meta.total }} changes</span>
+    </div>
+
+    <div *ngIf="loading && entries.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <app-loading-skeleton type="table" [rows]="6" [columns]="4"></app-loading-skeleton>
+    </div>
+
+    <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+      <div>
+        <strong>Could not load change history</strong>
+        <p>{{ error }}</p>
+      </div>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!loading && !error && entries.length === 0"
+      title="No changes yet"
+      description="Changes to plans, features and policies appear here."
+      icon="☰"
+      [hasActions]="false">
+    </app-cf-empty-state>
+
+    <app-data-table *ngIf="entries.length > 0" [ariaBusy]="loading">
+      <caption class="sr-only">Subscription catalog change history</caption>
+      <thead>
+        <tr>
+          <th scope="col">When</th>
+          <th scope="col">Change</th>
+          <th scope="col">Item</th>
+          <th scope="col">By</th>
+          <th scope="col">Reason</th>
+          <th scope="col" class="cf-table__actions-col"><span class="sr-only">Details</span></th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let e of entries">
+          <tr>
+            <td>{{ e.created_at | date: 'medium' }}</td>
+            <td>{{ describe(e) }}</td>
+            <td class="sa-muted">{{ entityLabel(e) }}</td>
+            <td class="sa-muted">{{ e.actor_role || 'System' }}<ng-container *ngIf="e.actor_id"> #{{ e.actor_id }}</ng-container></td>
+            <td>{{ e.reason || '—' }}</td>
+            <td class="cf-table__actions-cell">
+              <button type="button" class="cf-btn" (click)="toggle(e.id)" [attr.aria-expanded]="expandedId === e.id">
+                {{ expandedId === e.id ? 'Hide' : 'Details' }}
+              </button>
+            </td>
+          </tr>
+          <tr *ngIf="expandedId === e.id">
+            <td colspan="6">
+              <div class="sa-form-grid">
+                <div>
+                  <strong>Before</strong>
+                  <pre class="sa-json">{{ pretty(e.before_state) }}</pre>
+                </div>
+                <div>
+                  <strong>After</strong>
+                  <pre class="sa-json">{{ pretty(e.after_state) }}</pre>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </app-data-table>
+
+    <nav class="sa-pager" *ngIf="meta && meta.last_page > 1" aria-label="Pages">
+      <button type="button" class="cf-btn" (click)="goTo(page - 1)" [disabled]="loading || page <= 1">Previous</button>
+      <span>Page {{ meta.current_page }} of {{ meta.last_page }}</span>
+      <button type="button" class="cf-btn" (click)="goTo(page + 1)" [disabled]="loading || page >= meta.last_page">Next</button>
+    </nav>
+  </ng-container>
+</div>

@@ -62,7 +62,17 @@
       <dl class="my-sub-facts">
         <div class="my-sub-fact">
           <dt>Plan</dt>
-          <dd>{{ s.plan_name }}</dd>
+          <dd>{{ planName }}</dd>
+        </div>
+        <div class="my-sub-fact" *ngIf="overview?.terms?.contracted_price as price">
+          <dt>Price</dt>
+          <dd>
+            {{ price | cfCurrency: overview!.terms!.currency_code }} {{ intervalLabel(overview!.terms!.billing_interval) }}
+            <small class="my-sub-muted" *ngIf="overview!.terms!.tax as tax">
+              {{ tax.inclusive ? 'includes' : 'plus' }} {{ overview!.terms!.tax_label }}
+              ({{ tax.tax | cfCurrency: overview!.terms!.currency_code }})
+            </small>
+          </dd>
         </div>
         <div class="my-sub-fact">
           <dt>Status</dt>
@@ -96,40 +106,162 @@
       </dl>
 
       <p class="my-sub-access-note" *ngIf="!showAccessNotice(s)">{{ accessDetail(s) }}</p>
+      <p class="my-sub-access-note" *ngIf="overview?.pending_change as change">
+        Your plan changes to <strong>{{ change.plan_name }}</strong>
+        <ng-container *ngIf="change.scheduled_for"> on {{ formatDate(change.scheduled_for) }}</ng-container>.
+      </p>
     </section>
 
-    <!-- Priority 3: Plan limits -->
+    <!-- Priority 3: How much of the plan is used -->
     <section class="my-sub-panel" aria-labelledby="my-sub-plan-title">
       <header class="my-sub-panel__header">
         <div>
-          <h2 id="my-sub-plan-title">Plan details</h2>
-          <p>Limits included with {{ s.plan_name }}</p>
+          <h2 id="my-sub-plan-title">Plan limits</h2>
+          <p>How much of {{ planName }} your church is using</p>
         </div>
       </header>
 
-      <dl class="my-sub-facts my-sub-facts--compact">
-        <div class="my-sub-fact">
-          <dt>User limit</dt>
-          <dd>{{ formatUsers(s.max_users) }}</dd>
-        </div>
-        <div class="my-sub-fact">
-          <dt>Storage limit</dt>
-          <dd>{{ formatStorage(s.max_storage_mb) }}</dd>
-        </div>
-      </dl>
+      <ul class="my-sub-usage" *ngIf="overview?.usage?.length; else legacyLimits">
+        <li *ngFor="let row of overview!.usage; trackBy: trackByUsage" class="my-sub-usage__row" [attr.data-level]="row.level">
+          <div class="my-sub-usage__label">
+            <strong>{{ row.name }}</strong>
+            <span>{{ usageText(row) }}</span>
+          </div>
+          <div
+            *ngIf="!row.unlimited && row.limit !== null"
+            class="my-sub-usage__bar"
+            role="progressbar"
+            [attr.aria-valuenow]="usagePercent(row)"
+            aria-valuemin="0"
+            aria-valuemax="100"
+            [attr.aria-label]="row.name + ': ' + usageText(row)">
+            <span [style.width.%]="usagePercent(row)"></span>
+          </div>
+          <span class="my-sub-usage__level">{{ usageLevelLabel(row.level) }}</span>
+        </li>
+      </ul>
+      <ng-template #legacyLimits>
+        <dl class="my-sub-facts my-sub-facts--compact">
+          <div class="my-sub-fact">
+            <dt>User limit</dt>
+            <dd>{{ formatUsers(s.max_users) }}</dd>
+          </div>
+          <div class="my-sub-fact">
+            <dt>Storage limit</dt>
+            <dd>{{ formatStorage(s.max_storage_mb) }}</dd>
+          </div>
+        </dl>
+      </ng-template>
     </section>
 
     <!-- Priority 4: Features -->
-    <section class="my-sub-panel" aria-labelledby="my-sub-features-title" *ngIf="s.features?.length">
+    <section
+      class="my-sub-panel"
+      aria-labelledby="my-sub-features-title"
+      *ngIf="enabledFeatures.length || s.features?.length">
       <header class="my-sub-panel__header">
         <div>
           <h2 id="my-sub-features-title">Included features</h2>
           <p>What this plan covers for your church</p>
         </div>
       </header>
-      <ul class="my-sub-features">
-        <li *ngFor="let feature of s.features">{{ featureLabel(feature) }}</li>
+      <ul class="my-sub-features" *ngIf="enabledFeatures.length; else legacyFeatures">
+        <li *ngFor="let feature of enabledFeatures">{{ feature.name }}</li>
       </ul>
+      <ng-template #legacyFeatures>
+        <ul class="my-sub-features">
+          <li *ngFor="let feature of s.features">{{ featureLabel(feature) }}</li>
+        </ul>
+      </ng-template>
+    </section>
+
+    <!-- Priority 5: Requests to Ekklesia -->
+    <section class="my-sub-panel" aria-labelledby="my-sub-requests-title" *ngIf="openRequest || requests.length">
+      <header class="my-sub-panel__header">
+        <div>
+          <h2 id="my-sub-requests-title">Plan requests</h2>
+          <p>Requests your church has sent to EkklesiaSoft</p>
+        </div>
+      </header>
+      <div class="my-sub-alert" *ngIf="openRequest?.status === 'INFO_REQUESTED'" role="status">
+        <div class="my-sub-alert__copy">
+          <strong>EkklesiaSoft needs a little more information</strong>
+          <p>{{ openRequest!.review_notes }}</p>
+          <p>Choose the plan again below and add your answer in the message box.</p>
+        </div>
+      </div>
+      <ul class="my-sub-requests">
+        <li *ngFor="let request of requests; trackBy: trackByRequest">
+          <div>
+            <strong>{{ request.requested_plan?.name || 'Plan' }}</strong>
+            <span class="my-sub-muted"> · sent {{ formatDate(request.created_at) }}</span>
+            <p class="my-sub-muted" *ngIf="request.review_notes && request.status !== 'INFO_REQUESTED'">
+              {{ request.review_notes }}
+            </p>
+          </div>
+          <app-status-badge
+            [label]="requestStatusLabel(request.status)"
+            [tone]="requestStatusTone(request.status)">
+          </app-status-badge>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Priority 6: Compare plans and ask for a change -->
+    <section class="my-sub-panel" aria-labelledby="my-sub-compare-title" *ngIf="plans.length" id="compare-plans">
+      <header class="my-sub-panel__header">
+        <div>
+          <h2 id="my-sub-compare-title">Compare plans</h2>
+          <p *ngIf="askedFeatureName; else genericCompare">
+            You were looking for <strong>{{ askedFeatureName }}</strong>. Plans that include it are marked.
+          </p>
+          <ng-template #genericCompare>
+            <p>Need more room or more features? Ask EkklesiaSoft to change your plan.</p>
+          </ng-template>
+        </div>
+      </header>
+
+      <app-plan-comparison
+        [plans]="plans"
+        [currentCode]="currentPlanCode"
+        [requestedCode]="openRequest?.status === 'PENDING' ? (openRequest!.requested_plan?.code ?? null) : null"
+        [highlightFeature]="askedFeature"
+        [selectable]="true"
+        [disabled]="!canRequest"
+        (choose)="choosePlan($event)">
+      </app-plan-comparison>
+
+      <form
+        *ngIf="selectedPlan as plan"
+        class="my-sub-request-form"
+        (ngSubmit)="submitRequest()"
+        aria-labelledby="my-sub-request-title">
+        <h3 id="my-sub-request-title">Request {{ plan.name }}</h3>
+        <fieldset *ngIf="plan.pricing_type !== 'CUSTOM' && plan.billing_intervals.length > 1" class="my-sub-request-form__intervals">
+          <legend>How would you like to pay?</legend>
+          <label *ngFor="let interval of plan.billing_intervals">
+            <input type="radio" name="interval" [value]="interval" [(ngModel)]="requestInterval" />
+            {{ intervalOptionLabel(interval) }}
+          </label>
+        </fieldset>
+        <label class="my-sub-request-form__message">
+          Message for EkklesiaSoft (optional)
+          <textarea
+            name="message"
+            rows="3"
+            maxlength="1000"
+            [(ngModel)]="requestMessage"
+            placeholder="For example: we are growing and need contribution plans"></textarea>
+        </label>
+        <p class="my-sub-muted">No payment is taken here. EkklesiaSoft will review your request and contact you.</p>
+        <p class="my-sub-request-form__error" *ngIf="requestError" role="alert">{{ requestError }}</p>
+        <div class="my-sub-request-form__actions">
+          <button type="submit" class="cf-btn cf-btn-primary" [disabled]="submitting">
+            {{ submitting ? 'Sending…' : 'Send request' }}
+          </button>
+          <button type="button" class="cf-btn cf-btn-secondary" (click)="cancelRequest()" [disabled]="submitting">Cancel</button>
+        </div>
+      </form>
     </section>
 
     <!-- Secondary: honest scope note (no payment UX) -->

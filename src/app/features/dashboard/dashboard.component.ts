@@ -5,6 +5,7 @@
  */
 import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -32,6 +33,7 @@ import {
 import { TenantService } from '@core/services/tenant.service';
 import { TenantStatisticsResponse } from '@core/models/tenant.model';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
+import { cfFormatMoney } from '@shared/utils/cf-intl.util';
 import { PastoralCareService } from '@features/pastoral-care/services/pastoral-care.service';
 import {
   PastoralCareAlert,
@@ -109,7 +111,7 @@ interface CelebrationItem {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CfCurrencyPipe],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -771,13 +773,11 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   formatCurrency(value: number | null | undefined, currencyCode?: string): string {
-    const amount = value ?? 0;
-    const currency = currencyCode ?? this.stewardshipCurrencyCode();
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: 0,
-    }).format(amount);
+    const code = currencyCode ?? this.stewardshipCurrencyCode();
+    if (!code) {
+      return '';
+    }
+    return cfFormatMoney(value, code, 0);
   }
 
   givingTrendPoints(): Array<{ month: string; collected: number }> {
@@ -838,6 +838,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
 
   formatCompactNumber(value: number | null | undefined): string {
     return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value ?? 0);
+  }
+
+  planBreakdown(byPlan: Record<string, number> | null | undefined): { key: string; label: string; count: number }[] {
+    if (!byPlan) {
+      return [];
+    }
+
+    const order = ['free', 'starter', 'standard', 'professional', 'enterprise'];
+    const label = (key: string) => key.replace(/[_-]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+
+    const rows = Object.entries(byPlan)
+      .filter(([, count]) => count > 0)
+      .map(([key, count]) => ({ key, label: `${label(key)} plan`, count }));
+
+    return rows.sort((a, b) => {
+      const ai = order.indexOf(a.key);
+      const bi = order.indexOf(b.key);
+      if (ai !== -1 || bi !== -1) {
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      }
+      return a.label.localeCompare(b.label);
+    });
   }
 
   ministriesMembershipTotal(): number {

@@ -79,15 +79,15 @@
 
   &__icon {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: var(--cf-icon-md);
+    height: var(--cf-icon-md);
     flex-shrink: 0;
     pointer-events: none;
   }
 
   &--sm &__icon {
-    width: 14px;
-    height: 14px;
+    width: var(--cf-icon-md);
+    height: var(--cf-icon-md);
   }
 
   &__label {

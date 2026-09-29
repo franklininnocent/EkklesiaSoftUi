@@ -58,6 +58,17 @@ export function buildAppSidebarSections(): SidebarNavSection[] {
             leaf('sacraments-register', 'Register', '/sacraments/register'),
           ],
         },
+        {
+          ...leaf('mass-intentions', 'Mass intentions', '/mass-intentions', {
+            icon: 'mass-intentions',
+            menuId: 'mass-intentions',
+          }),
+          children: [
+            leaf('mass-intentions-dashboard', 'Dashboard', '/mass-intentions', { exact: true }),
+            leaf('mass-intentions-intentions', 'Intentions', '/mass-intentions/intentions'),
+            leaf('mass-intentions-masses', 'Masses', '/mass-intentions/masses'),
+          ],
+        },
       ],
     },
     {
@@ -123,26 +134,29 @@ export function buildAppSidebarSections(): SidebarNavSection[] {
 
 export function filterSidebarSections(
   sections: SidebarNavSection[],
-  isVisible: (menuId: string) => boolean
+  isVisible: (menuId: string) => boolean,
+  isRouteAllowed: (route: string) => boolean = () => true
 ): SidebarNavSection[] {
   return sections
     .map((section) => ({
       ...section,
-      items: filterSidebarNodes(section.items, isVisible),
+      items: filterSidebarNodes(section.items, isVisible, isRouteAllowed),
     }))
     .filter((section) => section.items.length > 0);
 }
 
 function filterSidebarNodes(
   nodes: SidebarNavNode[],
-  isVisible: (menuId: string) => boolean
+  isVisible: (menuId: string) => boolean,
+  isRouteAllowed: (route: string) => boolean
 ): SidebarNavNode[] {
   return nodes
     .filter((node) => !node.menuId || isVisible(node.menuId))
+    .filter((node) => !node.route || isRouteAllowed(node.route))
     .map((node) => ({
       ...node,
       children: node.children
-        ? filterSidebarNodes(node.children, isVisible)
+        ? filterSidebarNodes(node.children, isVisible, isRouteAllowed)
         : undefined,
     }))
     .filter((node) => node.route || (node.children?.length ?? 0) > 0);

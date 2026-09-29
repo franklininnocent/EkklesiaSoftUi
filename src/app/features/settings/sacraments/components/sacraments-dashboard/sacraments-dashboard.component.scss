@@ -120,84 +120,99 @@
   white-space: nowrap;
 }
 
-/* BCC KPI rail — scoped copy for 5-metric sacraments dashboard */
-.sacraments-dashboard .bcc-kpi-rail {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 0;
-  margin-top: 0;
-  padding: 0;
-  overflow: hidden;
-}
-
-.sacraments-dashboard .bcc-kpi-rail__item {
-  position: relative;
+/* Unified single-line summary bar: KPIs + type chips + register actions */
+.sacraments-dashboard__summary-bar {
   display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 0.2rem;
-  min-width: 0;
-  padding: 0.75rem 0.85rem;
-  background: transparent;
-  border: 0;
-  text-align: left;
-  color: inherit;
-  font: inherit;
-  cursor: default;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+  padding: 0.55rem 0.85rem;
+  margin-top: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
 }
 
-.sacraments-dashboard .bcc-kpi-rail__item + .bcc-kpi-rail__item::before {
+.sacraments-dashboard__summary-metrics {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.sacraments-dashboard__summary-metric {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35rem;
+  padding: 0.2rem 0.7rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sacraments-dashboard__summary-metric + .sacraments-dashboard__summary-metric::before,
+.sacraments-dashboard__summary-types::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 22%;
-  bottom: 22%;
+  top: 15%;
+  bottom: 15%;
   width: 1px;
   background: var(--cf-slate-200, #e2e8f0);
 }
 
-.sacraments-dashboard .bcc-kpi-rail__item--emphasis {
-  background: linear-gradient(180deg, rgba(22, 163, 74, 0.04), transparent 70%);
+.sacraments-dashboard__summary-metric--emphasis {
+  padding-left: 0.35rem;
+
+  .sacraments-dashboard__summary-metric__value {
+    color: var(--cf-primary, #2563eb);
+  }
 }
 
-.sacraments-dashboard .bcc-kpi-rail__label {
+.sacraments-dashboard__summary-metric__label {
   color: var(--cf-muted);
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
-  line-height: 1.2;
+  line-height: 1;
 }
 
-.sacraments-dashboard .bcc-kpi-rail__value {
+.sacraments-dashboard__summary-metric__value {
   color: var(--cf-slate-900);
-  font-size: 1.45rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  line-height: 1.15;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.sacraments-dashboard .bcc-kpi-rail__value--sm {
-  font-size: 1.25rem;
-}
-
-.sacraments-dashboard .bcc-kpi-rail__delta--up {
+.sacraments-dashboard__summary-metric__value.bcc-kpi-rail__delta--up {
   color: var(--cf-forest, #15803d);
 }
 
-.sacraments-dashboard .bcc-kpi-rail__delta--down {
+.sacraments-dashboard__summary-metric__value.bcc-kpi-rail__delta--down {
   color: var(--cf-critical, #b91c1c);
 }
 
-.sacraments-dashboard__breakdown {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
+.sacraments-dashboard__summary-types {
+  position: relative;
+  display: inline-flex;
   align-items: center;
-  gap: 0.5rem 0.75rem;
-  padding: 0.5rem 0.85rem;
-  border-top: 1px solid var(--cf-panel-border, #e2e8f0);
+  gap: 0.45rem;
+  padding: 0.15rem 0.7rem;
+  margin-left: 0.15rem;
+  flex-shrink: 0;
+}
+
+.sacraments-dashboard__summary-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-shrink: 0;
+  padding-left: 0.65rem;
+  border-left: 1px solid var(--cf-slate-200, #e2e8f0);
 }
 
 .sacraments-dashboard__breakdown-item {
@@ -229,21 +244,6 @@
 .sacraments-dashboard__breakdown-item--anointing .sacraments-dashboard__breakdown-dot { background: #64748b; }
 .sacraments-dashboard__breakdown-item--holy-orders .sacraments-dashboard__breakdown-dot { background: #dc2626; }
 .sacraments-dashboard__breakdown-item--matrimony .sacraments-dashboard__breakdown-dot { background: #ec4899; }
-
-@media (max-width: 1100px) {
-  .sacraments-dashboard .bcc-kpi-rail {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(3n + 1)::before {
-    display: none;
-  }
-
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(4),
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(5) {
-    border-top: 1px solid var(--cf-slate-100, #f1f5f9);
-  }
-}
 
 @media (max-width: 767px) {
   :host ::ng-deep app-page-header .cf-page-header.cf-hero {
@@ -284,26 +284,12 @@
     }
   }
 
-  .sacraments-dashboard .bcc-kpi-rail {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+  .sacraments-dashboard__summary-bar {
+    padding: 0.5rem 0.65rem;
   }
 
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(3n + 1)::before {
-    display: block;
-  }
-
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(2n + 1)::before {
-    display: none;
-  }
-
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(3),
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(4),
-  .sacraments-dashboard .bcc-kpi-rail__item:nth-child(5) {
-    border-top: 1px solid var(--cf-slate-100, #f1f5f9);
-  }
-
-  .sacraments-dashboard .bcc-kpi-rail__value {
-    font-size: 1.25rem;
+  .sacraments-dashboard__summary-metric__value {
+    font-size: 0.95rem;
   }
 }
 
@@ -990,6 +976,30 @@
 
 .sacraments-dashboard__yoy--flat {
   color: var(--cf-text-muted);
+}
+
+.sacraments-dashboard__quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: var(--cf-space-3);
+}
+
+.sacraments-dashboard__quick-links a,
+.sacraments-dashboard__quick-link {
+  color: var(--cf-primary);
+  text-decoration: none;
+  font-size: var(--cf-text-base);
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sacraments-dashboard__quick-link:hover,
+.sacraments-dashboard__quick-links a:hover {
+  text-decoration: underline;
 }
 
 @media (max-width: 1279px) {

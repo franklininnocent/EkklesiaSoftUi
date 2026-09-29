@@ -18,6 +18,10 @@ export interface SubscriptionAccessSnapshot {
   grace_period_days?: number;
   expiring_warning_days?: number;
   write_policy?: string;
+  plan?: { code: string | null; key: string | null; name: string | null; is_legacy: boolean } | null;
+  /** Changes whenever the church's effective features change; drives EntitlementService refetch. */
+  entitlements_version?: string;
+  engine_mode?: string;
 }
 
 const WARN_STATUSES = new Set(['EXPIRING', 'GRACE_PERIOD', 'EXPIRED', 'SUSPENDED']);

@@ -62,8 +62,10 @@
             (click)="toggleQuickActions($event)"
             [attr.aria-expanded]="quickActionsOpen"
             aria-haspopup="menu"
+            aria-label="Quick Actions"
+            title="Quick Actions"
           >
-            Quick Actions
+            <app-cf-action-icon name="layout-grid" />
           </button>
           <div class="coc-dropdown__menu" role="menu" *ngIf="quickActionsOpen" (click)="$event.stopPropagation()">
             <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations/payments')">Payment Register</button>
@@ -72,33 +74,74 @@
             <button type="button" role="menuitem" class="coc-dropdown__item" (click)="navigateTo('/donations')">Stewardship Dashboard</button>
           </div>
         </div>
-        <button type="button" class="coc-btn coc-btn--ghost" (click)="exportTodayCollections()" [disabled]="!todayPayments.length">
-          Export
+        <button
+          type="button"
+          class="coc-btn coc-btn--ghost"
+          (click)="exportTodayCollections()"
+          [disabled]="!todayPayments.length"
+          [attr.aria-label]="'Export'"
+          [attr.title]="'Export'"
+        >
+          <app-cf-action-icon name="download" />
+          <span class="sr-only">Export</span>
         </button>
-        <button type="button" class="coc-btn coc-btn--ghost" routerLink="/donations/payments">Exit Workspace</button>
+        <button
+          type="button"
+          class="coc-btn coc-btn--ghost"
+          routerLink="/donations/payments"
+          aria-label="Exit Workspace"
+          title="Exit Workspace"
+        >
+          <app-cf-action-icon name="log-out" />
+          <span class="sr-only">Exit Workspace</span>
+        </button>
       </div>
     </div>
   </header>
 
   <!-- Executive KPIs -->
   <div class="coc-kpis" role="region" aria-label="Collection metrics">
-    <article class="coc-kpi" *ngFor="let kpi of kpiCards">
-      <div class="coc-kpi__icon" [attr.data-tone]="kpi.tone" aria-hidden="true">
-        <svg viewBox="0 0 24 24" focusable="false"><path [attr.d]="kpi.iconPath" fill="currentColor"/></svg>
-      </div>
-      <div class="coc-kpi__body">
-        <span class="coc-kpi__label">{{ kpi.label }}</span>
-        <div class="coc-kpi__value-row">
-          <strong class="coc-kpi__value">{{ kpi.value }}</strong>
-          <span class="coc-kpi__trend" [class.coc-kpi__trend--up]="kpi.trendUp" [class.coc-kpi__trend--down]="!kpi.trendUp" *ngIf="kpi.trend">
-            {{ kpi.trend }}
-          </span>
+    <ng-container *ngFor="let kpi of kpiCards">
+      <a
+        *ngIf="kpi.href"
+        class="coc-kpi coc-kpi--link"
+        [routerLink]="kpi.href"
+        [attr.aria-label]="'View ' + kpi.label"
+      >
+        <div class="coc-kpi__icon" [attr.data-tone]="kpi.tone" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path [attr.d]="kpi.iconPath" fill="currentColor"/></svg>
         </div>
-        <svg class="coc-kpi__sparkline" viewBox="0 0 80 24" preserveAspectRatio="none" aria-hidden="true">
-          <polyline [attr.points]="kpi.sparkline" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-      </div>
-    </article>
+        <div class="coc-kpi__body">
+          <span class="coc-kpi__label">{{ kpi.label }}</span>
+          <div class="coc-kpi__value-row">
+            <strong class="coc-kpi__value">{{ kpi.value }}</strong>
+            <span class="coc-kpi__trend" [class.coc-kpi__trend--up]="kpi.trendUp" [class.coc-kpi__trend--down]="!kpi.trendUp" *ngIf="kpi.trend">
+              {{ kpi.trend }}
+            </span>
+          </div>
+          <svg class="coc-kpi__sparkline" viewBox="0 0 80 24" preserveAspectRatio="none" aria-hidden="true">
+            <polyline [attr.points]="kpi.sparkline" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </a>
+      <article *ngIf="!kpi.href" class="coc-kpi">
+        <div class="coc-kpi__icon" [attr.data-tone]="kpi.tone" aria-hidden="true">
+          <svg viewBox="0 0 24 24" focusable="false"><path [attr.d]="kpi.iconPath" fill="currentColor"/></svg>
+        </div>
+        <div class="coc-kpi__body">
+          <span class="coc-kpi__label">{{ kpi.label }}</span>
+          <div class="coc-kpi__value-row">
+            <strong class="coc-kpi__value">{{ kpi.value }}</strong>
+            <span class="coc-kpi__trend" [class.coc-kpi__trend--up]="kpi.trendUp" [class.coc-kpi__trend--down]="!kpi.trendUp" *ngIf="kpi.trend">
+              {{ kpi.trend }}
+            </span>
+          </div>
+          <svg class="coc-kpi__sparkline" viewBox="0 0 80 24" preserveAspectRatio="none" aria-hidden="true">
+            <polyline [attr.points]="kpi.sparkline" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+      </article>
+    </ng-container>
   </div>
 
   <!-- Main Workspace -->
@@ -142,7 +185,7 @@
             [attr.aria-expanded]="searchResults.length > 0"
           />
           <button type="button" class="coc-btn coc-btn--subtle" *ngIf="searchMode === 'qr'" (click)="focusSearch()">
-            Scan QR
+            <app-cf-action-icon name="scan-line" />
           </button>
           <kbd class="coc-kbd">⌘K</kbd>
         </div>
@@ -312,9 +355,25 @@
           </div>
 
           <div class="coc-transaction-actions">
-            <button type="button" class="coc-btn coc-btn--ghost" (click)="resetForNext()" [disabled]="saving">Cancel <kbd class="coc-kbd">Esc</kbd></button>
-            <button type="button" class="coc-btn coc-btn--primary" [disabled]="saving || !canSubmit" (click)="submit()">
-              {{ saving ? 'Processing…' : 'Post Collection' }} <kbd class="coc-kbd">F4</kbd>
+            <button
+              type="button"
+              class="coc-btn coc-btn--ghost"
+              (click)="resetForNext()"
+              [disabled]="saving"
+              aria-label="Cancel"
+              title="Cancel (Esc)"
+            >
+              <app-cf-action-icon name="x" />
+            </button>
+            <button
+              type="button"
+              class="coc-btn coc-btn--primary"
+              [disabled]="saving || !canSubmit"
+              (click)="submit()"
+              [attr.aria-label]="saving ? 'Processing…' : 'Post Collection'"
+              [attr.title]="saving ? 'Processing…' : 'Post Collection (F4)'"
+            >
+              <app-cf-action-icon name="collect-payment" />
             </button>
           </div>
 
@@ -326,8 +385,24 @@
               <p>{{ receiptPreview.payer.name }} — {{ formatCurrency(receiptPreview.totals.amount) }}</p>
             </header>
             <div class="coc-receipt__actions">
-              <button type="button" class="coc-btn coc-btn--ghost" (click)="printReceipt()">Print Receipt</button>
-              <button type="button" class="coc-btn coc-btn--primary" (click)="resetForNext()">Next Family</button>
+              <button
+                type="button"
+                class="coc-btn coc-btn--ghost"
+                (click)="printReceipt()"
+                aria-label="Print receipt"
+                title="Print receipt"
+              >
+                <app-cf-action-icon name="print" />
+              </button>
+              <button
+                type="button"
+                class="coc-btn coc-btn--primary"
+                (click)="resetForNext()"
+                aria-label="Next collection"
+                title="Next collection"
+              >
+                <app-cf-action-icon name="arrow-right" />
+              </button>
             </div>
           </article>
         </section>
@@ -382,8 +457,10 @@
             <div class="coc-feed__dot" aria-hidden="true"></div>
             <div class="coc-feed__content">
               <strong>{{ item.title }}</strong>
-              <span>{{ item.subtitle }}</span>
-              <small>{{ item.time }}</small>
+              <div class="coc-feed__meta">
+                <span>{{ item.subtitle }}</span>
+                <small>{{ item.time }}</small>
+              </div>
             </div>
             <strong class="coc-feed__amount" *ngIf="item.amount != null">{{ formatCurrency(item.amount) }}</strong>
           </li>
@@ -391,24 +468,6 @@
         <ng-template #emptyFeed>
           <p class="coc-feed__empty">No collections recorded yet today.</p>
         </ng-template>
-      </section>
-
-      <section class="coc-panel coc-panel--alerts" *ngIf="attentionFamilies.length">
-        <header class="coc-panel__header">
-          <div>
-            <h2>Collection Alerts</h2>
-            <p>Overdue accounts</p>
-          </div>
-        </header>
-        <ul class="coc-alerts">
-          <li *ngFor="let family of attentionFamilies.slice(0, 5)" class="coc-alerts__item">
-            <div>
-              <strong>{{ family.family_name || family.family_code }}</strong>
-              <span>{{ family.days_overdue }} days overdue</span>
-            </div>
-            <button type="button" class="coc-btn coc-btn--subtle" (click)="searchAndSelectAttentionFamily(family)">Collect</button>
-          </li>
-        </ul>
       </section>
     </aside>
   </div>
@@ -424,7 +483,9 @@
   >
     <header>
       <h2 id="coc-shortcuts-title">Keyboard Shortcuts</h2>
-      <button type="button" class="coc-btn coc-btn--ghost" (click)="closeShortcuts()" aria-label="Close shortcuts">Close</button>
+      <button type="button" class="coc-btn coc-btn--ghost" (click)="closeShortcuts()" aria-label="Close shortcuts" title="Close shortcuts">
+        <app-cf-action-icon name="x" />
+      </button>
     </header>
     <ul>
       <li *ngFor="let shortcut of keyboardShortcuts">

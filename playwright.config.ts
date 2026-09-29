@@ -21,17 +21,17 @@ export default defineConfig({
     {
       name: 'chromium-responsive',
       use: { ...devices['Desktop Chrome'] },
-      testMatch: /add-sacrament-responsive\.spec\.ts$/,
+      testMatch: /(add-sacrament|mass-intentions)-responsive\.spec\.ts$/,
     },
     {
       name: 'tablet',
       use: { ...devices['iPad (gen 7)'] },
-      testMatch: /add-sacrament-responsive\.spec\.ts$/,
+      testMatch: /(add-sacrament|mass-intentions)-responsive\.spec\.ts$/,
     },
     {
       name: 'mobile',
       use: { ...devices['iPhone 13'] },
-      testMatch: /add-sacrament-responsive\.spec\.ts$/,
+      testMatch: /(add-sacrament|mass-intentions)-responsive\.spec\.ts$/,
     }
   ]
 });

@@ -10,8 +10,8 @@ test.describe('Donations smoke', () => {
 
     await page.goto('/donations');
     await expect(page).toHaveURL(/\/donations/);
-    await expect(page.getByRole('heading', { name: 'Financial Operations Center' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Financial health overview' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Financial Dashboard' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Financial snapshot' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Stewardship workspaces' })).toHaveCount(0);
 
     await context.close();
@@ -77,6 +77,21 @@ test.describe('Donations smoke', () => {
     await expect(page.getByRole('main', { name: /Collect Payment/i })).toBeVisible();
     await expect(page.getByRole('searchbox', { name: 'Find family' })).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Stewardship workspaces' })).toHaveCount(0);
+
+    await context.close();
+  });
+
+  test("tenant admin can open today's collections from collection day", async ({ browser }) => {
+    test.skip(!tenantAdminState, 'Tenant admin storage state not provided');
+    const context = await browser.newContext({ storageState: tenantAdminState });
+    const page = await context.newPage();
+
+    await page.goto('/donations/collection-day');
+    await expect(page).toHaveURL(/\/donations\/collection-day/);
+    await page.getByRole('link', { name: "View Today's Collections" }).click();
+    await expect(page).toHaveURL(/\/donations\/today-collections/);
+    await expect(page.getByRole('heading', { name: "Today's Collections" })).toBeVisible();
+    await expect(page.getByRole('region', { name: "Today's collection totals" })).toBeVisible();
 
     await context.close();
   });

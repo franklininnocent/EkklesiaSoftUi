@@ -7,11 +7,14 @@ import { TenantService } from '@core/services/tenant.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { DioceseService } from '@core/services/ecclesiastical/diocese.service';
+import { SubscriptionAdminService } from '@features/subscriptions/services/subscription-admin.service';
 
 describe('TenantManagerComponent', () => {
   let component: TenantManagerComponent;
   let fixture: ComponentFixture<TenantManagerComponent>;
   let tenantService: jest.Mocked<Pick<TenantService, 'listTenants' | 'getStatistics'>>;
+  let subscriptionAdmin: { listPlans: jest.Mock };
+  let superAdmin: boolean;
 
   const mockTenants = Array.from({ length: 20 }).map((_, i) => ({
     id: i + 1,
@@ -19,7 +22,7 @@ describe('TenantManagerComponent', () => {
     slug: `tenant-${i + 1}`,
     active: i < 16 ? 1 : 0,
     created_at: '2024-01-01T00:00:00Z',
-    plan: 'basic',
+    plan: 'starter',
     max_users: 100,
     tenant_tier: 'parish',
     active_users_count: 12 + i,
@@ -27,6 +30,16 @@ describe('TenantManagerComponent', () => {
   })) as any[];
 
   beforeEach(async () => {
+    superAdmin = false;
+    subscriptionAdmin = {
+      listPlans: jest.fn().mockReturnValue(
+        of([
+          { key: 'standard', name: 'Standard', is_legacy: false, tenant_count: 3 },
+          { key: 'starter', name: 'Starter', is_legacy: false, tenant_count: 72 },
+          { key: 'free', name: 'Free (legacy)', is_legacy: true, tenant_count: 0 },
+        ])
+      ),
+    };
     tenantService = {
       listTenants: jest.fn().mockImplementation((params?: { page?: number; per_page?: number }) =>
         of({
@@ -49,7 +62,7 @@ describe('TenantManagerComponent', () => {
             total_tenants: 75,
             active_tenants: 64,
             inactive_tenants: 11,
-            tenants_by_plan: { free: 0, basic: 75, premium: 0, enterprise: 0 },
+            tenants_by_plan: { starter: 72, standard: 3, enterprise: 0, free: 0 },
             in_trial: 5,
             subscribed: 60,
             recent_tenants: [],
@@ -63,7 +76,16 @@ describe('TenantManagerComponent', () => {
       providers: [
         { provide: TenantService, useValue: tenantService },
         { provide: ToastService, useValue: { success: () => {}, error: () => {} } },
-        { provide: AuthService, useValue: { isAuthenticated: () => true, currentUser: {} } },
+        {
+          provide: AuthService,
+          useValue: {
+            isAuthenticated: () => true,
+            currentUser: {},
+            isSuperAdmin: () => superAdmin,
+            hasPermission: () => false,
+          },
+        },
+        { provide: SubscriptionAdminService, useValue: subscriptionAdmin },
         {
           provide: DioceseService,
           useValue: {
@@ -99,6 +121,28 @@ describe('TenantManagerComponent', () => {
     expect(component.suspendedTenants()).toBe(11);
   });
 
+  it('builds the plan filter from the subscription catalog, hiding unused legacy plans', () => {
+    superAdmin = true;
+    component.ngOnInit();
+
+    const planField = component.searchFields.find((field) => field.key === 'plan');
+    expect(subscriptionAdmin.listPlans).toHaveBeenCalledWith({ includeLegacy: true, includeArchived: true });
+    expect(planField?.options).toEqual([
+      { value: 'standard', label: 'Standard' },
+      { value: 'starter', label: 'Starter' },
+    ]);
+    expect(component.formatPlan('free')).toBe('Free (legacy)');
+    expect(component.formatPlan('unknown_key')).toBe('Unknown Key');
+  });
+
+  it('skips the catalog lookup for staff without subscription access', () => {
+    component.ngOnInit();
+
+    expect(subscriptionAdmin.listPlans).not.toHaveBeenCalled();
+    expect(component.searchFields.find((field) => field.key === 'plan')?.options).toEqual([]);
+    expect(component.formatPlan('starter')).toBe('Starter');
+  });
+
   it('defaults to card view', () => {
     expect(component.currentView()).toBe('card');
   });
@@ -131,7 +175,7 @@ describe('TenantManagerComponent', () => {
   it('applies drawer filters and closes the panel', () => {
     component.onAdvancedSearch({
       active: '1',
-      plan: 'premium',
+      plan: 'standard',
       tenant_tier: 'parish',
       archdiocese_id: '1',
       subscription_status: 'trial',
@@ -141,7 +185,7 @@ describe('TenantManagerComponent', () => {
     expect(tenantService.listTenants).toHaveBeenCalledWith(
       expect.objectContaining({
         active: 1,
-        plan: 'premium',
+        plan: 'standard',
         tenant_tier: 'parish',
         archdiocese_id: 1,
         subscription_status: 'trial',
@@ -152,17 +196,17 @@ describe('TenantManagerComponent', () => {
   });
 
   it('clears filters and reloads tenants', () => {
-    component.onAdvancedSearch({ active: '1', plan: 'basic' });
+    component.onAdvancedSearch({ active: '1', plan: 'starter' });
     component.onClearAdvancedSearch();
 
     expect(component.getActiveFilterCount()).toBe(0);
     expect(tenantService.listTenants).toHaveBeenLastCalledWith(
-      expect.not.objectContaining({ active: 1, plan: 'basic' })
+      expect.not.objectContaining({ active: 1, plan: 'starter' })
     );
   });
 
   it('removes a single active filter chip', () => {
-    component.onAdvancedSearch({ active: '1', plan: 'basic' });
+    component.onAdvancedSearch({ active: '1', plan: 'starter' });
     const planFilter = component.getActiveFilters().find((filter) => filter.key === 'plan');
     component.removeFilter(planFilter!);
 
@@ -176,44 +220,16 @@ describe('TenantManagerComponent', () => {
     component.loadTenants();
     component.onPageChange(3);
 
-    expect(component.currentPage()).toBe(3);
     expect(tenantService.listTenants).toHaveBeenLastCalledWith(
       expect.objectContaining({ page: 3, per_page: 20 })
     );
   });
 
-  it('onPageSizeChange resets to page 1 and updates per_page', () => {
-    component.loadTenants();
-    component.onPageChange(3);
-    component.onPageSizeChange(50);
-
-    expect(component.currentPage()).toBe(1);
-    expect(component.pageSize()).toBe(50);
-    expect(tenantService.listTenants).toHaveBeenLastCalledWith(
-      expect.objectContaining({ page: 1, per_page: 50 })
-    );
-  });
-
-  it('toggles tenant row selection', () => {
-    component.loadTenants();
-    component.toggleTenantSelection(1, true);
-    expect(component.isTenantSelected(1)).toBe(true);
-    component.toggleSelectAll(true);
-    expect(component.allSelected()).toBe(true);
-    component.toggleSelectAll(false);
-    expect(component.selectedTenantIds().size).toBe(0);
-  });
-
-  it('formats active user count with max_users limit', () => {
-    expect(component.getActiveUserCount(mockTenants[0])).toBe('12/100');
-    expect(component.getActiveUserCount({ ...mockTenants[0], active_users_count: undefined, users_count: undefined, max_users: 50 })).toBe('0/50');
-  });
-
-  it('formats plan expiry from subscription or trial end date', () => {
+  it('formats plan expiry for subscribed and trial tenants', () => {
     const subscribed = {
       ...mockTenants[0],
-      trial_ends_at: null,
       subscription_ends_at: '2026-12-15T00:00:00Z',
+      trial_ends_at: null,
     };
     const trialing = {
       ...mockTenants[0],

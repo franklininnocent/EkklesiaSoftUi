@@ -36,6 +36,8 @@ export class TabStripComponent {
   @Input() tabs: TabStripItem[] = [];
   @Input() activeId?: string;
   @Input() mode: 'inpage' | 'router' = 'inpage';
+  /** Smaller tab padding for dense admin surfaces (layout v2). */
+  @Input() density: 'default' | 'compact' = 'default';
   /** Applied to the wrapping `<nav>` as `aria-label`. */
   @Input() ariaLabel?: string;
 

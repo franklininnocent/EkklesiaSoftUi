@@ -9,13 +9,14 @@ import { AuthService } from '@core/services/auth.service';
 import { NavMenuService } from '@core/services/nav-menu.service';
 import { ApplicationContextService } from '@core/services/application-context.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
+import { EntitlementService } from '@core/services/entitlement.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 
 describe('MainLayoutComponent (RBAC visibility)', () => {
   let component: MainLayoutComponent;
   let fixture: ComponentFixture<MainLayoutComponent>;
   let authServiceMock: any;
-  let navMenuMock: { isVisible: jest.Mock };
+  let navMenuMock: { isVisible: jest.Mock; isRouteAllowed: jest.Mock };
   let userSelection: BehaviorSubject<any>;
   let snapshotSelection: Subject<any>;
 
@@ -44,6 +45,7 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
         }
         return false;
       }),
+      isRouteAllowed: jest.fn().mockReturnValue(true),
     };
 
     await TestBed.configureTestingModule({
@@ -79,6 +81,14 @@ describe('MainLayoutComponent (RBAC visibility)', () => {
           useValue: {
             snapshot$: snapshotSelection.asObservable(),
             ensureLoaded: jest.fn(),
+            clear: jest.fn(),
+          },
+        },
+        {
+          provide: EntitlementService,
+          useValue: {
+            entitlements$: of(null),
+            load: jest.fn().mockReturnValue(of(null)),
             clear: jest.fn(),
           },
         },

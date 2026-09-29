@@ -40,6 +40,14 @@ export class ReceiptPrintService {
     );
   }
 
+  printOperationalReport(params: Record<string, unknown>): void {
+    this.loadHtmlIntoWindow(
+      () => this.donationsService.getOperationalReportPrintHtml(params),
+      true,
+      'Unable to open this report for printing right now.'
+    );
+  }
+
   private loadReceiptHtmlIntoWindow(paymentId: string, autoPrint: boolean): void {
     this.loadHtmlIntoWindow(
       () => this.donationsService.getReceiptPrintHtml(paymentId),
