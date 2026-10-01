@@ -1,4 +1,6 @@
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 import { MassIntentionRecord } from '../services/mass-intentions-api.service';
+import { formatMassDayTime } from './mass-celebration-display';
 
 /** Master category label, or em dash when missing (legacy rows). */
 export function massIntentionListType(row: MassIntentionRecord): string {
@@ -42,18 +44,20 @@ export function massIntentionBeneficiaryIdentification(row: MassIntentionRecord)
 }
 
 /** Parish-office friendly scheduled day (falls back to raw ISO date). */
+export function massIntentionListMass(row: MassIntentionRecord): string {
+  if (row.needs_a_mass) {
+    return 'Needs a Mass';
+  }
+  const mass = row.mass_celebration;
+  if (!mass?.celebrated_on) {
+    return '—';
+  }
+  return formatMassDayTime(mass.celebrated_on, mass.celebrated_at ?? null);
+}
+
 export function formatMassIntentionScheduledDay(isoDate: string | null | undefined): string {
   if (!isoDate) {
     return '—';
   }
-  const parsed = new Date(`${isoDate}T12:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    return isoDate;
-  }
-  return parsed.toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return cfFormatDate(isoDate) || isoDate;
 }

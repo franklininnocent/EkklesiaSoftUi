@@ -57,12 +57,12 @@ export class NavMenuService {
   private static readonly SUPPORT_PARISH_WORKSPACE_LINKS: readonly SupportParishWorkspaceLink[] = [
     { id: 'church-profile', label: 'Church Profile', route: '/church-profile' },
     { id: 'families', label: 'Families', route: '/families' },
-    { id: 'members', label: 'Members', route: '/members' },
-    { id: 'bccs', label: 'BCCs', route: '/bccs' },
+    { id: 'members', label: 'Members', route: '/members/list' },
+    { id: 'bccs', label: 'BCCs', route: '/bccs/list' },
     { id: 'donations', label: 'Donations', route: '/donations' },
     { id: 'ministries', label: 'Ministries', route: '/ministries' },
     { id: 'sacraments', label: 'Sacraments', route: '/sacraments' },
-    { id: 'mass-intentions', label: 'Mass intentions', route: '/mass-intentions' },
+    { id: 'mass-intentions', label: 'Holy Mass', route: '/mass-intentions' },
     { id: 'users', label: 'Users', route: '/users' },
     { id: 'roles-permissions', label: 'Roles & Permissions', route: '/settings/roles-permissions' },
   ];

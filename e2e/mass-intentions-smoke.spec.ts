@@ -11,7 +11,7 @@ test.describe('Mass intentions smoke', () => {
     await page.goto('/mass-intentions');
     await expect(page).toHaveURL(/\/mass-intentions/);
     await expect(page.getByRole('heading', { name: 'Mass intentions' })).toBeVisible();
-    await expect(page.getByText('Accepted this month')).toBeVisible();
+    await expect(page.getByText('Registered this month')).toBeVisible();
     await expect(page.getByRole('navigation', { name: 'Mass intentions' })).toBeVisible();
 
     await context.close();
@@ -23,7 +23,7 @@ test.describe('Mass intentions smoke', () => {
     const page = await context.newPage();
 
     await page.goto('/mass-intentions/intentions');
-    await expect(page.getByRole('heading', { name: 'Intentions' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Office register' })).toBeVisible();
 
     await context.close();
   });
@@ -34,7 +34,9 @@ test.describe('Mass intentions smoke', () => {
     const page = await context.newPage();
 
     await page.goto('/mass-intentions/masses');
-    await expect(page.getByRole('heading', { name: 'Masses' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: /^Masses$/i })).toBeVisible();
+    await expect(page.getByRole('navigation', { name: /Masses calendar navigation/i })).toBeVisible();
+    await expect(page.getByRole('status')).toContainText(/\d{4}/);
 
     await context.close();
   });

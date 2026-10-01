@@ -18,6 +18,7 @@ import { BccAuditTabComponent } from '../components/bcc-audit-tab/bcc-audit-tab.
 import { BccOverview, BccTab } from '../models/bcc.model';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 const TABS: BccTab[] = ['overview', 'members', 'leadership', 'member-history', 'audit'];
 
@@ -25,6 +26,7 @@ const TABS: BccTab[] = ['overview', 'members', 'leadership', 'member-history', '
   selector: 'app-bcc-detail-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     RouterModule,
     LoadingSkeletonComponent,

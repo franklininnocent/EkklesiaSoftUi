@@ -4,6 +4,7 @@
  * Form controls use `YYYY-MM-DDTHH:mm` (datetime-local wire format) so API
  * payloads stay compatible with existing Support Access endpoints.
  */
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 export interface DateTimeParts {
   date: string;
@@ -89,29 +90,7 @@ export function formatDateTimeDisplay(value: string | null | undefined): string 
     return time;
   }
   if (!time) {
-    return formatDateDisplay(date);
+    return cfFormatDate(date);
   }
-  const parsed = new Date(`${date}T${time}`);
-  if (Number.isNaN(parsed.getTime())) {
-    return `${date} ${time}`;
-  }
-  return parsed.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-}
-
-function formatDateDisplay(date: string): string {
-  const parsed = new Date(`${date}T00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    return date;
-  }
-  return parsed.toLocaleDateString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return cfFormatDate(`${date}T${time}`, 'datetime');
 }

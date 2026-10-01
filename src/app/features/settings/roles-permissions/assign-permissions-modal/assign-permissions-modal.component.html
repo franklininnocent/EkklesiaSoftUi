@@ -187,10 +187,7 @@
   [isSubmitting]="isSaving"
   (closeRequested)="close()"
 >
-  <div *ngIf="isLoading" class="loading-container">
-    <div class="loading-spinner"></div>
-    <p>Loading permissions...</p>
-  </div>
+  <app-cf-loading-container *ngIf="isLoading" label="Loading permissions…" />
 
   <div *ngIf="errorMessage && !isLoading" class="error-banner" role="alert" aria-live="polite">
     <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -212,7 +209,7 @@
       (click)="save()"
       [disabled]="isSaving || isLoading || !hasChanges() || hasAdminPermissionConflict()"
       type="button">
-      <span class="btn-spinner" *ngIf="isSaving"></span>
+      <app-cf-brand-loader *ngIf="isSaving" size="button" label="Saving" [showLabel]="false" />
       <span *ngIf="!isSaving">Save Changes</span>
       <span *ngIf="isSaving">Saving...</span>
     </button>
@@ -245,10 +242,7 @@
   </div>
 
   <div class="modal-body inline-body">
-    <div *ngIf="isLoading" class="loading-container">
-      <div class="loading-spinner"></div>
-      <p>Loading permissions...</p>
-    </div>
+    <app-cf-loading-container *ngIf="isLoading" label="Loading permissions…" />
 
     <div *ngIf="errorMessage && !isLoading" class="error-banner" role="alert" aria-live="polite">
       <svg class="error-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -271,7 +265,7 @@
       (click)="save()"
       [disabled]="isSaving || isLoading || !hasChanges() || hasAdminPermissionConflict()"
       type="button">
-      <span class="btn-spinner" *ngIf="isSaving"></span>
+      <app-cf-brand-loader *ngIf="isSaving" size="button" label="Saving" [showLabel]="false" />
       <span *ngIf="!isSaving">Save Changes</span>
       <span *ngIf="isSaving">Saving...</span>
     </button>

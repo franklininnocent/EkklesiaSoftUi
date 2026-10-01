@@ -51,7 +51,7 @@ export class ActionBarComponent {
   buttonClass(action: ActionBarItem): string {
     if (this.iconOnly) {
       const sizeClass = this.size === 'sm' ? ' cf-btn--sm' : '';
-      return `cf-btn-icon${sizeClass}`;
+      return `cf-btn cf-btn-icon${sizeClass}`;
     }
 
     const sizeClass = this.size === 'sm' ? ' cf-btn--sm' : '';

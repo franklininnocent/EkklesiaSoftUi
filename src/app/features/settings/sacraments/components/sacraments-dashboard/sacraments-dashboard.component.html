@@ -437,7 +437,7 @@
               <tr *ngFor="let record of summary.recent">
                 <td>{{ record.type?.name }}</td>
                 <td>{{ record.recipient_name }}</td>
-                <td>{{ record.date_administered | date:'mediumDate' }}</td>
+                <td>{{ record.date_administered | cfDate }}</td>
                 <td>
                   <button type="button" class="cf-btn cf-btn--sm" (click)="openRecord(record.id)">View details</button>
                 </td>

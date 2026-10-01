@@ -1,3 +1,4 @@
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 export interface EcclesiasticalAuditEntry {
   action?: string;
   event?: string;
@@ -93,11 +94,7 @@ function formatAuditScalar(value: unknown): string {
   if (dateOnly) {
     const parsed = new Date(value.includes('T') ? value : `${value.replace(' ', 'T')}`);
     if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
+      return cfFormatDate(parsed) || value;
     }
   }
 

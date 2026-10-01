@@ -6,9 +6,7 @@ import { environment } from '@environments/environment';
 export interface MassIntentionsTrendPoint {
   month: string;
   label: string;
-  /** @deprecated legacy obligation workflow */
   accepted?: number;
-  /** @deprecated legacy obligation workflow */
   said?: number;
   registered?: number;
   closed?: number;
@@ -22,6 +20,7 @@ export interface MassIntentionsUpcomingCelebration {
   celebrated_at?: string | null;
   place?: string | null;
   celebrant_name?: string | null;
+  intention_count?: number;
 }
 
 export interface MassIntentionsHomeSummary {
@@ -34,6 +33,10 @@ export interface MassIntentionsHomeSummary {
     closed: number;
     intentions_registered_this_month: number;
     intentions_registered_last_month?: number;
+    needs_a_tick?: number;
+    needs_a_mass?: number;
+    schedule_attention?: number;
+    this_week_masses?: number;
     offering_received_this_month?: string;
     offering_received_last_month?: string;
     receipts_this_month?: number;
@@ -46,6 +49,8 @@ export interface MassIntentionsHomeSummary {
     label?: string;
     intentions_registered_this_month: number;
     intentions_registered_last_month?: number;
+    created_from?: string;
+    created_to?: string;
     offering_received_this_month?: string | null;
     offering_received_last_month?: string | null;
   };
@@ -55,6 +60,52 @@ export interface MassIntentionsHomeSummary {
     receipts_this_month: number;
   };
   trend?: MassIntentionsTrendPoint[];
+  operational?: {
+    upcoming?: number;
+    needs_a_tick?: number;
+    needs_a_mass?: number;
+    schedule_attention?: number;
+  };
+  upcoming_celebrations?: MassIntentionsUpcomingCelebration[];
+  generation?: {
+    attention_required?: boolean;
+    attention_reason?: string | null;
+  };
+  meta?: {
+    parish_today?: string;
+    timezone?: string;
+    parish_now?: string;
+    next_upcoming_celebration_id?: string | null;
+    week_from?: string;
+    week_to?: string;
+  };
+}
+
+export interface MassIntentionAssignmentHistoryRow {
+  assignment_id: string;
+  obligation_id: string;
+  celebration_id: string;
+  assigned_at?: string | null;
+  unassigned_at?: string | null;
+  is_active: boolean;
+  is_said: boolean;
+  mass: {
+    celebrated_on?: string | null;
+    celebrated_at?: string | null;
+    place?: string | null;
+    status?: string;
+    generation_status?: string;
+    suppression_reason?: string | null;
+  };
+}
+
+export interface MassIntentionAuditRow {
+  id: string;
+  event_type: string;
+  celebration_id?: string | null;
+  actor_user_id?: number | null;
+  payload?: Record<string, unknown> | null;
+  created_at?: string | null;
 }
 
 export interface MassIntentionCategory {
@@ -86,6 +137,15 @@ export interface MassIntentionRecord {
   requester_name?: string | null;
   requester_phone?: string | null;
   requested_date?: string | null;
+  needs_a_mass?: boolean;
+  mass_celebration?: {
+    id: string;
+    celebrated_on?: string | null;
+    celebrated_at?: string | null;
+    status?: string;
+    generation_status?: string;
+    suppression_reason?: string | null;
+  } | null;
   date_must_be_kept: boolean;
   prohibit_transfer?: boolean;
   is_collective?: boolean;
@@ -94,14 +154,97 @@ export interface MassIntentionRecord {
   said_progress?: { said: number; total: number } | null;
 }
 
+export interface MassCelebrationListMeta {
+  next_upcoming_celebration_id?: string | null;
+  next_upcoming_starts_at?: string | null;
+  parish_timezone?: string | null;
+  parish_now?: string | null;
+}
+
 export interface MassCelebrationSummary {
   id: string;
+  origin?: string;
+  slot_id?: string | null;
   celebrated_on: string;
   celebrated_at?: string | null;
   place?: string | null;
   celebrant_name?: string | null;
   status?: string;
+  generation_status?: string;
+  source_label?: string | null;
   intention_count?: number;
+}
+
+export interface MassScheduleSlotDraft {
+  slot_id?: string;
+  weekday: number;
+  weeks_of_month?: string[] | null;
+  celebrated_at: string;
+  place?: string | null;
+  celebrant_name?: string | null;
+  place_source?: 'inherit' | 'override' | 'unset';
+  celebrant_source?: 'inherit' | 'override' | 'unset';
+}
+
+export interface MassScheduleConflict {
+  celebration_id: string;
+  celebrated_on?: string;
+  celebrated_at?: string;
+  reason_code: string;
+  intention_count: number;
+  replacement?: {
+    celebration_id?: string | null;
+    celebrated_on?: string;
+    celebrated_at?: string;
+    place?: string | null;
+    celebrant_name?: string | null;
+    source_label?: string | null;
+  };
+  proposed?: {
+    celebrated_at?: string;
+    place?: string | null;
+    celebrant_name?: string | null;
+    revision_id?: string;
+    schedule_id?: string;
+    source_label?: string | null;
+  };
+}
+
+export interface MassDayOverrideSlotDraft {
+  slot_id?: string;
+  celebrated_at: string;
+  place?: string | null;
+  celebrant_name?: string | null;
+}
+
+export interface MassDayOverrideSummary {
+  id: string;
+  override_on: string;
+  mode: 'replace' | 'supplement';
+  closes_regular_masses: boolean;
+  label?: string | null;
+  status: string;
+  slots: MassDayOverrideSlotDraft[];
+}
+
+export interface MassRegularScheduleBundle {
+  schedule: {
+    id: string;
+    name: string;
+    kind: string;
+    status?: string;
+    default_place?: string | null;
+    default_celebrant_name?: string | null;
+  };
+  draft: { id: string; slots: MassScheduleSlotDraft[] } | null;
+  published: {
+    id: string;
+    revision_number?: number;
+    status?: string;
+    slots: MassScheduleSlotDraft[];
+    effective_from?: string;
+    effective_to?: string;
+  } | null;
 }
 
 export interface PendingScheduleObligation {
@@ -266,12 +409,26 @@ export class MassIntentionsApiService {
   getRequest(id: string): Observable<{
     success: boolean;
     data: MassIntentionRecord;
-    meta?: { upcoming_celebrations?: MassCelebrationSummary[]; receipts?: MassOfferingReceipt[] };
+    meta?: {
+      upcoming_celebrations?: MassCelebrationSummary[];
+      receipts?: MassOfferingReceipt[];
+      history?: {
+        assignments?: MassIntentionAssignmentHistoryRow[];
+        audits?: MassIntentionAuditRow[];
+      };
+    };
   }> {
     return this.http.get<{
       success: boolean;
       data: MassIntentionRecord;
-      meta?: { upcoming_celebrations?: MassCelebrationSummary[]; receipts?: MassOfferingReceipt[] };
+      meta?: {
+        upcoming_celebrations?: MassCelebrationSummary[];
+        receipts?: MassOfferingReceipt[];
+        history?: {
+          assignments?: MassIntentionAssignmentHistoryRow[];
+          audits?: MassIntentionAuditRow[];
+        };
+      };
     }>(`${this.base}/requests/${id}`);
   }
 
@@ -288,6 +445,28 @@ export class MassIntentionsApiService {
 
   updateRequest(id: string, body: Record<string, unknown>): Observable<{ success: boolean; data: MassIntentionRecord }> {
     return this.http.put<{ success: boolean; data: MassIntentionRecord }>(`${this.base}/requests/${id}`, body);
+  }
+
+  moveRequest(
+    id: string,
+    targetCelebrationId: string,
+    reason?: string
+  ): Observable<{ success: boolean; data: MassIntentionRecord; meta?: Record<string, unknown> }> {
+    return this.http.post<{ success: boolean; data: MassIntentionRecord; meta?: Record<string, unknown> }>(
+      `${this.base}/requests/${id}/move`,
+      { target_celebration_id: targetCelebrationId, reason }
+    );
+  }
+
+  bulkMoveRequests(
+    intentionIds: string[],
+    targetCelebrationId: string,
+    reason?: string
+  ): Observable<{ success: boolean; message?: string; meta?: Record<string, unknown> }> {
+    return this.http.post<{ success: boolean; message?: string; meta?: Record<string, unknown> }>(
+      `${this.base}/requests/bulk-move`,
+      { intention_ids: intentionIds, target_celebration_id: targetCelebrationId, reason }
+    );
   }
 
   acceptRequest(
@@ -346,6 +525,7 @@ export class MassIntentionsApiService {
     total?: number;
     current_page?: number;
     last_page?: number;
+    meta?: MassCelebrationListMeta;
   }> {
     return this.http.get<{
       success: boolean;
@@ -353,6 +533,7 @@ export class MassIntentionsApiService {
       total?: number;
       current_page?: number;
       last_page?: number;
+      meta?: MassCelebrationListMeta;
     }>(`${this.base}/celebrations`, {
       params,
     });
@@ -362,11 +543,224 @@ export class MassIntentionsApiService {
     return this.http.post<{ success: boolean; data: MassCelebrationSummary }>(`${this.base}/celebrations`, body);
   }
 
+  getRegularSchedule(): Observable<{ success: boolean; data: MassRegularScheduleBundle }> {
+    return this.http.get<{ success: boolean; data: MassRegularScheduleBundle }>(`${this.base}/schedules/regular`);
+  }
+
+  listTemporarySchedules(includeInactive = false): Observable<{
+    success: boolean;
+    data: { schedule: MassRegularScheduleBundle['schedule']; published: MassRegularScheduleBundle['published'] }[];
+  }> {
+    const params: Record<string, string> = {};
+    if (includeInactive) {
+      params['include_inactive'] = '1';
+    }
+    return this.http.get<{
+      success: boolean;
+      data: { schedule: MassRegularScheduleBundle['schedule']; published: MassRegularScheduleBundle['published'] }[];
+    }>(`${this.base}/schedules/temporaries`, { params });
+  }
+
+  createTemporarySchedule(body: {
+    name: string;
+    coverage_mode: 'full_week' | 'selected_weekdays';
+    selected_weekdays?: number[];
+  }): Observable<{ success: boolean; data: MassRegularScheduleBundle }> {
+    return this.http.post<{ success: boolean; data: MassRegularScheduleBundle }>(`${this.base}/schedules/temporaries`, body);
+  }
+
+  getSchedule(id: string): Observable<{ success: boolean; data: MassRegularScheduleBundle }> {
+    return this.http.get<{ success: boolean; data: MassRegularScheduleBundle }>(`${this.base}/schedules/${id}`);
+  }
+
+  saveScheduleDraft(
+    scheduleId: string,
+    body: {
+      default_place?: string | null;
+      default_celebrant_name?: string | null;
+      slots: MassScheduleSlotDraft[];
+    }
+  ): Observable<{ success: boolean; data: { id: string; slots: MassScheduleSlotDraft[] } }> {
+    return this.http.put<{ success: boolean; data: { id: string; slots: MassScheduleSlotDraft[] } }>(
+      `${this.base}/schedules/${scheduleId}/draft`,
+      body
+    );
+  }
+
+  previewScheduleApply(
+    scheduleId: string,
+    body: { apply_from: string; until?: string; effective_to?: string }
+  ): Observable<{
+    success: boolean;
+    data: {
+      fingerprint: string;
+      counts: Record<string, number>;
+      conflicts: MassScheduleConflict[];
+      range_from: string;
+      range_to: string;
+    };
+  }> {
+    return this.http.post<{
+      success: boolean;
+      data: {
+        fingerprint: string;
+        counts: Record<string, number>;
+        conflicts: MassScheduleConflict[];
+        range_from: string;
+        range_to: string;
+      };
+    }>(`${this.base}/schedules/${scheduleId}/preview`, body);
+  }
+
+  applySchedule(
+    scheduleId: string,
+    body: {
+      fingerprint: string;
+      apply_from: string;
+      until?: string;
+      effective_to?: string;
+      change_reason?: string;
+    }
+  ): Observable<{ success: boolean; data: { counts: Record<string, number>; conflicts: MassScheduleConflict[] } }> {
+    return this.http.post<{ success: boolean; data: { counts: Record<string, number>; conflicts: MassScheduleConflict[] } }>(
+      `${this.base}/schedules/${scheduleId}/apply`,
+      body
+    );
+  }
+
+  listScheduleRevisions(scheduleId: string): Observable<{
+    success: boolean;
+    data: NonNullable<MassRegularScheduleBundle['published']>[];
+  }> {
+    return this.http.get<{ success: boolean; data: NonNullable<MassRegularScheduleBundle['published']>[] }>(
+      `${this.base}/schedules/${scheduleId}/revisions`
+    );
+  }
+
+  inactivateSchedule(scheduleId: string): Observable<{ success: boolean; data: MassRegularScheduleBundle['schedule'] }> {
+    return this.http.post<{ success: boolean; data: MassRegularScheduleBundle['schedule'] }>(
+      `${this.base}/schedules/${scheduleId}/inactivate`,
+      {}
+    );
+  }
+
+  archiveSchedule(scheduleId: string): Observable<{ success: boolean; data: MassRegularScheduleBundle['schedule'] }> {
+    return this.http.post<{ success: boolean; data: MassRegularScheduleBundle['schedule'] }>(
+      `${this.base}/schedules/${scheduleId}/archive`,
+      {}
+    );
+  }
+
+  listDayOverrides(from: string, to: string): Observable<{ success: boolean; data: MassDayOverrideSummary[] }> {
+    return this.http.get<{ success: boolean; data: MassDayOverrideSummary[] }>(`${this.base}/day-overrides`, {
+      params: { from, to },
+    });
+  }
+
+  saveDayOverride(body: {
+    override_on: string;
+    mode: 'replace' | 'supplement';
+    closes_regular_masses?: boolean;
+    label?: string | null;
+    slots: MassDayOverrideSlotDraft[];
+  }): Observable<{ success: boolean; data: MassDayOverrideSummary }> {
+    return this.http.post<{ success: boolean; data: MassDayOverrideSummary }>(`${this.base}/day-overrides`, body);
+  }
+
+  previewDayOverride(id: string): Observable<{
+    success: boolean;
+    data: {
+      fingerprint: string;
+      override_on: string;
+      counts: Record<string, number>;
+      conflicts: MassScheduleConflict[];
+    };
+  }> {
+    return this.http.post<{
+      success: boolean;
+      data: {
+        fingerprint: string;
+        override_on: string;
+        counts: Record<string, number>;
+        conflicts: MassScheduleConflict[];
+      };
+    }>(`${this.base}/day-overrides/${id}/preview`, {});
+  }
+
+  applyDayOverride(
+    id: string,
+    fingerprint: string
+  ): Observable<{ success: boolean; data: { counts: Record<string, number>; conflicts: MassScheduleConflict[] } }> {
+    return this.http.post<{ success: boolean; data: { counts: Record<string, number>; conflicts: MassScheduleConflict[] } }>(
+      `${this.base}/day-overrides/${id}/apply`,
+      { fingerprint }
+    );
+  }
+
+  inactivateDayOverride(
+    id: string
+  ): Observable<{ success: boolean; data: { counts: Record<string, number>; conflicts: MassScheduleConflict[] } }> {
+    return this.http.post<{ success: boolean; data: { counts: Record<string, number>; conflicts: MassScheduleConflict[] } }>(
+      `${this.base}/day-overrides/${id}/inactivate`,
+      {}
+    );
+  }
+
   updateCelebration(
     id: string,
     body: Record<string, unknown>
   ): Observable<{ success: boolean; data: MassCelebrationSummary }> {
     return this.http.put<{ success: boolean; data: MassCelebrationSummary }>(`${this.base}/celebrations/${id}`, body);
+  }
+
+  keepCelebrationOnSchedule(id: string): Observable<{ success: boolean; data: MassCelebrationSummary }> {
+    return this.http.post<{ success: boolean; data: MassCelebrationSummary }>(
+      `${this.base}/celebrations/${id}/keep-on-schedule`,
+      {}
+    );
+  }
+
+  applyCelebrationScheduleProposal(
+    id: string,
+    proposal: Record<string, unknown>
+  ): Observable<{ success: boolean; message?: string; data: MassCelebrationSummary }> {
+    return this.http.post<{ success: boolean; message?: string; data: MassCelebrationSummary }>(
+      `${this.base}/celebrations/${id}/apply-schedule-proposal`,
+      proposal
+    );
+  }
+
+  markCelebrationScheduleChanged(id: string): Observable<{ success: boolean; message?: string; data: MassCelebrationSummary }> {
+    return this.http.post<{ success: boolean; message?: string; data: MassCelebrationSummary }>(
+      `${this.base}/celebrations/${id}/mark-schedule-changed`,
+      {}
+    );
+  }
+
+  getGenerationStatus(): Observable<{
+    success: boolean;
+    data: {
+      last_generated_through?: string | null;
+      last_success_at?: string | null;
+      last_error?: string | null;
+      horizon_days: number;
+      attention_required?: boolean;
+      attention_reason?: string | null;
+      minimum_through_date?: string;
+    };
+  }> {
+    return this.http.get<{
+      success: boolean;
+      data: {
+        last_generated_through?: string | null;
+        last_success_at?: string | null;
+        last_error?: string | null;
+        horizon_days: number;
+        attention_required?: boolean;
+        attention_reason?: string | null;
+        minimum_through_date?: string;
+      };
+    }>(`${this.base}/generation-status`);
   }
 
   listTransferTargets(): Observable<{ success: boolean; data: { tenant_id: number; name: string }[] }> {
@@ -509,8 +903,10 @@ export class MassIntentionsApiService {
     return this.http.get<{ success: boolean; data: RegisterRow[] }>(`${this.base}/reports/canonical-register`);
   }
 
-  getMassListReport(): Observable<{ success: boolean; data: MassListReportRow[] }> {
-    return this.http.get<{ success: boolean; data: MassListReportRow[] }>(`${this.base}/reports/mass-list`);
+  getMassListReport(from: string, to: string): Observable<{ success: boolean; data: MassListReportRow[] }> {
+    return this.http.get<{ success: boolean; data: MassListReportRow[] }>(`${this.base}/reports/mass-list`, {
+      params: { from, to },
+    });
   }
 
   getStillToSayReport(): Observable<{ success: boolean; data: StillToSayReportRow[] }> {

@@ -15,6 +15,7 @@ import { ConfirmationModalComponent } from '@shared/components/confirmation-moda
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { AppointSuccessorModalComponent } from '../appoint-successor-modal/appoint-successor-modal.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-diocese-detail',
@@ -177,11 +178,7 @@ export class DioceseDetailComponent implements OnInit {
 
   formatDate(date: string | null | undefined): string {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    return cfFormatDate(date) || 'N/A';
   }
 
   formatTenure(appointment: BishopAppointment): string {

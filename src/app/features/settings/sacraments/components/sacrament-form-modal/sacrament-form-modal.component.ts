@@ -17,6 +17,12 @@ import { Router } from '@angular/router';
 import { BCCService } from '@core/services/bcc.service';
 import { FamilyService } from '@core/services/family.service';
 import { BCC, Family, FamilyMember } from '@core/models/family.model';
+import {
+  enrichFamiliesForPicker,
+  FamilyPickerEnriched,
+  familyPickerSearchText,
+  formatFamilyPickerLabel,
+} from '@shared/utils/family-display.util';
 import { FamilyFormComponent } from '@features/family-management/components/family-form/family-form';
 import { ParishPersonService, ParishPerson, PersonMatch } from '../../services/person.service';
 import { ChurchLeadershipService } from '@core/services/church/church-leadership.service';
@@ -62,6 +68,7 @@ import {
   MarriagePartyFieldErrors,
   MarriagePartyPanelComponent,
 } from '../shared/marriage-party-panel/marriage-party-panel.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 
 @Component({
   selector: 'app-sacrament-form-modal',
@@ -79,6 +86,7 @@ import {
     PersonContextSummaryComponent,
     SacramentEvidenceSummaryComponent,
     MarriagePartyPanelComponent,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './sacrament-form-modal.component.html',
   styleUrl: './sacrament-form-modal.component.scss',
@@ -110,7 +118,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
   // Family/BCC selection properties
   familySelectionType: 'new' | 'existing' | null = 'existing';
   bccs: BCC[] = [];
-  families: Family[] = [];
+  families: FamilyPickerEnriched[] = [];
   selectedBccId: string | null = null;
   selectedFamilyId: string | null = null;
   loadingBCCs = false;
@@ -367,9 +375,17 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
     return `${bcc.bcc_code} - ${bcc.name}`;
   }
 
-  familyOptionLabel(family: Family): string {
-    return `${family.family_name} (${family.family_code})`;
+  familyOptionLabel(family: FamilyPickerEnriched): string {
+    return family.pickerLabel || formatFamilyPickerLabel(family);
   }
+
+  searchFamilyPicker = (term: string, item: FamilyPickerEnriched): boolean => {
+    const q = (term || '').trim().toLowerCase();
+    if (!q) {
+      return true;
+    }
+    return familyPickerSearchText(item).includes(q);
+  };
 
   /** ng-select search across full member name for parent pickers. */
   searchFamilyMember = (term: string, item: FamilyMember): boolean => {
@@ -2235,7 +2251,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       .subscribe({
         next: (response) => {
           if (response.success && response.data) {
-            this.families = response.data;
+            this.families = enrichFamiliesForPicker(response.data);
           } else {
             this.families = [];
           }
@@ -2259,7 +2275,7 @@ export class SacramentFormModalComponent implements OnInit, OnChanges, OnDestroy
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (response) => {
-          this.families = response.data || [];
+          this.families = enrichFamiliesForPicker(response.data || []);
           this.loadingFamilies = false;
           this.cdr.markForCheck();
         },

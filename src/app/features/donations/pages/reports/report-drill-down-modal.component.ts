@@ -31,12 +31,15 @@ import { DataTableComponent } from '@shared/components/data-table/data-table.com
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-report-drill-down-modal',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     RouterModule,
@@ -45,6 +48,7 @@ import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
     PaginationComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
+    CfBrandLoaderComponent,
     CfCurrencyPipe
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -108,7 +112,7 @@ import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
               <time
                 class="drill-down__metric-value drill-down__metric-value--text"
                 [attr.datetime]="ctx.business_date"
-              >{{ ctx.business_date | date:'MMM d, y':'UTC' }}</time>
+              >{{ ctx.business_date | cfDate }}</time>
               <span class="drill-down__metric-hint">{{ ctx.timezone }} · parish business date</span>
             </div>
           </div>
@@ -299,7 +303,7 @@ import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
           </div>
 
           <div *ngIf="listLoading" class="cf-loading-block cf-panel" role="status" aria-busy="true">
-            <p class="cf-loading-block__label">Refreshing records…</p>
+            <app-cf-brand-loader size="section" label="Refreshing records…" />
           </div>
 
           <app-data-table *ngIf="!listLoading && paymentRows.length" [ariaBusy]="listLoading">
@@ -315,7 +319,7 @@ import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
               </thead>
               <tbody>
                 <tr *ngFor="let row of paymentRows">
-                  <td>{{ row.payment_date | date }}</td>
+                  <td>{{ row.payment_date | cfDate }}</td>
                   <td>
                     <a *ngIf="row.family_id && row.family_name !== 'Anonymous'" [routerLink]="['/families', row.family_id]" class="cf-link">{{ row.family_name }}</a>
                     <span *ngIf="!row.family_id || row.family_name === 'Anonymous'">Anonymous</span>
@@ -387,7 +391,7 @@ import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
                     <td>{{ row.bcc_name || 'Unassigned Area' }}</td>
                     <td class="drill-down__money">{{ row.outstanding_amount | cfCurrency }}</td>
                     <td>
-                    <ng-container *ngIf="row.oldest_due_date; else noOldestDue">{{ row.oldest_due_date | date:'MMM d, y':'UTC' }}</ng-container>
+                    <ng-container *ngIf="row.oldest_due_date; else noOldestDue">{{ row.oldest_due_date | cfDate }}</ng-container>
                     <ng-template #noOldestDue>—</ng-template>
                   </td>
                     <td *ngIf="ctx.slice_id === 'overdue'">{{ row.days_overdue ?? '—' }}</td>
@@ -413,7 +417,7 @@ import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
                           <tr *ngFor="let due of expandedDues[row.family_id]">
                             <td>{{ due.plan?.name || due.plan_id }}</td>
                             <td>{{ due.period_label }}</td>
-                            <td>{{ due.due_date | date }}</td>
+                            <td>{{ due.due_date | cfDate }}</td>
                             <td class="drill-down__money">
                               {{ (due.outstanding_amount ?? (due.amount_due - due.amount_paid)) | cfCurrency }}
                             </td>

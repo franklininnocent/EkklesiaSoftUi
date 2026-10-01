@@ -236,7 +236,7 @@
                   {{ diocese.is_archdiocese ? 'Archdiocese' : 'Diocese' }}
                 </span>
                 <span class="overview-recent-item__date cf-meta">
-                  Added {{ diocese.created_at | date: 'MMM d, y' }}
+                  Added {{ diocese.created_at | cfDate }}
                 </span>
               </div>
             </li>
@@ -276,7 +276,7 @@
                   {{ bishop.archdiocese?.name || 'No Diocese' }}
                 </span>
                 <span class="overview-recent-item__date cf-meta">
-                  Added {{ bishop.created_at | date: 'MMM d, y' }}
+                  Added {{ bishop.created_at | cfDate }}
                   <span class="overview-status-badge" [class]="'overview-status-badge--' + bishop.status">
                     {{ bishop.status }}
                   </span>

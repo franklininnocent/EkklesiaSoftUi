@@ -15,6 +15,7 @@ import { ParishExpenseRecord } from '../../../models/donation.model';
 import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { formatFocCurrency } from '../../utils/foc-format.util';
 import { localDateOnly } from '../../../utils/local-date-only';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 export interface FocExpenseFormValue {
   category: string;
@@ -48,7 +49,8 @@ export interface FocExpenseMethodOption {
 @Component({
   selector: 'app-foc-expense-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, ModalShellComponent],
+  imports: [
+    CfDatePipe,CommonModule, FormsModule, RouterModule, ModalShellComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './foc-expense-modal.component.html',
   styleUrl: './foc-expense-modal.component.scss'

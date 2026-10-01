@@ -25,8 +25,8 @@
     <article class="cf-kpi"><span>Leaders</span><strong>{{ d.summary.leaders_count }}</strong></article>
     <article class="cf-kpi"><span>Active users</span><strong>{{ d.summary.active_users_count }}</strong></article>
     <article class="cf-kpi"><span>Window actions</span><strong>{{ d.summary.window_actions }}</strong></article>
-    <article class="cf-kpi"><span>Activation</span><strong>{{ d.summary.activation_date ? (d.summary.activation_date | date: 'mediumDate') : '—' }}</strong></article>
-    <article class="cf-kpi"><span>Last activity</span><strong>{{ d.summary.last_activity_at ? (d.summary.last_activity_at | date: 'short') : '—' }}</strong></article>
+    <article class="cf-kpi"><span>Activation</span><strong>{{ d.summary.activation_date ? (d.summary.activation_date | cfDate) : '—' }}</strong></article>
+    <article class="cf-kpi"><span>Last activity</span><strong>{{ d.summary.last_activity_at ? (d.summary.last_activity_at | cfDate: 'datetime') : '—' }}</strong></article>
   </section>
 
   <div class="insights-detail__grid">
@@ -91,7 +91,7 @@
       </thead>
       <tbody>
         <tr *ngFor="let row of d.recent_actions">
-          <td>{{ row.occurred_at | date: 'short' }}</td>
+          <td>{{ row.occurred_at | cfDate: 'datetime' }}</td>
           <td>{{ row.event_label }}</td>
           <td>{{ row.actor?.name || '—' }}</td>
         </tr>

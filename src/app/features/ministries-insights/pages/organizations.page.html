@@ -84,8 +84,8 @@
         <td><app-status-badge [label]="statusLabel(row.health_flag)" [tone]="toneForStatus(row.health_flag)"></app-status-badge></td>
         <td>{{ row.members_count }}</td>
         <td>{{ row.leaders_count }}</td>
-        <td>{{ row.created_at ? (row.created_at | date: 'mediumDate') : '—' }}</td>
-        <td>{{ row.last_activity_at ? (row.last_activity_at | date: 'short') : '—' }}</td>
+        <td>{{ row.created_at ? (row.created_at | cfDate) : '—' }}</td>
+        <td>{{ row.last_activity_at ? (row.last_activity_at | cfDate: 'datetime') : '—' }}</td>
       </tr>
     </tbody>
   </app-data-table>

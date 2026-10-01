@@ -1,0 +1,213 @@
+<div class="family-dash cf-page">
+  <app-page-header
+    title="Families"
+    subtitle="Family and member overview for parish management"
+  >
+    <app-list-toolbar
+      searchPlaceholder="Search by family name, family code, head, or phone"
+      [searchValue]="searchTerm"
+      [filterCount]="getActiveFilterCount()"
+      (searchChange)="onListSearchChange($event)"
+      (filtersOpened)="openAdvancedSearch()"
+    >
+      <span class="family-dash__updated cf-meta" *ngIf="summary() && !loading()" aria-live="polite">{{ updatedLabel() }}</span>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon cf-btn--sm"
+        (click)="refresh()"
+        [disabled]="refreshing()"
+        aria-label="Refresh dashboard"
+        title="Refresh"
+      >
+        ↻
+      </button>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="manageFamilies()">Manage Families</button>
+      <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" cfDisableWhenReadOnly (click)="addFamily()">
+        Add Family
+      </button>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <div
+    class="family-dash__chips"
+    *ngIf="getActiveFilters().length > 0"
+    role="region"
+    aria-label="Active filters"
+  >
+    <span class="cf-meta">Active filters</span>
+    <div class="family-dash__chip-list">
+      <span class="cf-badge cf-badge--info" *ngFor="let filter of getActiveFilters()">
+        {{ filter.label }}: {{ filter.displayValue }}
+        <button
+          type="button"
+          class="family-dash__chip-remove"
+          (click)="removeFilter(filter)"
+          [attr.aria-label]="'Remove filter: ' + filter.label"
+        >
+          ×
+        </button>
+      </span>
+    </div>
+    <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllFilters()">
+      Clear all
+    </button>
+  </div>
+
+  @if (loading()) {
+    <app-loading-skeleton type="card" [rows]="5" />
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">
+      {{ loadError() }}
+      <button type="button" class="cf-btn cf-btn--sm" (click)="load(true)">Retry</button>
+    </div>
+  } @else if (summary(); as s) {
+    @if (s.kpis.total_families === 0) {
+      <app-cf-empty-state title="No families yet" description="Add a family to see parish population here.">
+        <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" cfDisableWhenReadOnly (click)="addFamily()">Add Family</button>
+      </app-cf-empty-state>
+    } @else {
+      <section class="family-dash__kpis" aria-label="Population overview">
+        <button type="button" class="family-dash__kpi family-dash__kpi--primary" (click)="manageFamilies()">
+          <span class="family-dash__kpi-label">Total families</span>
+          <strong>{{ formatCount(s.kpis.total_families) }}</strong>
+          <span class="cf-meta">+{{ formatCount(s.kpis.new_families) }} created in {{ periodLabel() }}</span>
+        </button>
+        <button type="button" class="family-dash__kpi family-dash__kpi--primary" (click)="memberList({})">
+          <span class="family-dash__kpi-label">Total people</span>
+          <strong>{{ formatCount(s.kpis.total_people) }}</strong>
+          <span class="cf-meta">{{ s.kpis.average_family_size }} average per family</span>
+        </button>
+        <button type="button" class="family-dash__kpi family-dash__kpi--primary" (click)="familyList({ status: 'active' })">
+          <span class="family-dash__kpi-label">Active families</span>
+          <strong>{{ formatCount(s.kpis.active_families) }}</strong>
+          <span class="cf-meta">{{ s.kpis.active_families_percent }}% of families</span>
+        </button>
+        <button type="button" class="family-dash__kpi" (click)="memberList({ status: 'active' })">
+          <span class="family-dash__kpi-label">Active people</span>
+          <strong>{{ formatCount(s.kpis.active_people) }}</strong>
+          <span class="cf-meta">{{ s.kpis.active_people_percent }}% of people</span>
+        </button>
+        <button type="button" class="family-dash__kpi" (click)="familyList({ sort_by: 'created_at', sort_order: 'desc' })">
+          <span class="family-dash__kpi-label">New families · {{ periodLabel() }}</span>
+          <strong>{{ formatCount(s.kpis.new_families) }}</strong>
+          <span class="cf-meta">Family records created</span>
+        </button>
+        <div class="family-dash__kpi">
+          <span class="family-dash__kpi-label">Average family size</span>
+          <strong>{{ s.kpis.average_family_size }}</strong>
+          <span class="cf-meta" *ngIf="s.household.families_without_members">
+            {{ formatCount(s.household.families_without_members) }} families have no members
+          </span>
+        </div>
+      </section>
+
+      <section class="cf-panel family-dash__charts" aria-label="Population charts">
+        <div class="family-dash__charts-grid">
+          <section class="family-dash__chart-cell" aria-labelledby="age-heading">
+            <h2 id="age-heading" class="cf-section-title">Age distribution</h2>
+            <p class="cf-meta">{{ s.demographics.under_18_insight }}</p>
+            <app-member-age-distribution-chart
+              class="family-dash__age-chart"
+              [compact]="true"
+              [slices]="ageSlices()"
+              [extraQueryParams]="extraMemberParams()"
+            />
+            <p class="cf-meta">
+              {{ formatCount(s.demographics.with_dob) }} members with date of birth
+              · {{ formatCount(s.demographics.without_dob) }} without date of birth
+            </p>
+          </section>
+          <section class="family-dash__chart-cell" aria-labelledby="gender-heading">
+            <h2 id="gender-heading" class="cf-section-title">Gender distribution</h2>
+            <app-family-metric-chart
+              title="Gender distribution"
+              type="bar"
+              [legendBeside]="true"
+              [chartMinHeight]="distributionChartHeight"
+              [slices]="genderSlices()"
+              emptyLabel="Gender not recorded"
+              (select)="memberList({ gender: $event.key })"
+            />
+            <p class="cf-meta">{{ formatCount(s.demographics.without_gender) }} members · Gender not recorded</p>
+          </section>
+          <section class="family-dash__chart-cell" aria-labelledby="size-heading">
+            <h2 id="size-heading" class="cf-section-title">Family size</h2>
+            <p class="cf-meta">Average family size: <strong>{{ s.household.average }}</strong></p>
+            <app-family-metric-chart
+              title="Family size"
+              type="bar"
+              [legendBeside]="true"
+              [chartMinHeight]="distributionChartHeight"
+              [slices]="sizeSlices()"
+              (select)="familyList({ size_band: $event.key })"
+            />
+          </section>
+          <section class="family-dash__chart-cell" aria-labelledby="household-heading">
+            <h2 id="household-heading" class="cf-section-title">Household profile</h2>
+            <app-family-metric-chart
+              title="Household profile"
+              type="bar"
+              [legendBeside]="true"
+              [chartMinHeight]="distributionChartHeight"
+              [slices]="householdSlices()"
+              (select)="openHousehold($event)"
+            />
+            <p class="cf-meta">{{ headGenderLine() }}</p>
+          </section>
+        </div>
+      </section>
+
+      <section class="cf-panel" aria-label="Occupation and education">
+        <div class="family-dash__grid">
+          <div>
+            <h3 class="cf-section-title">Occupation</h3>
+            <p class="cf-meta">
+              Occupation recorded for {{ formatCount(s.background.occupation.recorded) }} of
+              {{ formatCount(s.background.occupation.total) }} members.
+              Each member is in one category. Percentages are the share of
+              {{ formatCount(s.background.occupation.total) }} members.
+            </p>
+            @if (s.background.occupation.values.length) {
+              <app-family-metric-chart
+                title="Occupation"
+                type="bar"
+                [slices]="occupationSlices()"
+                emptyLabel="Not recorded"
+                (select)="memberList({ occupation: $event.label })"
+              />
+            } @else {
+              <p class="cf-meta">Not recorded</p>
+            }
+          </div>
+          <div>
+            <h3 class="cf-section-title">Education qualification</h3>
+            <p class="cf-meta">
+              Each member is in one level. Percentages are the share of
+              {{ formatCount(s.background.education.total) }} members.
+            </p>
+            @if (s.background.education.values.length) {
+              <app-family-metric-chart
+                title="Education qualification"
+                type="bar"
+                [slices]="educationSlices()"
+                emptyLabel="Not recorded"
+                (select)="memberList({ education: $event.key })"
+              />
+            } @else {
+              <p class="cf-meta">Not recorded</p>
+            }
+          </div>
+        </div>
+      </section>
+    }
+  }
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false"
+  ></app-advanced-search-panel>
+</div>

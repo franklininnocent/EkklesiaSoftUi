@@ -32,6 +32,7 @@ import {
   Position,
   ReEnrollMemberPayload,
   TerminateLeadershipPayload,
+  UpdateLeadershipPayload,
   UpdateGuestMemberPayload,
   UpdateMembershipStatusPayload,
   UpdateOrganizationPayload,
@@ -65,6 +66,8 @@ interface LeadershipTimelineParams {
   per_page?: number;
   position_id?: string;
   status?: LeadershipTerm['status'];
+  sort_by?: string;
+  sort_dir?: 'asc' | 'desc';
 }
 
 type CreateOrganizationCategoryPayload = Pick<OrganizationCategory, 'code' | 'name'> &
@@ -205,6 +208,17 @@ export class MinistriesApiService {
   assignLeadership(orgId: string, payload: AssignLeadershipPayload): Observable<ApiResponse<LeadershipTerm>> {
     return this.http.post<ApiResponse<LeadershipTerm>>(
       `${this.baseUrl}/organizations/${orgId}/leadership/assign`,
+      payload,
+    );
+  }
+
+  updateLeadership(
+    orgId: string,
+    termId: string,
+    payload: UpdateLeadershipPayload,
+  ): Observable<ApiResponse<LeadershipTerm>> {
+    return this.http.patch<ApiResponse<LeadershipTerm>>(
+      `${this.baseUrl}/organizations/${orgId}/leadership/${termId}`,
       payload,
     );
   }

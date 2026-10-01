@@ -3,6 +3,7 @@ import {
   formatMassIntentionScheduledDay,
   massIntentionListDescription,
   massIntentionBeneficiaryIdentification,
+  massIntentionListMass,
   massIntentionListType,
   massIntentionNeedsCategory,
 } from './mass-intention-list-display';
@@ -38,8 +39,16 @@ describe('mass-intention-list-display', () => {
   });
 
   it('formats scheduled day for display', () => {
-    expect(formatMassIntentionScheduledDay('2026-10-01')).toMatch(/Oct/);
+    expect(formatMassIntentionScheduledDay('2026-10-01')).toBe('1 Oct 2026');
     expect(formatMassIntentionScheduledDay(null)).toBe('—');
+  });
+
+  it('includes mass time in register export label', () => {
+    const r = row({
+      mass_celebration: { id: 'm1', celebrated_on: '2026-10-11', celebrated_at: '06:00' },
+    });
+    expect(massIntentionListMass(r)).toContain('11 Oct 2026');
+    expect(massIntentionListMass(r)).toMatch(/6:00/);
   });
 
   it('shows BCC or place identification subtitle', () => {

@@ -1,5 +1,7 @@
 import { inject } from '@angular/core';
 import { Router, Routes, UrlTree } from '@angular/router';
+import { massScheduleCanDeactivateGuard } from './guards/mass-schedule-can-deactivate.guard';
+import { massSchedulePermissionGuard } from './guards/mass-schedule-permission.guard';
 
 function redirectLegacyMassIntentionCreate(): UrlTree {
   const router = inject(Router);
@@ -52,6 +54,42 @@ export const MASS_INTENTIONS_ROUTES: Routes = [
             path: '',
             loadComponent: () =>
               import('./pages/mass-celebrations-list.page').then((m) => m.MassCelebrationsListPageComponent),
+          },
+          {
+            path: 'list',
+            redirectTo: '',
+            pathMatch: 'full',
+          },
+          {
+            path: 'week',
+            loadComponent: () =>
+              import('./pages/mass-celebrations-week.page').then((m) => m.MassCelebrationsWeekPageComponent),
+          },
+          {
+            path: 'schedule',
+            canActivate: [massSchedulePermissionGuard],
+            canDeactivate: [massScheduleCanDeactivateGuard],
+            loadComponent: () =>
+              import('./pages/mass-regular-schedule.page').then((m) => m.MassRegularSchedulePageComponent),
+          },
+          {
+            path: 'temporaries',
+            canActivate: [massSchedulePermissionGuard],
+            children: [
+              {
+                path: '',
+                loadComponent: () =>
+                  import('./pages/mass-temporary-schedules.page').then(
+                    (m) => m.MassTemporarySchedulesPageComponent
+                  ),
+              },
+              {
+                path: ':scheduleId',
+                canDeactivate: [massScheduleCanDeactivateGuard],
+                loadComponent: () =>
+                  import('./pages/mass-regular-schedule.page').then((m) => m.MassRegularSchedulePageComponent),
+              },
+            ],
           },
           {
             path: ':id',

@@ -1,10 +1,95 @@
-:host ::ng-deep .cf-nav-cluster {
-  gap: 0;
+/* Aligns with mass-intentions workspace shell v2 (primary row + pill secondary links). */
+.ministries-settings-chrome {
+  min-width: 0;
+  border-bottom: 1px solid var(--cf-panel-border);
+  padding-bottom: var(--cf-space-1);
 }
 
-/* Module strip + taxonomy strip read as one band */
-:host ::ng-deep .cf-nav-cluster > app-ministries-sub-nav .cf-tab-strip {
+.ministries-settings-chrome__nav-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  min-width: 0;
+  padding: var(--cf-space-1) 0;
+}
+
+.ministries-settings-chrome__primary-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  flex-shrink: 0;
+  padding-right: var(--cf-space-2);
+  min-width: 0;
+}
+
+.ministries-settings-chrome__primary-group ::ng-deep .cf-tab-strip {
+  flex-wrap: nowrap;
+  gap: var(--cf-space-2);
   border-bottom: 0;
+  margin-bottom: 0;
+}
+
+.ministries-settings-chrome__primary-group ::ng-deep .cf-tab-strip__tab {
+  flex-shrink: 0;
+  margin-bottom: -1px;
+  font-weight: 500;
+}
+
+.ministries-settings-chrome__nav-separator {
+  flex-shrink: 0;
+  align-self: stretch;
+  width: 1px;
+  min-height: 1.75rem;
+  margin: 0 var(--cf-space-4);
+  background: var(--cf-panel-border);
+}
+
+.ministries-settings-chrome__secondary-group {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: var(--cf-space-1);
+  flex-shrink: 0;
+  padding-left: var(--cf-space-1);
+}
+
+.ministries-settings-chrome__secondary-link {
+  flex-shrink: 0;
+  appearance: none;
+  min-height: 2.25rem;
+  display: inline-flex;
+  align-items: center;
+  padding: var(--cf-space-1) var(--cf-space-2);
+  font-size: var(--cf-text-sm);
+  font-weight: 500;
+  color: var(--cf-muted);
+  text-decoration: none;
+  border-radius: var(--cf-radius-pill);
+  border: 1px solid var(--cf-panel-border);
+  background: var(--cf-color-surface, #fff);
+  cursor: pointer;
+}
+
+.ministries-settings-chrome__secondary-link:hover {
+  color: var(--cf-slate-900);
+  border-color: var(--cf-slate-300);
+  background: var(--cf-slate-50);
+}
+
+.ministries-settings-chrome__secondary-link:focus-visible {
+  outline: 2px solid var(--cf-primary);
+  outline-offset: 2px;
+}
+
+.ministries-settings-chrome__secondary-link--active {
+  color: var(--cf-slate-900);
+  font-weight: 600;
+  border-color: var(--cf-primary);
+  background: color-mix(in srgb, var(--cf-primary) 8%, var(--cf-color-surface, #fff));
 }
 
 .taxonomy-settings-page__panel {

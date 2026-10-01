@@ -129,8 +129,7 @@
         </div>
 
         <div *ngIf="loadingPermissions && !permissionCatalogAccessDenied" class="permissions-status">
-          <div class="spinner" aria-hidden="true"></div>
-          <p>Loading permissions…</p>
+          <app-cf-brand-loader size="inline" label="Loading permissions…" />
         </div>
 
         <div *ngIf="permissionsError && !loadingPermissions && !permissionCatalogAccessDenied" class="permissions-status permissions-status--error">
@@ -182,9 +181,12 @@
         type="submit"
         form="role-form"
         class="cf-btn cf-btn-primary"
-        [disabled]="roleForm.invalid || isSubmitting">
-        <span *ngIf="!isSubmitting">{{ isEditMode ? 'Update Role' : 'Create Role' }}</span>
-        <span *ngIf="isSubmitting">Submitting…</span>
+        [disabled]="roleForm.invalid || isSubmitting"
+        [attr.aria-busy]="isSubmitting"
+      >
+        <app-cf-busy-label [busy]="isSubmitting" busyLabel="Submitting">
+          {{ isEditMode ? 'Update Role' : 'Create Role' }}
+        </app-cf-busy-label>
       </button>
     </div>
   </div>

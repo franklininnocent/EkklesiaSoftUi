@@ -1,0 +1,167 @@
+<app-modal-shell
+  *ngIf="open"
+  title="Special day schedule"
+  size="md"
+  headerVariant="compact"
+  bodyPadding="none"
+  closeAriaLabel="Close special day"
+  [isSubmitting]="saving()"
+  (closeRequested)="close()"
+>
+  <div class="special-day-modal cf-split-form-body">
+    <p class="cf-meta special-day-modal__date">
+      Date: <strong>{{ overrideOn }}</strong>
+    </p>
+
+    @if (loading()) {
+      <p class="cf-meta" role="status">Loading…</p>
+    } @else {
+      <fieldset class="special-day-modal__mode" [formGroup]="modeForm">
+        <legend class="cf-split-section__title">
+          How should this day work? <span class="cf-split-req" aria-hidden="true">*</span>
+        </legend>
+        <p class="cf-meta">Choose one. We will not guess from the occasion name.</p>
+        <label class="special-day-modal__mode-option">
+          <input
+            type="radio"
+            formControlName="mode"
+            value="replace"
+            (change)="onFieldChange()"
+          />
+          Replace the regular Mass times on this date only
+        </label>
+        <label class="special-day-modal__mode-option">
+          <input
+            type="radio"
+            formControlName="mode"
+            value="supplement"
+            (change)="onFieldChange()"
+          />
+          Add extra Masses (keep the regular schedule too)
+        </label>
+      </fieldset>
+
+      <section class="cf-split-section" [formGroup]="metaForm">
+        <div class="cf-split-field">
+          <label for="special-day-label">Label <span class="cf-split-optional">optional</span></label>
+          <input id="special-day-label" type="text" formControlName="label" placeholder="e.g. Christmas" maxlength="120" />
+        </div>
+        @if (mode() === 'replace') {
+          <label class="special-day-modal__closure">
+            <input type="checkbox" formControlName="closes_regular_masses" (change)="onFieldChange()" />
+            No regular Masses on this date (parish closed)
+          </label>
+        }
+      </section>
+
+      @if (mode() !== null && !(mode() === 'replace' && metaForm.controls.closes_regular_masses.value && slots().length === 0)) {
+        <section class="cf-split-section" aria-labelledby="special-day-times-heading">
+          <div class="special-day-modal__times-header">
+            <h3 id="special-day-times-heading" class="cf-split-section__title">Mass times</h3>
+            <button type="button" class="cf-btn cf-btn--sm" (click)="addSlot()">Add time</button>
+          </div>
+          @if (slots().length === 0) {
+            <p class="cf-meta">Add at least one time, or use the closed-day option above.</p>
+          } @else {
+            <ul class="special-day-modal__slot-list">
+              @for (slot of slots(); track $index; let i = $index) {
+                <li class="special-day-modal__slot-row">
+                  <div class="cf-split-field">
+                    <label [for]="'special-time-' + i">Time</label>
+                    <input
+                      [id]="'special-time-' + i"
+                      type="time"
+                      [value]="slot.celebrated_at"
+                      (input)="updateSlotField(i, 'celebrated_at', $any($event.target).value)"
+                    />
+                  </div>
+                  <div class="cf-split-field">
+                    <label [for]="'special-place-' + i">Place <span class="cf-split-optional">optional</span></label>
+                    <input
+                      [id]="'special-place-' + i"
+                      type="text"
+                      [value]="slot.place ?? ''"
+                      (input)="updateSlotField(i, 'place', $any($event.target).value)"
+                    />
+                  </div>
+                  <div class="cf-split-field">
+                    <label [for]="'special-priest-' + i">Priest <span class="cf-split-optional">optional</span></label>
+                    <input
+                      [id]="'special-priest-' + i"
+                      type="text"
+                      [value]="slot.celebrant_name ?? ''"
+                      (input)="updateSlotField(i, 'celebrant_name', $any($event.target).value)"
+                    />
+                  </div>
+                  <button type="button" class="cf-btn cf-btn-ghost cf-btn--sm" (click)="removeSlot(i)">Remove</button>
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+
+      <section class="special-day-modal__preview cf-panel" aria-live="polite">
+        <h3 class="cf-split-section__title">Impact preview</h3>
+        @if (previewError()) {
+          <p class="cf-inline-alert" role="alert">{{ previewError() }}</p>
+        }
+        @if (applyError()) {
+          <p class="cf-inline-alert" role="alert">{{ applyError() }}</p>
+        }
+        @if (previewCounts(); as counts) {
+          <ul class="special-day-modal__counts">
+            <li>{{ counts['create'] ?? 0 }} to add</li>
+            <li>{{ counts['update'] ?? 0 }} to update</li>
+            <li>{{ counts['suppress'] ?? 0 }} removed from schedule</li>
+            @if ((counts['conflict'] ?? 0) > 0) {
+              <li>{{ counts['conflict'] }} need attention (intentions on those Masses)</li>
+            }
+          </ul>
+        } @else {
+          <p class="cf-meta">Preview shows what will change on this date before you confirm.</p>
+        }
+        @if (previewConflicts().length) {
+          <p class="cf-meta">These Masses will not change automatically unless you open or keep them.</p>
+          <ul class="special-day-modal__conflict-list">
+            @for (row of previewConflicts(); track row.celebration_id) {
+              <li class="special-day-modal__conflict-row">
+                <span class="special-day-modal__conflict-label">{{ conflictLabel(row) }}</span>
+                <a [routerLink]="['/mass-intentions/masses', row.celebration_id]" class="cf-btn cf-btn-ghost cf-btn--sm">
+                  Open Mass
+                </a>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn--sm"
+                  (click)="keepConflictMass(row.celebration_id)"
+                  [disabled]="keepingConflictId() === row.celebration_id"
+                >
+                  {{ keepingConflictId() === row.celebration_id ? 'Keeping…' : 'Keep this Mass' }}
+                </button>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <div class="special-day-modal__actions">
+        @if (overrideId()) {
+          <button type="button" class="cf-btn cf-btn-ghost" (click)="removeSpecialDay()" [disabled]="saving()">
+            Remove special day
+          </button>
+        }
+        <button type="button" class="cf-btn" (click)="runPreview()" [disabled]="previewing() || saving() || modeForm.invalid">
+          {{ previewing() ? 'Previewing…' : 'Preview impact' }}
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="confirmApply()"
+          [disabled]="saving() || !previewFingerprint()"
+        >
+          {{ saving() ? 'Saving…' : 'Confirm' }}
+        </button>
+      </div>
+    }
+  </div>
+</app-modal-shell>

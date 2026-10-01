@@ -6,13 +6,19 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
 import { MassIntentionRecord, MassIntentionsApiService } from '../services/mass-intentions-api.service';
-import { canCloseMassIntention, canCreateMassIntention } from '../utils/mass-intentions-auth.util';
+import { canCloseMassIntention, canCreateMassIntention, canScheduleMasses } from '../utils/mass-intentions-auth.util';
 import {
   formatMassIntentionScheduledDay,
   massIntentionBeneficiaryIdentification,
   massIntentionListDescription,
+  massIntentionListMass,
   massIntentionListType,
 } from '../utils/mass-intention-list-display';
+import { formatMassDayTime } from '../utils/mass-celebration-display';
+import {
+  MassIntentionAssignmentHistoryRow,
+  MassIntentionAuditRow,
+} from '../services/mass-intentions-api.service';
 import { massIntentionStageLabel, massIntentionStageTone } from '../utils/mass-intention-status-display';
 
 @Component({
@@ -31,11 +37,14 @@ export class MassIntentionViewModalComponent implements OnChanges {
   @Input() requestId: string | null = null;
   @Output() closed = new EventEmitter<void>();
   @Output() editRequested = new EventEmitter<string>();
+  @Output() moveRequested = new EventEmitter<MassIntentionRecord>();
   @Output() recordClosed = new EventEmitter<void>();
 
   readonly loading = signal(false);
   readonly closing = signal(false);
   readonly record = signal<MassIntentionRecord | null>(null);
+  readonly assignmentHistory = signal<MassIntentionAssignmentHistoryRow[]>([]);
+  readonly auditHistory = signal<MassIntentionAuditRow[]>([]);
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['open']?.currentValue && this.requestId) {
@@ -88,6 +97,35 @@ export class MassIntentionViewModalComponent implements OnChanges {
     return canCreateMassIntention(this.auth);
   }
 
+  canMove(r: MassIntentionRecord): boolean {
+    return (
+      canScheduleMasses(this.auth) &&
+      r.status === 'open' &&
+      !r.needs_a_mass &&
+      !!r.mass_celebration?.id
+    );
+  }
+
+  massLabel(r: MassIntentionRecord): string {
+    return massIntentionListMass(r);
+  }
+
+  assignmentLabel(row: MassIntentionAssignmentHistoryRow): string {
+    const when = formatMassDayTime(row.mass.celebrated_on ?? '', row.mass.celebrated_at ?? null);
+    const place = row.mass.place ? ` · ${row.mass.place}` : '';
+    const state = row.is_active ? 'Current' : row.is_said ? 'Said on this Mass' : 'Previous Mass';
+    return `${when}${place} — ${state}`;
+  }
+
+  auditLabel(row: MassIntentionAuditRow): string {
+    const map: Record<string, string> = {
+      'request.created': 'Recorded',
+      'request.updated': 'Updated',
+      'intention.moved': 'Moved to another Mass',
+    };
+    return map[row.event_type] ?? row.event_type;
+  }
+
   closeIntention(): void {
     const id = this.requestId;
     if (!id || this.closing()) {
@@ -119,6 +157,8 @@ export class MassIntentionViewModalComponent implements OnChanges {
     this.api.getRequest(id).subscribe({
       next: (res) => {
         this.record.set(res.data);
+        this.assignmentHistory.set(res.meta?.history?.assignments ?? []);
+        this.auditHistory.set(res.meta?.history?.audits ?? []);
         this.loading.set(false);
       },
       error: () => {

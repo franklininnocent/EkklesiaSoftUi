@@ -25,6 +25,7 @@ import {
   ReEnrollMemberPayload,
 } from '../../models/ministries.model';
 import { MinistriesApiService } from '../../services/ministries-api.service';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-re-enroll-member-modal',
@@ -124,11 +125,7 @@ export class ReEnrollMemberModalComponent implements OnInit {
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(date) || '—';
   }
 
   private defaultJoinedDate(): string {

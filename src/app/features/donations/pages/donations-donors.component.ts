@@ -1,140 +1,48 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
+import {
+  AdvancedSearchPanelComponent,
+  SearchField,
+} from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { StewardshipActiveFilterChipsComponent } from '../components/stewardship-active-filter-chips/stewardship-active-filter-chips.component';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { Donor } from '../models/donation.model';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { SortableDirective, SortDirection, SortEvent } from '@shared/directives/sortable.directive';
+
+type DonorSortColumn = 'name' | 'donor_type' | 'contact';
 
 @Component({
   selector: 'app-donations-donors',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, CfActionIconComponent],
-  template: `
-    <section class="donors cf-page">
-      <header class="cf-hero">
-        <h1>Donors & Supporters</h1>
-        <p>Know who gives — thank them, reach them, and link gifts to families.</p>
-      </header>
-
-      <div class="donors-loading cf-panel" *ngIf="!donorsLoaded" role="status" aria-live="polite" aria-busy="true">
-        <p class="donors-loading__label">Loading donors…</p>
-        <app-loading-skeleton type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
-      </div>
-
-      <ng-container *ngIf="donorsLoaded">
-      <div class="cf-decision-strip" role="region" aria-label="Suggested next step" *ngIf="!donorsLoadError && donors.length">
-        <div class="cf-decision-strip__copy">
-          <strong>{{ donors.length }} donor{{ donors.length === 1 ? '' : 's' }} · {{ reachableCount }} reachable</strong>
-          <span>{{ donorDecisionHint }}</span>
-        </div>
-        <div class="cf-decision-strip__actions">
-          <button
-          aria-label="Collect Payment"
-          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
-          <app-cf-action-icon name="collect-payment" />
-          </button>
-          <a routerLink="/donations/register" class="cf-btn cf-btn-icon" aria-label="Record offering" title="Record offering">
-            <app-cf-action-icon name="book-open" />
-          </a>
-        </div>
-      </div>
-
-      <details class="cf-disclosure" role="group" *ngIf="canManage" [attr.open]="showForm ? true : null">
-        <summary class="cf-disclosure__trigger" (click)="showForm = true">
-          <strong>Add donor</strong>
-          <span>For walk-in, external, or organizational supporters</span>
-        </summary>
-        <div class="cf-disclosure__body">
-          <form [formGroup]="form" (ngSubmit)="save()" class="cf-form-grid">
-            <input formControlName="name" placeholder="Donor name" />
-            <input formControlName="email" placeholder="Email" />
-            <input formControlName="phone" placeholder="Phone" />
-            <select formControlName="donor_type">
-              <option value="external">External supporter</option>
-              <option value="individual">Individual</option>
-              <option value="family">Family-linked</option>
-              <option value="organization">Organization</option>
-            </select>
-            <button
-          aria-label="Save"
-          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="form.invalid || saving">
-          <app-cf-action-icon name="save" />
-            </button>
-          </form>
-        </div>
-      </details>
-
-      <div class="cf-filters cf-panel" *ngIf="donors.length">
-        <input type="search" [(ngModel)]="tableSearch" placeholder="Search name, email, phone…" />
-      </div>
-
-      <table class="table cf-table" *ngIf="filteredDonors.length">
-        <thead><tr><th>Name</th><th>Type</th><th>Contact</th><th>Actions</th></tr></thead>
-        <tbody>
-          <tr *ngFor="let donor of filteredDonors">
-            <td><strong>{{ donor.name }}</strong></td>
-            <td>{{ donorTypeLabel(donor.donor_type) }}</td>
-            <td>
-              <span *ngIf="donor.email">{{ donor.email }}</span>
-              <span *ngIf="donor.email && donor.phone"> · </span>
-              <span *ngIf="donor.phone">{{ donor.phone }}</span>
-              <span *ngIf="!donor.email && !donor.phone" class="cf-state">No contact info</span>
-            </td>
-            <td>
-              <a *ngIf="donor.family_id" [routerLink]="['/families', donor.family_id]" class="cf-link">View family</a>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <p *ngIf="donors.length && !filteredDonors.length" class="cf-state">No donors match your search.</p>
-
-      <div class="donors-load-error cf-panel" *ngIf="donorsLoadError" role="alert">
-        <p class="donors-load-error__text">{{ donorsLoadError }}</p>
-        <button
-          aria-label="Try again"
-          title="Try again" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="load()">
-          <app-cf-action-icon name="refresh" />
-        </button>
-      </div>
-
-      <app-cf-empty-state
-        *ngIf="!donorsLoadError && !donors.length"
-        icon="♡"
-        title="No donors recorded yet"
-        description="Donors are created automatically when you collect offerings — or add supporters manually here."
-      >
-        <button
-          aria-label="Collect Payment"
-          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
-          <app-cf-action-icon name="collect-payment" />
-        </button>
-        <button
-          aria-label="Add"
-          title="Add" type="button" class="cf-btn cf-btn-icon" *ngIf="canManage" (click)="showForm = true">
-          <app-cf-action-icon name="plus" />
-        </button>
-      </app-cf-empty-state>
-      </ng-container>
-    </section>
-  `,
-  styles: [`
-    details summary { list-style: none; cursor: pointer; }
-    details summary::-webkit-details-marker { display: none; }
-    .donors-loading { display: grid; gap: 0.75rem; padding: 1rem; }
-    .donors-loading__label { margin: 0; font-size: 0.88rem; color: var(--cf-muted); }
-    .donors-load-error {
-      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;
-      padding: 1rem; border-color: #fecaca; background: var(--cf-critical-soft);
-    }
-    .donors-load-error__text { margin: 0; color: var(--cf-critical); font-size: 0.9rem; }
-  `]
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    RouterModule,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    CfActionIconComponent,
+    PageHeaderComponent,
+    ListToolbarComponent,
+    StewardshipActiveFilterChipsComponent,
+    AdvancedSearchPanelComponent,
+    DataTableComponent,
+    ModalShellComponent,
+    SortableDirective,
+  ],
+  templateUrl: './donations-donors.component.html',
+  styleUrls: ['./donations-donors.component.scss', '../styles/stewardship-dashboard-shared.scss'],
 })
 export class DonationsDonorsComponent implements OnInit, OnDestroy {
   donors: Donor[] = [];
@@ -145,14 +53,18 @@ export class DonationsDonorsComponent implements OnInit, OnDestroy {
   private skipNextNavReload = true;
   tableSearch = '';
   showForm = false;
+  showFilters = false;
   saving = false;
   canManage = false;
+  searchFields: SearchField[] = [];
+  sortColumn: DonorSortColumn = 'name';
+  sortDirection: SortDirection = 'asc';
 
   form = this.fb.group({
     name: ['', Validators.required],
     email: [''],
     phone: [''],
-    donor_type: ['external']
+    donor_type: ['external'],
   });
 
   constructor(
@@ -166,6 +78,7 @@ export class DonationsDonorsComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.canManage = this.authService.hasPermission('donations.manage');
+    this.initSearchFields();
     this.load();
     this.routerSub = this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe((e) => {
       if (!e.urlAfterRedirects.includes('/donations/donors')) {
@@ -183,39 +96,91 @@ export class DonationsDonorsComponent implements OnInit, OnDestroy {
     this.routerSub?.unsubscribe();
   }
 
-  get reachableCount(): number {
-    return this.donors.filter((donor) => !!(donor.email || donor.phone)).length;
+  get activeFilterCount(): number {
+    return this.tableSearch.trim() ? 1 : 0;
   }
 
-  get donorDecisionHint(): string {
-    const missingContact = this.donors.length - this.reachableCount;
-    if (missingContact > 0) {
-      return `${missingContact} donor${missingContact === 1 ? '' : 's'} missing contact info — add phone or email for thank-you outreach.`;
+  get activeFilterChips(): { label: string }[] {
+    if (!this.tableSearch.trim()) {
+      return [];
     }
-    return 'Use contact details for stewardship thank-you messages and recurring gifts.';
+    return [{ label: `Search: ${this.tableSearch.trim()}` }];
   }
 
   get filteredDonors(): Donor[] {
     const query = this.tableSearch.trim().toLowerCase();
-    if (!query) {
-      return this.donors;
+    const base = !query
+      ? this.donors
+      : this.donors.filter((donor) =>
+          [donor.name, donor.email, donor.phone, donor.donor_type]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+            .includes(query)
+        );
+    if (!this.sortDirection) {
+      return base;
     }
-    return this.donors.filter((donor) =>
-      [donor.name, donor.email, donor.phone, donor.donor_type].filter(Boolean).join(' ').toLowerCase().includes(query)
-    );
+    const direction = this.sortDirection === 'asc' ? 1 : -1;
+    return [...base].sort((a, b) => direction * this.compareDonorsForSort(a, b));
+  }
+
+  onSort(event: SortEvent): void {
+    if (event.column !== 'name' && event.column !== 'donor_type' && event.column !== 'contact') {
+      return;
+    }
+    this.sortColumn = event.column as DonorSortColumn;
+    this.sortDirection = event.direction ?? 'asc';
+    this.cdr.detectChanges();
+  }
+
+  trackDonor(_index: number, donor: Donor): string {
+    return donor.id;
   }
 
   donorTypeLabel(type?: string): string {
-    return ({
-      external: 'External',
-      individual: 'Individual',
-      family: 'Family',
-      organization: 'Organization'
-    } as Record<string, string>)[type || 'external'] || type || '—';
+    return (
+      {
+        external: 'External',
+        individual: 'Individual',
+        family: 'Family',
+        organization: 'Organization',
+      } as Record<string, string>
+    )[type || 'external'] || type || '—';
   }
 
   openQuickCollect(): void {
     this.quickCollectService.open();
+  }
+
+  openAddDonor(): void {
+    this.form.reset({ name: '', email: '', phone: '', donor_type: 'external' });
+    this.showForm = true;
+  }
+
+  closeAddDonor(): void {
+    if (this.saving) {
+      return;
+    }
+    this.showForm = false;
+  }
+
+  onAdvancedSearch(values: { [key: string]: unknown }): void {
+    this.tableSearch = String(values['search'] ?? '').trim();
+    this.showFilters = false;
+    this.syncSearchFieldValues();
+    this.cdr.detectChanges();
+  }
+
+  onClearAdvancedSearch(): void {
+    this.tableSearch = '';
+    this.showFilters = false;
+    this.syncSearchFieldValues();
+    this.cdr.detectChanges();
+  }
+
+  clearSearchFilter(): void {
+    this.onClearAdvancedSearch();
   }
 
   load(): void {
@@ -239,7 +204,7 @@ export class DonationsDonorsComponent implements OnInit, OnDestroy {
         this.donorsLoaded = true;
         this.donorsLoadError = 'Unable to load donors. Please try again.';
         this.cdr.detectChanges();
-      }
+      },
     });
   }
 
@@ -256,7 +221,51 @@ export class DonationsDonorsComponent implements OnInit, OnDestroy {
         this.load();
         this.cdr.detectChanges();
       },
-      error: () => { this.saving = false; }
+      error: () => {
+        this.saving = false;
+        this.cdr.detectChanges();
+      },
     });
+  }
+
+  private initSearchFields(): void {
+    this.searchFields = [
+      {
+        key: 'search',
+        label: 'Name, email, or phone',
+        type: 'text',
+        placeholder: 'Filter donors…',
+        value: this.tableSearch.trim() || undefined,
+      },
+    ];
+  }
+
+  private syncSearchFieldValues(): void {
+    const field = this.searchFields.find((f) => f.key === 'search');
+    if (field) {
+      field.value = this.tableSearch.trim() || undefined;
+    }
+  }
+
+  private compareDonorsForSort(a: Donor, b: Donor): number {
+    const col = this.sortColumn;
+    if (col === 'name') {
+      return (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+    }
+    if (col === 'donor_type') {
+      return this.donorTypeLabel(a.donor_type).localeCompare(this.donorTypeLabel(b.donor_type), undefined, {
+        sensitivity: 'base',
+      });
+    }
+    return this.donorContactSortKey(a).localeCompare(this.donorContactSortKey(b), undefined, { sensitivity: 'base' });
+  }
+
+  private donorContactSortKey(donor: Donor): string {
+    const email = (donor.email || '').trim();
+    const phone = (donor.phone || '').trim();
+    if (email && phone) {
+      return `${email} ${phone}`.toLowerCase();
+    }
+    return (email || phone || '').toLowerCase();
   }
 }

@@ -44,6 +44,9 @@ export interface FamilyMemberFormValue {
   marriage_date?: string;
   marriage_place?: string;
   marriage_spouse_name?: string;
+  suggested_marriage_date?: string | null;
+  marriage_date_conflict?: boolean;
+  acknowledge_marriage_date_conflict?: boolean;
   marriage_bride_full_name?: string;
   marriage_bride_address?: string;
   marriage_bride_church_type?: 'home_parish' | 'other';
@@ -107,6 +110,15 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
   private _saving = false;
   isEditMode = false;
   get callingCode(): string { return this.phoneCodeService.getPhoneCodeSync(); }
+  get showMarriageDate(): boolean {
+    return String(this.form.get('marital_status')?.value || '').toLowerCase() === 'married';
+  }
+  get todayIsoDate(): string {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${now.getFullYear()}-${month}-${day}`;
+  }
   errorMessage: string | null = null;
   private lastMemberId: string | null = null; // Track last member ID to prevent unnecessary patches
   personQuery = '';
@@ -304,6 +316,9 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
   private populateFormWithMember(member: FamilyMemberFormValue): void {
     // Prepare member data for form - handle date formats and normalize values
     const memberData: any = { ...member };
+    if (!memberData.marriage_date && member.suggested_marriage_date) {
+      memberData.marriage_date = member.suggested_marriage_date;
+    }
     
     // Ensure ID is included
     if (member.id !== undefined && member.id !== null) {
@@ -535,6 +550,7 @@ export class FamilyMemberFormModalComponent implements OnInit, OnChanges {
       'baptism_date': 'Baptism date',
       'first_communion_date': 'First communion date',
       'confirmation_date': 'Confirmation date',
+      'marriage_date': 'Marriage date',
       'status': 'Status'
     };
     return labels[controlName] || controlName.replace(/_/g, ' ');

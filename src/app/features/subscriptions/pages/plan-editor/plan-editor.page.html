@@ -2,8 +2,7 @@
   <a *ngIf="!isLayoutV2" routerLink="/settings/subscription/plans" class="sa-muted">← All plans</a>
 
   <div *ngIf="loading" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-loading-block__label">Loading plan…</p>
-    <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading plan…" type="card" [rows]="4"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
@@ -188,13 +187,13 @@
               </td>
               <td class="sa-versions-table__timeline">
                 <span class="cf-meta" *ngIf="v.status === 'SCHEDULED' && v.effective_from">
-                  Goes live {{ v.effective_from | date: 'mediumDate' }}
+                  Goes live {{ v.effective_from | cfDate }}
                 </span>
                 <span class="cf-meta" *ngIf="v.status === 'ACTIVE' && v.published_at">
-                  Live since {{ v.published_at | date: 'mediumDate' }}
+                  Live since {{ v.published_at | cfDate }}
                 </span>
                 <span class="cf-meta" *ngIf="v.status === 'RETIRED' && v.retired_at">
-                  Retired {{ v.retired_at | date: 'mediumDate' }}
+                  Retired {{ v.retired_at | cfDate }}
                 </span>
                 <span class="cf-meta" *ngIf="v.status === 'DRAFT'">—</span>
               </td>

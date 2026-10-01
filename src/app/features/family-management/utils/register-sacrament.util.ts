@@ -6,6 +6,7 @@ import {
   resolveCanonicalSacrament,
   SacramentTypeLike
 } from './sacrament-completion.util';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 export function registerStatusLabel(status: string | null | undefined): string {
   switch (status) {
@@ -126,9 +127,7 @@ export function formatRegisterDate(date: string | null | undefined): string {
   }
   try {
     const parsed = new Date(date);
-    return isNaN(parsed.getTime())
-      ? '—'
-      : parsed.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return isNaN(parsed.getTime()) ? '—' : cfFormatDate(parsed) || '—';
   } catch {
     return '—';
   }

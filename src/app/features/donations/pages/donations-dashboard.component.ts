@@ -13,6 +13,7 @@ import { Subject, of } from 'rxjs';
 import { catchError, switchMap } from 'rxjs/operators';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
@@ -60,6 +61,7 @@ interface DashboardActiveFilterChip {
     CfActionIconComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
+    CfBrandLoaderComponent,
     DashboardCollectedTrendComponent,
     DashboardDateRangeComponent,
     DonationsDashboardFilterDrawerComponent,
@@ -144,9 +146,8 @@ interface DashboardActiveFilterChip {
       />
 
       <div *ngIf="loading && !summary" class="cf-loading-block cf-panel" role="status" aria-live="polite">
-        <p class="cf-loading-block__label">Loading financial dashboard…</p>
-        <app-loading-skeleton type="card" [rows]="1"></app-loading-skeleton>
-        <app-loading-skeleton type="rectangle" [rows]="3"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading financial dashboard…" type="card" [rows]="1"></app-loading-skeleton>
+        <app-loading-skeleton [showBrandHeader]="false" type="rectangle" [rows]="3"></app-loading-skeleton>
       </div>
 
       <div *ngIf="error" class="cf-inline-alert cf-panel" role="alert">
@@ -231,12 +232,29 @@ interface DashboardActiveFilterChip {
             <span class="dashboard-kpi-overdue__meta cf-meta">{{ familyCountLabel(snap.overdue_families) }}</span>
           </a>
 
-          <article class="cf-kpi-card--executive dashboard-kpi" [title]="participationTitle">
-            <span class="cf-kpi-card__label">Family participation</span>
-            <strong class="cf-kpi-card__value">{{ snap.participation.rate }}%</strong>
-            <span class="cf-meta">{{ snap.participation.participating }} of {{ snap.participation.active }} active families</span>
-            <span class="cf-meta">{{ participationChange }}</span>
-          </article>
+          <a
+            class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--participation"
+            routerLink="reports"
+            [queryParams]="{ report: 'participation' }"
+            [title]="participationTitle"
+          >
+            <span class="dashboard-kpi-participation__head">
+              <span class="dashboard-kpi-participation__icon" aria-hidden="true">
+                <app-cf-action-icon name="users" />
+              </span>
+              <span class="cf-kpi-card__label dashboard-kpi-participation__label">Family participation</span>
+            </span>
+            <strong class="cf-kpi-card__value dashboard-kpi-participation__value">{{ snap.participation.rate | number:'1.1-1' }}%</strong>
+            <span class="dashboard-kpi-participation__hint">
+              {{ snap.participation.participating | number }} of {{ snap.participation.active | number }} active families
+            </span>
+            <span
+              class="dashboard-kpi-participation__compare"
+              [class.dashboard-kpi-participation__compare--up]="participationDelta > 0"
+              [class.dashboard-kpi-participation__compare--down]="participationDelta < 0"
+              [class.dashboard-kpi-participation__compare--neutral]="participationDelta === 0"
+            >{{ participationChange }}</span>
+          </a>
         </div>
 
         <div
@@ -245,7 +263,7 @@ interface DashboardActiveFilterChip {
           role="status"
           aria-live="polite"
         >
-          <p class="cf-loading-block__label">Loading stewardship overview…</p>
+          <app-cf-brand-loader size="section" label="Loading stewardship overview…" />
         </div>
 
         <div *ngIf="advancedReports && executiveError" class="cf-inline-alert cf-panel" role="alert">
@@ -544,6 +562,79 @@ interface DashboardActiveFilterChip {
       margin-top: 0.15rem;
       color: color-mix(in srgb, var(--cf-critical) 45%, var(--cf-muted));
     }
+    .dashboard-kpi--participation {
+      position: relative;
+      border-color: color-mix(in srgb, var(--cf-indigo) 32%, var(--cf-panel-border));
+      background: linear-gradient(
+        145deg,
+        color-mix(in srgb, var(--cf-indigo-soft) 92%, var(--cf-panel-bg)) 0%,
+        var(--cf-panel-bg) 72%
+      );
+      box-shadow: var(--cf-shadow-xs);
+      min-width: 10.5rem;
+      padding: 0.75rem 0.85rem;
+    }
+    .dashboard-kpi-participation__head {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      min-width: 0;
+    }
+    .dashboard-kpi-participation__icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      width: 1.75rem;
+      height: 1.75rem;
+      border-radius: var(--cf-radius-pill);
+      background: color-mix(in srgb, var(--cf-indigo) 14%, var(--cf-indigo-soft));
+      color: var(--cf-indigo);
+    }
+    .dashboard-kpi-participation__icon .cf-action-icon {
+      width: 1rem;
+      height: 1rem;
+    }
+    .dashboard-kpi-participation__label {
+      color: var(--cf-indigo);
+      font-weight: 600;
+      letter-spacing: 0.01em;
+    }
+    .dashboard-kpi-participation__value {
+      margin-top: 0.35rem;
+      font-size: clamp(1.45rem, 2.8vw, 1.65rem);
+      font-weight: 700;
+      line-height: 1.05;
+      color: var(--cf-indigo);
+    }
+    .dashboard-kpi-participation__hint {
+      display: block;
+      margin-top: 0.2rem;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      color: color-mix(in srgb, var(--cf-indigo) 50%, var(--cf-muted));
+    }
+    .dashboard-kpi-participation__compare {
+      display: inline-block;
+      margin-top: 0.35rem;
+      padding: 0.1rem 0.4rem;
+      border-radius: 999px;
+      font-size: 0.72rem;
+      line-height: 1.35;
+      font-weight: 600;
+    }
+    .dashboard-kpi-participation__compare--up {
+      background: color-mix(in srgb, var(--cf-forest-soft) 75%, var(--cf-panel-bg));
+      color: var(--cf-forest);
+    }
+    .dashboard-kpi-participation__compare--down {
+      background: color-mix(in srgb, var(--cf-critical-soft) 75%, var(--cf-panel-bg));
+      color: var(--cf-critical);
+    }
+    .dashboard-kpi-participation__compare--neutral {
+      background: color-mix(in srgb, var(--cf-indigo-soft) 65%, var(--cf-panel-bg));
+      color: color-mix(in srgb, var(--cf-indigo) 70%, var(--cf-slate-700));
+    }
     @media (prefers-color-scheme: dark) {
       .dashboard-kpi--collected-month,
       .dashboard-kpi--collected-fy {
@@ -617,6 +708,30 @@ interface DashboardActiveFilterChip {
       .dashboard-kpi-overdue__hint,
       .dashboard-kpi-overdue__meta {
         color: var(--cf-slate-300);
+      }
+      .dashboard-kpi--participation {
+        border-color: color-mix(in srgb, var(--cf-indigo) 45%, var(--cf-panel-border));
+        background: linear-gradient(
+          145deg,
+          color-mix(in srgb, var(--cf-indigo) 22%, var(--cf-panel-bg)) 0%,
+          var(--cf-panel-bg) 78%
+        );
+        box-shadow: none;
+      }
+      .dashboard-kpi-participation__icon {
+        background: color-mix(in srgb, var(--cf-indigo) 35%, var(--cf-slate-800));
+        color: color-mix(in srgb, var(--cf-indigo-soft) 88%, #fff);
+      }
+      .dashboard-kpi-participation__label,
+      .dashboard-kpi-participation__value {
+        color: color-mix(in srgb, var(--cf-indigo-soft) 75%, #fff);
+      }
+      .dashboard-kpi-participation__hint {
+        color: var(--cf-slate-300);
+      }
+      .dashboard-kpi-participation__compare--neutral {
+        background: color-mix(in srgb, var(--cf-indigo) 28%, var(--cf-slate-800));
+        color: var(--cf-slate-200);
       }
     }
     .dashboard-badge {
@@ -952,8 +1067,12 @@ export class DonationsDashboardComponent implements OnInit {
     return `${word} ${Math.abs(month.growth_pct)}% versus ${range}`;
   }
 
+  get participationDelta(): number {
+    return this.snapshot?.participation.net_change_vs_prior_window ?? 0;
+  }
+
   get participationChange(): string {
-    const delta = this.snapshot?.participation.net_change_vs_prior_window ?? 0;
+    const delta = this.participationDelta;
     if (delta > 0) {
       return `${delta} more than the previous period`;
     }
@@ -1100,6 +1219,9 @@ export class DonationsDashboardComponent implements OnInit {
         this.loadExecutiveSummary();
       }
     });
+    this.donationsService.ledgerMutated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.reload$.next());
   }
 
   reload(): void {

@@ -30,6 +30,8 @@ import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfLoadingContainerComponent } from '@shared/components/cf-loading-container/cf-loading-container.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ChurchLeaderWorkspaceComponent } from './components/church-leader-workspace/church-leader-workspace.component';
 import { ChurchLeaderDetailComponent } from './components/church-leader-detail/church-leader-detail.component';
@@ -74,6 +76,7 @@ import {
   ChurchStatusMetric,
 } from '@core/models/church';
 import { partitionParishClergyAssignments } from './utils/leadership-role-query.util';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type ChurchProfileTab = 'profile' | 'leadership' | 'statistics' | 'social' | 'diocesan-bishop';
 
@@ -102,6 +105,8 @@ interface ProfileLeaderCard {
     PageHeaderComponent,
     BishopAvatarComponent,
     CfCurrencyPipe,
+    CfLoadingContainerComponent,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './church-profile.component.html',
   styleUrl: './church-profile.component.scss',
@@ -2661,7 +2666,7 @@ export class ChurchProfileComponent implements OnInit, OnDestroy {
     if (!dateString) return 'Not specified';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      return cfFormatDate(date) || dateString;
     } catch {
       return dateString;
     }

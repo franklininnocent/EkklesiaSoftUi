@@ -5,7 +5,7 @@
       <div>
         <strong>{{ event.title }}</strong>
         <span>{{ event.subtitle }}</span>
-        <small>{{ event.date | date:'mediumDate' }}</small>
+        <small>{{ event.date | cfDate }}</small>
       </div>
       <strong *ngIf="event.amount != null">{{ formatCurrency(event.amount) }}</strong>
     </li>

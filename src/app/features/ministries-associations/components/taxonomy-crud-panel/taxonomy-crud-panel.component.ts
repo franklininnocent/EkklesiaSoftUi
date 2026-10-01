@@ -12,17 +12,29 @@ import {
 } from '@angular/core';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ToastService } from '@core/services/toast.service';
-import {
-  ActionBarComponent,
-  ActionBarItem,
-} from '@shared/components/action-bar/action-bar.component';
 import { RouterLink } from '@angular/router';
+import {
+  CfActionIconComponent,
+  CfActionIconName,
+} from '@shared/components/cf-action-icon/cf-action-icon.component';
+import {
+  CfActiveFilterChip,
+  CfActiveFilterChipsComponent,
+} from '@shared/components/cf-active-filter-chips/cf-active-filter-chips.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
+import {
+  AdvancedSearchPanelComponent,
+  SearchField,
+} from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import {
+  ConfirmationModalComponent,
+  ConfirmationResult,
+} from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
 import {
   OrganizationCategory,
@@ -30,10 +42,21 @@ import {
   Position,
 } from '../../models/ministries.model';
 import { MinistriesApiService } from '../../services/ministries-api.service';
+import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 
 export type TaxonomyKind = 'categories' | 'types' | 'positions';
 
 type TaxonomyItem = OrganizationCategory | OrganizationType | Position;
+
+type TaxonomyStatusFilter = '' | 'active' | 'inactive';
+type TaxonomyOccupancyFilter = '' | 'single' | 'multiple';
+type TaxonomySortBy =
+  | 'code'
+  | 'name'
+  | 'description'
+  | 'display_order'
+  | 'is_active'
+  | 'single_occupancy';
 
 @Component({
   selector: 'app-taxonomy-crud-panel',
@@ -43,14 +66,18 @@ type TaxonomyItem = OrganizationCategory | OrganizationType | Position;
     FormsModule,
     ReactiveFormsModule,
     RouterLink,
-    ActionBarComponent,
+    CfActionIconComponent,
+    CfActiveFilterChipsComponent,
     CfEmptyStateComponent,
     DataTableComponent,
     FormFieldComponent,
+    AdvancedSearchPanelComponent,
     ListToolbarComponent,
     LoadingSkeletonComponent,
     ModalShellComponent,
+    ConfirmationModalComponent,
     StatusBadgeComponent,
+    SortableDirective,
   ],
   templateUrl: './taxonomy-crud-panel.component.html',
   styleUrl: './taxonomy-crud-panel.component.scss',
@@ -77,6 +104,12 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
   loaded = false;
   loadError: string | null = null;
   tableSearch = '';
+  showFilters = false;
+  statusFilter: TaxonomyStatusFilter = '';
+  occupancyFilter: TaxonomyOccupancyFilter = '';
+  sortBy: TaxonomySortBy = 'display_order';
+  sortDir: 'asc' | 'desc' = 'asc';
+  searchFields: SearchField[] = [];
   showForm = false;
   editingId: string | null = null;
   saving = false;
@@ -85,6 +118,10 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
   submitted = false;
   formError: string | null = null;
   fieldErrors: Record<string, string> = {};
+  selectedId: string | null = null;
+  confirmDeactivateOpen = false;
+  pendingDeactivate: TaxonomyItem | null = null;
+  private pendingDeactivateViaForm = false;
 
   form = this.fb.nonNullable.group({
     code: [
@@ -107,31 +144,84 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
   });
 
   ngOnInit(): void {
+    this.initSearchFields();
     this.load();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['kind'] && !changes['kind'].firstChange) {
       this.tableSearch = '';
+      this.resetDrawerFilters();
       this.statusError = null;
+      this.selectedId = null;
       this.closeForm();
+      this.initSearchFields();
       this.load();
     }
   }
 
+  get drawerFilterCount(): number {
+    let count = this.statusFilter ? 1 : 0;
+    if (this.isPositionsKind && this.occupancyFilter) {
+      count += 1;
+    }
+    return count;
+  }
+
+  get hasActiveFilters(): boolean {
+    return this.activeFilterChips.length > 0;
+  }
+
+  get activeFilterChips(): CfActiveFilterChip[] {
+    const chips: CfActiveFilterChip[] = [];
+    const query = this.tableSearch.trim();
+    if (query) {
+      chips.push({ key: 'search', label: 'Search', value: query });
+    }
+    if (this.statusFilter) {
+      chips.push({
+        key: 'statusFilter',
+        label: 'Status',
+        value: this.statusFilter === 'active' ? 'Active' : 'Inactive',
+      });
+    }
+    if (this.isPositionsKind && this.occupancyFilter) {
+      chips.push({
+        key: 'occupancyFilter',
+        label: 'Occupancy',
+        value: this.occupancyFilter === 'single' ? 'Single' : 'Multiple',
+      });
+    }
+    return chips;
+  }
+
   get filteredItems(): TaxonomyItem[] {
+    let result = this.items;
+
     const query = this.tableSearch.trim().toLowerCase();
-    if (!query) {
-      return this.items;
+    if (query) {
+      result = result.filter((item) =>
+        [item.code, item.name, item.description]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase()
+          .includes(query),
+      );
     }
 
-    return this.items.filter((item) =>
-      [item.code, item.name, item.description]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase()
-        .includes(query),
-    );
+    if (this.statusFilter === 'active') {
+      result = result.filter((item) => item.is_active);
+    } else if (this.statusFilter === 'inactive') {
+      result = result.filter((item) => !item.is_active);
+    }
+
+    if (this.isPositionsKind && this.occupancyFilter === 'single') {
+      result = result.filter((item) => this.isPosition(item) && item.single_occupancy);
+    } else if (this.isPositionsKind && this.occupancyFilter === 'multiple') {
+      result = result.filter((item) => this.isPosition(item) && !item.single_occupancy);
+    }
+
+    return [...result].sort((a, b) => this.compareItems(a, b));
   }
 
   get singularLabel(): string {
@@ -143,6 +233,10 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
       case 'positions':
         return 'position';
     }
+  }
+
+  get addActionLabel(): string {
+    return `Add ${this.singularLabel}`;
   }
 
   get listTitle(): string {
@@ -169,6 +263,54 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
     this.cdr.markForCheck();
   }
 
+  onAdvancedSearch(values: { [key: string]: unknown }): void {
+    this.statusFilter = ((values['statusFilter'] as TaxonomyStatusFilter) || '') as TaxonomyStatusFilter;
+    this.occupancyFilter = ((values['occupancyFilter'] as TaxonomyOccupancyFilter) || '') as TaxonomyOccupancyFilter;
+    this.sortBy = ((values['sortBy'] as TaxonomySortBy) || 'display_order') as TaxonomySortBy;
+    this.sortDir = ((values['sortDir'] as 'asc' | 'desc') || 'asc') as 'asc' | 'desc';
+    this.showFilters = false;
+    this.cdr.markForCheck();
+  }
+
+  onClearAdvancedSearch(): void {
+    this.resetDrawerFilters();
+    this.initSearchFields();
+    this.cdr.markForCheck();
+  }
+
+  onSort(event: SortEvent): void {
+    if (!this.isSortableColumn(event.column)) {
+      return;
+    }
+    this.sortBy = event.column as TaxonomySortBy;
+    this.sortDir = event.direction ?? 'asc';
+    this.initSearchFields();
+    this.cdr.markForCheck();
+  }
+
+  onActiveFilterChipRemove(chip: CfActiveFilterChip): void {
+    switch (chip.key) {
+      case 'search':
+        this.tableSearch = '';
+        break;
+      case 'statusFilter':
+        this.statusFilter = '';
+        break;
+      case 'occupancyFilter':
+        this.occupancyFilter = '';
+        break;
+    }
+    this.initSearchFields();
+    this.cdr.markForCheck();
+  }
+
+  clearAllListFilters(): void {
+    this.tableSearch = '';
+    this.resetDrawerFilters();
+    this.initSearchFields();
+    this.cdr.markForCheck();
+  }
+
   statusLabel(item: TaxonomyItem): string {
     return item.is_active ? 'Active' : 'Inactive';
   }
@@ -181,31 +323,128 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
     return this.isPosition(item) && item.single_occupancy ? 'Single' : 'Multiple';
   }
 
-  rowActions(item: TaxonomyItem): ActionBarItem[] {
-    return [
-      { id: 'edit', label: 'Edit', tier: 'secondary' },
-      {
-        id: 'toggle-status',
-        label:
-          this.statusUpdatingId === item.id
-            ? 'Updating…'
-            : item.is_active
-              ? 'Deactivate'
-              : 'Activate',
-        tier: 'secondary',
-        disabled: this.statusUpdatingId === item.id,
-      },
-    ];
+  get selectedItem(): TaxonomyItem | null {
+    if (!this.selectedId) {
+      return null;
+    }
+    const item = this.items.find((row) => row.id === this.selectedId);
+    if (!item) {
+      return null;
+    }
+    return this.filteredItems.some((row) => row.id === item.id) ? item : null;
   }
 
-  onRowAction(actionId: string, item: TaxonomyItem): void {
-    if (actionId === 'edit') {
-      this.editItem(item);
+  get editSelectedAriaLabel(): string {
+    const item = this.selectedItem;
+    return item ? `Edit ${item.name}` : 'Edit';
+  }
+
+  get statusSelectedAriaLabel(): string {
+    const item = this.selectedItem;
+    if (!item) {
+      return 'Deactivate';
+    }
+    if (this.statusUpdatingId === item.id) {
+      return 'Updating status…';
+    }
+    return item.is_active ? `Deactivate ${item.name}` : `Activate ${item.name}`;
+  }
+
+  get statusSelectedIcon(): CfActionIconName {
+    const item = this.selectedItem;
+    if (item && !item.is_active) {
+      return 'play';
+    }
+    return 'badge-minus';
+  }
+
+  get statusUpdatingSelected(): boolean {
+    const item = this.selectedItem;
+    return !!item && this.statusUpdatingId === item.id;
+  }
+
+  get canToggleStatusSelected(): boolean {
+    const item = this.selectedItem;
+    return !!item && !this.statusUpdatingId;
+  }
+
+  isSelected(item: TaxonomyItem): boolean {
+    return this.selectedId === item.id;
+  }
+
+  onSelectItem(item: TaxonomyItem, checked: boolean): void {
+    if (checked) {
+      this.selectedId = item.id;
+    } else if (this.selectedId === item.id) {
+      this.selectedId = null;
+    }
+    this.cdr.markForCheck();
+  }
+
+  editSelected(): void {
+    const item = this.selectedItem;
+    if (!item) {
       return;
     }
-    if (actionId === 'toggle-status') {
-      this.toggleStatus(item);
+    this.editItem(item);
+  }
+
+  toggleStatusSelected(): void {
+    const item = this.selectedItem;
+    if (!item) {
+      return;
     }
+    if (item.is_active) {
+      this.pendingDeactivate = item;
+      this.confirmDeactivateOpen = true;
+      this.cdr.markForCheck();
+      return;
+    }
+    this.toggleStatus(item);
+  }
+
+  get deactivateConfirmTitle(): string {
+    const name = this.pendingDeactivate?.name ?? this.singularLabel;
+    return `Deactivate ${name}?`;
+  }
+
+  get deactivateConfirmMessage(): string {
+    const name = this.pendingDeactivate?.name ?? `This ${this.singularLabel}`;
+    const item = this.pendingDeactivate;
+    if (item && this.isPosition(item)) {
+      return (
+        `${name} will be hidden from new leadership assignment forms. ` +
+        `Current leadership records are not changed. You can activate it again at any time.`
+      );
+    }
+    return (
+      `${name} will be hidden from new organization and leadership forms. ` +
+      `Existing organizations are not changed. You can activate it again at any time.`
+    );
+  }
+
+  onDeactivateConfirmed(result: ConfirmationResult): void {
+    this.confirmDeactivateOpen = false;
+    const item = this.pendingDeactivate;
+    const viaForm = this.pendingDeactivateViaForm;
+    this.pendingDeactivate = null;
+    this.pendingDeactivateViaForm = false;
+    if (!result.confirmed || !item) {
+      this.cdr.markForCheck();
+      return;
+    }
+    if (viaForm) {
+      this.executeSave();
+      return;
+    }
+    this.toggleStatus(item);
+  }
+
+  closeDeactivateConfirm(): void {
+    this.confirmDeactivateOpen = false;
+    this.pendingDeactivate = null;
+    this.pendingDeactivateViaForm = false;
+    this.cdr.markForCheck();
   }
 
   nameErrorText(): string | null {
@@ -262,6 +501,124 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
     return null;
   }
 
+  private initSearchFields(): void {
+    const fields: SearchField[] = [
+      {
+        key: 'statusFilter',
+        label: 'Status',
+        type: 'select',
+        options: [
+          { value: 'active', label: 'Active' },
+          { value: 'inactive', label: 'Inactive' },
+        ],
+        value: this.statusFilter || undefined,
+      },
+    ];
+
+    if (this.isPositionsKind) {
+      fields.push({
+        key: 'occupancyFilter',
+        label: 'Occupancy',
+        type: 'select',
+        options: [
+          { value: 'single', label: 'Single' },
+          { value: 'multiple', label: 'Multiple' },
+        ],
+        value: this.occupancyFilter || undefined,
+      });
+    }
+
+    fields.push(
+      {
+        key: 'sortBy',
+        label: 'Sort by',
+        type: 'select',
+        options: [
+          { value: 'display_order', label: 'Order' },
+          { value: 'code', label: 'Code' },
+          { value: 'name', label: 'Name' },
+          { value: 'description', label: 'Description' },
+          { value: 'is_active', label: 'Status' },
+          ...(this.isPositionsKind
+            ? [{ value: 'single_occupancy', label: 'Occupancy' }]
+            : []),
+        ],
+        value: this.sortBy,
+      },
+      {
+        key: 'sortDir',
+        label: 'Sort direction',
+        type: 'select',
+        options: [
+          { value: 'asc', label: 'Ascending' },
+          { value: 'desc', label: 'Descending' },
+        ],
+        value: this.sortDir,
+      },
+    );
+
+    this.searchFields = fields;
+  }
+
+  private resetDrawerFilters(): void {
+    this.statusFilter = '';
+    this.occupancyFilter = '';
+    this.sortBy = 'display_order';
+    this.sortDir = 'asc';
+  }
+
+  private isSortableColumn(column: string): boolean {
+    const base: TaxonomySortBy[] = [
+      'code',
+      'name',
+      'description',
+      'display_order',
+      'is_active',
+    ];
+    if (base.includes(column as TaxonomySortBy)) {
+      return true;
+    }
+    return column === 'single_occupancy' && this.isPositionsKind;
+  }
+
+  private compareItems(a: TaxonomyItem, b: TaxonomyItem): number {
+    let cmp = 0;
+    switch (this.sortBy) {
+      case 'display_order':
+        cmp = a.display_order - b.display_order;
+        break;
+      case 'name':
+        cmp = a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        break;
+      case 'code':
+        cmp = a.code.localeCompare(b.code, undefined, { sensitivity: 'base' });
+        break;
+      case 'description':
+        cmp = (a.description ?? '').localeCompare(b.description ?? '', undefined, {
+          sensitivity: 'base',
+        });
+        break;
+      case 'is_active':
+        cmp = Number(a.is_active) - Number(b.is_active);
+        break;
+      case 'single_occupancy':
+        cmp =
+          Number(this.isPosition(a) && a.single_occupancy) -
+          Number(this.isPosition(b) && b.single_occupancy);
+        break;
+      default:
+        cmp = a.display_order - b.display_order;
+    }
+
+    if (cmp === 0) {
+      cmp =
+        a.display_order - b.display_order ||
+        a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    }
+
+    return this.sortDir === 'desc' ? -cmp : cmp;
+  }
+
   load(): void {
     const seq = ++this.loadSeq;
     this.loaded = false;
@@ -301,6 +658,7 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
   }
 
   openCreateForm(): void {
+    this.selectedId = null;
     this.editingId = null;
     this.submitted = false;
     this.formError = null;
@@ -368,6 +726,22 @@ export class TaxonomyCrudPanelComponent implements OnInit, OnChanges {
       return;
     }
 
+    const raw = this.form.getRawValue();
+    if (this.editingId && this.isPositionsKind && !raw.is_active) {
+      const existing = this.items.find((row) => row.id === this.editingId);
+      if (existing?.is_active) {
+        this.pendingDeactivate = existing;
+        this.pendingDeactivateViaForm = true;
+        this.confirmDeactivateOpen = true;
+        this.cdr.markForCheck();
+        return;
+      }
+    }
+
+    this.executeSave();
+  }
+
+  private executeSave(): void {
     const raw = this.form.getRawValue();
     const description = raw.description.trim() || null;
     this.saving = true;

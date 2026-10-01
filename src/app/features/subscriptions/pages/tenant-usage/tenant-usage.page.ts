@@ -11,6 +11,7 @@ import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status
 import { TenantUsagePage, TenantUsageRow } from '../../models/subscription-admin.models';
 import { SubscriptionAdminService, subscriptionErrorMessage } from '../../services/subscription-admin.service';
 import { subscriptionAdminCapabilities } from '../../services/subscription-admin-access';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 const PER_PAGE = 25;
 
@@ -18,7 +19,8 @@ const PER_PAGE = 25;
 @Component({
   selector: 'app-tenant-usage-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, DataTableComponent, LoadingSkeletonComponent, StatusBadgeComponent],
+  imports: [
+    CfDatePipe,CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, DataTableComponent, LoadingSkeletonComponent, StatusBadgeComponent],
   templateUrl: './tenant-usage.page.html',
   styleUrls: ['../../styles/subscription-admin.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

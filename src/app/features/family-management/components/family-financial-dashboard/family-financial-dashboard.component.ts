@@ -162,6 +162,7 @@ type DashboardSection = 'breakdown' | 'projects' | 'donations' | 'analytics' | '
         subjectType="family"
         [subjectId]="profile.family_id"
         title="Activity Feed"
+        description="Dues, payments, and receipts for this family — newest first."
       ></app-financial-activity-timeline>
 
       <div class="cf-disclosure">

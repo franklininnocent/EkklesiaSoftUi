@@ -265,6 +265,8 @@ export interface AssignLeadershipPayload {
   remarks?: string | null;
 }
 
+export type UpdateLeadershipPayload = AssignLeadershipPayload;
+
 export type LeadershipHandoverIncomingPayload = Omit<AssignLeadershipPayload, 'position_id'>;
 
 export interface LeadershipHandoverPayload {
@@ -412,10 +414,20 @@ export interface MinistriesAuditLogEntry {
   created_at: string;
 }
 
+export interface MinistriesDashboardGroupCountRow {
+  code: string;
+  name: string;
+  count: number;
+  type_id?: string | null;
+  category_id?: string | null;
+}
+
 export interface MinistriesDashboardOrganizationCounts {
   total: number;
   active: number;
   inactive: number;
+  active_by_type?: MinistriesDashboardGroupCountRow[];
+  category_breakdown?: MinistriesDashboardGroupCountRow[];
 }
 
 export interface MinistriesDashboardMembershipCounts {

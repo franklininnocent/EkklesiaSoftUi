@@ -600,9 +600,10 @@
         type="submit"
         class="cf-btn cf-btn-primary"
         [disabled]="isSubmitting"
+        [attr.aria-busy]="isSubmitting"
         (click)="onCreateButtonClick($event)"
       >
-        {{ isSubmitting ? 'Saving…' : 'Create tenant' }}
+        <app-cf-busy-label [busy]="isSubmitting" busyLabel="Saving">Create tenant</app-cf-busy-label>
       </button>
       <button
         type="button"

@@ -1,0 +1,118 @@
+<app-modal-shell
+  *ngIf="open"
+  [title]="modalTitle()"
+  size="sm"
+  headerVariant="compact"
+  bodyPadding="none"
+  [isSubmitting]="saving()"
+  closeAriaLabel="Close move intention dialog"
+  (closeRequested)="close()"
+>
+  <form class="cf-split-form-body move-mass-modal" (ngSubmit)="submit()" novalidate>
+    <section class="cf-split-section" aria-labelledby="move-mass-source-heading">
+      <h3 id="move-mass-source-heading" class="cf-split-section__title">Source Mass</h3>
+      <dl class="cf-split-grid">
+        <div class="cf-split-field cf-split-field--full">
+          <dt>Current Mass</dt>
+          <dd>{{ fromMassLabel || '—' }}</dd>
+        </div>
+        <div class="cf-split-field cf-split-field--full">
+          <dt>Intentions to move</dt>
+          <dd>{{ intentionsSummary() }}</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section class="cf-split-section" aria-labelledby="move-mass-destination-heading">
+      <h3 id="move-mass-destination-heading" class="cf-split-section__title">Destination Mass</h3>
+
+      <div class="cf-split-field cf-split-field--full">
+        <span class="cf-split-field__label">Date range</span>
+        <div
+          class="cf-dashboard-command-bar__view-toggle move-mass-modal__range"
+          role="group"
+          aria-label="Destination date range"
+        >
+          <button
+            type="button"
+            [class.active]="rangeDays() === 7"
+            [attr.aria-pressed]="rangeDays() === 7"
+            (click)="setRange(7)"
+          >
+            Next 7 days
+          </button>
+          <button
+            type="button"
+            [class.active]="rangeDays() === 14"
+            [attr.aria-pressed]="rangeDays() === 14"
+            (click)="setRange(14)"
+          >
+            Next 14 days
+          </button>
+          <button
+            type="button"
+            [class.active]="rangeDays() === 30"
+            [attr.aria-pressed]="rangeDays() === 30"
+            (click)="setRange(30)"
+          >
+            Next 30 days
+          </button>
+        </div>
+      </div>
+
+      <div class="cf-split-field cf-split-field--full">
+        <label for="move-mass-destination-select">
+          Destination Mass <span class="cf-split-req" aria-hidden="true">*</span>
+        </label>
+        @if (loadingMasses()) {
+          <p class="cf-split-field__hint" role="status" aria-live="polite">Loading Masses…</p>
+        } @else if (massOptions().length === 0) {
+          <p class="cf-split-field__hint" role="status">
+            No eligible Masses in the next {{ rangeDays() }} days. Try a longer range or schedule more Masses.
+          </p>
+        } @else {
+          <ng-select
+            id="move-mass-destination-select"
+            class="move-mass-modal__select"
+            [items]="massOptions()"
+            bindLabel="optionLabel"
+            bindValue="id"
+            [searchable]="true"
+            [clearable]="true"
+            placeholder="Search or select a Mass"
+            notFoundText="No Masses match your search"
+            [ngModel]="targetId()"
+            (ngModelChange)="onDestinationChange($event)"
+            [ngModelOptions]="{ standalone: true }"
+            [compareWith]="compareDestinationId"
+            [disabled]="saving()"
+            aria-required="true"
+          >
+            <ng-template ng-option-tmp let-item="item">
+              <span class="move-mass-modal__option">{{ item.optionLabel }}</span>
+            </ng-template>
+            <ng-template ng-label-tmp let-item="item">
+              <span class="move-mass-modal__option">{{ item.optionLabel }}</span>
+            </ng-template>
+          </ng-select>
+          <p class="cf-split-field__hint">The current Mass is not listed.</p>
+        }
+      </div>
+    </section>
+
+    @if (errorMessage()) {
+      <p class="cf-split-form-alert cf-split-form-alert--error" role="alert">{{ errorMessage() }}</p>
+    }
+
+    <div class="cf-split-form-actions">
+      <button
+        type="submit"
+        class="cf-btn cf-btn-primary"
+        [disabled]="!targetId() || saving() || loadingMasses() || massOptions().length === 0"
+      >
+        {{ saving() ? 'Moving…' : 'Move' }}
+      </button>
+      <button type="button" class="cf-btn" (click)="close()" [disabled]="saving()">Cancel</button>
+    </div>
+  </form>
+</app-modal-shell>

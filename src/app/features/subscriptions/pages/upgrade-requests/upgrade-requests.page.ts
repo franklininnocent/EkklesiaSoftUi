@@ -17,6 +17,7 @@ import {
   subscriptionErrorMessage,
 } from '../../services/subscription-admin.service';
 import { subscriptionAdminCapabilities } from '../../services/subscription-admin-access';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 type ReviewAction = 'approve' | 'reject' | 'info';
 
@@ -26,7 +27,8 @@ const PER_PAGE = 25;
 @Component({
   selector: 'app-upgrade-requests-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, StatusBadgeComponent],
+  imports: [
+    CfDatePipe,CommonModule, FormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, StatusBadgeComponent],
   templateUrl: './upgrade-requests.page.html',
   styleUrls: ['../../styles/subscription-admin.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -9,13 +9,15 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { CatalogAuditEntry, PageMeta } from '../../models/subscription-admin.models';
 import { SubscriptionAdminService, subscriptionErrorMessage } from '../../services/subscription-admin.service';
 import { subscriptionAdminCapabilities } from '../../services/subscription-admin-access';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 const PER_PAGE = 25;
 
 @Component({
   selector: 'app-subscription-audit-page',
   standalone: true,
-  imports: [CommonModule, FormsModule, CfEmptyStateComponent, DataTableComponent, LoadingSkeletonComponent],
+  imports: [
+    CfDatePipe,CommonModule, FormsModule, CfEmptyStateComponent, DataTableComponent, LoadingSkeletonComponent],
   templateUrl: './subscription-audit.page.html',
   styleUrls: ['../../styles/subscription-admin.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush,

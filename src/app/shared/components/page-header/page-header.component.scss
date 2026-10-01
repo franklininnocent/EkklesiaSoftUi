@@ -66,6 +66,23 @@
   color: var(--cf-color-text-muted, var(--cf-muted));
 }
 
+.cf-page-header__count {
+  font-variant-numeric: tabular-nums;
+  min-width: 1.5rem;
+  justify-content: center;
+}
+
+.cf-page-header__below {
+  margin-top: var(--cf-space-2);
+  min-width: 0;
+  width: 100%;
+}
+
+.cf-page-header__below:empty {
+  display: none;
+  margin-top: 0;
+}
+
 .cf-page-header__actions {
   display: flex;
   flex-wrap: wrap;

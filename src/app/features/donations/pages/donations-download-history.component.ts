@@ -7,7 +7,6 @@ import {
   AdvancedSearchPanelComponent,
   SearchField,
 } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
-import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { SortableDirective, SortEvent, SortDirection } from '@shared/directives/sortable.directive';
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
@@ -16,7 +15,14 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
 import { DonationsService } from '../services/donations.service';
 import { DonationReportCatalogItem, DonationReportExport } from '../models/donation.model';
 import { donationReportExportFormatLabelForRow } from './reports/donation-report-export-format.util';
-
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import {
+  StewardshipActiveFilterChipsComponent,
+  StewardshipFilterChip,
+} from '../components/stewardship-active-filter-chips/stewardship-active-filter-chips.component';
 const STATUS_OPTIONS = [
   { value: 'queued', label: 'Queued' },
   { value: 'processing', label: 'Preparing' },
@@ -29,18 +35,21 @@ const STATUS_OPTIONS = [
   selector: 'app-donations-download-history',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     RouterModule,
     PageHeaderComponent,
     ListToolbarComponent,
     AdvancedSearchPanelComponent,
-    CfActionIconComponent,
     CfEmptyStateComponent,
     SortableDirective,
     PaginationComponent,
+    DataTableComponent,
+    LoadingSkeletonComponent,
+    StewardshipActiveFilterChipsComponent,
   ],
   template: `
-    <section class="download-history cf-page">
+    <section class="download-history cf-page cf-financial-dashboard">
       <app-page-header
         title="Download history"
         subtitle="Every report download requested for this parish (CSV, Excel, or PDF)."
@@ -59,46 +68,30 @@ const STATUS_OPTIONS = [
         You don't have permission to view download history. Ask your parish administrator to grant Access Donation Reports.
       </p>
 
-      <div
-        class="download-history__chips"
+      <app-stewardship-active-filter-chips
         *ngIf="canView && activeChips.length"
-        role="region"
-        aria-label="Active filters"
-      >
-        <span class="cf-meta">Active filters</span>
-        <div class="download-history__chip-list">
-          <span class="cf-badge cf-badge--info" *ngFor="let filter of activeChips">
-            {{ filter.label }}: {{ filter.displayValue }}
-            <button
-              type="button"
-              class="download-history__chip-remove"
-              (click)="removeFilter(filter)"
-              [attr.aria-label]="'Remove filter: ' + filter.label"
-            >
-              ×
-            </button>
-          </span>
-        </div>
-        <button
-          type="button"
-          class="cf-btn cf-btn-icon cf-btn--sm"
-          (click)="clearAllFilters()"
-          aria-label="Clear all filters"
-          title="Clear all filters"
-        >
-          <app-cf-action-icon name="filter" />
-        </button>
-      </div>
+        [chips]="filterChipsForUi"
+        (remove)="onChipRemove($event)"
+        (clearAll)="clearAllFilters()"
+      ></app-stewardship-active-filter-chips>
 
       <p *ngIf="filterError" class="cf-state cf-state--error">{{ filterError }}</p>
-      <p *ngIf="canView && loading" class="cf-state" role="status" aria-busy="true">Loading download history…</p>
-      <p *ngIf="error" class="cf-state cf-state--error">
-        {{ error }}
+      <div
+        class="cf-loading-block cf-panel"
+        *ngIf="canView && loading"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
+      >
+        <app-loading-skeleton label="Loading download history…" type="table" [rows]="6" [columns]="6"></app-loading-skeleton>
+      </div>
+      <div class="cf-inline-alert cf-panel" *ngIf="canView && !loading && error" role="alert">
+        <p>{{ error }}</p>
         <button type="button" class="cf-btn cf-btn--sm" (click)="load()">Try again</button>
-      </p>
+      </div>
 
-      <div class="download-history__table-scroll" *ngIf="canView && !loading && rows.length">
-        <table class="table cf-table">
+      <div class="cf-panel stewardship-table-panel" *ngIf="canView && !loading && rows.length">
+        <app-data-table>
           <thead>
             <tr>
               <th scope="col" appSortable="report" [direction]="sortColumn === 'report' ? sortDirection : null" (sort)="onSort($event)">Report</th>
@@ -116,27 +109,27 @@ const STATUS_OPTIONS = [
                 <span class="cf-badge cf-badge--neutral">{{ exportFormatLabel(row) }}</span>
               </td>
               <td>{{ row.requested_by_name || '—' }}</td>
-              <td>{{ row.created_at | date:'medium' }}</td>
+              <td>{{ row.created_at | cfDate:'datetime' }}</td>
               <td>
                 <span class="status-pill" [class]="'status-pill--' + statusTone(row)">{{ statusLabel(row) }}</span>
               </td>
-              <td>{{ row.completed_at ? (row.completed_at | date:'medium') : '—' }}</td>
+              <td>{{ row.completed_at ? (row.completed_at | cfDate:'datetime') : '—' }}</td>
             </tr>
           </tbody>
-        </table>
-      </div>
+        </app-data-table>
 
-      <app-pagination
-        *ngIf="canView && !loading && totalItems > 0"
-        [currentPage]="page"
-        [pageSize]="perPage"
-        [totalItems]="totalItems"
-        [pageSizeOptions]="perPageOptions"
-        [showPageSizeSelector]="true"
-        [showPageInfo]="true"
-        (pageChange)="goToPage($event)"
-        (pageSizeChange)="onPageSizeChange($event)"
-      ></app-pagination>
+        <app-pagination
+          *ngIf="totalItems > 0"
+          [currentPage]="page"
+          [pageSize]="perPage"
+          [totalItems]="totalItems"
+          [pageSizeOptions]="perPageOptions"
+          [showPageSizeSelector]="true"
+          [showPageInfo]="true"
+          (pageChange)="goToPage($event)"
+          (pageSizeChange)="onPageSizeChange($event)"
+        ></app-pagination>
+      </div>
 
       <app-cf-empty-state
         *ngIf="canView && !loading && !rows.length && !error && !filterError"
@@ -161,39 +154,6 @@ const STATUS_OPTIONS = [
     </section>
   `,
   styles: [`
-    .download-history__chips {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--cf-space-2);
-      margin-bottom: var(--cf-space-3);
-    }
-    .download-history__chip-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--cf-space-1);
-      align-items: center;
-      flex: 1;
-      min-width: 0;
-    }
-    .download-history__chip-remove {
-      margin-left: 0.25rem;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      cursor: pointer;
-      font-size: 1rem;
-      line-height: 1;
-      padding: 0 0.1rem;
-    }
-    .download-history__table-scroll {
-      overflow-x: auto;
-      max-width: 100%;
-      -webkit-overflow-scrolling: touch;
-    }
-    .download-history__table-scroll .cf-table {
-      min-width: 46rem;
-    }
     .status-pill {
       display: inline-block;
       padding: 0.12rem 0.45rem;
@@ -295,6 +255,21 @@ export class DonationsDownloadHistoryComponent implements OnInit {
       });
     }
     return chips;
+  }
+
+  get filterChipsForUi(): StewardshipFilterChip[] {
+    return this.activeChips.map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      displayValue: filter.displayValue,
+    }));
+  }
+
+  onChipRemove(chip: StewardshipFilterChip): void {
+    const match = this.activeChips.find((f) => f.key === chip.key);
+    if (match) {
+      this.removeFilter(match);
+    }
   }
 
   openFilters(): void {
@@ -537,10 +512,6 @@ export class DonationsDownloadHistoryComponent implements OnInit {
     if (!year || !month || !day) {
       return value;
     }
-    return new Date(year, month - 1, day).toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(new Date(year, month - 1, day)) || value;
   }
 }

@@ -26,7 +26,7 @@
     (touchcancel)="onTouchEnd()"
   >
     <div *ngIf="loading" class="cf-image-viewer__loading" role="status">
-      <span class="cf-spinner cf-image-viewer__spinner" aria-hidden="true"></span>
+      <app-cf-brand-loader class="cf-image-viewer__spinner" size="section" label="Loading image…" />
       <span class="sr-only">Loading photo</span>
     </div>
 

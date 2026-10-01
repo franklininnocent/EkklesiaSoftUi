@@ -1,0 +1,175 @@
+/* Shared project / campaign portfolio cards (Donations Projects workspace). */
+
+.stewardship-portfolio-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: var(--cf-space-2);
+}
+
+.stewardship-portfolio-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-md, 0.5rem);
+  background: var(--cf-panel-bg);
+  box-shadow: var(--cf-shadow-xs);
+}
+
+.stewardship-portfolio-stat span {
+  font-size: var(--cf-text-xs, 0.68rem);
+  color: var(--cf-muted);
+  line-height: 1.3;
+}
+
+.stewardship-portfolio-stat strong {
+  font-size: var(--cf-text-lg, 1.125rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--cf-slate-900);
+}
+
+.stewardship-portfolio-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--cf-space-3);
+}
+
+.stewardship-portfolio-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--cf-space-2);
+  padding: var(--cf-space-3);
+  border: 1px solid var(--cf-panel-border);
+  border-radius: var(--cf-radius-md, 0.5rem);
+  background: var(--cf-panel-bg);
+  box-shadow: var(--cf-shadow-xs);
+  min-width: 0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.stewardship-portfolio-card__progress {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.stewardship-portfolio-card:hover {
+  border-color: color-mix(in srgb, var(--cf-primary) 28%, var(--cf-panel-border));
+  box-shadow: var(--cf-shadow-sm);
+}
+
+.stewardship-portfolio-card:focus-visible {
+  outline: var(--cf-focus-ring-width) solid var(--cf-focus-ring);
+  outline-offset: var(--cf-focus-ring-offset);
+}
+
+.stewardship-portfolio-card--selected {
+  border-color: color-mix(in srgb, var(--cf-primary) 45%, var(--cf-panel-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cf-primary) 20%, transparent);
+}
+
+.stewardship-portfolio-card--attention {
+  border-color: color-mix(in srgb, var(--cf-amber) 40%, var(--cf-panel-border));
+}
+
+.stewardship-portfolio-card__head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--cf-space-2);
+  min-width: 0;
+}
+
+.stewardship-portfolio-card__icon {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--cf-radius-md, 0.5rem);
+  background: color-mix(in srgb, var(--cf-indigo) 12%, var(--cf-panel-bg));
+  color: var(--cf-indigo);
+  font-size: 0.9rem;
+}
+
+.stewardship-portfolio-card__meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.stewardship-portfolio-card__meta h3 {
+  margin: 0;
+  font-size: var(--cf-text-base, 0.9375rem);
+  font-weight: 600;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stewardship-portfolio-card__meta span {
+  display: block;
+  margin-top: 0.1rem;
+  font-size: var(--cf-text-xs, 0.68rem);
+  color: var(--cf-muted);
+  line-height: 1.35;
+}
+
+.stewardship-portfolio-card__metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--cf-space-1);
+}
+
+.stewardship-portfolio-card__metric span {
+  display: block;
+  font-size: var(--cf-text-xs, 0.68rem);
+  color: var(--cf-muted);
+}
+
+.stewardship-portfolio-card__metric strong {
+  display: block;
+  font-size: var(--cf-text-sm, 0.875rem);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.stewardship-portfolio-card__metric strong.stewardship-portfolio-card__metric--urgent {
+  color: var(--cf-critical);
+}
+
+.stewardship-portfolio-card__progress-label {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--cf-space-2);
+  font-size: var(--cf-text-xs, 0.68rem);
+  color: var(--cf-muted);
+}
+
+.stewardship-portfolio-card__progress-bar {
+  height: 0.35rem;
+  border-radius: var(--cf-radius-pill);
+  background: var(--cf-slate-100);
+  overflow: hidden;
+}
+
+.stewardship-portfolio-card__progress-bar span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--cf-primary);
+  transition: width 0.2s ease;
+}
+
+.stewardship-portfolio-card__progress-bar--risk span {
+  background: var(--cf-amber);
+}
+
+.stewardship-portfolio-card__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-1);
+  margin-top: auto;
+  padding-top: var(--cf-space-1);
+}

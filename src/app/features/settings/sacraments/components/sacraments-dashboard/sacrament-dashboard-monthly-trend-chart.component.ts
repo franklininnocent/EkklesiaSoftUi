@@ -20,6 +20,7 @@ import {
   SacramentDashboardTrendSeries,
 } from '../../models/sacrament-dashboard.model';
 import { isIncludedInStandardDashboardChart } from './sacrament-dashboard-demographics-palette';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 const SERIES_COLORS = [
   '#3b6ebf',
@@ -251,7 +252,7 @@ export class SacramentDashboardMonthlyTrendChartComponent implements AfterViewIn
 
     const [year, month] = period.split('-').map(Number);
     const date = new Date(year, month - 1, 1);
-    return date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    return cfFormatDate(date, 'monthYear');
   }
 
   private renderChart(): void {

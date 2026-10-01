@@ -1,0 +1,104 @@
+<section class="mass-six-month" aria-labelledby="mass-six-month-title">
+  <p class="mass-six-month__lede">
+    New records, closures, and intentions marked said at Mass — the last four months, newest first.
+  </p>
+
+  <p class="mass-six-month__sr-only">{{ dataSummary }}</p>
+
+  @if (!hasPoints) {
+    <p class="mass-six-month__empty">No month-by-month activity yet.</p>
+  } @else {
+    <div class="mass-six-month__layout">
+      <div class="mass-six-month__summary" aria-label="Four-month activity summary">
+        <h3 class="mass-six-month__subhead" id="mass-six-month-title">Four-month overview</h3>
+
+        <div class="mass-six-month__donut-block">
+          <div class="mass-six-month__donut-wrap">
+            @if (hasActivity) {
+              <canvas #donutCanvas class="mass-six-month__donut-canvas" role="img" [attr.aria-label]="dataSummary"></canvas>
+            } @else {
+              <div class="mass-six-month__donut-placeholder" aria-hidden="true"></div>
+            }
+            <div class="mass-six-month__donut-center">
+              @if (hasActivity) {
+                <strong class="mass-six-month__donut-value">{{ centerValue }}</strong>
+                <span class="mass-six-month__donut-label">new records</span>
+              } @else {
+                <span class="mass-six-month__donut-label mass-six-month__donut-label--quiet">No activity yet</span>
+              }
+            </div>
+          </div>
+
+          <ul class="mass-six-month__legend" role="list">
+            @for (row of series; track row.key) {
+              <li class="mass-six-month__legend-item">
+                <span class="mass-six-month__legend-swatch" [style.background]="row.color"></span>
+                <span class="mass-six-month__legend-copy">
+                  <span class="mass-six-month__legend-label">{{ row.label }}</span>
+                  <strong class="mass-six-month__legend-value">{{ seriesTotals()[row.key] }}</strong>
+                </span>
+              </li>
+            }
+          </ul>
+        </div>
+      </div>
+
+      <div class="mass-six-month__months" aria-label="Monthly breakdown">
+        <h3 class="mass-six-month__subhead">Each month</h3>
+        <ul class="mass-six-month__month-list" role="list">
+          @for (point of points; track point.month) {
+            <li
+              class="mass-six-month__month-row"
+              [class.mass-six-month__month-row--current]="point.is_current"
+            >
+              <div class="mass-six-month__month-head">
+                <span class="mass-six-month__month-label">{{ point.label }}</span>
+                @if (point.is_current) {
+                  <span class="cf-badge cf-badge--info mass-six-month__current-badge">This month</span>
+                }
+              </div>
+
+              <div
+                class="mass-six-month__month-bar"
+                role="img"
+                [attr.aria-label]="point.label + ': ' + monthSummary(point)"
+                [attr.title]="monthSummary(point)"
+              >
+                @if (monthTotal(point) === 0) {
+                  <span class="mass-six-month__month-bar-empty" aria-hidden="true"></span>
+                } @else {
+                  <span
+                    class="mass-six-month__month-bar-track"
+                    [style.width.%]="monthActivityWidth(point)"
+                    aria-hidden="true"
+                  >
+                    @if (monthSegmentWidth(point, 'registered') > 0) {
+                      <span
+                        class="mass-six-month__month-bar-seg mass-six-month__month-bar-seg--registered"
+                        [style.flex]="monthSegmentWidth(point, 'registered')"
+                      ></span>
+                    }
+                    @if (monthSegmentWidth(point, 'closed') > 0) {
+                      <span
+                        class="mass-six-month__month-bar-seg mass-six-month__month-bar-seg--closed"
+                        [style.flex]="monthSegmentWidth(point, 'closed')"
+                      ></span>
+                    }
+                    @if (monthSegmentWidth(point, 'said') > 0) {
+                      <span
+                        class="mass-six-month__month-bar-seg mass-six-month__month-bar-seg--said"
+                        [style.flex]="monthSegmentWidth(point, 'said')"
+                      ></span>
+                    }
+                  </span>
+                }
+              </div>
+
+              <p class="mass-six-month__month-stats">{{ monthSummary(point) }}</p>
+            </li>
+          }
+        </ul>
+      </div>
+    </div>
+  }
+</section>

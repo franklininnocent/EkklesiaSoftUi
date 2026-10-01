@@ -190,19 +190,27 @@
   margin: 0 0 0.85rem;
   padding: 0;
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.4rem;
 }
 
 .family-care-strip li {
   display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 0.35rem 1rem;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.2rem;
+  min-width: 0;
   padding: 0.55rem 0.75rem;
   border: 1px solid var(--cf-panel-border, #e2e8f0);
   border-radius: 8px;
   background: #fff;
   font-size: 0.875rem;
+}
+
+.family-care-strip strong,
+.family-care-strip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .family-care-strip span {
@@ -1561,6 +1569,7 @@
 
 @media (max-width: 640px) {
   .member-card-view .details-grid { grid-template-columns: 1fr; }
+  .family-care-strip { grid-template-columns: 1fr; }
 }
 
 

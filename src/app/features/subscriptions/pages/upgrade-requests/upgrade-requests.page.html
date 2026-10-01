@@ -51,7 +51,7 @@
           <dd><span class="sa-code">{{ r.feature_code }}</span></dd>
         </ng-container>
         <dt>Sent</dt>
-        <dd>{{ r.created_at | date: 'medium' }}<ng-container *ngIf="r.requested_by_name"> by {{ r.requested_by_name }}</ng-container></dd>
+        <dd>{{ r.created_at | cfDate: 'datetime' }}<ng-container *ngIf="r.requested_by_name"> by {{ r.requested_by_name }}</ng-container></dd>
         <ng-container *ngIf="r.message">
           <dt>Message</dt>
           <dd>{{ r.message }}</dd>

@@ -67,6 +67,7 @@ describe('MySubscriptionComponent', () => {
           provide: TenantSubscriptionService,
           useValue: {
             overview: () => overviewResult,
+            comparison: () => of({ current_plan: { matched: true, code: 'STARTER' }, current_plan_listed: true, plans: [standard] }),
             publicPlans: () => of([standard]),
             upgradeRequests: () => of(requests),
             submitUpgradeRequest: submit,
@@ -93,6 +94,17 @@ describe('MySubscriptionComponent', () => {
     expect(text).toContain('Almost full');
     expect(text).toContain('Contributions');
     expect(el.querySelector('[role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('96');
+  });
+
+  it('places current subscription, plan limits and included features in one overview grid', () => {
+    const el = setup().nativeElement as HTMLElement;
+    const grid = el.querySelector('.my-sub-overview-grid');
+    expect(grid).toBeTruthy();
+    const headings = Array.from(grid!.querySelectorAll('h2')).map((node) => node.textContent?.trim());
+    expect(headings).toEqual(['Current subscription', 'Plan limits', 'Included features']);
+    expect(grid!.querySelectorAll(':scope > .my-sub-panel').length).toBe(3);
+    expect(grid!.querySelectorAll('.my-sub-panel--snapshot').length).toBe(2);
+    expect(grid!.querySelector('.my-sub-panel--features')).toBeTruthy();
   });
 
   it('still shows the lifecycle view when plan details cannot be loaded', () => {
@@ -132,5 +144,59 @@ describe('MySubscriptionComponent', () => {
     const fixture = setup();
     expect(fixture.componentInstance.canRequest).toBe(true);
     expect(fixture.nativeElement.textContent).toContain('How many families?');
+  });
+
+  it('uses the comparison snapshot so a lifetime enterprise plan is current, not a quote', () => {
+    const enterprise = {
+      ...standard,
+      code: 'ENTERPRISE',
+      name: 'Enterprise',
+      pricing_type: 'CUSTOM',
+      is_current: true,
+      primary_action: 'current',
+      is_lifetime: true,
+      subscription_status: 'LIFETIME',
+      monthly_price: null,
+      annual_price: null,
+    } as PublicPlanCard;
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      imports: [MySubscriptionComponent],
+      providers: [
+        provideRouter([]),
+        { provide: ActivatedRoute, useValue: { snapshot: { queryParamMap: convertToParamMap({}) } } },
+        {
+          provide: TenantService,
+          useValue: {
+            getMySubscription: () =>
+              of({ success: true, data: { status: 'LIFETIME', plan_name: 'Enterprise', allows_gated_access: true, subscription_ends_at: null } }),
+          },
+        },
+        {
+          provide: TenantSubscriptionService,
+          useValue: {
+            overview: () => of({ ...overview, plan: { ...overview.plan!, code: 'ENTERPRISE', name: 'Enterprise', pricing_type: 'CUSTOM' } }),
+            comparison: () =>
+              of({
+                current_plan: { matched: true, code: 'ENTERPRISE', name: 'Enterprise', is_lifetime: true, subscription_status: 'LIFETIME' },
+                current_plan_listed: true,
+                plans: [enterprise],
+              }),
+            upgradeRequests: () => of([]),
+          },
+        },
+        { provide: EntitlementService, useValue: { featureName: (c: string) => c } },
+        { provide: ToastService, useValue: { success: jest.fn() } },
+      ],
+    });
+    const fixture = TestBed.createComponent(MySubscriptionComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.textContent).toContain('Enterprise');
+    expect(el.textContent).toContain('Lifetime');
+    expect(el.textContent).toContain('No end date');
+    expect(el.textContent).toContain('Your Current Plan');
+    expect(el.textContent).not.toContain('Ask for a quote');
+    expect(fixture.componentInstance.currentPlanCode).toBe('ENTERPRISE');
   });
 });

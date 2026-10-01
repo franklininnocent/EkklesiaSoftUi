@@ -8,6 +8,7 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { forkJoin, Subject, of } from 'rxjs';
 import { takeUntil, catchError } from 'rxjs/operators';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 interface DioceseStatistics {
   total_dioceses: number;
@@ -34,6 +35,7 @@ interface BishopStatistics {
   selector: 'app-ecclesiastical-overview',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     LoadingSkeletonComponent,
     CfEmptyStateComponent,

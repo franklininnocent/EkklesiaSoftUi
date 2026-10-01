@@ -14,6 +14,8 @@ import {
   buildRegisterDisplayFields,
   registerStatusLabel
 } from '../../utils/register-sacrament.util';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import { resolveMarriageSpouseDisplayName } from '../../utils/marriage-spouse-display.util';
 
 export interface SacramentDisplayField {
   label: string;
@@ -42,9 +44,7 @@ export class MemberSacramentDetailComponent {
     }
     try {
       const d = new Date(date);
-      return isNaN(d.getTime())
-        ? '—'
-        : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return isNaN(d.getTime()) ? '—' : cfFormatDate(d) || '—';
     } catch {
       return '—';
     }
@@ -115,11 +115,16 @@ export class MemberSacramentDetailComponent {
           m.marriage_bride_full_name?.trim() ||
           m.marriage_groom_full_name?.trim() ||
           m.marriage_minister_name?.trim() ||
-          m.marriage_minister_title?.trim()
+          m.marriage_minister_title?.trim() ||
+          m.linked_spouse_name?.trim()
         );
       default:
         return false;
     }
+  }
+
+  get marriageNeedsResolution(): boolean {
+    return this.canonical === 'marriage' && !!this.member?.marriage_resolution_needed;
   }
 
   get showProfileSummarySection(): boolean {
@@ -175,9 +180,7 @@ export class MemberSacramentDetailComponent {
         return this.buildFields([
           { label: 'Date', value: m.marriage_date, always: true },
           { label: 'Location', value: m.marriage_place },
-          { label: 'Spouse', value: m.marriage_spouse_name },
-          { label: 'Bride', value: m.marriage_bride_full_name },
-          { label: 'Groom', value: m.marriage_groom_full_name },
+          { label: 'Spouse', value: resolveMarriageSpouseDisplayName(m) },
           { label: 'Minister', value: m.marriage_minister_name },
           { label: 'Title', value: m.marriage_minister_title }
         ]);

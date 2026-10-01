@@ -16,11 +16,13 @@ import { SupportTicketCreateModalComponent } from '../components/support-ticket-
 import { AuthService } from '@core/services/auth.service';
 import { SupportTicketService } from '../services/support-ticket.service';
 import { SupportTicketDashboard, SupportTicketListItem } from '../models/support-ticket.model';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-support-dashboard-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     RouterModule,

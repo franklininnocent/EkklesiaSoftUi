@@ -54,7 +54,7 @@ test.describe('Donations sidebar navigation', () => {
     await page.goto('/donations/campaigns');
     await expect(page.locator('[data-nav="donations-projects-campaigns"][aria-current="page"]')).toBeVisible();
 
-    await page.goto('/members');
+    await page.goto('/members/list');
     await expect(page.locator('[data-nav="donations-projects-campaigns"][aria-current="page"]')).toHaveCount(0);
     await expect(page.locator('[data-nav="members"][aria-current="page"]')).toBeVisible();
 

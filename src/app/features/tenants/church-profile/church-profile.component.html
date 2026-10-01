@@ -55,8 +55,7 @@
 
   <!-- Loading State -->
   <div *ngIf="loading && !churchProfile" class="state-card loading-state">
-    <div class="spinner"></div>
-    <p>Loading church data...</p>
+    <app-cf-loading-container size="page" label="Loading church data…" />
   </div>
 
   <!-- Error State -->
@@ -261,7 +260,7 @@
             <header class="cp-card__head">
               <h3>Church Status</h3>
             </header>
-            <p class="cp-health-intro" *ngIf="statusMetricsLoading">Loading parish health metrics…</p>
+            <app-cf-brand-loader *ngIf="statusMetricsLoading" size="inline" label="Loading parish health metrics…" />
             <ul class="cp-health-list" *ngIf="!statusMetricsLoading && operationalMetrics.length">
               <li class="cp-health-item" *ngFor="let metric of operationalMetrics">
                 <div class="cp-health-item__head">

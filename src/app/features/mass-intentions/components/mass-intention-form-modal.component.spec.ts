@@ -24,6 +24,7 @@ describe('MassIntentionFormModalComponent', () => {
             createRequest: jest.fn(),
             updateRequest: jest.fn(),
             createCategory: jest.fn(),
+            listCelebrations: jest.fn().mockReturnValue(of({ data: [] })),
           },
         },
         {

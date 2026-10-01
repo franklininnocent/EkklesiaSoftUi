@@ -26,6 +26,7 @@ import {
   DonationEntry,
   DonationFamilyFinancialProfile,
   DonationFamilySummary,
+  CollectPaymentContext,
   FinancialAiResponse,
   ReceiptOcrResult,
   UpiPaymentIntent,
@@ -47,7 +48,10 @@ import {
   PlanRevisionHistory,
   ProjectDashboard,
   ProjectFamilyAssignment,
+  ProjectFamilyProgressQuery,
+  ProjectFamilyProgressResponse,
   ProjectInstallmentDue,
+  ProjectInstallmentGenerationResult,
   RecurringDonationSchedule
 } from '../models/donation.model';
 
@@ -301,6 +305,25 @@ export class DonationsService {
     );
   }
 
+  getCollectContext(params: {
+    family_id?: string;
+    project_id?: string;
+    campaign_id?: string;
+    due_id?: string;
+    installment_id?: string;
+  }): Observable<{ success: boolean; data: CollectPaymentContext }> {
+    let httpParams = new HttpParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) {
+        httpParams = httpParams.set(key, value);
+      }
+    });
+    return this.http.get<{ success: boolean; data: CollectPaymentContext }>(
+      `${this.baseUrl}/payments/collect-context`,
+      { params: httpParams }
+    );
+  }
+
   getFunds(): Observable<{ success: boolean; data: Array<{ id: string; name: string; code: string }> }> {
     return this.http.get<{ success: boolean; data: Array<{ id: string; name: string; code: string }> }>(`${this.baseUrl}/funds`);
   }
@@ -369,14 +392,22 @@ export class DonationsService {
     );
   }
 
-  getDues(filters: Record<string, string | boolean> = {}): Observable<{ success: boolean; data: PaginatedResponse<ContributionDue> }> {
+  getDues(filters: Record<string, string | boolean> = {}): Observable<{
+    success: boolean;
+    data: PaginatedResponse<ContributionDue>;
+    meta?: { overdue_family_count?: number };
+  }> {
     let params = new HttpParams();
     Object.entries(filters).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         params = params.set(key, String(value));
       }
     });
-    return this.http.get<{ success: boolean; data: PaginatedResponse<ContributionDue> }>(`${this.baseUrl}/dues`, { params });
+    return this.http.get<{
+      success: boolean;
+      data: PaginatedResponse<ContributionDue>;
+      meta?: { overdue_family_count?: number };
+    }>(`${this.baseUrl}/dues`, { params });
   }
 
   waiveDue(dueId: string, reason?: string): Observable<{ success: boolean; message: string }> {
@@ -403,6 +434,16 @@ export class DonationsService {
     return this.http.get<{ success: boolean; data: ProjectDashboard }>(`${this.baseUrl}/projects/${projectId}/dashboard`);
   }
 
+  getProjectFamilyProgress(projectId: string, query: ProjectFamilyProgressQuery = {}): Observable<ProjectFamilyProgressResponse> {
+    let params = new HttpParams();
+    Object.entries(query).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params = params.set(key, String(value));
+      }
+    });
+    return this.http.get<ProjectFamilyProgressResponse>(`${this.baseUrl}/projects/${projectId}/family-progress`, { params });
+  }
+
   createProject(payload: Record<string, unknown>): Observable<{ success: boolean; message: string; data: DonationProject }> {
     return this.http.post<{ success: boolean; message: string; data: DonationProject }>(`${this.baseUrl}/projects`, payload);
   }
@@ -418,8 +459,11 @@ export class DonationsService {
     );
   }
 
-  generateProjectInstallments(projectId: string, payload: Record<string, unknown> = {}): Observable<{ success: boolean; message: string; data: ProjectInstallmentDue[] }> {
-    return this.http.post<{ success: boolean; message: string; data: ProjectInstallmentDue[] }>(
+  generateProjectInstallments(
+    projectId: string,
+    payload: { mode?: 'generate' | 'regenerate'; confirm?: boolean; reason?: string; family_ids?: string[] } = {}
+  ): Observable<{ success: boolean; message: string; data: ProjectInstallmentGenerationResult | ProjectInstallmentDue[] }> {
+    return this.http.post<{ success: boolean; message: string; data: ProjectInstallmentGenerationResult | ProjectInstallmentDue[] }>(
       `${this.baseUrl}/projects/${projectId}/generate-installments`,
       payload
     );

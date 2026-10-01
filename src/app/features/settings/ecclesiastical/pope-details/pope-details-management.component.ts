@@ -17,6 +17,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { filter } from 'rxjs/operators';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-pope-details-management',
@@ -318,7 +319,7 @@ export class PopeDetailsManagementComponent implements OnInit {
     }
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+      return cfFormatDate(date) || dateString;
     } catch {
       return dateString;
     }

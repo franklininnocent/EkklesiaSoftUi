@@ -29,10 +29,21 @@ import { ReceiptPrintService } from '../services/receipt-print.service';
 type ReceiptVoidFilter = '' | 'active' | 'void';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import {
+  StewardshipActiveFilterChipsComponent,
+  StewardshipFilterChip,
+} from '../components/stewardship-active-filter-chips/stewardship-active-filter-chips.component';
+import { StewardshipTablePanelComponent } from '../components/stewardship-table-panel/stewardship-table-panel.component';
+import { SortableDirective, SortDirection, SortEvent } from '@shared/directives/sortable.directive';
+
+type ReceiptSortColumn = 'receipt_number' | 'issued_on' | 'family_name' | 'payer_name' | 'method' | 'amount';
 @Component({
   selector: 'app-donations-receipts',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     RouterModule,
@@ -46,19 +57,20 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
     CfIconActionButtonComponent,
     LoadingSkeletonComponent,
     StewardshipConfirmDialogComponent,
+    StewardshipActiveFilterChipsComponent,
+    StewardshipTablePanelComponent,
+    SortableDirective,
     CfCurrencyPipe,
     CfActionIconComponent],
   template: `
-    <section class="receipts-hub cf-page">
+    <section class="receipts-hub cf-page cf-financial-dashboard">
       <app-page-header
         title="Receipts"
         subtitle="Find, verify, and reprint contribution receipts in one click."
       >
         <app-list-toolbar
-          searchPlaceholder="Receipt #, payer, or family…"
-          [searchValue]="search"
+          [showSearch]="false"
           [filterCount]="drawerFilterCount"
-          (searchChange)="onSearchChange($event)"
           (filtersOpened)="showFilters = true"
         >
           <button
@@ -69,51 +81,12 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
         </app-list-toolbar>
       </app-page-header>
 
-      <div
-        class="receipts-hub__chips"
+      <app-stewardship-active-filter-chips
         *ngIf="getActiveFilters().length"
-        role="region"
-        aria-label="Active filters"
-      >
-        <span class="cf-meta">Active filters</span>
-        <div class="receipts-hub__chip-list">
-          <span class="cf-badge cf-badge--info" *ngFor="let filter of getActiveFilters()">
-            {{ filter.label }}: {{ filter.displayValue }}
-            <button
-              type="button"
-              class="receipts-hub__chip-remove"
-              (click)="removeFilter(filter)"
-              [attr.aria-label]="'Remove filter: ' + filter.label"
-            >
-              ×
-            </button>
-          </span>
-        </div>
-        <button
-          type="button"
-          class="cf-btn cf-btn-icon cf-btn--sm"
-          (click)="clearAllFilters()"
-          aria-label="Clear all filters"
-          title="Clear all filters"
-        >
-          <app-cf-action-icon name="filter" />
-        </button>
-      </div>
-
-      <div
-        class="cf-decision-strip"
-        role="region"
-        aria-label="Suggested next step"
-        *ngIf="receiptsLoaded && !loadError"
-      >
-        <div class="cf-decision-strip__copy">
-          <strong>{{ totalItems }} receipt{{ totalItems === 1 ? '' : 's' }} found</strong>
-          <span>{{ decisionHint }}</span>
-        </div>
-        <div class="cf-decision-strip__actions" *ngIf="hasActiveFilters">
-          <button type="button" class="cf-btn cf-btn-icon" (click)="clearAllFilters()" aria-label="Clear filters" title="Clear filters"><app-cf-action-icon name="filter" /></button>
-        </div>
-      </div>
+        [chips]="receiptFilterChips"
+        (remove)="onReceiptFilterChipRemove($event)"
+        (clearAll)="clearAllFilters()"
+      ></app-stewardship-active-filter-chips>
 
       <div
         class="cf-loading-block cf-panel"
@@ -122,8 +95,7 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="cf-loading-block__label">Loading receipts…</p>
-        <app-loading-skeleton type="table" [rows]="6" [columns]="7"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading receipts…" type="table" [rows]="6" [columns]="7"></app-loading-skeleton>
       </div>
 
       <div class="cf-inline-alert cf-panel" *ngIf="receiptsLoaded && loadError" role="alert">
@@ -136,21 +108,64 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
       </div>
 
       <ng-container *ngIf="receiptsLoaded && !loadError">
-        <div
-          class="cf-panel receipts-hub__panel"
+        <app-stewardship-table-panel
           *ngIf="receipts.length"
-          [class.receipts-hub__panel--refreshing]="refreshing"
-          [attr.aria-busy]="refreshing"
+          [refreshing]="refreshing"
+          [ariaBusy]="refreshing"
+          extraPanelClass="receipts-hub__panel"
         >
           <app-data-table [ariaBusy]="refreshing">
             <thead>
               <tr>
-                <th scope="col">Receipt</th>
-                <th scope="col">Date</th>
-                <th scope="col">Family</th>
-                <th scope="col">Payer</th>
-                <th scope="col">Method</th>
-                <th scope="col">Amount</th>
+                <th
+                  scope="col"
+                  appSortable="receipt_number"
+                  [direction]="sortColumn === 'receipt_number' ? sortDirection : null"
+                  (sort)="onSort($event)"
+                >
+                  Receipt
+                </th>
+                <th
+                  scope="col"
+                  appSortable="issued_on"
+                  [direction]="sortColumn === 'issued_on' ? sortDirection : null"
+                  (sort)="onSort($event)"
+                >
+                  Date
+                </th>
+                <th
+                  scope="col"
+                  appSortable="family_name"
+                  [direction]="sortColumn === 'family_name' ? sortDirection : null"
+                  (sort)="onSort($event)"
+                >
+                  Family
+                </th>
+                <th
+                  scope="col"
+                  appSortable="payer_name"
+                  [direction]="sortColumn === 'payer_name' ? sortDirection : null"
+                  (sort)="onSort($event)"
+                >
+                  Payer
+                </th>
+                <th
+                  scope="col"
+                  appSortable="method"
+                  [direction]="sortColumn === 'method' ? sortDirection : null"
+                  (sort)="onSort($event)"
+                >
+                  Method
+                </th>
+                <th
+                  scope="col"
+                  class="cf-table__num"
+                  appSortable="amount"
+                  [direction]="sortColumn === 'amount' ? sortDirection : null"
+                  (sort)="onSort($event)"
+                >
+                  Amount
+                </th>
                 <th scope="col" class="cf-table__actions-col">
                   <span class="sr-only">Actions</span>
                 </th>
@@ -168,7 +183,7 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
                     ></app-status-badge>
                   </div>
                 </td>
-                <td>{{ receipt.issued_on | date }}</td>
+                <td>{{ receipt.issued_on | cfDate }}</td>
                 <td>
                   <a *ngIf="receipt.family_id" [routerLink]="['/families', receipt.family_id]">
                     {{ receipt.family_name || receipt.family_code }}
@@ -227,7 +242,7 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
             (pageChange)="goToPage($event)"
             (pageSizeChange)="onPageSizeChange($event)"
           ></app-pagination>
-        </div>
+        </app-stewardship-table-panel>
 
         <app-cf-empty-state
           *ngIf="!receipts.length"
@@ -282,32 +297,11 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
       ></app-advanced-search-panel>
     </section>
   `,
+  styleUrls: ['../styles/stewardship-dashboard-shared.scss'],
   styles: [`
-    .receipts-hub__chips {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--cf-space-2);
-    }
-
-    .receipts-hub__chip-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--cf-space-1);
-      align-items: center;
-      flex: 1;
-      min-width: 0;
-    }
-
-    .receipts-hub__chip-remove {
-      margin-left: 0.25rem;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      cursor: pointer;
-      font-size: 1rem;
-      line-height: 1;
-      padding: 0 0.1rem;
+    .stewardship-panel-head__copy {
+      display: grid;
+      gap: 0.08rem;
     }
 
     .receipts-hub__panel--refreshing {
@@ -343,6 +337,8 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
   actionSaving = false;
   actionError: string | null = null;
   actionMessage = '';
+  sortColumn: ReceiptSortColumn = 'issued_on';
+  sortDirection: SortDirection = 'desc';
   private loadReceiptsSeq = 0;
   private searchChanges$ = new Subject<string>();
   private searchSub?: Subscription;
@@ -374,6 +370,9 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
 
   get drawerFilterCount(): number {
     let count = 0;
+    if (this.search.trim()) {
+      count++;
+    }
     if (this.dateFrom) {
       count++;
     }
@@ -388,16 +387,6 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
 
   get hasActiveFilters(): boolean {
     return !!(this.search.trim() || this.drawerFilterCount);
-  }
-
-  get decisionHint(): string {
-    if (this.hasActiveFilters && !this.receipts.length) {
-      return 'No matches for your search — try broader dates or clear filters.';
-    }
-    if (this.receipts.length) {
-      return 'Use the view or print icons on any row — receipts open in a preview window.';
-    }
-    return 'Receipts appear automatically after every collection.';
   }
 
   openQuickCollect(): void {
@@ -423,7 +412,26 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
     this.searchChanges$.next(value);
   }
 
+  onSort(event: SortEvent): void {
+    const allowed: ReceiptSortColumn[] = [
+      'receipt_number',
+      'issued_on',
+      'family_name',
+      'payer_name',
+      'method',
+      'amount',
+    ];
+    if (!allowed.includes(event.column as ReceiptSortColumn)) {
+      return;
+    }
+    this.sortColumn = event.column as ReceiptSortColumn;
+    this.sortDirection = event.direction ?? 'desc';
+    this.page = 1;
+    this.loadReceipts();
+  }
+
   onAdvancedSearch(values: { [key: string]: unknown }): void {
+    this.search = String(values['search'] ?? '').trim();
     this.dateFrom = String(values['date_from'] ?? '');
     this.dateTo = String(values['date_to'] ?? '');
     this.voidStatusFilter = (values['void_status'] as ReceiptVoidFilter) || '';
@@ -439,6 +447,7 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
   }
 
   clearDrawerFilters(): void {
+    this.search = '';
     this.dateFrom = '';
     this.dateTo = '';
     this.voidStatusFilter = '';
@@ -456,6 +465,15 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
 
   getActiveFilters(): ActiveFilter[] {
     const filters: ActiveFilter[] = [];
+
+    if (this.search.trim()) {
+      filters.push({
+        key: 'search',
+        label: 'Search',
+        value: this.search.trim(),
+        displayValue: this.search.trim(),
+      });
+    }
 
     if (this.dateFrom) {
       filters.push({
@@ -494,8 +512,25 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
     return filters;
   }
 
+  get receiptFilterChips(): StewardshipFilterChip[] {
+    return this.getActiveFilters().map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      displayValue: filter.displayValue,
+    }));
+  }
+
+  onReceiptFilterChipRemove(chip: StewardshipFilterChip): void {
+    const match = this.getActiveFilters().find((f) => f.key === chip.key);
+    if (match) {
+      this.removeFilter(match);
+    }
+  }
+
   removeFilter(filter: ActiveFilter): void {
-    if (filter.key === 'date_from') {
+    if (filter.key === 'search') {
+      this.search = '';
+    } else if (filter.key === 'date_from') {
       this.dateFrom = '';
     } else if (filter.key === 'date_to') {
       this.dateTo = '';
@@ -539,6 +574,8 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
     } else if (this.voidStatusFilter === 'void') {
       filters['is_void'] = 'true';
     }
+    filters['sort'] = this.sortColumn;
+    filters['direction'] = this.sortDirection ?? 'desc';
 
     this.donationsService.getReceipts(filters).subscribe({
       next: (res) => {
@@ -639,6 +676,13 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
   private initSearchFields(): void {
     this.searchFields = [
       {
+        key: 'search',
+        label: 'Receipt, payer, or family',
+        type: 'text',
+        placeholder: 'Receipt #, payer, or family…',
+        value: this.search.trim() || undefined,
+      },
+      {
         key: 'date_from',
         label: 'From date',
         type: 'date',
@@ -666,10 +710,14 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
   }
 
   private syncSearchFieldValues(): void {
+    const searchField = this.searchFields.find((field) => field.key === 'search');
     const dateFromField = this.searchFields.find((field) => field.key === 'date_from');
     const dateToField = this.searchFields.find((field) => field.key === 'date_to');
     const statusField = this.searchFields.find((field) => field.key === 'void_status');
 
+    if (searchField) {
+      searchField.value = this.search.trim() || undefined;
+    }
     if (dateFromField) {
       dateFromField.value = this.dateFrom || undefined;
     }
@@ -686,10 +734,6 @@ export class DonationsReceiptsComponent implements OnInit, OnDestroy {
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(date) || '—';
   }
 }

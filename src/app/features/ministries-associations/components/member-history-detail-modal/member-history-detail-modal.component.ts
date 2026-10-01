@@ -14,6 +14,7 @@ import {
   MembershipStatus,
   OrganizationMembership,
 } from '../../models/ministries.model';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-member-history-detail-modal',
@@ -160,10 +161,7 @@ export class MemberHistoryDetailModalComponent {
   }
 
   private formatDisplayDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = date.toLocaleDateString('en-GB', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    return cfFormatDate(date) || '—';
   }
 
   private parseDateOnly(value: string | null | undefined): Date | null {

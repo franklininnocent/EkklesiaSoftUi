@@ -45,6 +45,7 @@ import { ParishPerson, ParishPersonService } from '@features/settings/sacraments
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { formatPhoneForApi } from '@features/family-management/utils/prepare-family-member-payload.util';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type HistoryView = 'table' | 'timeline';
 
@@ -1127,7 +1128,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
     if (!value) {
       return 'Present';
     }
-    return value;
+    return cfFormatDate(value) || value;
   }
 
   leaderPhotoUrl(assignment: LeadershipAssignment): string | null {
@@ -1291,11 +1292,7 @@ export class ChurchLeadershipGovernanceComponent implements OnInit, OnDestroy {
       return value;
     }
 
-    return parsed.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    return cfFormatDate(parsed) || value;
   }
 
   get customRoles(): LeadershipRoleOption[] {

@@ -154,7 +154,7 @@
             <td>
               <app-status-badge [label]="event.risk_level || 'LOW'" [tone]="riskTone(event.risk_level)"></app-status-badge>
             </td>
-            <td>{{ event.occurred_at | date: 'short' }}</td>
+            <td>{{ event.occurred_at | cfDate: 'datetime' }}</td>
           </tr>
         </tbody>
       </app-data-table>

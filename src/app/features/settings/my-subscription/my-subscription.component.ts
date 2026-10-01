@@ -15,6 +15,7 @@ import { TenantSubscriptionService } from '@features/subscriptions/services/tena
 import { subscriptionErrorMessage } from '@features/subscriptions/services/subscription-admin.service';
 import { BillingInterval, PublicPlanCard } from '@features/subscriptions/models/subscription-admin.models';
 import {
+  CurrentPlanIdentity,
   TenantSubscriptionOverview,
   UpgradeRequest,
   UpgradeRequestStatus,
@@ -22,6 +23,7 @@ import {
   UsageRow,
 } from '@features/subscriptions/models/tenant-subscription.models';
 import { Subject, catchError, finalize, forkJoin, of, takeUntil } from 'rxjs';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 const FEATURE_CODE_PATTERN = /^[A-Za-z][A-Za-z0-9_]{1,63}$/;
 
@@ -77,6 +79,7 @@ export class MySubscriptionComponent implements OnInit, OnDestroy {
   overview: TenantSubscriptionOverview | null = null;
   plans: PublicPlanCard[] = [];
   requests: UpgradeRequest[] = [];
+  currentPlanIdentity: CurrentPlanIdentity | null = null;
 
   /** Feature the church was trying to use when it landed here (from the feature-unavailable page). */
   askedFeature: string | null = null;
@@ -131,24 +134,30 @@ export class MySubscriptionComponent implements OnInit, OnDestroy {
   private loadPlanDetails(): void {
     forkJoin({
       overview: this.subscriptions.overview().pipe(catchError(() => of(null))),
-      plans: this.subscriptions.publicPlans(),
+      comparison: this.subscriptions.comparison().pipe(catchError(() => of(null))),
       requests: this.subscriptions.upgradeRequests().pipe(catchError(() => of([] as UpgradeRequest[]))),
     })
       .pipe(takeUntil(this.destroy$))
-      .subscribe(({ overview, plans, requests }) => {
+      .subscribe(({ overview, comparison, requests }) => {
         this.overview = overview;
-        this.plans = plans;
+        const snapshot = comparison ?? overview?.comparison ?? null;
+        this.currentPlanIdentity = snapshot?.current_plan ?? null;
+        this.plans = snapshot?.plans?.length ? snapshot.plans : [];
         this.requests = requests;
         this.cdr.markForCheck();
       });
   }
 
   get planName(): string {
-    return this.overview?.plan?.name || this.summary?.plan_name || '—';
+    return this.currentPlanIdentity?.name || this.overview?.plan?.name || this.summary?.plan_name || '—';
   }
 
   get currentPlanCode(): string | null {
-    return this.overview?.plan?.code ?? null;
+    return this.currentPlanIdentity?.code ?? this.overview?.plan?.code ?? null;
+  }
+
+  get currentPlanUnmatched(): boolean {
+    return !!this.currentPlanIdentity && this.currentPlanIdentity.matched === false;
   }
 
   get openRequest(): UpgradeRequest | null {
@@ -247,6 +256,9 @@ export class MySubscriptionComponent implements OnInit, OnDestroy {
   }
 
   choosePlan(plan: PublicPlanCard): void {
+    if (plan.is_current || plan.primary_action === 'current') {
+      return;
+    }
     this.selectedPlan = plan;
     this.requestError = null;
     const intervals = plan.billing_intervals ?? [];
@@ -342,11 +354,7 @@ export class MySubscriptionComponent implements OnInit, OnDestroy {
       return '—';
     }
     try {
-      return new Date(value).toLocaleDateString(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
+      return cfFormatDate(value) || value;
     } catch {
       return value;
     }

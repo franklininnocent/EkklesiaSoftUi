@@ -101,11 +101,15 @@
   --cf-drawer-overlay-bg: rgba(15, 23, 42, 0.28);
   --cf-drawer-sheet-max-height: 85vh;
 
-  /* Layering — prefer these over hardcoded 999 / 9999 / 10000 */
+  /* Layering — prefer these over hardcoded 999 / 9999 / 10000.
+     Nested overlays (drawer over modal, confirm over drawer) are assigned by
+     CfOverlayStackService from this ladder plus --cf-z-overlay-step. Do not
+     raise --cf-z-drawer above --cf-z-modal globally. */
   --cf-z-dropdown: 1000;
   --cf-z-drawer: 1100;
   --cf-z-modal: 1200;
   --cf-z-modal-nested: 1300;
+  --cf-z-overlay-step: 10;
   --cf-z-toast: 1400;
   --cf-z-command-palette: 1350;
 
@@ -716,6 +720,7 @@
 
 .cf-row-actions {
   display: inline-flex;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: flex-end;
   gap: 0.35rem;
@@ -1891,6 +1896,40 @@ button.cf-btn-link,
   &:disabled {
     opacity: 0.55;
     cursor: not-allowed;
+  }
+}
+
+/* Icon + filled tiers — `.cf-btn-icon` follows `.cf-btn-primary` in this file and
+   would otherwise reset the primary background to panel white (looks like a blank
+   icon-only control beside secondary actions). */
+.cf-btn-icon.cf-btn-primary {
+  border-color: transparent;
+  background: var(--cf-primary);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: var(--cf-primary);
+    filter: brightness(0.95);
+  }
+
+  &:disabled {
+    color: #fff;
+    opacity: 0.55;
+  }
+}
+
+.cf-btn-icon.cf-btn-danger {
+  border-color: transparent;
+  background: var(--cf-critical);
+  color: #fff;
+
+  &:hover:not(:disabled) {
+    background: var(--cf-critical-hover);
+  }
+
+  &:disabled {
+    color: #fff;
+    opacity: 0.55;
   }
 }
 

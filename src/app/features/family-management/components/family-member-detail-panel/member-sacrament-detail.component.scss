@@ -1,3 +1,9 @@
+:host {
+  display: block;
+  min-width: 0;
+  height: auto;
+}
+
 .sacrament-tile {
   background: #fff;
   border: 1px solid var(--gray-200, #e5e7eb);

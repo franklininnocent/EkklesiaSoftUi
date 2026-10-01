@@ -1,0 +1,35 @@
+<div class="cf-active-filters" role="region" [attr.aria-label]="regionLabel">
+  <span class="cf-active-filters__label">Active filters:</span>
+  <ul class="cf-active-filters__list">
+    <li
+      *ngFor="let chip of chips; trackBy: trackChip"
+      class="cf-active-filter-chip"
+    >
+      <span class="cf-active-filter-chip__body">
+        <ng-container *ngIf="parts(chip).value as chipValue; else chipLabelOnly">
+          <span class="cf-active-filter-chip__name">{{ parts(chip).name }}:</span>
+          <span class="cf-active-filter-chip__value">{{ chipValue }}</span>
+        </ng-container>
+        <ng-template #chipLabelOnly>
+          <span class="cf-active-filter-chip__value">{{ parts(chip).name }}</span>
+        </ng-template>
+      </span>
+      <button
+        type="button"
+        class="cf-active-filter-chip__remove"
+        (click)="remove.emit(chip)"
+        [attr.aria-label]="removeAriaLabel(chip)"
+      >
+        <app-cf-action-icon name="x" />
+      </button>
+    </li>
+  </ul>
+  <button
+    *ngIf="showClearAll"
+    type="button"
+    class="cf-btn cf-btn--sm cf-active-filters__clear-all"
+    (click)="clearAll.emit()"
+  >
+    Clear all
+  </button>
+</div>

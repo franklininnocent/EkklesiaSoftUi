@@ -16,7 +16,7 @@
         <div><span>Payee</span><strong>{{ submittedRecord?.payee || '—' }}</strong></div>
         <div><span>Category</span><strong>{{ submittedRecord?.category }}</strong></div>
         <div><span>Recorded by</span><strong>{{ operatorName }}</strong></div>
-        <div><span>Recorded at</span><strong>{{ recordedAt | date:'medium' }}</strong></div>
+        <div><span>Recorded at</span><strong>{{ recordedAt | cfDate:'datetime' }}</strong></div>
       </div>
     </div>
   </ng-container>
@@ -28,7 +28,7 @@
       <p class="foc-disb__eyebrow">Disbursement Entry Workspace</p>
       <div class="foc-disb__entry-meta-right">
         <span class="foc-disb__badge foc-disb__badge--draft">Draft Transaction</span>
-        <span class="foc-disb__meta-line">{{ form.expense_date | date:'mediumDate' }} · {{ financialYearLabel }}</span>
+        <span class="foc-disb__meta-line">{{ form.expense_date | cfDate }} · {{ financialYearLabel }}</span>
         <span class="foc-disb__meta-line">{{ operatorRole }}</span>
       </div>
     </div>
@@ -170,7 +170,7 @@
             <div><dt>Amount</dt><dd>{{ amountEntered ? formattedAmount : '—' }}</dd></div>
             <div><dt>Payment Method</dt><dd>{{ methodSelected ? methodLabel : '—' }}</dd></div>
             <div><dt>Payee</dt><dd>{{ form.payee || '—' }}</dd></div>
-            <div><dt>Date</dt><dd>{{ form.expense_date ? (form.expense_date | date:'mediumDate') : '—' }}</dd></div>
+            <div><dt>Date</dt><dd>{{ form.expense_date ? (form.expense_date | cfDate) : '—' }}</dd></div>
             <div><dt>Status</dt><dd><span class="foc-disb__badge foc-disb__badge--draft">Draft</span></dd></div>
           </dl>
         </article>

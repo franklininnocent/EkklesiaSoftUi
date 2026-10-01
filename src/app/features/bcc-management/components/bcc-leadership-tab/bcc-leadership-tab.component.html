@@ -1,7 +1,6 @@
 <div class="bcc-leadership">
   <div class="cf-loading-block cf-panel" *ngIf="loading" role="status">
-    <p class="cf-loading-block__label">Loading leadership…</p>
-    <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading leadership…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
   </div>
 
   <div class="cf-inline-alert cf-panel" *ngIf="loadError && !loading" role="alert">

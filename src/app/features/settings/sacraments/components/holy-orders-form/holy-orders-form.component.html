@@ -163,7 +163,7 @@
     <h3 class="cf-subsection-title">Confirm and save</h3>
     <p>Everything looks ready. Save to add this Holy Orders record to the parish register.</p>
     <button type="button" class="cf-btn cf-btn-primary" [disabled]="saving" [attr.aria-busy]="saving" (click)="save()">
-      <span *ngIf="saving" class="cf-spinner" aria-hidden="true"></span>
+      <app-cf-brand-loader *ngIf="saving" size="button" label="Saving" [showLabel]="false" />
       Save Holy Orders
     </button>
   </div>

@@ -1,0 +1,16 @@
+@use '../../donations/styles/stewardship-split-layout.scss';
+
+// Bottom-right actions — enterprise-modal-style-guide.md §9.
+// Encapsulation keeps this override on this modal only.
+.cf-split-form-actions {
+  justify-content: flex-end;
+}
+
+.add-mass-modal__same-day {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.cf-split-field--full {
+  grid-column: 1 / -1;
+}

@@ -1,8 +1,10 @@
-import { Component, EventEmitter, Input, Output, OnChanges, OnDestroy, SimpleChanges, ChangeDetectionStrategy, ElementRef, ViewChild, HostListener } from '@angular/core';
+import { Component, EventEmitter, Input, Output, OnChanges, OnDestroy, SimpleChanges, ChangeDetectionStrategy, ElementRef, ViewChild, HostListener, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { NgSelectModule } from '@ng-select/ng-select';
 import { trapFocus, saveActiveElement, restoreActiveElement } from '@shared/utils/focus-trap.util';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import { CF_OVERLAY_Z, CfOverlayHandle, CfOverlayStackService } from '@core/services/cf-overlay-stack.service';
 
 export interface SearchField {
   key: string;
@@ -49,6 +51,8 @@ export class AdvancedSearchPanelComponent implements OnChanges, OnDestroy {
   @Output() clear = new EventEmitter<void>();
   @Output() toggleExpanded = new EventEmitter<boolean>();
   @Output() close = new EventEmitter<void>();
+  /** Emitted when a single filter field changes (e.g. dependent dropdown refresh). */
+  @Output() fieldChange = new EventEmitter<{ field: SearchField; value: unknown }>();
 
   @ViewChild('drawerRef') drawerRef?: ElementRef<HTMLElement>;
 
@@ -62,6 +66,9 @@ export class AdvancedSearchPanelComponent implements OnChanges, OnDestroy {
 
   private previousActiveElement: HTMLElement | null = null;
   private focusTrapCleanup: (() => void) | null = null;
+  private overlayHandle: CfOverlayHandle | null = null;
+  private readonly overlayStack = inject(CfOverlayStackService);
+  overlayZIndex: number = CF_OVERLAY_Z.drawer;
 
   ngOnChanges(changes: SimpleChanges): void {
     // Initialize searchValues from field values when fields change or panel opens
@@ -84,6 +91,7 @@ export class AdvancedSearchPanelComponent implements OnChanges, OnDestroy {
 
   ngOnDestroy(): void {
     this.releaseFocusTrap();
+    this.releaseOverlay();
   }
 
   /**
@@ -130,6 +138,7 @@ export class AdvancedSearchPanelComponent implements OnChanges, OnDestroy {
       this.searchValues[field.key] = value;
       field.value = value;
     }
+    this.fieldChange.emit({ field, value });
   }
 
   /**
@@ -193,7 +202,7 @@ export class AdvancedSearchPanelComponent implements OnChanges, OnDestroy {
         } else if (field?.type === 'boolean') {
           displayValue = value ? 'Yes' : 'No';
         } else if (field?.type === 'date') {
-          displayValue = new Date(value).toLocaleDateString();
+          displayValue = cfFormatDate(value) || value;
         }
 
         return {
@@ -228,15 +237,24 @@ export class AdvancedSearchPanelComponent implements OnChanges, OnDestroy {
     return value !== '' && value !== null && value !== undefined;
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.mode === 'sidepanel' && this.isExpanded) {
-      this.onClose();
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: Event): void {
+    if (this.mode !== 'sidepanel' || !this.isExpanded) {
+      return;
     }
+    if (this.overlayHandle && !this.overlayHandle.isTop()) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.onClose();
   }
 
   private onDrawerOpened(): void {
     this.previousActiveElement = saveActiveElement();
+    this.releaseOverlay();
+    this.overlayHandle = this.overlayStack.push('drawer', () => this.onClose());
+    this.overlayZIndex = this.overlayHandle.zIndex;
     // Wait for the drawer to become visible before trapping focus.
     setTimeout(() => {
       if (this.isExpanded && this.drawerRef?.nativeElement) {
@@ -248,6 +266,13 @@ export class AdvancedSearchPanelComponent implements OnChanges, OnDestroy {
 
   private onDrawerClosed(): void {
     this.releaseFocusTrap();
+    this.releaseOverlay();
+  }
+
+  private releaseOverlay(): void {
+    this.overlayHandle?.release();
+    this.overlayHandle = null;
+    this.overlayZIndex = CF_OVERLAY_Z.drawer;
   }
 
   private releaseFocusTrap(restore: boolean = true): void {

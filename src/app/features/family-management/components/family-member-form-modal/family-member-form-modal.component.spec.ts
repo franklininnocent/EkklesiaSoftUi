@@ -88,4 +88,70 @@ describe('FamilyMemberFormModalComponent (basics)', () => {
     component.onSave();
     expect(spy).toHaveBeenCalled();
   });
+
+  it('shows marriage date only when marital status is married', () => {
+    TestBed.configureTestingModule({
+      imports: [FamilyMemberFormModalComponent, HttpClientTestingModule]
+    });
+    const fixture = TestBed.createComponent(FamilyMemberFormModalComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    expect(fixture.nativeElement.querySelector('#member_marriage_date')).toBeNull();
+
+    component.form.patchValue({ marital_status: 'married' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#member_marriage_date')).toBeTruthy();
+
+    component.form.patchValue({ marital_status: 'widowed', marriage_date: '2010-06-20' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#member_marriage_date')).toBeNull();
+    expect(component.form.get('marriage_date')?.value).toBe('2010-06-20');
+  });
+
+  it('shows marriage date in family head edit mode when married', () => {
+    TestBed.configureTestingModule({
+      imports: [FamilyMemberFormModalComponent, HttpClientTestingModule]
+    });
+    const fixture = TestBed.createComponent(FamilyMemberFormModalComponent);
+    const component = fixture.componentInstance;
+    component.isHeadOnly = true;
+    fixture.detectChanges();
+
+    component.form.patchValue({ marital_status: 'married' });
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('#member_marriage_date')).toBeTruthy();
+  });
+
+  it('prefills marriage date from suggested_marriage_date', () => {
+    TestBed.configureTestingModule({
+      imports: [FamilyMemberFormModalComponent, HttpClientTestingModule]
+    });
+    const fixture = TestBed.createComponent(FamilyMemberFormModalComponent);
+    const component = fixture.componentInstance;
+    fixture.detectChanges();
+
+    component.member = {
+      id: '11111111-1111-1111-1111-111111111111',
+      first_name: 'Jane',
+      last_name: 'Doe',
+      relationship_to_head: 'self',
+      marital_status: 'married',
+      suggested_marriage_date: '2011-02-03',
+      marriage_date_conflict: true,
+    };
+    component.ngOnChanges({
+      member: {
+        currentValue: component.member,
+        previousValue: null,
+        firstChange: true,
+        isFirstChange: () => true,
+      }
+    });
+    fixture.detectChanges();
+
+    expect(component.form.get('marriage_date')?.value).toBe('2011-02-03');
+    expect(fixture.nativeElement.querySelector('#member_marriage_date')).toBeTruthy();
+    expect(fixture.nativeElement.textContent).toContain('parish marriage register');
+  });
 });

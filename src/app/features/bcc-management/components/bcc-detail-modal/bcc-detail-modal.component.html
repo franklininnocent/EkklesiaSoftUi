@@ -43,7 +43,7 @@
       </div>
       <div *ngIf="detail.established_date">
         <dt>Established</dt>
-        <dd>{{ detail.established_date | date:'mediumDate' }}</dd>
+        <dd>{{ detail.established_date | cfDate }}</dd>
       </div>
       <div class="bcc-detail__kv-wide" *ngIf="detail.notes">
         <dt>Notes</dt>

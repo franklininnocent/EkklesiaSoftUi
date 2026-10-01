@@ -2,6 +2,7 @@
 <div 
   *ngIf="mode === 'sidepanel' && isExpanded" 
   class="drawer-backdrop animate-fade-in"
+  [style.z-index]="overlayZIndex"
   (click)="onClose()"
   aria-hidden="true">
 </div>
@@ -154,6 +155,7 @@
   *ngIf="mode === 'sidepanel'" 
   class="filter-drawer"
   [class.open]="isExpanded"
+  [style.z-index]="overlayZIndex"
   role="dialog"
   aria-modal="true"
   [attr.aria-labelledby]="titleId">

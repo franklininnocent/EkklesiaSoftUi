@@ -29,6 +29,7 @@ import {
 } from '../../models/ministries.model';
 import { MinistriesApiService } from '../../services/ministries-api.service';
 import { MemberHistoryDetailModalComponent } from '../member-history-detail-modal/member-history-detail-modal.component';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type StatusFilter = '' | MembershipStatus;
 type MemberTypeFilter = '' | MemberType;
@@ -294,10 +295,7 @@ export class OrganizationMemberHistoryTabComponent implements OnInit, OnChanges,
   }
 
   private formatDisplayDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = date.toLocaleDateString('en-GB', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    return cfFormatDate(date) || '—';
   }
 
   private parseDateOnly(value: string | null | undefined): Date | null {

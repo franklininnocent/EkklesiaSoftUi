@@ -29,17 +29,19 @@ interface ComparisonCard {
         role="listitem"
         [class.plan-compare__card--current]="card.isCurrent"
         [class.plan-compare__card--featured]="card.plan.is_featured"
-        [attr.data-plan]="card.plan.code">
+        [attr.data-plan]="card.plan.code"
+        [attr.data-current]="card.isCurrent ? 'true' : null"
+        [attr.aria-current]="card.isCurrent ? 'true' : null">
         <header class="plan-compare__head">
           <h3>{{ card.plan.name }}</h3>
-          <span class="plan-compare__badge" *ngIf="card.isCurrent">Your plan</span>
+          <span class="plan-compare__badge plan-compare__badge--current" *ngIf="card.isCurrent">Your Current Plan</span>
           <span class="plan-compare__badge plan-compare__badge--accent" *ngIf="!card.isCurrent && card.plan.badge_label">
             {{ card.plan.badge_label }}
           </span>
         </header>
         <p class="plan-compare__desc" *ngIf="card.plan.short_description">{{ card.plan.short_description }}</p>
 
-        <div class="plan-compare__price" *ngIf="card.plan.pricing_type !== 'CUSTOM'; else customPrice">
+        <div class="plan-compare__price" *ngIf="showCatalogPrice(card); else currentPrice">
           <p *ngIf="card.plan.monthly_price">
             <strong>{{ card.plan.monthly_price | cfCurrency: card.plan.currency_code : 0 }}</strong> / month
           </p>
@@ -48,8 +50,12 @@ interface ComparisonCard {
           </p>
           <p class="plan-compare__tax" *ngIf="taxNote(card.plan) as note">{{ note }}</p>
         </div>
-        <ng-template #customPrice>
-          <div class="plan-compare__price"><p><strong>Custom pricing</strong></p></div>
+        <ng-template #currentPrice>
+          <div class="plan-compare__price">
+            <p *ngIf="card.plan.is_lifetime"><strong>Lifetime</strong></p>
+            <p *ngIf="card.plan.pricing_type === 'CUSTOM' && !card.plan.is_lifetime"><strong>Custom pricing</strong></p>
+            <p class="plan-compare__alt" *ngIf="card.plan.is_lifetime">No end date</p>
+          </div>
         </ng-template>
 
         <ul class="plan-compare__limits" *ngIf="card.plan.limits?.length">
@@ -73,17 +79,19 @@ interface ComparisonCard {
         <p class="plan-compare__match" *ngIf="card.hasHighlight && !card.isCurrent">Includes what you asked about</p>
 
         <footer class="plan-compare__actions" *ngIf="selectable()">
-          <span *ngIf="card.isCurrent" class="plan-compare__state">Current plan</span>
+          <span *ngIf="card.isCurrent" class="plan-compare__state">
+            {{ currentPlanState(card.plan) }}
+          </span>
           <span *ngIf="!card.isCurrent && card.isRequested" class="plan-compare__state">Request sent</span>
           <button
-            *ngIf="!card.isCurrent && !card.isRequested"
+            *ngIf="!card.isCurrent && !card.isRequested && card.plan.primary_action !== 'current'"
             type="button"
             class="cf-btn"
             [class.cf-btn-primary]="card.plan.is_featured || card.hasHighlight"
             [class.cf-btn-secondary]="!(card.plan.is_featured || card.hasHighlight)"
             [disabled]="disabled()"
             (click)="choose.emit(card.plan)">
-            {{ card.plan.pricing_type === 'CUSTOM' ? 'Ask for a quote' : 'Request this plan' }}
+            {{ card.plan.primary_action === 'quote' || card.plan.pricing_type === 'CUSTOM' ? 'Ask for a quote' : 'Request this plan' }}
           </button>
         </footer>
       </article>
@@ -110,7 +118,19 @@ interface ComparisonCard {
       }
       .plan-compare__card--current {
         background: color-mix(in srgb, var(--cf-success, #15803d) 6%, white);
-        border-color: color-mix(in srgb, var(--cf-success, #15803d) 35%, white);
+        border-color: color-mix(in srgb, var(--cf-success, #15803d) 40%, white);
+        box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cf-success, #15803d) 18%, transparent);
+      }
+      .plan-compare__badge {
+        font-size: var(--font-size-xs, 0.75rem);
+        font-weight: 600;
+        padding: 0.1rem 0.5rem;
+        border-radius: 999px;
+        background: var(--cf-slate-100, var(--gray-100));
+      }
+      .plan-compare__badge--current {
+        background: color-mix(in srgb, var(--cf-success, #15803d) 16%, white);
+        color: var(--cf-success, #15803d);
       }
       .plan-compare__head {
         display: flex;
@@ -122,13 +142,6 @@ interface ComparisonCard {
       .plan-compare__head h3 {
         margin: 0;
         font-size: var(--cf-text-md, var(--font-size-lg));
-      }
-      .plan-compare__badge {
-        font-size: var(--font-size-xs, 0.75rem);
-        font-weight: 600;
-        padding: 0.1rem 0.5rem;
-        border-radius: 999px;
-        background: var(--cf-slate-100, var(--gray-100));
       }
       .plan-compare__badge--accent {
         background: color-mix(in srgb, var(--cf-primary, #2563eb) 12%, white);
@@ -197,7 +210,7 @@ export class PlanComparisonComponent {
         plan,
         previousName: previous?.name ?? null,
         newFeatures: features.filter((f) => !before.has(f.code)),
-        isCurrent: plan.code === this.currentCode(),
+        isCurrent: this.isCurrentPlan(plan),
         isRequested: plan.code === this.requestedCode(),
         hasHighlight: !!highlight && features.some((f) => f.code === highlight),
       };
@@ -205,6 +218,33 @@ export class PlanComparisonComponent {
       return card;
     });
   });
+
+  showCatalogPrice(card: ComparisonCard): boolean {
+    if (card.isCurrent && (card.plan.is_lifetime || card.plan.pricing_type === 'CUSTOM')) {
+      return false;
+    }
+    return card.plan.pricing_type !== 'CUSTOM';
+  }
+
+  currentPlanState(plan: PublicPlanCard): string {
+    if (plan.is_lifetime) {
+      return 'Lifetime access · no end date';
+    }
+    switch (plan.subscription_status) {
+      case 'TRIAL':
+        return 'You are on a trial of this plan';
+      case 'EXPIRING':
+        return 'This plan is ending soon';
+      case 'GRACE_PERIOD':
+        return 'This plan is in a grace period';
+      case 'EXPIRED':
+        return 'This was your plan — access has ended';
+      case 'SUSPENDED':
+        return 'This plan is suspended';
+      default:
+        return 'You are on this plan';
+    }
+  }
 
   taxNote(plan: PublicPlanCard): string | null {
     const label = plan.tax?.label || 'Tax';
@@ -221,5 +261,16 @@ export class PlanComparisonComponent {
 
   trackByCode(_index: number, card: ComparisonCard): string {
     return card.plan.code;
+  }
+
+  private isCurrentPlan(plan: PublicPlanCard): boolean {
+    if (plan.is_current === true || plan.primary_action === 'current') {
+      return true;
+    }
+    if (plan.is_current === false) {
+      return false;
+    }
+    const code = this.currentCode();
+    return !!code && plan.code === code;
   }
 }

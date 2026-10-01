@@ -23,6 +23,10 @@
     <span *ngIf="filterCount > 0" class="cf-list-toolbar__filter-badge">{{ filterCount }}</span>
   </button>
 
+  <div class="cf-list-toolbar__after-filters">
+    <ng-content select="[toolbarAfterFilters]"></ng-content>
+  </div>
+
   <div class="cf-list-toolbar__primary">
     <ng-content></ng-content>
   </div>

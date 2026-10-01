@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnInit, ViewChild, inject } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, OnDestroy, OnInit, ViewChild, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -10,6 +10,7 @@ import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { Family } from '@core/models/family.model';
 import { DonationsService } from '../services/donations.service';
 import { ReceiptPrintService } from '../services/receipt-print.service';
+import { CF_OVERLAY_Z, CfOverlayHandle, CfOverlayStackService } from '@core/services/cf-overlay-stack.service';
 import {
   DonationDashboardSummary,
   DonationFamilyFinancialProfile,
@@ -17,10 +18,23 @@ import {
   DonationReceiptPreview,
   PaginatedResponse
 } from '../models/donation.model';
+import {
+  averageCollection,
+  collectionRemaining,
+  collectionTarget,
+  completionLabel,
+  completionPercent
+} from '../utils/collection-day-metrics.util';
 import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
 import { localDateOnly, requiresGatewayReference } from '../utils/local-date-only';
 import { formatPaymentDateTime } from '../utils/payment-datetime';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfFamilyHeadNamePipe } from '@shared/pipes/cf-family-head-name.pipe';
+import { CfFamilyPickerLabelPipe } from '@shared/pipes/cf-family-picker-label.pipe';
+import {
+  formatFamilyPickerLabel,
+  resolveFamilyHeadPersonName,
+} from '@shared/utils/family-display.util';
 
 type CollectType = 'general' | 'mandatory' | 'project' | 'offering';
 type SearchMode = 'name' | 'id' | 'mobile' | 'qr';
@@ -34,6 +48,7 @@ interface KpiCard {
   iconPath: string;
   sparkline: string;
   href?: string;
+  queryParams?: Record<string, string>;
 }
 
 interface ActivityFeedItem {
@@ -57,15 +72,18 @@ interface AllocationRow {
 @Component({
   selector: 'app-collection-day',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CfActionIconComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CfActionIconComponent, CfFamilyPickerLabelPipe, CfFamilyHeadNamePipe],
   templateUrl: './collection-day.component.html',
   styleUrls: ['./collection-day.component.scss', '../styles/stewardship-action-icons.scss']
 })
-export class CollectionDayComponent implements OnInit {
+export class CollectionDayComponent implements OnInit, OnDestroy {
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
   @ViewChild('amountInput') amountInput?: ElementRef<HTMLInputElement>;
 
   private readonly search$ = new Subject<string>();
+  private readonly overlayStack = inject(CfOverlayStackService);
+  private shortcutsOverlay: CfOverlayHandle | null = null;
+  shortcutsZIndex: number = CF_OVERLAY_Z.drawer;
 
   searchQuery = '';
   searchMode: SearchMode = 'name';
@@ -93,6 +111,7 @@ export class CollectionDayComponent implements OnInit {
   highlightedIndex = -1;
   quickActionsOpen = false;
   shortcutsOpen = false;
+  kpiCardList: KpiCard[] = [];
 
   private readonly churchCurrency = inject(ChurchCurrencyService);
 
@@ -267,28 +286,20 @@ export class CollectionDayComponent implements OnInit {
   }
 
   get averageCollectionValue(): number {
-    return this.sessionCount > 0 ? this.sessionTotal / this.sessionCount : 0;
+    return averageCollection(this.sessionTotal, this.sessionCount);
   }
 
-  get collectionTarget(): number {
+  get collectionTargetValue(): number {
     const monthCollected = this.dashboardSummary?.period_collections?.current_month_collected ?? 0;
-    if (monthCollected > 0) {
-      const dayOfMonth = new Date().getDate();
-      const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
-      return Math.max((monthCollected / Math.max(dayOfMonth, 1)) * daysInMonth * 0.15, this.sessionTotal || 1);
-    }
-    return Math.max(this.sessionTotal * 1.25, 1000);
+    return collectionTarget(monthCollected, this.sessionTotal);
   }
 
   get collectionRemaining(): number {
-    return Math.max(this.collectionTarget - this.sessionTotal, 0);
+    return collectionRemaining(this.collectionTargetValue, this.sessionTotal);
   }
 
   get completionPercent(): number {
-    if (this.collectionTarget <= 0) {
-      return 0;
-    }
-    return Math.min(100, (this.sessionTotal / this.collectionTarget) * 100);
+    return completionPercent(this.sessionTotal, this.collectionTargetValue);
   }
 
   get gaugeArc(): string {
@@ -321,8 +332,12 @@ export class CollectionDayComponent implements OnInit {
   }
 
   get kpiCards(): KpiCard[] {
+    return this.kpiCardList;
+  }
+
+  private rebuildKpiCards(): void {
     const spark = this.buildSparkline(this.todayPayments.map((payment) => Number(payment.amount || 0)));
-    return [
+    this.kpiCardList = [
       {
         label: "Today's Collections",
         value: String(this.sessionCount),
@@ -340,7 +355,9 @@ export class CollectionDayComponent implements OnInit {
         trendUp: true,
         tone: 'emerald',
         iconPath: this.iconPaths.amount,
-        sparkline: spark
+        sparkline: spark,
+        href: '/donations/today-collections',
+        queryParams: { focus: 'amount' }
       },
       {
         label: 'Pending Collections',
@@ -349,7 +366,9 @@ export class CollectionDayComponent implements OnInit {
         trendUp: this.pendingCollectionsCount === 0,
         tone: 'amber',
         iconPath: this.iconPaths.pending,
-        sparkline: spark
+        sparkline: spark,
+        href: '/donations/dues',
+        queryParams: { overdue_only: '1', headline: 'families' }
       },
       {
         label: 'Families Processed',
@@ -358,7 +377,9 @@ export class CollectionDayComponent implements OnInit {
         trendUp: this.familiesProcessedToday > 0,
         tone: 'violet',
         iconPath: this.iconPaths.families,
-        sparkline: spark
+        sparkline: spark,
+        href: '/donations/today-collections',
+        queryParams: { focus: 'families' }
       },
       {
         label: 'Avg Collection',
@@ -367,16 +388,20 @@ export class CollectionDayComponent implements OnInit {
         trendUp: true,
         tone: 'sky',
         iconPath: this.iconPaths.average,
-        sparkline: spark
+        sparkline: spark,
+        href: '/donations/today-collections',
+        queryParams: { focus: 'average' }
       },
       {
         label: 'Completion',
-        value: `${this.completionPercent.toFixed(0)}%`,
+        value: completionLabel(this.completionPercent),
         trend: `${this.formatCurrency(this.collectionRemaining)} remaining`,
         trendUp: this.completionPercent >= 50,
         tone: 'rose',
         iconPath: this.iconPaths.completion,
-        sparkline: spark
+        sparkline: spark,
+        href: '/donations/today-collections',
+        queryParams: { focus: 'completion' }
       }
     ];
   }
@@ -391,7 +416,13 @@ export class CollectionDayComponent implements OnInit {
     private readonly cdr: ChangeDetectorRef
   ) {}
 
+  ngOnDestroy(): void {
+    this.shortcutsOverlay?.release();
+    this.shortcutsOverlay = null;
+  }
+
   ngOnInit(): void {
+    this.rebuildKpiCards();
     this.refreshSession();
     setupStewardshipRouteReload(this.router, this.destroyRef, '/donations/collection-day', () => this.refreshSession());
 
@@ -416,7 +447,6 @@ export class CollectionDayComponent implements OnInit {
       refreshStewardshipView(this.cdr);
     });
 
-    setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
   }
 
   @HostListener('document:keydown', ['$event'])
@@ -434,7 +464,11 @@ export class CollectionDayComponent implements OnInit {
     }
 
     if (this.shortcutsOpen && event.key === 'Escape') {
+      if (this.shortcutsOverlay && !this.shortcutsOverlay.isTop()) {
+        return;
+      }
       event.preventDefault();
+      event.stopImmediatePropagation();
       this.closeShortcuts();
       return;
     }
@@ -505,6 +539,9 @@ export class CollectionDayComponent implements OnInit {
 
   @HostListener('document:click')
   onDocumentClick(): void {
+    if (!this.quickActionsOpen) {
+      return;
+    }
     this.quickActionsOpen = false;
     refreshStewardshipView(this.cdr);
   }
@@ -524,6 +561,7 @@ export class CollectionDayComponent implements OnInit {
       this.todayPayments.map((row) => row.family?.id).filter((id): id is string => !!id)
     );
     this.familiesProcessedToday = Math.max(this.familiesProcessedToday, familyIds.size);
+    this.rebuildKpiCards();
     refreshStewardshipView(this.cdr);
   }
 
@@ -543,10 +581,12 @@ export class CollectionDayComponent implements OnInit {
           ?? new Set(rows.map((row) => row.family?.id).filter(Boolean)).size;
         this.dashboardSummary = dashboard.data ?? null;
         this.sessionLoading = false;
+        this.rebuildKpiCards();
         refreshStewardshipView(this.cdr);
       },
       error: () => {
         this.sessionLoading = false;
+        this.rebuildKpiCards();
         refreshStewardshipView(this.cdr);
       }
     });
@@ -572,10 +612,10 @@ export class CollectionDayComponent implements OnInit {
 
   selectFamily(family: Family): void {
     this.selectedFamily = family;
-    this.payerName = family.head_of_family || family.family_name;
+    this.payerName = resolveFamilyHeadPersonName(family) || family.head_of_family || '';
     this.searchResults = [];
     this.highlightedIndex = -1;
-    this.searchQuery = family.family_name;
+    this.searchQuery = formatFamilyPickerLabel(family);
     this.error = null;
     this.successMessage = null;
     this.receiptPreview = null;
@@ -746,13 +786,38 @@ export class CollectionDayComponent implements OnInit {
     void this.router.navigate([path]);
   }
 
+  navigateKpi(kpi: KpiCard): void {
+    if (!kpi.href) {
+      return;
+    }
+    void this.router.navigateByUrl(this.kpiHref(kpi));
+  }
+
+  kpiHref(kpi: KpiCard): string {
+    if (!kpi.href) {
+      return '#';
+    }
+    if (!kpi.queryParams || !Object.keys(kpi.queryParams).length) {
+      return kpi.href;
+    }
+    const query = new URLSearchParams(kpi.queryParams).toString();
+    return query ? `${kpi.href}?${query}` : kpi.href;
+  }
+
   openShortcuts(): void {
     this.shortcutsOpen = true;
+    if (!this.shortcutsOverlay) {
+      this.shortcutsOverlay = this.overlayStack.push('drawer', () => this.closeShortcuts());
+      this.shortcutsZIndex = this.shortcutsOverlay.zIndex;
+    }
     refreshStewardshipView(this.cdr);
   }
 
   closeShortcuts(): void {
     this.shortcutsOpen = false;
+    this.shortcutsOverlay?.release();
+    this.shortcutsOverlay = null;
+    this.shortcutsZIndex = CF_OVERLAY_Z.drawer;
     refreshStewardshipView(this.cdr);
   }
 
@@ -764,8 +829,13 @@ export class CollectionDayComponent implements OnInit {
     return family.city || family.bcc?.name || family.address_line_1 || 'Parish area';
   }
 
+  trackKpiCard(_index: number, kpi: KpiCard): string {
+    return kpi.label;
+  }
+
   familyInitials(family: Family): string {
-    const parts = (family.family_name || 'F').trim().split(/\s+/).slice(0, 2);
+    const label = resolveFamilyHeadPersonName(family) || family.head_of_family || 'F';
+    const parts = label.trim().split(/\s+/).slice(0, 2);
     return parts.map((part) => part.charAt(0).toUpperCase()).join('') || 'F';
   }
 

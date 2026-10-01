@@ -76,7 +76,7 @@
           <td>{{ row.request_type?.name }}</td>
           <td>{{ row.priority }}</td>
           <td>{{ row.status }}</td>
-          <td>{{ row.updated_at | date: 'medium' }}</td>
+          <td>{{ row.updated_at | cfDate: 'datetime' }}</td>
         </tr>
       </tbody>
     </app-data-table>

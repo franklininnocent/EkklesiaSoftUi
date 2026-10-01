@@ -15,6 +15,7 @@ import { ChurchLeadership } from '@core/models/church';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { SortableDirective, SortDirection, SortEvent } from '@shared/directives/sortable.directive';
 import { LEADERSHIP_ROLE_OPTIONS } from '../church-leader-workspace/church-leader-role.config';
+import { CfLoadingContainerComponent } from '@shared/components/cf-loading-container/cf-loading-container.component';
 
 type LeaderStatusFilter = '' | 'active' | 'inactive';
 type LeaderPrimaryFilter = '' | 'primary' | 'non_primary';
@@ -29,7 +30,7 @@ interface ActiveFilterChip {
 @Component({
   selector: 'app-church-leadership-table',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, SortableDirective],
+  imports: [CommonModule, FormsModule, PaginationComponent, SortableDirective, CfLoadingContainerComponent],
   templateUrl: './church-leadership-table.component.html',
   styleUrl: './church-leadership-table.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

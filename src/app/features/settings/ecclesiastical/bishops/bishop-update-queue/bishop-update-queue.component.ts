@@ -20,11 +20,13 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-bishop-update-queue',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     RouterModule,

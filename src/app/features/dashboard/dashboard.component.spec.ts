@@ -15,7 +15,66 @@ import { SupportSessionService } from '@features/support-center/services/support
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { EntitlementService } from '@core/services/entitlement.service';
 import { TenantService } from '@core/services/tenant.service';
+import { Router } from '@angular/router';
 import { DashboardComponent } from './dashboard.component';
+import { ExecutiveDashboardService } from './services/executive-dashboard.service';
+import { QuickCollectService } from '@features/donations/services/quick-collect.service';
+
+function buildExecutiveDashboardFixture(overrides: Record<string, unknown> = {}) {
+  return {
+    snapshot: {
+      state: 'ready',
+      data: {
+        cards: {
+          families: { active_families: 8, total_families: 10, drilldown: 'families.directory' },
+          members: {
+            active_members: 22,
+            total_members: 25,
+            members_added_this_month: 3,
+            drilldown: 'members.directory',
+          },
+          life_groups: { active_bccs: 5, household_coverage_percent: 40, drilldown: 'bcc.home' },
+        },
+      },
+    },
+    attention: { state: 'ready', data: { items: [], all_clear: true } },
+    stewardship: {
+      state: 'ready',
+      data: {
+        currency_code: 'INR',
+        as_of: '2026-09-15',
+        financial_year: '2026',
+        giving_health_label: 'Healthy',
+        collected: 1500,
+        comparison_start: '2026-08-01',
+        comparison_end: '2026-08-15',
+        comparison_collected: 800,
+        growth_pct: 88,
+        outstanding_contributions: 200,
+        project_installments_open: 0,
+        overdue_amount: 75,
+        overdue_families: 1,
+        due_next_14_days_amount: 50,
+        due_later_amount: 75,
+        due_schedule: [
+          { key: 'overdue', label: 'Overdue', amount: 75, percent: 37.5 },
+          { key: 'next_14_days', label: 'Next 14 days', amount: 50, percent: 25 },
+          { key: 'later', label: 'Later', amount: 75, percent: 37.5 },
+        ],
+        participation_rate: 42.5,
+        participation_participating: 17,
+        participation_active: 40,
+        participation_net_change: 2,
+        participation_window_start: '2026-06-17',
+        participation_window_end: '2026-09-15',
+      },
+    },
+    worship: { state: 'forbidden' },
+    celebrations: { state: 'forbidden' },
+    quick_actions: { state: 'empty', data: { actions: [] } },
+    ...overrides,
+  };
+}
 
 const familyStatsFixture = {
   success: true,
@@ -162,6 +221,11 @@ describe('DashboardComponent (ministries module-status)', () => {
             staff: jest.fn(() => of([])),
           },
         },
+        {
+          provide: ExecutiveDashboardService,
+          useValue: { getExecutive: jest.fn(() => of(buildExecutiveDashboardFixture())) },
+        },
+        { provide: QuickCollectService, useValue: { open: jest.fn() } },
       ],
     }).compileComponents();
 
@@ -176,19 +240,20 @@ describe('DashboardComponent (ministries module-status)', () => {
     expect(ministriesApi.getModuleStatus).not.toHaveBeenCalled();
   });
 
-  it('calls tenant module-status when platform admin has an active support session', () => {
+  it('does not load the ministries workspace during a support session', () => {
     supportSessionId = 'session-live';
     auth.canAccessMinistries.mockReturnValue(true);
 
     fixture.detectChanges();
 
-    expect(ministriesApi.getModuleStatus).toHaveBeenCalled();
+    expect(ministriesApi.getModuleStatus).not.toHaveBeenCalled();
   });
 });
 
 describe('DashboardComponent (Stewardship Hub)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
   let donationsService: { getOperationsDashboard: jest.Mock };
+  let executiveDashboard: { getExecutive: jest.Mock };
   let auth: {
     canAccessDonations: jest.Mock;
     canAccessMinistries: jest.Mock;
@@ -230,6 +295,9 @@ describe('DashboardComponent (Stewardship Hub)', () => {
   };
 
   beforeEach(async () => {
+    executiveDashboard = {
+      getExecutive: jest.fn(() => of(buildExecutiveDashboardFixture())),
+    };
     donationsService = {
       getOperationsDashboard: jest.fn(() => of(liveOpsPayload)),
     };
@@ -307,6 +375,8 @@ describe('DashboardComponent (Stewardship Hub)', () => {
           provide: MinistriesApiService,
           useValue: { getModuleStatus: jest.fn(() => of({ success: true, data: { enabled: false } })) },
         },
+        { provide: ExecutiveDashboardService, useValue: executiveDashboard },
+        { provide: QuickCollectService, useValue: { open: jest.fn() } },
       ],
     }).compileComponents();
 
@@ -324,95 +394,219 @@ describe('DashboardComponent (Stewardship Hub)', () => {
     expect(html).not.toContain('Live operations');
     expect(html).not.toContain('Kids Ministry Briefing');
     expect(html).toContain('₹1,500');
-    expect(html).toContain('Active Families');
-    expect(fixture.componentInstance.financialHubState).toBe('ready');
-  });
-
-  it('uses month-over-month change for collections KPI instead of health label', () => {
-    fixture.detectChanges();
-
-    const collectionsKpi = fixture.componentInstance.heroKpis.find((kpi) => kpi.id === 'collections');
-    expect(collectionsKpi).toBeDefined();
-    expect(collectionsKpi?.change).toBe('+88%');
-    expect(collectionsKpi?.change).not.toBe('Healthy');
-  });
-
-  it('shows unauthorized copy without amounts when donations access is denied', () => {
-    auth.canAccessDonations.mockReturnValue(false);
-
-    fixture.detectChanges();
-
-    const html = fixture.nativeElement.textContent;
-    expect(html).toContain('Giving totals are available to people who can view Donations.');
-    expect(html).not.toContain('$168,400');
+    expect(html).toContain('People executive summary');
     expect(donationsService.getOperationsDashboard).not.toHaveBeenCalled();
   });
 
-  it('shows error state without demo money when the API fails', () => {
-    donationsService.getOperationsDashboard.mockReturnValue(throwError(() => ({ status: 500 })));
-
+  it('shows the donations snapshot metrics and comparable-day growth', () => {
     fixture.detectChanges();
 
-    const html = fixture.nativeElement.textContent;
-    expect(html).toContain('Couldn’t load giving totals.');
-    expect(html).not.toContain('$168,400');
-    expect(fixture.componentInstance.financialHubState).toBe('error');
+    const html = fixture.nativeElement.textContent as string;
+    expect(html).toContain('Financial executive summary');
+    expect(html).toContain('Collected this month');
+    expect(html).toContain('Same days last month');
+    expect(html).toContain('Outstanding contributions');
+    expect(html).toContain('Up 88% versus 1 Aug 2026 – 15 Aug 2026');
+    expect(html).toContain('Giving health: Healthy');
+    expect(html).toContain('Due schedule');
+    expect(html).toContain('Next 14 days');
+    expect(html).not.toContain('Collections trend');
+    expect(html).not.toContain('Last 6 months');
+    expect(fixture.nativeElement.querySelector('.cd-chart')).toBeNull();
+
+    const tone = (label: string) =>
+      Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+        .find((el) => el.textContent?.includes(label));
+    expect(tone('Collected this month')?.classList).toContain('cd-financial-metric--stew-teal');
+    expect(tone('Same days last month')?.classList).toContain('cd-financial-metric--stew-violet');
+    expect(tone('Overdue')?.classList).toContain('cd-financial-metric--critical');
+    expect(tone('Outstanding contributions')?.classList).toContain('cd-financial-metric--stew-gold');
+    const peopleMetric = fixture.nativeElement.querySelector('[data-exec-block="people"] .cd-financial-metric') as HTMLElement;
+    expect(peopleMetric.classList).toContain('cd-financial-metric--indigo');
   });
 
-  it('renders visible currency amounts under giving trend bars', () => {
+  it('opens the matching donations page for each snapshot metric', () => {
+    const router = TestBed.inject(Router);
+    const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
     fixture.detectChanges();
 
-    const amounts = Array.from(
-      fixture.nativeElement.querySelectorAll('.cd-chart__amount') as NodeListOf<HTMLElement>
-    ).map((el) => el.textContent?.trim());
+    const clickLabel = (label: string) => {
+      const button = Array.from(fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>)
+        .find((el) => el.textContent?.includes(label));
+      expect(button).toBeTruthy();
+      button?.click();
+    };
 
-    expect(amounts.length).toBe(6);
-    expect(amounts).toContain('₹1,500');
-    expect(amounts).toContain('₹0');
-    expect(fixture.nativeElement.textContent).toContain('as of 2026-09-30');
-    expect(fixture.nativeElement.textContent).not.toContain('No collections in the last 6 months yet.');
+    clickLabel('Collected this month');
+    expect(navigate).toHaveBeenCalledWith(['/donations/payments'], {
+      queryParams: { paid_from: '2026-09-01', paid_to: '2026-09-15' },
+    });
+
+    clickLabel('Same days last month');
+    expect(navigate).toHaveBeenCalledWith(['/donations/payments'], {
+      queryParams: { paid_from: '2026-08-01', paid_to: '2026-08-15' },
+    });
+
+    clickLabel('Outstanding contributions');
+    expect(navigate).toHaveBeenCalledWith(['/donations/dues']);
+
+    clickLabel('Overdue');
+    expect(navigate).toHaveBeenCalledWith(['/donations/dues'], {
+      queryParams: { overdue_only: '1' },
+    });
   });
 
-  it('keeps six month labels and shows empty caption when all trend values are zero', () => {
-    donationsService.getOperationsDashboard.mockReturnValue(
-      of({
-        success: true,
-        data: {
-          ...liveOpsPayload.data,
-          collection_trend: [
-            { period: '2026-04', label: 'Apr 2026', collected: 0 },
-            { period: '2026-05', label: 'May 2026', collected: 0 },
-            { period: '2026-06', label: 'Jun 2026', collected: 0 },
-            { period: '2026-07', label: 'Jul 2026', collected: 0 },
-            { period: '2026-08', label: 'Aug 2026', collected: 0 },
-            { period: '2026-09', label: 'Sep 2026', collected: 0 },
-          ],
-          collections_by_method_this_month: {},
-          financial: {
-            ...liveOpsPayload.data.financial,
-            totals: {
-              ...liveOpsPayload.data.financial.totals,
-              current_month_collected: 0,
+  it('shows a compact overdue follow-up on Operations and omits module workspaces', () => {
+    const router = TestBed.inject(Router);
+    const navigate = jest.spyOn(router, 'navigate').mockResolvedValue(true);
+    fixture.detectChanges();
+    fixture.componentInstance.selectTab('operations');
+    fixture.detectChanges();
+
+    const html = fixture.nativeElement.textContent as string;
+    expect(html).toContain('Follow-up work');
+    expect(html).toContain('Parish summary');
+    expect(html).toContain('Families needing follow-up');
+    expect(html).toContain('1');
+    expect(html).toContain('family overdue');
+    expect(html).toContain('₹75');
+    expect(html).toContain('Review overdue families');
+    expect(html).not.toContain('BCC Overview');
+    expect(html).not.toContain('Sacramental Records');
+    expect(html).not.toContain('Ministries Actions');
+    expect(html).not.toContain('Parish record queues');
+
+    const button = fixture.nativeElement.querySelector('[data-ops-followup="overdue-families"] .cd-ops-followup') as HTMLButtonElement;
+    expect(button).toBeTruthy();
+    button.click();
+    expect(navigate).toHaveBeenCalledWith(['/donations/dues'], {
+      queryParams: { overdue_only: '1' },
+    });
+    expect(donationsService.getOperationsDashboard).toHaveBeenCalled();
+  });
+
+  it('does not show a zero overdue count when the attention summary is missing', () => {
+    donationsService.getOperationsDashboard.mockReturnValue(of({
+      success: true,
+      data: {
+        tenant_context: { currency_code: 'INR' },
+        financial: {
+          totals: { collected: 1, pending_dues: 0, current_month_collected: 1, annual_collected: 1 },
+        },
+      },
+    }));
+    fixture.detectChanges();
+    fixture.componentInstance.selectTab('operations');
+    fixture.detectChanges();
+
+    const panel = fixture.nativeElement.querySelector('[data-ops-followup="overdue-families"]') as HTMLElement;
+    expect(panel.textContent).toContain('Could not load stewardship follow-ups right now.');
+    expect(panel.querySelector('.cd-ops-followup')).toBeNull();
+    expect(panel.textContent).not.toContain('family overdue');
+  });
+
+  it('hides stewardship on overview when donations access is denied', () => {
+    auth.canAccessDonations.mockReturnValue(false);
+    executiveDashboard.getExecutive.mockReturnValue(
+      of(
+        buildExecutiveDashboardFixture({
+          snapshot: {
+            state: 'ready',
+            data: {
+              cards: {
+                families: { active_families: 8, total_families: 10, drilldown: 'families.directory' },
+              },
             },
           },
-        },
-      })
+          stewardship: { state: 'forbidden' },
+        })
+      )
     );
 
     fixture.detectChanges();
 
     const html = fixture.nativeElement.textContent;
-    expect(html).toContain('No collections in the last 6 months yet.');
-    expect(html).toContain('Apr');
-    expect(html).toContain('Sep');
-    expect(fixture.nativeElement.querySelectorAll('.cd-chart__amount').length).toBe(6);
+    expect(html).not.toContain('Financial executive summary');
+    expect(html).not.toContain('Collected this month');
+    expect(html).not.toContain('₹1,500');
+    expect(html).not.toContain('$168,400');
+    expect(donationsService.getOperationsDashboard).not.toHaveBeenCalled();
+  });
+
+  it('shows error state without demo money when stewardship section fails', () => {
+    executiveDashboard.getExecutive.mockReturnValue(
+      of(buildExecutiveDashboardFixture({ stewardship: { state: 'error' } }))
+    );
+
+    fixture.detectChanges();
+
+    const html = fixture.nativeElement.textContent;
+    expect(html).toContain('Financial executive summary');
+    expect(html).toContain('Unable to load this section');
+    expect(html).not.toContain('₹1,500');
+    expect(html).not.toContain('₹0');
+    expect(html).not.toContain('$168,400');
+    expect(fixture.nativeElement.querySelector('[data-exec-block="finance"] .cd-financial-metric')).toBeNull();
+  });
+
+  it('shows an unavailable message without zero amounts when currency is missing', () => {
+    executiveDashboard.getExecutive.mockReturnValue(
+      of(buildExecutiveDashboardFixture({ stewardship: { state: 'unavailable' } }))
+    );
+
+    fixture.detectChanges();
+
+    const html = fixture.nativeElement.textContent as string;
+    expect(html).toContain('Giving figures are unavailable until the church currency is set.');
+    expect(html).not.toContain('₹');
+    expect(fixture.nativeElement.querySelector('[data-exec-block="finance"] .cd-financial-metric')).toBeNull();
+  });
+
+  it('shows a real zero when the donations snapshot collected nothing', () => {
+    executiveDashboard.getExecutive.mockReturnValue(
+      of(
+        buildExecutiveDashboardFixture({
+          stewardship: {
+            state: 'ready',
+            data: {
+              currency_code: 'INR',
+              as_of: '2026-09-15',
+              financial_year: '2026',
+              giving_health_label: 'Needs Attention',
+              collected: 0,
+              comparison_start: '2026-08-01',
+              comparison_end: '2026-08-15',
+              comparison_collected: 0,
+              growth_pct: null,
+              outstanding_contributions: 0,
+              project_installments_open: null,
+              overdue_amount: 0,
+              overdue_families: 0,
+              participation_rate: 0,
+              participation_participating: 0,
+              participation_active: 8,
+              participation_net_change: 0,
+              participation_window_start: '2026-06-17',
+              participation_window_end: '2026-09-15',
+            },
+          },
+        })
+      )
+    );
+
+    fixture.detectChanges();
+
+    const html = fixture.nativeElement.textContent as string;
+    expect(html).toContain('₹0.00');
+    expect(html).toContain('No comparable period last month');
+    expect(html).not.toContain('Family participation');
+    expect(html).not.toContain('Project installments');
   });
 });
 
 describe('DashboardComponent (Overview metrics)', () => {
   let fixture: ComponentFixture<DashboardComponent>;
-  let familyService: { getStatistics: jest.Mock };
-  let bccService: { getStatistics: jest.Mock };
+  let executiveDashboard: { getExecutive: jest.Mock };
   let auth: {
     canAccessDonations: jest.Mock;
     canAccessMinistries: jest.Mock;
@@ -431,11 +625,8 @@ describe('DashboardComponent (Overview metrics)', () => {
   };
 
   beforeEach(async () => {
-    familyService = {
-      getStatistics: jest.fn(() => of(familyStatsFixture)),
-    };
-    bccService = {
-      getStatistics: jest.fn(() => of(bccStatsFixture)),
+    executiveDashboard = {
+      getExecutive: jest.fn(() => of(buildExecutiveDashboardFixture())),
     };
     auth = {
       canAccessMinistries: jest.fn(() => false),
@@ -472,8 +663,14 @@ describe('DashboardComponent (Overview metrics)', () => {
           provide: TenantService,
           useValue: { getStatistics: jest.fn(() => of({ success: true, data: null })) },
         },
-        { provide: FamilyService, useValue: familyService },
-        { provide: BCCService, useValue: bccService },
+        {
+          provide: FamilyService,
+          useValue: { getStatistics: jest.fn(() => of(familyStatsFixture)) },
+        },
+        {
+          provide: BCCService,
+          useValue: { getStatistics: jest.fn(() => of(bccStatsFixture)) },
+        },
         {
           provide: DonationsService,
           useValue: { getOperationsDashboard: jest.fn(() => of({ success: true, data: {} })) },
@@ -508,13 +705,15 @@ describe('DashboardComponent (Overview metrics)', () => {
             appliesToCurrentUser: () => false,
           },
         },
+        { provide: ExecutiveDashboardService, useValue: executiveDashboard },
+        { provide: QuickCollectService, useValue: { open: jest.fn() } },
       ],
     }).compileComponents();
 
     fixture = TestBed.createComponent(DashboardComponent);
   });
 
-  it('renders live growth and life group metrics without demo placeholders', () => {
+  it('renders executive snapshot metrics without demo placeholders', () => {
     fixture.detectChanges();
 
     const html = fixture.nativeElement.textContent;
@@ -522,22 +721,110 @@ describe('DashboardComponent (Overview metrics)', () => {
     expect(html).not.toContain('78%');
     expect(html).not.toContain('Assimilation Progress');
     expect(html).not.toContain('Visitors to Active');
-    expect(html).toContain('New Member Sign-ups');
-    expect(html).toContain('Families Not in a Life Group');
-    expect(html).toContain('Family coverage');
-    expect(html).toContain('40%');
-    expect(fixture.componentInstance.lifeGroups[0].value).toBe('0');
+    expect(html).toContain('records added this month');
+    expect(html).toContain('total ·');
+    expect(html).toContain('BCC');
+    expect(html).toContain('Open BCC');
+    expect(html).not.toContain('Life Groups');
+    expect(html).toContain('40% of all families assigned to a BCC');
+    expect(html).toContain('People executive summary');
+    expect(html).toContain('Community executive summary');
+    expect(html).not.toContain('Mass intentions executive summary');
+    expect(html).not.toContain('Pastoral executive summary');
   });
 
-  it('shows registry error state instead of zero counts when family stats fail', () => {
-    familyService.getStatistics.mockReturnValue(throwError(() => ({ status: 500 })));
+  it('renders each module executive summary from that module snapshot', () => {
+    executiveDashboard.getExecutive.mockReturnValue(
+      of(
+        buildExecutiveDashboardFixture({
+          celebrations: {
+            state: 'ready',
+            data: { week_label: '28 Sep 2026 – 4 Oct 2026', week_start: '2026-09-28', week_end: '2026-10-04', birthdays_count: 2, anniversaries_count: 1, drilldown: 'members.directory' },
+          },
+          mass_intentions: {
+            state: 'ready',
+            data: {
+              open: 4,
+              registered_this_month: 3,
+              registered_from: '2026-09-01',
+              registered_to: '2026-10-01',
+              needs_a_mass: 2,
+              needs_a_tick: 1,
+              schedule_attention: 0,
+            },
+          },
+          worship: {
+            state: 'ready',
+            data: {
+              next_mass: { id: 'm1', starts_at: '2026-10-01T09:00:00+05:30', celebrated_on: '2026-10-01', celebrated_at: '09:00' },
+              upcoming: [],
+              this_week_masses: 6,
+              drilldown: 'mass.home',
+            },
+          },
+          pastoral: { state: 'ready', data: { open_count: 5, assigned_count: 2, drilldown: 'dashboard.operations' } },
+          snapshot: {
+            state: 'ready',
+            data: {
+              cards: {
+                families: { active_families: 8, total_families: 10, drilldown: 'families.directory' },
+                members: { active_members: 22, total_members: 25, members_added_this_month: 3, drilldown: 'members.directory' },
+                sacraments: { total_period: 40, this_month: 6, period_label: 'All time', top_types: [], more_types_count: 0, drilldown: 'sacraments.home' },
+                ministries: {
+                  active_ministries: 3,
+                  active_associations: 2,
+                  active_other: 1,
+                  active_groups_total: 6,
+                  groups_by_type: [
+                    { code: 'ministry', name: 'Ministry', count: 3 },
+                    { code: 'association', name: 'Association', count: 2 },
+                    { code: 'choir', name: 'Choir', count: 1 },
+                  ],
+                  groups_by_category: [{ code: 'spiritual', name: 'Spiritual', count: 4 }],
+                  active_memberships: 18,
+                  vacancies: 4,
+                  expiring_soon_count: 1,
+                  drilldown: 'ministries.home',
+                },
+              },
+            },
+          },
+        })
+      )
+    );
+
+    fixture.detectChanges();
+    const html = fixture.nativeElement.textContent as string;
+    expect(html).toContain('People executive summary');
+    expect(html).toContain('Birthdays');
+    expect(html).toContain('Sacraments executive summary');
+    expect(html).toContain('In period');
+    expect(html).toContain('Ministry executive summary');
+    expect(html).toContain('Active groups');
+    expect(html).toContain('Choir');
+    expect(html).toContain('Vacancies');
+    expect(html).toContain('Mass intentions executive summary');
+    expect(html).toContain('Needs a Mass');
+    expect(html).toContain('Worship executive summary');
+    expect(html).toContain('This week');
+    expect(html).toContain('Pastoral executive summary');
+    expect(html).toContain('Open requests');
+    expect(html).not.toContain('Collections trend');
+
+    const columns = fixture.componentInstance.executiveColumns();
+    expect(columns[0].map((block) => block.key)).toContain('pastoral');
+    expect(columns[1].map((block) => block.key)).not.toContain('pastoral');
+  });
+
+  it('shows registry error state instead of zero counts when executive snapshot fails', () => {
+    executiveDashboard.getExecutive.mockReturnValue(throwError(() => ({ status: 500 })));
 
     fixture.detectChanges();
 
     const html = fixture.nativeElement.textContent;
-    expect(html).toContain('Couldn’t load parish counts.');
+    expect(html).toContain('Unable to load this section');
     expect(fixture.componentInstance.registryState).toBe('error');
-    expect(fixture.nativeElement.querySelector('.cd-registry__card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.cd-snapshot-card')).toBeNull();
   });
 
   it('does not render the dummy dashboard search field', () => {

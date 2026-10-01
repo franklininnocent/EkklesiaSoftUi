@@ -26,12 +26,13 @@ import * as AuthActions from '@core/store/auth/auth.actions';
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
 import { ModalShellComponent } from '@shared/components';
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 import { evaluatePasswordPolicy } from '@core/utils/password-policy.util';
 
 @Component({
   selector: 'app-change-password-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent, CfBusyLabelComponent],
   templateUrl: './change-password-modal.component.html',
   styleUrl: './change-password-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

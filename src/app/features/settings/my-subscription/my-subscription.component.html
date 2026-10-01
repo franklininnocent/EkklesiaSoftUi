@@ -13,8 +13,7 @@
     role="status"
     aria-live="polite"
     aria-busy="true">
-    <p class="cf-loading-block__label">Loading subscription…</p>
-    <app-loading-skeleton type="card" [rows]="6"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading subscription…" type="card" [rows]="6"></app-loading-skeleton>
   </div>
 
   <!-- Error -->
@@ -50,130 +49,130 @@
       <app-status-badge [label]="statusLabel(s.status)" [tone]="statusTone(s.status)"></app-status-badge>
     </div>
 
-    <!-- Priority 2: Current subscription overview -->
-    <section class="my-sub-panel" aria-labelledby="my-sub-overview-title">
-      <header class="my-sub-panel__header">
-        <div>
-          <h2 id="my-sub-overview-title">Current subscription</h2>
-          <p>Plan and status for this church</p>
-        </div>
-      </header>
+    <div class="my-sub-overview-grid">
+      <!-- Priority 2: Current subscription overview -->
+      <section class="my-sub-panel my-sub-panel--snapshot" aria-labelledby="my-sub-overview-title">
+        <header class="my-sub-panel__header">
+          <div>
+            <h2 id="my-sub-overview-title">Current subscription</h2>
+            <p>Plan and status for this church</p>
+          </div>
+        </header>
 
-      <dl class="my-sub-facts">
-        <div class="my-sub-fact">
-          <dt>Plan</dt>
-          <dd>{{ planName }}</dd>
-        </div>
-        <div class="my-sub-fact" *ngIf="overview?.terms?.contracted_price as price">
-          <dt>Price</dt>
-          <dd>
-            {{ price | cfCurrency: overview!.terms!.currency_code }} {{ intervalLabel(overview!.terms!.billing_interval) }}
-            <small class="my-sub-muted" *ngIf="overview!.terms!.tax as tax">
-              {{ tax.inclusive ? 'includes' : 'plus' }} {{ overview!.terms!.tax_label }}
-              ({{ tax.tax | cfCurrency: overview!.terms!.currency_code }})
-            </small>
-          </dd>
-        </div>
-        <div class="my-sub-fact">
-          <dt>Status</dt>
-          <dd>
-            <app-status-badge [label]="statusLabel(s.status)" [tone]="statusTone(s.status)"></app-status-badge>
-          </dd>
-        </div>
-        <div class="my-sub-fact" *ngIf="showTrialField(s)">
-          <dt>Trial ends</dt>
-          <dd>{{ formatDate(s.trial_ends_at) }}</dd>
-        </div>
-        <div class="my-sub-fact">
-          <dt>Subscription ends</dt>
-          <dd>{{ subscriptionEndsLabel(s) }}</dd>
-        </div>
-        <div
-          class="my-sub-fact"
-          *ngIf="s.grace_ends_at && (s.status === 'GRACE_PERIOD' || s.status === 'EXPIRED')">
-          <dt>Grace ends</dt>
-          <dd>{{ formatDate(s.grace_ends_at) }}</dd>
-        </div>
-        <div class="my-sub-fact">
-          <dt>Feature access</dt>
-          <dd>
-            <app-status-badge
-              [label]="s.allows_gated_access ? 'Available' : 'Unavailable'"
-              [tone]="s.allows_gated_access ? 'success' : 'critical'">
-            </app-status-badge>
-          </dd>
-        </div>
-      </dl>
-
-      <p class="my-sub-access-note" *ngIf="!showAccessNotice(s)">{{ accessDetail(s) }}</p>
-      <p class="my-sub-access-note" *ngIf="overview?.pending_change as change">
-        Your plan changes to <strong>{{ change.plan_name }}</strong>
-        <ng-container *ngIf="change.scheduled_for"> on {{ formatDate(change.scheduled_for) }}</ng-container>.
-      </p>
-    </section>
-
-    <!-- Priority 3: How much of the plan is used -->
-    <section class="my-sub-panel" aria-labelledby="my-sub-plan-title">
-      <header class="my-sub-panel__header">
-        <div>
-          <h2 id="my-sub-plan-title">Plan limits</h2>
-          <p>How much of {{ planName }} your church is using</p>
-        </div>
-      </header>
-
-      <ul class="my-sub-usage" *ngIf="overview?.usage?.length; else legacyLimits">
-        <li *ngFor="let row of overview!.usage; trackBy: trackByUsage" class="my-sub-usage__row" [attr.data-level]="row.level">
-          <div class="my-sub-usage__label">
-            <strong>{{ row.name }}</strong>
-            <span>{{ usageText(row) }}</span>
+        <dl class="my-sub-facts my-sub-facts--snapshot">
+          <div class="my-sub-fact">
+            <dt>Plan</dt>
+            <dd>{{ planName }}</dd>
+          </div>
+          <div class="my-sub-fact" *ngIf="overview?.terms?.contracted_price as price">
+            <dt>Price</dt>
+            <dd>
+              {{ price | cfCurrency: overview!.terms!.currency_code }} {{ intervalLabel(overview!.terms!.billing_interval) }}
+              <small class="my-sub-muted" *ngIf="overview!.terms!.tax as tax">
+                {{ tax.inclusive ? 'includes' : 'plus' }} {{ overview!.terms!.tax_label }}
+                ({{ tax.tax | cfCurrency: overview!.terms!.currency_code }})
+              </small>
+            </dd>
+          </div>
+          <div class="my-sub-fact">
+            <dt>Status</dt>
+            <dd>
+              <app-status-badge [label]="statusLabel(s.status)" [tone]="statusTone(s.status)"></app-status-badge>
+            </dd>
+          </div>
+          <div class="my-sub-fact" *ngIf="showTrialField(s)">
+            <dt>Trial ends</dt>
+            <dd>{{ formatDate(s.trial_ends_at) }}</dd>
+          </div>
+          <div class="my-sub-fact">
+            <dt>Subscription ends</dt>
+            <dd>{{ subscriptionEndsLabel(s) }}</dd>
           </div>
           <div
-            *ngIf="!row.unlimited && row.limit !== null"
-            class="my-sub-usage__bar"
-            role="progressbar"
-            [attr.aria-valuenow]="usagePercent(row)"
-            aria-valuemin="0"
-            aria-valuemax="100"
-            [attr.aria-label]="row.name + ': ' + usageText(row)">
-            <span [style.width.%]="usagePercent(row)"></span>
-          </div>
-          <span class="my-sub-usage__level">{{ usageLevelLabel(row.level) }}</span>
-        </li>
-      </ul>
-      <ng-template #legacyLimits>
-        <dl class="my-sub-facts my-sub-facts--compact">
-          <div class="my-sub-fact">
-            <dt>User limit</dt>
-            <dd>{{ formatUsers(s.max_users) }}</dd>
+            class="my-sub-fact"
+            *ngIf="s.grace_ends_at && (s.status === 'GRACE_PERIOD' || s.status === 'EXPIRED')">
+            <dt>Grace ends</dt>
+            <dd>{{ formatDate(s.grace_ends_at) }}</dd>
           </div>
           <div class="my-sub-fact">
-            <dt>Storage limit</dt>
-            <dd>{{ formatStorage(s.max_storage_mb) }}</dd>
+            <dt>Feature access</dt>
+            <dd>
+              <app-status-badge
+                [label]="s.allows_gated_access ? 'Available' : 'Unavailable'"
+                [tone]="s.allows_gated_access ? 'success' : 'critical'">
+              </app-status-badge>
+            </dd>
           </div>
         </dl>
-      </ng-template>
-    </section>
 
-    <!-- Priority 4: Features -->
-    <section
-      class="my-sub-panel"
-      aria-labelledby="my-sub-features-title"
-      *ngIf="enabledFeatures.length || s.features?.length">
-      <header class="my-sub-panel__header">
-        <div>
-          <h2 id="my-sub-features-title">Included features</h2>
-          <p>What this plan covers for your church</p>
-        </div>
-      </header>
-      <ul class="my-sub-features" *ngIf="enabledFeatures.length; else legacyFeatures">
-        <li *ngFor="let feature of enabledFeatures">{{ feature.name }}</li>
-      </ul>
-      <ng-template #legacyFeatures>
-        <ul class="my-sub-features">
-          <li *ngFor="let feature of s.features">{{ featureLabel(feature) }}</li>
+        <p class="my-sub-access-note" *ngIf="overview?.pending_change as change">
+          Your plan changes to <strong>{{ change.plan_name }}</strong>
+          <ng-container *ngIf="change.scheduled_for"> on {{ formatDate(change.scheduled_for) }}</ng-container>.
+        </p>
+      </section>
+
+      <!-- Priority 3: How much of the plan is used -->
+      <section class="my-sub-panel my-sub-panel--snapshot" aria-labelledby="my-sub-plan-title">
+        <header class="my-sub-panel__header">
+          <div>
+            <h2 id="my-sub-plan-title">Plan limits</h2>
+            <p>How much of {{ planName }} your church is using</p>
+          </div>
+        </header>
+
+        <ul class="my-sub-usage" *ngIf="overview?.usage?.length; else legacyLimits">
+          <li *ngFor="let row of overview!.usage; trackBy: trackByUsage" class="my-sub-usage__row" [attr.data-level]="row.level">
+            <strong class="my-sub-usage__name">{{ row.name }}</strong>
+            <div
+              *ngIf="!row.unlimited && row.limit !== null"
+              class="my-sub-usage__bar"
+              role="progressbar"
+              [attr.aria-valuenow]="usagePercent(row)"
+              aria-valuemin="0"
+              aria-valuemax="100"
+              [attr.aria-label]="row.name + ': ' + usageText(row)">
+              <span [style.width.%]="usagePercent(row)"></span>
+            </div>
+            <span *ngIf="row.unlimited || row.limit === null" class="my-sub-usage__bar my-sub-usage__bar--none" aria-hidden="true"></span>
+            <span class="my-sub-usage__count">{{ usageText(row) }}</span>
+            <span class="my-sub-usage__level">{{ usageLevelLabel(row.level) }}</span>
+          </li>
         </ul>
-      </ng-template>
-    </section>
+        <ng-template #legacyLimits>
+          <dl class="my-sub-facts my-sub-facts--compact">
+            <div class="my-sub-fact">
+              <dt>User limit</dt>
+              <dd>{{ formatUsers(s.max_users) }}</dd>
+            </div>
+            <div class="my-sub-fact">
+              <dt>Storage limit</dt>
+              <dd>{{ formatStorage(s.max_storage_mb) }}</dd>
+            </div>
+          </dl>
+        </ng-template>
+      </section>
+
+      <!-- Priority 4: Features -->
+      <section
+        class="my-sub-panel my-sub-panel--features"
+        aria-labelledby="my-sub-features-title"
+        *ngIf="enabledFeatures.length || s.features?.length">
+        <header class="my-sub-panel__header">
+          <div>
+            <h2 id="my-sub-features-title">Included features</h2>
+            <p>What this plan covers for your church</p>
+          </div>
+        </header>
+        <ul class="my-sub-features" *ngIf="enabledFeatures.length; else legacyFeatures">
+          <li *ngFor="let feature of enabledFeatures">{{ feature.name }}</li>
+        </ul>
+        <ng-template #legacyFeatures>
+          <ul class="my-sub-features">
+            <li *ngFor="let feature of s.features">{{ featureLabel(feature) }}</li>
+          </ul>
+        </ng-template>
+      </section>
+    </div>
 
     <!-- Priority 5: Requests to Ekklesia -->
     <section class="my-sub-panel" aria-labelledby="my-sub-requests-title" *ngIf="openRequest || requests.length">
@@ -220,6 +219,16 @@
           </ng-template>
         </div>
       </header>
+
+      <div class="my-sub-alert" *ngIf="currentPlanUnmatched" role="status">
+        <div class="my-sub-alert__copy">
+          <strong>Your current plan is not in this comparison</strong>
+          <p>
+            We could not match this church's plan to a listed catalog plan.
+            No other plan has been selected in its place.
+          </p>
+        </div>
+      </div>
 
       <app-plan-comparison
         [plans]="plans"

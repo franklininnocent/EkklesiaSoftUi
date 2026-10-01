@@ -94,7 +94,12 @@ export function prepareFamilyMemberPayload(
     first_communion_place: sanitize(value.first_communion_place),
     confirmation_date: sanitize(value.confirmation_date),
     confirmation_place: sanitize(value.confirmation_place),
-    marriage_date: sanitize(value.marriage_date),
+    ...(normalizeLower(value.marital_status) === 'married'
+      ? { marriage_date: sanitize(value.marriage_date) }
+      : {}),
+    ...(value.acknowledge_marriage_date_conflict
+      ? { acknowledge_marriage_date_conflict: true }
+      : {}),
     marriage_place: sanitize(value.marriage_place),
     marriage_spouse_name: sanitize(value.marriage_spouse_name),
     marriage_bride_full_name: sanitize(value.marriage_bride_full_name),
@@ -139,6 +144,32 @@ export function extractMemberApiError(error: unknown, fallback: string): string 
   const message = err?.error?.message?.trim() || err?.message?.trim();
   return message || fallback;
 }
+
+export const MARRIAGE_DATE_CONFLICT_CODE = 'marriage_date_conflict';
+
+export function isMarriageDateConflictError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+
+  const body = error as { error?: { errors?: Record<string, unknown> } };
+  const conflict = body.error?.errors?.['conflict'];
+  const values = Array.isArray(conflict) ? conflict : conflict != null ? [conflict] : [];
+
+  return values.some((value) => {
+    if (value === MARRIAGE_DATE_CONFLICT_CODE) {
+      return true;
+    }
+    return typeof value === 'object' && value !== null && (value as { code?: string }).code === MARRIAGE_DATE_CONFLICT_CODE;
+  });
+}
+
+export const MARRIAGE_DATE_CONFLICT_CONFIRM = {
+  title: 'Confirm marriage details',
+  message:
+    'Update this marriage on both spouses? Date, location, and other shared marriage details will stay the same for husband and wife. The parish marriage register will not be changed.',
+  confirmText: 'Update both records',
+};
 
 /** True when the API reports a successful member create/update (data may still be absent). */
 export function isMemberApiSuccess(res: unknown): boolean {

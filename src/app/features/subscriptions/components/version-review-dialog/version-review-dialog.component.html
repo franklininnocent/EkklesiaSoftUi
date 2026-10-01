@@ -4,8 +4,7 @@
   [isSubmitting]="submitting"
   (closeRequested)="close()">
   <div *ngIf="loading" class="cf-loading-block" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-loading-block__label">Loading…</p>
-    <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading…" type="card" [rows]="4"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error && !loading" class="cf-inline-alert" role="alert">

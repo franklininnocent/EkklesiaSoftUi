@@ -1,5 +1,11 @@
-<div class="cf-table-responsive">
-  <table class="cf-table" [class.cf-table--clickable]="clickableRows" [attr.aria-busy]="ariaBusy || null">
+<div class="cf-table-responsive cf-table-responsive--loading-host">
+  <app-cf-brand-loader
+    *ngIf="loading"
+    size="section"
+    [label]="loadingLabel"
+    [overlay]="true"
+  />
+  <table class="cf-table" [class.cf-table--clickable]="clickableRows" [attr.aria-busy]="ariaBusy || loading || null">
     <ng-content></ng-content>
   </table>
 </div>

@@ -28,11 +28,14 @@ import {
 } from '@core/validators/form-validation.helper';
 import { SupportAccessGrant, SupportGrantMode } from '../../support-center/models/support-access.model';
 import { ParishSupportGrantService } from './parish-support-grant.service';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-support-access-windows-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     ReactiveFormsModule,
     PageHeaderComponent,
@@ -72,7 +75,7 @@ export class SupportAccessWindowsPage implements OnInit, OnDestroy {
 
   get revokeConfirmMessage(): string {
     const raw = this.pendingRevoke?.ends_at;
-    const ending = raw ? ` ending ${new Date(raw).toLocaleString()}` : '';
+    const ending = raw ? ` ending ${cfFormatDate(raw, 'datetime')}` : '';
     return (
       `Revoke the support access window${ending}? ` +
       'Support will not be able to open new sessions in this window.'

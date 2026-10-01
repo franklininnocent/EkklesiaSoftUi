@@ -1,0 +1,135 @@
+<section class="mass-celebrations-page cf-page">
+  <div class="mass-celebrations-toolbar">
+    <h1 class="mass-celebrations-toolbar__title">
+      {{ needsTickFilter() ? 'Masses that need a tick' : 'Masses' }}
+    </h1>
+    <div class="mass-celebrations-toolbar__actions">
+      @if (canScheduleMass()) {
+        <button type="button" class="cf-btn cf-btn-primary cf-btn--sm mass-celebrations-page__add" (click)="showAddMass.set(true)">
+          Add one-time Mass
+        </button>
+      }
+      <app-mass-celebrations-view-nav
+        view="list"
+        [periodLabel]="monthBounds().label"
+        [monthKey]="monthBounds().monthKey"
+        [weekSunday]="weekAnchorSunday()"
+        [canScheduleMass]="canScheduleMass()"
+      />
+      <app-list-toolbar
+        [showSearch]="false"
+        [filterCount]="drawerFilterCount()"
+        (filtersOpened)="openFilters()"
+      />
+    </div>
+  </div>
+
+  @if (getActiveFilters().length) {
+    <div class="mass-celebrations-page__chips" role="region" aria-label="Active filters">
+      <span class="cf-meta">Active filters</span>
+      <div class="mass-celebrations-page__chip-list">
+        @for (filter of getActiveFilters(); track filter.key) {
+          <span class="cf-badge cf-badge--info">
+            {{ filter.label }}: {{ filter.displayValue }}
+            <button
+              type="button"
+              class="mass-celebrations-page__chip-remove"
+              (click)="removeFilter(filter)"
+              [attr.aria-label]="'Remove filter: ' + filter.label"
+            >
+              ×
+            </button>
+          </span>
+        }
+      </div>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllFilters()">Clear all</button>
+    </div>
+  }
+
+  @if (loading() && !loaded()) {
+    <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <app-loading-skeleton label="Loading Masses…" type="table" [rows]="5" [columns]="5" />
+    </div>
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Try again</button>
+    </div>
+  } @else if (isEmptyRegister()) {
+    <app-cf-empty-state title="No Masses yet." description="Set your weekly schedule or add a one-time Mass.">
+      @if (canScheduleMass()) {
+        <a routerLink="/mass-intentions/masses/schedule" class="cf-btn cf-btn-primary">Weekly schedule</a>
+        <button type="button" class="cf-btn" (click)="showAddMass.set(true)">Add one-time Mass</button>
+      }
+    </app-cf-empty-state>
+  } @else if (items().length === 0) {
+    <app-cf-empty-state title="No matches" description="Try a different search or filter.">
+      <button type="button" class="cf-btn" (click)="clearAllFilters()">Clear filters</button>
+    </app-cf-empty-state>
+  } @else {
+    <div class="cf-panel mass-celebrations-page__panel">
+      <p class="mass-celebrations-page__summary cf-meta" role="status">
+        {{ resultsSummary() }}
+      </p>
+
+      <app-data-table [clickableRows]="true" [ariaBusy]="loading()">
+        <table class="cf-data-table">
+          <thead>
+            <tr>
+              <th scope="col">Day and time</th>
+              <th scope="col">Place</th>
+              <th scope="col">Priest</th>
+              <th scope="col">Intentions</th>
+              <th scope="col">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of displayItems(); track row.id) {
+              <tr
+                [routerLink]="['/mass-intentions/masses', row.id]"
+                [class.mass-celebrations-page__row--next]="isNextUpcomingMass(row)"
+                [attr.aria-label]="isNextUpcomingMass(row) ? nextMassRowLabel(row) : null"
+              >
+                <td>
+                  <div class="mass-celebrations-page__day-time">
+                    @if (isNextUpcomingMass(row)) {
+                      <span class="cf-badge cf-badge--info mass-celebrations-page__next-badge">Next Mass</span>
+                    }
+                    <span>{{ dayTime(row) }}</span>
+                  </div>
+                </td>
+                <td>{{ row.place || '—' }}</td>
+                <td>{{ row.celebrant_name || '—' }}</td>
+                <td>{{ row.intention_count ?? 0 }}</td>
+                <td>
+                  <app-status-badge [label]="massStatusLabel(row.status)" [tone]="massStatusTone(row.status)" />
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </app-data-table>
+
+      @if (totalItems() > pageSize()) {
+        <app-pagination
+          [currentPage]="currentPage()"
+          [pageSize]="pageSize()"
+          [totalItems]="totalItems()"
+          [showPageSizeSelector]="false"
+          (pageChange)="goToPage($event)"
+        />
+      }
+    </div>
+  }
+
+  <app-add-mass-modal [open]="showAddMass()" (closed)="showAddMass.set(false)" (created)="reload()" />
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch()"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch.set(false)"
+  />
+</section>

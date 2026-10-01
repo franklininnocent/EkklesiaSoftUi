@@ -7,9 +7,20 @@
       <h3 *ngIf="variant === 'page' && titleLevel === 3" class="cf-page-header__title">{{ title }}</h3>
       <h2 *ngIf="variant === 'panel'" class="cf-page-header__title">{{ title }}</h2>
       <app-status-badge *ngIf="statusLabel" [label]="statusLabel" [tone]="statusTone"></app-status-badge>
+      <span
+        *ngIf="titleMetaCount != null && titleMetaCount > 0"
+        class="cf-page-header__count cf-badge cf-badge--info"
+        [attr.aria-label]="titleMetaCount + ' active filters'"
+      >
+        {{ titleMetaCount }}
+      </span>
     </div>
 
     <p *ngIf="subtitle">{{ subtitle }}</p>
+
+    <div class="cf-page-header__below">
+      <ng-content select="[pageHeaderBelow]"></ng-content>
+    </div>
   </div>
 
   <div class="cf-page-header__actions">

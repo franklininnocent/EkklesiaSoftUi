@@ -7,6 +7,7 @@ import {
   HostListener,
   Input,
   OnChanges,
+  OnDestroy,
   Output,
   SimpleChanges,
   inject
@@ -18,6 +19,7 @@ import { catchError, map, switchMap } from 'rxjs/operators';
 import { ChurchLeadership, CreateChurchLeadershipRequest } from '@core/models/church';
 import { ChurchLeadershipService } from '@core/services/church/church-leadership.service';
 import { ToastService } from '@core/services/toast.service';
+import { CF_OVERLAY_Z, CfOverlayHandle, CfOverlayStackService } from '@core/services/cf-overlay-stack.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { ChurchLeaderRoleSelectorComponent } from '../church-leader-role-selector/church-leader-role-selector.component';
 import {
@@ -35,11 +37,14 @@ import {
   styleUrl: './church-leader-workspace.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ChurchLeaderWorkspaceComponent implements OnChanges {
+export class ChurchLeaderWorkspaceComponent implements OnChanges, OnDestroy {
   private readonly fb = inject(FormBuilder);
   private readonly leadershipService = inject(ChurchLeadershipService);
   private readonly toast = inject(ToastService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly overlayStack = inject(CfOverlayStackService);
+  private overlayHandle: CfOverlayHandle | null = null;
+  overlayZIndex: number = CF_OVERLAY_Z.drawer;
 
   @Input() open = false;
   @Input() leader: ChurchLeadership | null = null;
@@ -63,6 +68,13 @@ export class ChurchLeaderWorkspaceComponent implements OnChanges {
   private workspaceLeader: ChurchLeadership | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['open']) {
+      if (this.open) {
+        this.registerOverlay();
+      } else {
+        this.releaseOverlay();
+      }
+    }
     if (changes['open']?.currentValue) {
       this.workspaceLeader = this.leader;
       this.resetFormForMode();
@@ -71,6 +83,10 @@ export class ChurchLeaderWorkspaceComponent implements OnChanges {
       this.workspaceLeader = this.leader;
       this.resetFormForMode();
     }
+  }
+
+  ngOnDestroy(): void {
+    this.releaseOverlay();
   }
 
   get isEditMode(): boolean {
@@ -163,11 +179,17 @@ export class ChurchLeaderWorkspaceComponent implements OnChanges {
     return this.form.touched && this.missingRequiredFields.length > 0;
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.open && !this.saving) {
-      this.requestClose();
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: Event): void {
+    if (!this.open || this.saving) {
+      return;
     }
+    if (this.overlayHandle && !this.overlayHandle.isTop()) {
+      return;
+    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.requestClose();
   }
 
   selectStatus(statusId: string): void {
@@ -311,7 +333,22 @@ export class ChurchLeaderWorkspaceComponent implements OnChanges {
     if (this.saving) {
       return;
     }
+    this.releaseOverlay();
     this.closed.emit();
+  }
+
+  private registerOverlay(): void {
+    if (this.overlayHandle) {
+      return;
+    }
+    this.overlayHandle = this.overlayStack.push('drawer', () => this.requestClose());
+    this.overlayZIndex = this.overlayHandle.zIndex;
+  }
+
+  private releaseOverlay(): void {
+    this.overlayHandle?.release();
+    this.overlayHandle = null;
+    this.overlayZIndex = CF_OVERLAY_Z.drawer;
   }
 
   formatDisplayDate(value?: string | null): string {

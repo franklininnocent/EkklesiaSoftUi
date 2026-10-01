@@ -1,0 +1,223 @@
+<div class="cf-page mass-dash">
+  <app-page-header title="Mass intentions" [subtitle]="periodSubtitle()" />
+
+  @if (loading()) {
+    <app-loading-skeleton type="card" [rows]="4" />
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">{{ loadError() }}</div>
+  } @else if (summary(); as s) {
+    @if (showAttentionStrip(s)) {
+      <div class="cf-decision-strip mass-dash__attention" role="region" aria-label="Needs attention">
+        <p class="mass-dash__attention-row">
+          <strong class="mass-dash__attention-title">Needs attention</strong>
+          <span class="mass-dash__attention-summary">{{ attentionSummary(s) }}</span>
+          <span class="mass-dash__attention-sep" aria-hidden="true">·</span>
+          <span class="mass-dash__attention-links">
+            @if (operationalNeedsTick(s) > 0) {
+              <a
+                class="cf-link"
+                routerLink="/mass-intentions/masses"
+                [queryParams]="{ needs_tick: '1' }"
+              >
+                Needs a tick ({{ operationalNeedsTick(s) }})
+              </a>
+            }
+            @if (operationalNeedsAMass(s) > 0) {
+              <a
+                class="cf-link"
+                routerLink="/mass-intentions/intentions"
+                [queryParams]="{ status: 'open', needs_a_mass: '1' }"
+              >
+                Needs a Mass ({{ operationalNeedsAMass(s) }})
+              </a>
+            }
+            @if (showScheduleAttention(s)) {
+              <a class="cf-link" routerLink="/mass-intentions/masses/schedule">
+                {{ scheduleAttentionLabel(s) }}
+              </a>
+            }
+          </span>
+        </p>
+      </div>
+    }
+
+    <div class="mass-dash__kpi-strip" aria-label="Mass intention snapshot">
+      <a
+        class="mass-dash__kpi-card mass-dash__kpi-card--open"
+        routerLink="/mass-intentions/intentions"
+        [queryParams]="{ status: 'open' }"
+        title="Open intentions"
+      >
+        <span class="mass-dash__kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+            <rect x="9" y="3" width="6" height="4" rx="1" />
+            <path d="M9 12h6M9 16h4" />
+          </svg>
+        </span>
+        <span class="mass-dash__kpi-body">
+          <span class="mass-dash__kpi-label">Open</span>
+          <strong class="mass-dash__kpi-value">{{ s.kpis?.open ?? s.queue.open }}</strong>
+          <span class="mass-dash__kpi-hint">Active on the register</span>
+        </span>
+      </a>
+      <a
+        class="mass-dash__kpi-card mass-dash__kpi-card--registered"
+        routerLink="/mass-intentions/intentions"
+        [queryParams]="registeredThisMonthParams(s)"
+        title="Registered this month"
+      >
+        <span class="mass-dash__kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <path d="M14 2v6h6M12 11v6M9 14h6" />
+          </svg>
+        </span>
+        <span class="mass-dash__kpi-body">
+          <span class="mass-dash__kpi-label">Registered this month</span>
+          <strong class="mass-dash__kpi-value">{{
+            s.kpis?.intentions_registered_this_month ?? s.period.intentions_registered_this_month
+          }}</strong>
+          <span class="mass-dash__kpi-hint">{{
+            lastMonthHint(s.kpis?.intentions_registered_last_month ?? s.period.intentions_registered_last_month)
+          }}</span>
+        </span>
+      </a>
+      <a
+        class="mass-dash__kpi-card mass-dash__kpi-card--week"
+        routerLink="/mass-intentions/masses/week"
+        title="Masses this week"
+      >
+        <span class="mass-dash__kpi-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" />
+            <path d="M16 2v4M8 2v4M3 10h18" />
+            <path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01" />
+          </svg>
+        </span>
+        <span class="mass-dash__kpi-body">
+          <span class="mass-dash__kpi-label">This week</span>
+          <strong class="mass-dash__kpi-value">{{ s.kpis?.this_week_masses ?? 0 }}</strong>
+          <span class="mass-dash__kpi-hint">Sunday–Saturday on the calendar</span>
+        </span>
+      </a>
+      @if (showOfferingsKpi(s)) {
+        @if (canLinkOfferingsReport()) {
+          <a
+            class="mass-dash__kpi-card mass-dash__kpi-card--offerings"
+            routerLink="/mass-intentions/reports"
+            [queryParams]="{ tab: 'offerings' }"
+            title="Offerings received this month"
+          >
+            <span class="mass-dash__kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </span>
+            <span class="mass-dash__kpi-body">
+              <span class="mass-dash__kpi-label">Offerings this month</span>
+              <strong class="mass-dash__kpi-value">{{ offeringsThisMonth(s) | cfCurrency }}</strong>
+              <span class="mass-dash__kpi-hint">{{ offeringsReceiptHint(s) }}</span>
+            </span>
+          </a>
+        } @else {
+          <article class="mass-dash__kpi-card mass-dash__kpi-card--offerings mass-dash__kpi-card--static" title="Offerings received this month">
+            <span class="mass-dash__kpi-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </span>
+            <span class="mass-dash__kpi-body">
+              <span class="mass-dash__kpi-label">Offerings this month</span>
+              <strong class="mass-dash__kpi-value">{{ offeringsThisMonth(s) | cfCurrency }}</strong>
+              <span class="mass-dash__kpi-hint">{{ offeringsReceiptHint(s) }}</span>
+            </span>
+          </article>
+        }
+      }
+    </div>
+
+    @if (!canCreate()) {
+      <p class="mass-dash__muted">
+        You can view intentions but need the <strong>Create Mass Intentions</strong> permission to add new records.
+      </p>
+    }
+
+    <div class="mass-dash__grid">
+      <section class="cf-panel mass-dash__masses-panel" aria-label="Next Masses">
+        <div class="mass-dash__section-head">
+          <h2 class="mass-dash__section-title">Next Masses</h2>
+          <a class="cf-link mass-dash__section-link" routerLink="/mass-intentions/masses/week">Week view</a>
+        </div>
+        @if (upcomingMasses(s).length === 0) {
+          <app-cf-empty-state
+            title="No upcoming Masses"
+            description="Scheduled Masses from today onward will appear here."
+            [hasActions]="false"
+          />
+        } @else {
+          <ul class="mass-dash__mass-list" role="list">
+            @for (mass of upcomingMasses(s); track mass.id) {
+              <li>
+                <a
+                  class="mass-dash__mass-row"
+                  [class.mass-dash__mass-row--next]="isNextUpcomingMass(s, mass)"
+                  [routerLink]="['/mass-intentions/masses', mass.id]"
+                  [attr.aria-label]="massRowAriaLabel(mass)"
+                >
+                  <div class="mass-dash__mass-date" aria-hidden="true">
+                    <span class="mass-dash__mass-date-dow">{{ massDateWeekday(mass.celebrated_on) }}</span>
+                    <span class="mass-dash__mass-date-day">{{ massDateDay(mass.celebrated_on) }}</span>
+                    <span class="mass-dash__mass-date-mon">{{ massDateMonth(mass.celebrated_on) }}</span>
+                  </div>
+                  <div class="mass-dash__mass-body">
+                    @if (isNextUpcomingMass(s, mass)) {
+                      <span class="cf-badge cf-badge--info mass-dash__mass-next-badge">Next Mass</span>
+                    }
+                    <span class="mass-dash__mass-time">{{ formatMassTime(mass.celebrated_at) || 'Time TBD' }}</span>
+                    @if (mass.place || mass.celebrant_name) {
+                      <span class="mass-dash__mass-meta">
+                        @if (mass.place) {
+                          <span class="mass-dash__mass-place">{{ mass.place }}</span>
+                        }
+                        @if (mass.place && mass.celebrant_name) {
+                          <span class="mass-dash__mass-meta-sep" aria-hidden="true">·</span>
+                        }
+                        @if (mass.celebrant_name) {
+                          <span>{{ mass.celebrant_name }}</span>
+                        }
+                      </span>
+                    } @else {
+                      <span class="mass-dash__mass-meta mass-dash__mass-meta--empty">No place set</span>
+                    }
+                  </div>
+                  <div
+                    class="mass-dash__mass-intentions"
+                    [class.mass-dash__mass-intentions--empty]="!(mass.intention_count ?? 0)"
+                    aria-hidden="true"
+                  >
+                    <span class="mass-dash__mass-intentions-value">{{ mass.intention_count ?? 0 }}</span>
+                    <span class="mass-dash__mass-intentions-label">{{ intentionCountLabel(mass.intention_count) }}</span>
+                  </div>
+                  <span class="mass-dash__mass-chevron" aria-hidden="true">›</span>
+                </a>
+              </li>
+            }
+          </ul>
+        }
+      </section>
+
+      <section class="cf-panel mass-dash__trend-panel" aria-label="Last four months">
+        <h2 class="mass-dash__section-title">Last four months</h2>
+        <app-mass-intentions-six-month-trend [points]="trendPoints()" />
+        @if (trendPoints().length > 0) {
+          <p class="mass-dash__closed-link">
+            <a class="cf-link" routerLink="/mass-intentions/intentions" [queryParams]="{ status: 'closed' }">
+              View closed intentions ({{ s.kpis?.closed ?? s.queue.closed }})
+            </a>
+          </p>
+        }
+      </section>
+    </div>
+  }
+</div>

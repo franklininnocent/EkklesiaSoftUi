@@ -1,3 +1,4 @@
+import { cfEnglishWeekdayLong, cfFormatClock, cfFormatDate } from '@shared/utils/cf-intl.util';
 export type ActivityFeedCategory =
   | 'all'
   | 'payments'
@@ -72,15 +73,7 @@ export function formatExactTimestamp(isoDate: string): string {
     return '';
   }
 
-  return date.toLocaleString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit'
-  });
+  return cfFormatDate(date, 'datetime');
 }
 
 export function formatTimelineClock(isoDate: string, groupLabel: string, now = new Date()): string {
@@ -103,13 +96,7 @@ export function formatTimelineClock(isoDate: string, groupLabel: string, now = n
     return `${weekdayLabel(date)} • ${clock}`;
   }
 
-  return date.toLocaleString(undefined, {
-    month: 'short',
-    day: 'numeric',
-    year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined,
-    hour: 'numeric',
-    minute: '2-digit'
-  });
+  return cfFormatDate(date, 'datetime');
 }
 
 export function buildCompactSummary(item: ParishActivityItem): string {
@@ -239,11 +226,11 @@ function startOfWeekDate(date: Date): Date {
 }
 
 function formatClock(date: Date): string {
-  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+  return cfFormatClock(date);
 }
 
 function weekdayLabel(date: Date): string {
-  return date.toLocaleDateString(undefined, { weekday: 'long' });
+  return cfEnglishWeekdayLong(date);
 }
 
 export const ACTIVITY_FILTER_OPTIONS: Array<{ value: ActivityFeedCategory; label: string }> = [

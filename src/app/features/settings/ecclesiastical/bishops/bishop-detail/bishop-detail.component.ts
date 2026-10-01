@@ -15,6 +15,7 @@ import { BishopAuditTabComponent } from '../bishop-audit-tab/bishop-audit-tab.co
 import { BishopFormModalComponent } from '../bishop-form-modal/bishop-form-modal.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
 import { resolveBishopPhotoUrl } from '@core/utils/bishop-photo.util';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type BishopDetailTab = 'person' | 'appointments' | 'audit';
 
@@ -208,7 +209,7 @@ export class BishopDetailComponent implements OnInit {
 
   formatDate(date: string | null | undefined): string {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+    return cfFormatDate(date) || 'N/A';
   }
 
   getStatusBadgeClass(status: string): string {

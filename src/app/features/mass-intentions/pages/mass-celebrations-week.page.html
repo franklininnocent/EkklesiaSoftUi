@@ -1,0 +1,111 @@
+<section class="mass-week-page cf-page">
+  <div class="mass-celebrations-toolbar">
+    <h1 class="mass-celebrations-toolbar__title">Masses</h1>
+    <div class="mass-celebrations-toolbar__actions">
+      @if (canScheduleMass()) {
+        <button type="button" class="cf-btn cf-btn-primary cf-btn--sm" (click)="openAddMass()">Add one-time Mass</button>
+      }
+      <app-mass-celebrations-view-nav
+        view="week"
+        [periodLabel]="weekBounds().label"
+        [monthKey]="weekMonthKey()"
+        [weekSunday]="weekBounds().sunday"
+        [canScheduleMass]="canScheduleMass()"
+      />
+    </div>
+  </div>
+
+  @if (scheduleDenied()) {
+    <div class="cf-inline-alert cf-panel mass-week-page__denied" role="status">
+      <p>
+        You can view Masses here. To change the weekly schedule, ask someone with permission to manage Masses and assign
+        intentions.
+      </p>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="dismissScheduleDenied()">OK</button>
+    </div>
+  }
+
+  @if (loading()) {
+    <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <app-loading-skeleton label="Loading this week…" type="table" [rows]="5" [columns]="3" />
+    </div>
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Try again</button>
+    </div>
+  } @else if (isEmptyWeek()) {
+    <app-cf-empty-state
+      title="No Masses this week"
+      description="Set your regular weekly schedule or add a one-time Mass."
+    >
+      @if (canScheduleMass()) {
+        <a routerLink="/mass-intentions/masses/schedule" class="cf-btn cf-btn-primary">Set weekly schedule</a>
+        <button type="button" class="cf-btn" (click)="openAddMass()">Add one-time Mass</button>
+      }
+    </app-cf-empty-state>
+  } @else {
+    <div class="mass-week-page__days">
+      @for (section of daySections(); track section.date) {
+        <section class="mass-week-page__day cf-panel" [attr.aria-labelledby]="'week-day-' + section.date">
+          <div class="mass-week-page__day-head">
+            <h2 class="mass-week-page__day-title" [id]="'week-day-' + section.date">
+              {{ section.label }}
+              <span class="cf-meta">{{ section.date }}</span>
+            </h2>
+            @if (canScheduleMass()) {
+              <button type="button" class="cf-btn cf-btn-ghost cf-btn--sm" (click)="openSpecialDay(section.date)">
+                Special day
+              </button>
+            }
+          </div>
+          @if (section.masses.length === 0) {
+            <p class="cf-meta">No Masses</p>
+            @if (canScheduleMass()) {
+              <button type="button" class="cf-btn cf-btn--sm" (click)="openAddMass(section.date)">Add a Mass</button>
+            }
+          } @else {
+            <ul class="mass-week-page__chips">
+              @for (mass of visibleMasses(section.masses, section.date); track mass.id) {
+                <li>
+                  <a
+                    class="mass-week-page__chip"
+                    [routerLink]="['/mass-intentions/masses', mass.id]"
+                    [class.mass-week-page__chip--cancelled]="mass.status === 'cancelled'"
+                    [attr.aria-label]="chipAriaLabel(mass)"
+                  >
+                    <span class="cf-badge cf-badge--neutral">{{ originBadge(mass) }}</span>
+                    <span>{{ chipLabel(mass) }}</span>
+                    @if (mass.status === 'cancelled') {
+                      <app-status-badge label="Cancelled" tone="neutral" />
+                    } @else if ((mass.intention_count ?? 0) > 0) {
+                      <span class="cf-badge">{{ mass.intention_count }} intentions</span>
+                    }
+                  </a>
+                </li>
+              }
+            </ul>
+            @if (hiddenMassCount(section.masses, section.date) > 0) {
+              <button type="button" class="cf-btn cf-btn-ghost cf-btn--sm" (click)="expandDay(section.date)">
+                {{ hiddenMassCount(section.masses, section.date) }} more
+              </button>
+            }
+          }
+        </section>
+      }
+    </div>
+  }
+
+  <app-add-mass-modal
+    [open]="showAddMass()"
+    [initialCelebratedOn]="addMassPrefillDate()"
+    (closed)="showAddMass.set(false); addMassPrefillDate.set('')"
+    (created)="reload()"
+  />
+  <app-special-day-schedule-modal
+    [open]="showSpecialDay()"
+    [overrideOn]="specialDayDate()"
+    (closed)="showSpecialDay.set(false)"
+    (saved)="reload()"
+  />
+</section>

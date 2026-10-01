@@ -12,9 +12,11 @@ import {
   StatusBadgeComponent,
   StatusBadgeTone,
 } from '@shared/components/status-badge/status-badge.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import { AuthService } from '@core/services/auth.service';
 import { SupportTicketService } from '../services/support-ticket.service';
 import { SupportTicketDetail } from '../models/support-ticket.model';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type LifecycleAction = 'cancel' | 'resolve' | 'reopen' | 'confirm';
 
@@ -29,6 +31,7 @@ type LifecycleAction = 'cancel' | 'resolve' | 'reopen' | 'confirm';
     LoadingSkeletonComponent,
     ConfirmationModalComponent,
     StatusBadgeComponent,
+    CfDatePipe,
   ],
   templateUrl: './support-ticket-detail.page.html',
   styleUrl: './support-ticket-detail.page.scss',
@@ -303,7 +306,7 @@ export class SupportTicketDetailPage implements OnInit {
       return 'SLA at risk — the support team is working to respond soon.';
     }
     if (sla.resolution_due_at) {
-      return `Resolution due ${new Date(sla.resolution_due_at).toLocaleString()}`;
+      return `Resolution due ${cfFormatDate(sla.resolution_due_at, 'datetime')}`;
     }
     return null;
   }

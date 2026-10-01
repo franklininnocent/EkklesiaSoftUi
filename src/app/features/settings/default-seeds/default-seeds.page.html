@@ -19,8 +19,7 @@
     </div>
 
     <div class="cf-loading-block cf-panel" *ngIf="loading && !loaded" role="status" aria-live="polite">
-      <p class="cf-loading-block__label">Loading recommended lists…</p>
-      <app-loading-skeleton type="table" [rows]="4" [columns]="4"></app-loading-skeleton>
+      <app-loading-skeleton label="Loading recommended lists…" type="table" [rows]="4" [columns]="4"></app-loading-skeleton>
     </div>
 
     <ng-container *ngIf="loaded && !error">

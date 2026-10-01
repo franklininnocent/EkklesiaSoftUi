@@ -1,11 +1,9 @@
 /**
- * Dashboard version 2.0 — two-tab architecture (Overview | Operations).
- * Phase 2: Overview hierarchy. Phase 3: Operations workspace. Phase 4: lazy-load Operations APIs.
- * Restore Version 1.0 from: ./v1.0/ (see v1.0/VERSION.md).
+ * Dashboard version 3.0 — executive Overview (single API) + Operations tab.
+ * Restore Version 2.0 from: ./v2.0/ (see v2.0/VERSION.md). Version 1.0: ./v1.0/.
  */
 import { Component, inject, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
@@ -14,32 +12,45 @@ import { catchError, distinctUntilChanged, filter, map, switchMap, take, takeUnt
 
 import { AppState } from '@core/store';
 import { User } from '@core/models';
-import { BCC, BCCStatistics, FamilyStatistics } from '@core/models/family.model';
-import { SubscriptionAccessService } from '@core/services/subscription-access.service';
-import { EntitlementService } from '@core/services/entitlement.service';
+import { FamilyStatistics } from '@core/models/family.model';
 import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { FamilyService } from '@core/services/family.service';
-import { BCCService } from '@core/services/bcc.service';
-import { MemberService } from '@features/members/services/member.service';
-import { SacramentService } from '@features/settings/sacraments/services/sacrament.service';
 import { AuthService } from '@core/services/auth.service';
 import { DonationsService } from '@features/donations/services/donations.service';
 import { OperationsDashboardSummary } from '@features/donations/models/donation.model';
-import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
-import {
-  MinistriesAuditLogEntry,
-  MinistriesDashboardSummary,
-} from '@features/ministries-associations/models/ministries.model';
 import { TenantService } from '@core/services/tenant.service';
 import { TenantStatisticsResponse } from '@core/models/tenant.model';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
-import { cfFormatMoney } from '@shared/utils/cf-intl.util';
+import { cfFormatDate,  cfFormatMoney } from '@shared/utils/cf-intl.util';
 import { PastoralCareService } from '@features/pastoral-care/services/pastoral-care.service';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import {
   PastoralCareAlert,
   PastoralCareRequest,
   PastoralCareStaff,
 } from '@features/pastoral-care/models/pastoral-care.model';
+import { ExecutiveDashboardService } from './services/executive-dashboard.service';
+import {
+  ExecBlock,
+  ExecMetric,
+  ExecutiveDashboardPayload,
+  ExecutiveCelebrationsData,
+  ExecutiveSectionState,
+  ExecutiveStewardshipData,
+} from './models/executive-dashboard.model';
+import { MemberAgeDistributionChartComponent } from '@features/members/components/member-age-distribution-chart/member-age-distribution-chart.component';
+import { ExecutiveDueScheduleChartComponent } from './components/executive-due-schedule-chart.component';
+import { memberAgeChartSlices } from '@features/members/utils/member-age-groups.util';
+import { MemberAgeChartSlice, MemberDashboardSummary } from '@features/members/models/member-dashboard.model';
+import { QuickCollectService } from '@features/donations/services/quick-collect.service';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
+import {
+  attentionLabel,
+  FinancialSnapshotLink,
+  navigateExecutiveDrilldown,
+  navigateFinancialSnapshot,
+  quickActionLabel,
+} from './utils/dashboard-drilldown.util';
 
 export type DashboardTab = 'overview' | 'operations';
 
@@ -52,12 +63,6 @@ interface HeroKpi {
   trend: 'up' | 'down' | 'neutral';
   accent: 'forest' | 'indigo' | 'amber' | 'slate';
   sparkline: number[];
-}
-
-interface LifeGroupMetric {
-  label: string;
-  value: string;
-  detail: string;
 }
 
 export type FinancialHubState = 'unauthorized' | 'loading' | 'ready' | 'error';
@@ -77,41 +82,17 @@ const PAYMENT_METHOD_LABELS: Record<string, string> = {
   adjustment: 'Adjustment',
 };
 
-interface BccHighlight {
-  id: string;
-  name: string;
-  code: string;
-  families: number;
-  meetingLabel: string;
-  status: string;
-}
-
-interface SacramentHighlight {
-  id: number;
-  typeName: string;
-  recipientName: string;
-  dateAdministered: string;
-  place?: string;
-}
-
-interface SacramentTypeCount {
-  label: string;
-  count: number;
-}
-
-interface CelebrationItem {
-  id: string;
-  name: string;
-  dayLabel: string;
-  dateLabel: string;
-  detail: string;
-  familyId?: string;
-}
-
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, CfCurrencyPipe],
+  imports: [
+    CfDatePipe,
+    CommonModule,
+    FormsModule,
+    MemberAgeDistributionChartComponent,
+    ExecutiveDueScheduleChartComponent,
+    CfBrandLoaderComponent,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
@@ -119,29 +100,28 @@ interface CelebrationItem {
 export class DashboardComponent implements OnInit, OnDestroy {
   private store = inject(Store<AppState>);
   private familyService = inject(FamilyService);
-  private bccService = inject(BCCService);
-  private memberService = inject(MemberService);
-  private sacramentService = inject(SacramentService);
   private authService = inject(AuthService);
   private supportSessions = inject(SupportSessionService);
   private donationsService = inject(DonationsService);
   private pastoralCare = inject(PastoralCareService);
-  private ministriesApi = inject(MinistriesApiService);
-  private subscriptionAccess = inject(SubscriptionAccessService);
-  private entitlements = inject(EntitlementService);
   private tenantService = inject(TenantService);
   private router = inject(Router);
   private cdr = inject(ChangeDetectorRef);
+  private executiveDashboard = inject(ExecutiveDashboardService);
+  private quickCollect = inject(QuickCollectService);
   private destroy$ = new Subject<void>();
-  private tenantId: number | null = null;
+
+  tenantExecutiveMode = false;
+  executive: ExecutiveDashboardPayload | null = null;
+  executiveLoadState: DataLoadState = 'idle';
+  private cachedExecutiveBlocks: ExecBlock[] = [];
+  private cachedExecutiveColumns: ExecBlock[][] = [[], []];
 
   currentUser$: Observable<User | null>;
   today = new Date();
-  readonly chartBarMaxHeightPx = 140;
 
   heroKpis: HeroKpi[] = [];
   registryState: DataLoadState = 'idle';
-  bccStatsState: DataLoadState = 'idle';
   platformStatsState: DataLoadState = 'idle';
   platformStats: TenantStatisticsResponse['data'] | null = null;
   private platformStatsUserId: number | null = null;
@@ -149,13 +129,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   activeFamilies = 0;
   activeMembers = 0;
   membersCreatedThisMonth = 0;
-  familiesWithoutBcc = 0;
-
-  lifeGroups: LifeGroupMetric[] = [
-    { label: 'Active BCCs', value: '—', detail: 'Loading group count…' },
-    { label: 'Family coverage', value: '—', detail: 'Families assigned to a Life Group' },
-    { label: 'BCC Leaders', value: '—', detail: 'Active BCC leaders across parish' }
-  ];
 
   careAlerts: PastoralCareAlert[] = [];
   pastoralTasks: PastoralCareRequest[] = [];
@@ -177,30 +150,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
   totalMembers = 0;
   totalFamilies = 0;
 
-  bccStatistics: BCCStatistics | null = null;
-  bccHighlights: BccHighlight[] = [];
-  sacramentHighlights: SacramentHighlight[] = [];
-  sacramentTypeCounts: SacramentTypeCount[] = [];
-  sacramentsThisMonth = 0;
-  weekBirthdays: CelebrationItem[] = [];
-  weekAnniversaries: CelebrationItem[] = [];
-  weekRangeLabel = '';
-  loadingBccDetails = false;
-  loadingSacraments = false;
-  loadingCelebrations = false;
   canViewFinancial = false;
 
   private readonly financialLoad$ = new Subject<void>();
-
-  showMinistriesSection = false;
-  loadingMinistries = false;
-  ministriesSummary: MinistriesDashboardSummary | null = null;
-  ministriesActivity: MinistriesAuditLogEntry[] = [];
-  canCreateOrganization = false;
-  canManageMembers = false;
-  canManageLeadership = false;
-  canConfigureTaxonomies = false;
-  canViewTenantAuditLogs = false;
 
   /** Dashboard v2.0 tab state — default Overview. */
   activeTab: DashboardTab = 'overview';
@@ -211,35 +163,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     overview: 'Overview',
     operations: 'Operations',
   };
-
-  /** Session cache — set true only after a successful Operations-scoped response. */
-  private bccHighlightsLoaded = false;
-  private celebrationsLoaded = false;
-  private sacramentsLoaded = false;
-  private ministriesActivityLoaded = false;
-
-  loadingMinistriesActivity = false;
-  bccHighlightsError = false;
-  celebrationsError = false;
-  celebrationsUnauthorized = false;
-  sacramentsError = false;
-  ministriesActivityError = false;
-
-  private readonly ministriesActionLabels: Record<string, string> = {
-    'organization.created': 'Organization created',
-    'organization.updated': 'Organization updated',
-    'organization.status_changed': 'Organization status changed',
-    'organization.deleted': 'Organization deleted',
-    'organization.restored': 'Organization restored',
-    'membership.enrolled': 'Member enrolled',
-    'membership.status_changed': 'Membership status changed',
-    'membership.re_enrolled': 'Member re-enrolled',
-    'guest_member.created': 'Guest created',
-    'guest_member.updated': 'Guest updated',
-    'guest_member.linked_to_parishioner': 'Guest linked',
-    'leadership.assigned': 'Leadership assigned',
-    'leadership.terminated': 'Leadership terminated',
-    'leadership.handover': 'Leadership handed over',
+  readonly dashboardTabHints: Record<DashboardTab, string> = {
+    overview: 'Parish summary',
+    operations: 'Follow-up work',
   };
 
   constructor() {
@@ -247,7 +173,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.weekRangeLabel = 'This week';
     this.setupFinancialHubLoader();
 
     this.supportSessions.session$
@@ -278,9 +203,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         if (!user) {
           return;
         }
-        if (user.tenant_id) {
-          this.tenantId = Number(user.tenant_id);
-        }
         this.refreshDashboardAccess(user);
         this.cdr.markForCheck();
       });
@@ -291,29 +213,28 @@ export class DashboardComponent implements OnInit, OnDestroy {
     const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
     const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
 
+    this.tenantExecutiveMode = hasTenantContext;
+
     if (hasTenantContext) {
       this.platformStats = null;
       this.platformStatsState = 'idle';
       this.platformStatsUserId = null;
-      this.loadFamilyStatistics();
-      this.loadBccStatistics();
+      this.loadExecutiveDashboard();
     } else if (user && this.authService.canManageTenants(user)) {
       this.registryState = 'idle';
-      this.bccStatsState = 'idle';
       this.loadPlatformStatistics(user.id);
     } else {
       this.platformStats = null;
       this.platformStatsState = 'idle';
       this.platformStatsUserId = null;
       this.registryState = 'idle';
-      this.bccStatsState = 'idle';
       this.rebuildHeroKpis();
     }
 
     this.canViewFinancial = hasTenantContext && this.authService.canAccessDonations(user, { hasActiveSupportSession });
-    if (this.canViewFinancial) {
+    if (this.canViewFinancial && this.operationsVisited) {
       this.loadOperationsDashboard();
-    } else {
+    } else if (!this.canViewFinancial) {
       this.financialHubState = 'unauthorized';
       this.operationsSummary = null;
       this.loadingFinancial = false;
@@ -321,7 +242,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
     }
     this.canViewPastoral = isTenantActor && this.authService.canAccessPastoral(user);
     this.canAssignPastoral = this.authService.hasPermission('pastoral.care.assign');
-    this.resolveMinistriesAccess(user);
     if (this.operationsVisited) {
       this.loadOperationsScopedData();
     }
@@ -340,6 +260,9 @@ export class DashboardComponent implements OnInit, OnDestroy {
     this.activeTab = tab;
     if (tab === 'operations') {
       this.operationsVisited = true;
+      if (this.canViewFinancial) {
+        this.loadOperationsDashboard();
+      }
       this.ensureOperationsDataLoaded();
     }
     this.cdr.markForCheck();
@@ -379,52 +302,14 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   private loadOperationsScopedData(): void {
-    if (!this.bccHighlightsLoaded && !this.loadingBccDetails) {
-      this.loadBccHighlights();
-    }
-
-    if (!this.celebrationsLoaded && !this.loadingCelebrations) {
-      this.loadMemberCelebrations();
-    }
-
-    if (!this.sacramentsLoaded && !this.loadingSacraments && this.tenantId) {
-      this.loadSacramentDetails();
-    }
-
-    if (
-      this.showMinistriesSection &&
-      this.canViewTenantAuditLogs &&
-      !this.ministriesActivityLoaded &&
-      !this.loadingMinistriesActivity
-    ) {
-      this.loadMinistriesActivity();
-    }
-
     if (this.canViewPastoral && !this.pastoralLoaded && !this.loadingPastoral) {
       this.loadPastoralWorkflow();
     }
   }
 
-  retryBccHighlights(): void {
-    this.loadBccHighlights();
-  }
-
-  retryMemberCelebrations(): void {
-    this.celebrationsLoaded = false;
-    this.loadMemberCelebrations();
-  }
-
   retryPastoralWorkflow(): void {
     this.pastoralLoaded = false;
     this.loadPastoralWorkflow();
-  }
-
-  retrySacramentDetails(): void {
-    this.loadSacramentDetails();
-  }
-
-  retryMinistriesActivity(): void {
-    this.loadMinistriesActivity();
   }
 
   dashboardTabId(tab: DashboardTab): string {
@@ -451,9 +336,7 @@ export class DashboardComponent implements OnInit, OnDestroy {
             this.activeFamilies = response.data.active_families ?? 0;
             this.activeMembers = response.data.active_members ?? 0;
             this.membersCreatedThisMonth = response.data.members_created_this_month ?? 0;
-            this.familiesWithoutBcc = response.data.families_without_bcc ?? 0;
             this.registryState = 'ready';
-            this.updateLifeGroupCoverage();
           } else {
             this.registryState = 'error';
           }
@@ -469,7 +352,841 @@ export class DashboardComponent implements OnInit, OnDestroy {
   }
 
   retryRegistry(): void {
+    if (this.tenantExecutiveMode) {
+      this.loadExecutiveDashboard();
+      return;
+    }
     this.loadFamilyStatistics();
+  }
+
+  retryExecutiveDashboard(): void {
+    this.loadExecutiveDashboard();
+  }
+
+  loadExecutiveDashboard(): void {
+    this.executiveLoadState = 'loading';
+    this.registryState = 'loading';
+    this.executive = null;
+    this.cachedExecutiveBlocks = [];
+    this.cachedExecutiveColumns = [[], []];
+    this.cdr.markForCheck();
+
+    this.executiveDashboard
+      .getExecutive()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe({
+        next: (data) => {
+          this.executive = data;
+          this.executiveLoadState = 'ready';
+          const snapState = data.snapshot?.state;
+          if (snapState === 'error') {
+            this.registryState = 'error';
+          } else if (snapState === 'forbidden') {
+            this.registryState = 'idle';
+          } else {
+            this.registryState = 'ready';
+            this.syncRegistryFromExecutive(data);
+          }
+          this.rebuildExecutiveBlocksCache();
+          this.cdr.markForCheck();
+        },
+        error: () => {
+          this.executiveLoadState = 'error';
+          this.registryState = 'error';
+          this.cachedExecutiveBlocks = [];
+          this.cachedExecutiveColumns = [[], []];
+          this.cdr.markForCheck();
+        },
+      });
+  }
+
+  private syncRegistryFromExecutive(payload: ExecutiveDashboardPayload): void {
+    const cards = payload.snapshot?.data?.cards as Record<string, Record<string, number>> | undefined;
+    if (!cards) {
+      return;
+    }
+    const families = cards['families'];
+    if (families && families['total_families'] !== undefined) {
+      this.totalFamilies = families['total_families'];
+      this.activeFamilies = families['active_families'] ?? 0;
+    }
+    const members = cards['members'];
+    if (members && members['total_members'] !== undefined) {
+      this.totalMembers = members['total_members'];
+      this.activeMembers = members['active_members'] ?? 0;
+      this.membersCreatedThisMonth = members['members_added_this_month'] ?? 0;
+    }
+    const lifeGroups = cards['life_groups'];
+    if (lifeGroups && lifeGroups['active_bccs'] !== undefined) {
+      this.totalBCCs = lifeGroups['active_bccs'];
+    }
+  }
+
+  executiveBlocks(): ExecBlock[] {
+    return this.cachedExecutiveBlocks;
+  }
+
+  private rebuildExecutiveBlocksCache(): void {
+    if (this.executiveLoadState !== 'ready' || !this.executive) {
+      this.cachedExecutiveBlocks = [];
+      this.cachedExecutiveColumns = [[], []];
+      return;
+    }
+
+    const blocks: ExecBlock[] = [];
+    this.pushPeopleBlock(blocks);
+    this.pushFinanceBlock(blocks);
+    this.pushCommunityBlock(blocks);
+    this.pushMinistryBlock(blocks);
+    this.pushSacramentsBlock(blocks);
+    this.pushMassIntentionsBlock(blocks);
+    this.pushWorshipBlock(blocks);
+    this.pushPastoralBlock(blocks);
+    this.cachedExecutiveBlocks = blocks;
+    this.cachedExecutiveColumns = this.buildExecutiveColumns(blocks);
+  }
+
+  executiveColumns(): ExecBlock[][] {
+    return this.cachedExecutiveColumns;
+  }
+
+  private buildExecutiveColumns(blocks: ExecBlock[]): ExecBlock[][] {
+    const columns: ExecBlock[][] = [[], []];
+    const occupied = new Set<string>();
+    const columnCount = 2;
+    let cursor = 0;
+
+    const finance = blocks.find((block) => block.key === 'finance');
+    if (finance) {
+      columns[1].push(finance);
+      occupied.add('0,1');
+    }
+
+    const pastoral = blocks.find((block) => block.key === 'pastoral');
+
+    for (const block of blocks) {
+      if (block.key === 'finance' || block.key === 'pastoral') {
+        continue;
+      }
+      while (occupied.has(`${Math.floor(cursor / columnCount)},${cursor % columnCount}`)) {
+        cursor += 1;
+      }
+      const row = Math.floor(cursor / columnCount);
+      const column = cursor % columnCount;
+      occupied.add(`${row},${column}`);
+      columns[column].push(block);
+      cursor += 1;
+    }
+
+    if (pastoral) {
+      columns[0].push(pastoral);
+    }
+
+    return columns;
+  }
+
+  metricToneClass(metric: ExecMetric): string {
+    return metric.tone ? `cd-financial-metric--${metric.tone}` : '';
+  }
+
+  openExecMetric(metric: ExecMetric): void {
+    if (metric.financialLink) {
+      this.openFinancialSnapshot(metric.financialLink);
+      return;
+    }
+    if (metric.route) {
+      void this.router.navigate([metric.route], metric.query ? { queryParams: metric.query } : undefined);
+      return;
+    }
+    if (metric.drilldown) {
+      this.openExecutiveDrilldown(metric.drilldown);
+    }
+  }
+
+  executiveSnapshotCards(): Record<string, Record<string, unknown>> {
+    return (this.executive?.snapshot?.data?.cards ?? {}) as Record<string, Record<string, unknown>>;
+  }
+
+  executiveSectionState(section: keyof ExecutiveDashboardPayload): ExecutiveSectionState | 'loading' {
+    if (this.executiveLoadState === 'loading' || this.executiveLoadState === 'idle') {
+      return 'loading';
+    }
+    if (this.executiveLoadState === 'error' || !this.executive) {
+      return 'error';
+    }
+    return this.executive[section]?.state ?? 'error';
+  }
+
+  openExecutiveDrilldown(key: string): void {
+    navigateExecutiveDrilldown(this.router, this.quickCollect, key, () => {
+      this.selectTab('operations');
+    });
+  }
+
+  executiveAttentionLabel(key: string, count: number): string {
+    return attentionLabel(key, count);
+  }
+
+  executiveQuickActionLabel(key: string): string {
+    return quickActionLabel(key);
+  }
+
+  formatExecutiveDateTime(iso: string | null | undefined): string {
+    if (!iso) {
+      return '—';
+    }
+    const date = new Date(iso);
+    if (Number.isNaN(date.getTime())) {
+      return '—';
+    }
+    return cfFormatDate(date, 'datetime') || '—';
+  }
+
+  snapshotMetric(card: Record<string, unknown>, field: string): number {
+    return Number(card[field] ?? 0);
+  }
+
+  snapshotText(card: Record<string, unknown>, field: string): string {
+    const value = card[field];
+    return value === null || value === undefined ? '' : String(value);
+  }
+
+  financialSnapshot(): ExecutiveStewardshipData | null {
+    if (this.executiveSectionState('stewardship') !== 'ready') {
+      return null;
+    }
+    return this.executive?.stewardship?.data ?? null;
+  }
+
+  openFinancialSnapshot(link: FinancialSnapshotLink): void {
+    const snapshot = this.financialSnapshot();
+    if (!snapshot) {
+      return;
+    }
+    navigateFinancialSnapshot(this.router, link, snapshot);
+  }
+
+  financialGrowthLabel(snapshot: ExecutiveStewardshipData): string {
+    const range = this.financialDateRange(snapshot.comparison_start, snapshot.comparison_end);
+    if (snapshot.growth_pct === null || snapshot.growth_pct === undefined) {
+      return range ? `No comparable period last month (${range})` : 'No comparable period last month';
+    }
+    const word = snapshot.growth_pct > 0 ? 'Up' : snapshot.growth_pct < 0 ? 'Down' : 'Flat';
+    const change = `${word} ${Math.abs(snapshot.growth_pct)}%`;
+    return range ? `${change} versus ${range}` : change;
+  }
+
+  financialGrowthDirection(snapshot: ExecutiveStewardshipData): 'up' | 'down' | 'flat' | 'none' {
+    if (snapshot.growth_pct === null || snapshot.growth_pct === undefined) {
+      return 'none';
+    }
+    if (snapshot.growth_pct > 0) {
+      return 'up';
+    }
+    if (snapshot.growth_pct < 0) {
+      return 'down';
+    }
+    return 'flat';
+  }
+
+  financialComparisonHint(snapshot: ExecutiveStewardshipData): string {
+    return this.financialDateRange(snapshot.comparison_start, snapshot.comparison_end);
+  }
+
+  financialFamilyCount(count: number): string {
+    return count === 1 ? '1 family' : `${count} families`;
+  }
+
+  financialAsOfLabel(snapshot: ExecutiveStewardshipData): string {
+    const asOf = cfFormatDate(snapshot.as_of, 'date');
+    const year = snapshot.financial_year ? ` · Fiscal year ${snapshot.financial_year}` : '';
+    return asOf ? `As of ${asOf}${year}` : year.replace(/^ · /, '');
+  }
+
+  private financialDateRange(start: string, end: string): string {
+    const startLabel = cfFormatDate(start, 'date');
+    const endLabel = cfFormatDate(end, 'date');
+    if (startLabel && endLabel) {
+      return `${startLabel} – ${endLabel}`;
+    }
+    return startLabel || endLabel;
+  }
+
+  private coverageTone(percent: number): ExecMetric['tone'] {
+    if (!Number.isFinite(percent)) {
+      return 'slate';
+    }
+    if (percent >= 75) {
+      return 'forest';
+    }
+    if (percent >= 40) {
+      return 'info';
+    }
+    return 'amber';
+  }
+
+  private pushPeopleBlock(blocks: ExecBlock[]): void {
+    const cards = this.executiveSnapshotCards();
+    const families = cards['families'];
+    const members = cards['members'];
+    const celebrations = this.executive?.celebrations;
+    const hasDirectory = !!families || !!members;
+    const celebrationsVisible = celebrations && celebrations.state !== 'forbidden';
+    if (!hasDirectory && !celebrationsVisible) {
+      return;
+    }
+    if (families?.['error'] || members?.['error'] || celebrations?.state === 'error' && !hasDirectory) {
+      blocks.push(this.errorBlock('people', 'People executive summary', 'Open directory', 'families.directory'));
+      return;
+    }
+    if (!hasDirectory && celebrations?.state === 'error') {
+      blocks.push(this.errorBlock('people', 'People executive summary', 'Open directory', 'members.directory'));
+      return;
+    }
+
+    const metrics: ExecMetric[] = [];
+    if (families && !families['error']) {
+      metrics.push({
+        label: 'Active families',
+        value: this.formatCount(families['active_families']),
+        hint: `${this.formatCount(families['total_families'])} total · active`,
+        drilldown: 'families.directory',
+        tone: 'indigo',
+      });
+    }
+    if (members && !members['error']) {
+      metrics.push({
+        label: 'Active members',
+        value: this.formatCount(members['active_members']),
+        hint: `${this.formatCount(members['total_members'])} total · ${this.formatCount(members['members_added_this_month'])} records added this month`,
+        drilldown: 'members.directory',
+        tone: 'info',
+      });
+    }
+    if (celebrations?.state === 'ready' && celebrations.data) {
+      const weekQuery = this.celebrationsWeekQuery(celebrations.data);
+      metrics.push({
+        label: 'Birthdays',
+        value: this.formatCount(celebrations.data.birthdays_count),
+        hint: celebrations.data.week_label || 'This week',
+        route: '/members/celebrations',
+        query: { tab: 'birthdays', ...weekQuery },
+        tone: (celebrations.data.birthdays_count ?? 0) > 0 ? 'forest' : 'slate',
+      });
+      metrics.push({
+        label: 'Anniversaries',
+        value: this.formatCount(celebrations.data.anniversaries_count),
+        hint: celebrations.data.week_label || 'This week',
+        route: '/members/celebrations',
+        query: { tab: 'anniversaries', ...weekQuery },
+        tone: (celebrations.data.anniversaries_count ?? 0) > 0 ? 'amber' : 'slate',
+      });
+    }
+    if (!metrics.length) {
+      return;
+    }
+
+    let memberAgeChart: MemberAgeChartSlice[] | undefined;
+    if (members && !members['error'] && members['age_groups']) {
+      const slices = memberAgeChartSlices(members['age_groups'] as MemberDashboardSummary['demographics']['age_groups']);
+      if (slices.length) {
+        memberAgeChart = slices;
+      }
+    }
+
+    blocks.push({
+      key: 'people',
+      title: 'People executive summary',
+      openLabel: 'Open members',
+      openDrilldown: 'members.list',
+      state: 'ready',
+      metrics,
+      memberAgeChart,
+    });
+  }
+
+  private pushCommunityBlock(blocks: ExecBlock[]): void {
+    const card = this.executiveSnapshotCards()['life_groups'];
+    if (!card) {
+      return;
+    }
+    if (card['error']) {
+      blocks.push(this.errorBlock('community', 'Community executive summary', 'Open BCC', 'bcc.home'));
+      return;
+    }
+    const coverage = card['household_coverage_percent'];
+    const metrics: ExecMetric[] = [
+      {
+        label: 'BCC',
+        value: this.formatCount(card['active_bccs']),
+        hint: 'Active communities',
+        drilldown: 'bcc.home',
+        tone: 'forest',
+      },
+    ];
+    if (card['families_connected'] !== undefined && card['families_connected'] !== null) {
+      metrics.push({
+        label: 'Families connected',
+        value: this.formatCount(card['families_connected']),
+        hint: 'In a BCC',
+        drilldown: 'bcc.home',
+        tone: 'indigo',
+      });
+    }
+    if (coverage === null || coverage === undefined) {
+      metrics.push({
+        label: 'Coverage',
+        value: '—',
+        hint: 'Parish families',
+        drilldown: 'bcc.home',
+        tone: 'slate',
+      });
+    } else {
+      metrics.push({
+        label: 'Coverage',
+        value: `${coverage}%`,
+        hint: `${coverage}% of all families assigned to a BCC`,
+        drilldown: 'bcc.home',
+        tone: this.coverageTone(Number(coverage)),
+      });
+    }
+    blocks.push({
+      key: 'community',
+      title: 'Community executive summary',
+      openLabel: 'Open BCC',
+      openDrilldown: 'bcc.home',
+      state: 'ready',
+      metrics,
+    });
+  }
+
+  private pushMinistryBlock(blocks: ExecBlock[]): void {
+    const card = this.executiveSnapshotCards()['ministries'];
+    if (!card) {
+      return;
+    }
+    if (card['error']) {
+      blocks.push(this.errorBlock('ministry', 'Ministry executive summary', 'Open ministries', 'ministries.home'));
+      return;
+    }
+    blocks.push({
+      key: 'ministry',
+      title: 'Ministry executive summary',
+      openLabel: 'Open ministries',
+      openDrilldown: 'ministries.home',
+      state: 'ready',
+      metrics: this.buildMinistryExecutiveSummary(card),
+    });
+  }
+
+  private buildMinistryExecutiveSummary(card: Record<string, unknown>): ExecMetric[] {
+    const metrics: ExecMetric[] = [];
+    const groupsByType = this.ministryGroupRows(card['groups_by_type']);
+    const totalGroups = Number(card['active_groups_total']);
+    const hasTypeBreakdown = groupsByType.length > 0;
+
+    if (hasTypeBreakdown) {
+      const activeTotal = Number.isFinite(totalGroups)
+        ? totalGroups
+        : groupsByType.reduce((sum, row) => sum + row.count, 0);
+      metrics.push({
+        label: 'Active groups',
+        value: this.formatCount(activeTotal),
+        hint: 'Organizations currently active',
+        drilldown: 'ministries.home',
+        tone: 'indigo',
+      });
+
+      const typeMetrics = this.ministryTypeMetrics(groupsByType);
+      metrics.push(...typeMetrics);
+    } else {
+      metrics.push(
+        {
+          label: 'Ministries',
+          value: this.formatCount(card['active_ministries']),
+          hint: 'Active',
+          drilldown: 'ministries.home',
+          tone: 'indigo',
+        },
+        {
+          label: 'Associations',
+          value: this.formatCount(card['active_associations']),
+          hint: `${this.formatCount(card['active_other'])} other orgs`,
+          drilldown: 'ministries.home',
+          tone: 'info',
+        }
+      );
+    }
+
+    metrics.push(
+      {
+        label: 'Active members',
+        value: this.formatCount(card['active_memberships']),
+        hint: 'Current memberships',
+        drilldown: 'ministries.home',
+        tone: 'forest',
+      },
+      {
+        label: 'Vacancies',
+        value: this.formatCount(card['vacancies']),
+        hint: `${this.formatCount(card['expiring_soon_count'])} leadership terms end within 30 days`,
+        drilldown: 'ministries.home',
+        tone: Number(card['vacancies'] ?? 0) > 0 || Number(card['expiring_soon_count'] ?? 0) > 0 ? 'amber' : 'forest',
+      }
+    );
+
+    return metrics;
+  }
+
+  private ministryGroupRows(raw: unknown): Array<{ code: string; name: string; count: number }> {
+    if (!Array.isArray(raw)) {
+      return [];
+    }
+    return raw
+      .map((row) => {
+        if (!row || typeof row !== 'object') {
+          return null;
+        }
+        const record = row as Record<string, unknown>;
+        const name = String(record['name'] ?? record['code'] ?? '').trim();
+        const code = String(record['code'] ?? '').trim();
+        const count = Number(record['count'] ?? 0);
+        if (!name) {
+          return null;
+        }
+        return { code, name, count: Number.isFinite(count) ? count : 0 };
+      })
+      .filter((row): row is { code: string; name: string; count: number } => row !== null);
+  }
+
+  private ministryTypeMetrics(groupsByType: Array<{ code: string; name: string; count: number }>): ExecMetric[] {
+    const rollupCodes = new Set(['orphan_type', 'uncategorized']);
+    const nonzero = groupsByType.filter((row) => row.count > 0);
+    const primary = nonzero.filter((row) => !rollupCodes.has(row.code));
+    const maxVisible = 7;
+    const visible = primary.slice(0, maxVisible);
+    const hidden = primary.slice(maxVisible);
+    const tones: ExecMetric['tone'][] = ['info', 'slate', 'forest', 'indigo', 'amber', 'stew-sky', 'stew-teal'];
+
+    const metrics = visible.map((row, index) => ({
+      label: row.name,
+      value: this.formatCount(row.count),
+      hint: 'Active groups',
+      drilldown: 'ministries.home',
+      tone: tones[index % tones.length],
+    }));
+
+    if (hidden.length > 0) {
+      const extra = hidden.reduce((sum, row) => sum + row.count, 0);
+      metrics.push({
+        label: 'More group types',
+        value: this.formatCount(extra),
+        hint: `${hidden.length} additional types`,
+        drilldown: 'ministries.home',
+        tone: 'slate',
+      });
+    }
+
+    const rollup = nonzero.find((row) => row.code === 'orphan_type');
+    if (rollup) {
+      metrics.push({
+        label: rollup.name,
+        value: this.formatCount(rollup.count),
+        hint: 'Active groups',
+        drilldown: 'ministries.home',
+        tone: 'slate',
+      });
+    }
+
+    const unassigned = nonzero.find((row) => row.code === 'uncategorized');
+    if (unassigned) {
+      metrics.push({
+        label: unassigned.name,
+        value: this.formatCount(unassigned.count),
+        hint: 'Set type in Ministries',
+        drilldown: 'ministries.home',
+        tone: 'amber',
+      });
+    }
+
+    return metrics;
+  }
+
+  private pushSacramentsBlock(blocks: ExecBlock[]): void {
+    const card = this.executiveSnapshotCards()['sacraments'];
+    if (!card) {
+      return;
+    }
+    if (card['error']) {
+      blocks.push(this.errorBlock('sacraments', 'Sacraments executive summary', 'Open sacraments', 'sacraments.home'));
+      return;
+    }
+    const period = this.snapshotText(card, 'period_label') || 'All time';
+    blocks.push({
+      key: 'sacraments',
+      title: 'Sacraments executive summary',
+      openLabel: 'Open sacraments',
+      openDrilldown: 'sacraments.home',
+      state: 'ready',
+      context: this.snapshotSacramentContext(card),
+      metrics: [
+        {
+          label: 'In period',
+          value: this.formatCount(card['total_period']),
+          hint: period,
+          drilldown: 'sacraments.home',
+          tone: 'indigo',
+        },
+        {
+          label: 'This month',
+          value: this.formatCount(card['this_month']),
+          hint: 'Administered this month',
+          drilldown: 'sacraments.home',
+          tone: Number(card['this_month'] ?? 0) > 0 ? 'forest' : 'info',
+        },
+      ],
+    });
+  }
+
+  private pushFinanceBlock(blocks: ExecBlock[]): void {
+    const state = this.executive?.stewardship?.state;
+    if (!state || state === 'forbidden') {
+      return;
+    }
+    if (state === 'error') {
+      blocks.push(this.errorBlock('finance', 'Financial executive summary', 'Open Financial Dashboard', 'donations.home'));
+      return;
+    }
+    if (state === 'unavailable') {
+      blocks.push({
+        key: 'finance',
+        title: 'Financial executive summary',
+        openLabel: 'Open Financial Dashboard',
+        openDrilldown: 'donations.home',
+        state: 'unavailable',
+        unavailableMessage: 'Giving figures are unavailable until the church currency is set.',
+        metrics: [],
+      });
+      return;
+    }
+    const snap = this.executive?.stewardship?.data;
+    if (!snap) {
+      blocks.push(this.errorBlock('finance', 'Financial executive summary', 'Open Financial Dashboard', 'donations.home'));
+      return;
+    }
+    const installments = snap.project_installments_open !== null && snap.project_installments_open > 0
+      ? `Project installments: ${cfFormatMoney(snap.project_installments_open, snap.currency_code)} (not included above)`
+      : 'Collectable open balances';
+    const dueScheduleChart = (snap.due_schedule ?? []).filter((slice) => Number(slice.amount) > 0);
+    blocks.push({
+      key: 'finance',
+      title: 'Financial executive summary',
+      openLabel: 'Open Financial Dashboard',
+      openDrilldown: 'donations.home',
+      state: 'ready',
+      context: `${this.financialAsOfLabel(snap)}${snap.giving_health_label ? ` · Giving health: ${snap.giving_health_label}` : ''}`,
+      metrics: [
+        {
+          label: 'Collected this month',
+          value: cfFormatMoney(snap.collected, snap.currency_code),
+          hint: 'Succeeded payments · month to date',
+          compare: this.financialGrowthLabel(snap),
+          trend: this.financialGrowthDirection(snap),
+          financialLink: 'donations.payments.month',
+          tone: 'stew-teal',
+        },
+        {
+          label: 'Same days last month',
+          value: cfFormatMoney(snap.comparison_collected, snap.currency_code),
+          hint: this.financialComparisonHint(snap),
+          financialLink: 'donations.payments.comparison',
+          tone: 'stew-violet',
+        },
+        {
+          label: 'Outstanding contributions',
+          value: cfFormatMoney(snap.outstanding_contributions, snap.currency_code),
+          hint: installments,
+          financialLink: 'donations.dues',
+          tone: Number(snap.outstanding_contributions) > 0 ? 'stew-gold' : 'stew-teal',
+        },
+        {
+          label: 'Overdue',
+          value: cfFormatMoney(snap.overdue_amount, snap.currency_code),
+          hint: `Past due date · ${this.financialFamilyCount(snap.overdue_families)}`,
+          financialLink: 'donations.dues.overdue',
+          tone: Number(snap.overdue_amount) > 0 ? 'critical' : 'stew-teal',
+        },
+      ],
+      dueScheduleChart,
+    });
+  }
+
+  private pushMassIntentionsBlock(blocks: ExecBlock[]): void {
+    const section = this.executive?.mass_intentions;
+    if (!section || section.state === 'forbidden') {
+      return;
+    }
+    if (section.state !== 'ready' || !section.data) {
+      blocks.push(this.errorBlock('mass-intentions', 'Mass intentions executive summary', 'Open Mass intentions', 'mass.home'));
+      return;
+    }
+    const data = section.data;
+    blocks.push({
+      key: 'mass-intentions',
+      title: 'Mass intentions executive summary',
+      openLabel: 'Open Mass intentions',
+      openDrilldown: 'mass.home',
+      state: 'ready',
+      metrics: [
+        {
+          label: 'Open',
+          value: this.formatCount(data.open),
+          hint: 'Active on the register',
+          route: '/mass-intentions/intentions',
+          query: { status: 'open' },
+          tone: Number(data.open) > 0 ? 'indigo' : 'slate',
+        },
+        {
+          label: 'Registered this month',
+          value: this.formatCount(data.registered_this_month),
+          hint: 'New intentions this month',
+          route: '/mass-intentions/intentions',
+          query: { status: 'all', created_from: data.registered_from, created_to: data.registered_to },
+          tone: Number(data.registered_this_month) > 0 ? 'forest' : 'info',
+        },
+        {
+          label: 'Needs a Mass',
+          value: this.formatCount(data.needs_a_mass),
+          hint: 'Open intentions without a Mass',
+          drilldown: 'mass.needs_a_mass',
+          tone: Number(data.needs_a_mass) > 0 ? 'amber' : 'forest',
+        },
+        {
+          label: 'Needs a tick',
+          value: this.formatCount(data.needs_a_tick),
+          hint: 'Celebrations waiting to be marked',
+          drilldown: 'mass.needs_a_tick',
+          tone: Number(data.needs_a_tick) > 0 ? 'amber' : 'forest',
+        },
+      ],
+    });
+  }
+
+  private pushWorshipBlock(blocks: ExecBlock[]): void {
+    const section = this.executive?.worship;
+    if (!section || section.state === 'forbidden') {
+      return;
+    }
+    if (section.state !== 'ready' || !section.data) {
+      blocks.push(this.errorBlock('worship', 'Worship executive summary', 'Open Mass intentions', 'mass.home'));
+      return;
+    }
+    const worship = section.data;
+    blocks.push({
+      key: 'worship',
+      title: 'Worship executive summary',
+      openLabel: 'Open Mass intentions',
+      openDrilldown: 'mass.home',
+      state: 'ready',
+      metrics: [
+        {
+          label: 'Next Mass',
+          value: worship.next_mass ? this.formatExecutiveDateTime(worship.next_mass.starts_at) : 'None scheduled',
+          hint: worship.next_mass ? 'Upcoming celebration' : 'No upcoming Mass is scheduled.',
+          drilldown: 'mass.home',
+          tone: worship.next_mass ? 'forest' : 'amber',
+        },
+        {
+          label: 'This week',
+          value: this.formatCount(worship.this_week_masses),
+          hint: 'Sunday–Saturday on the calendar',
+          route: '/mass-intentions/masses/week',
+          tone: Number(worship.this_week_masses) > 0 ? 'info' : 'slate',
+        },
+      ],
+    });
+  }
+
+  private pushPastoralBlock(blocks: ExecBlock[]): void {
+    const section = this.executive?.pastoral;
+    if (!section || section.state === 'forbidden') {
+      return;
+    }
+    if (section.state !== 'ready' || !section.data) {
+      blocks.push(this.errorBlock('pastoral', 'Pastoral executive summary', 'Open pastoral care', 'dashboard.operations'));
+      return;
+    }
+    blocks.push({
+      key: 'pastoral',
+      title: 'Pastoral executive summary',
+      openLabel: 'Open pastoral care',
+      openDrilldown: 'dashboard.operations',
+      state: 'ready',
+      metrics: [
+        {
+          label: 'Open requests',
+          value: this.formatCount(section.data.open_count),
+          hint: 'Waiting to be assigned',
+          drilldown: 'dashboard.operations',
+          tone: Number(section.data.open_count) > 0 ? 'amber' : 'forest',
+        },
+        {
+          label: 'Assigned',
+          value: this.formatCount(section.data.assigned_count),
+          hint: 'Follow-ups in progress',
+          drilldown: 'dashboard.operations',
+          tone: Number(section.data.assigned_count) > 0 ? 'indigo' : 'slate',
+        },
+      ],
+    });
+  }
+
+  private errorBlock(key: string, title: string, openLabel: string, openDrilldown: string): ExecBlock {
+    return { key, title, openLabel, openDrilldown, state: 'error', metrics: [] };
+  }
+
+  private formatCount(value: unknown): string {
+    const count = Number(value);
+    if (!Number.isFinite(count)) {
+      return '—';
+    }
+    return count.toLocaleString();
+  }
+
+  private celebrationsWeekQuery(data: ExecutiveCelebrationsData): Record<string, string> {
+    const query: Record<string, string> = {};
+    if (data.week_start) {
+      query['from'] = data.week_start;
+    }
+    if (data.week_end) {
+      query['to'] = data.week_end;
+    }
+    if (data.week_start && data.week_end) {
+      query['event_date_from'] = data.week_start;
+      query['event_date_to'] = data.week_end;
+    }
+    return query;
+  }
+
+  snapshotSacramentContext(card: Record<string, unknown>): string {
+    const period = this.snapshotText(card, 'period_label');
+    const types = card['top_types'];
+    if (!Array.isArray(types) || types.length === 0) {
+      return period || 'This month';
+    }
+    const labels = types
+      .slice(0, 3)
+      .map((row: Record<string, unknown>) => {
+        const name = (row['name'] ?? row['label'] ?? row['code'] ?? 'Type') as string;
+        const count = Number(row['count'] ?? 0);
+        return `${name} (${count.toLocaleString()})`;
+      });
+    const more = this.snapshotMetric(card, 'more_types_count');
+    let detail = labels.join(', ');
+    if (more > 0) {
+      detail += `, and ${more.toLocaleString()} more`;
+    }
+    return period ? `${period} · ${detail}` : detail;
   }
 
   retryPlatformStatistics(): void {
@@ -738,38 +1455,46 @@ export class DashboardComponent implements OnInit, OnDestroy {
     };
   }
 
-  familyCoveragePercent(): number | null {
-    if (this.registryState !== 'ready' || !this.familyStats) {
+
+
+
+  stewardshipCurrencyCode(): string | null {
+    const fromExecutive = this.executive?.stewardship?.data?.currency_code;
+    if (fromExecutive) {
+      return fromExecutive;
+    }
+    const fromOps = this.operationsSummary?.tenant_context?.currency_code;
+    return fromOps || null;
+  }
+
+  overdueFollowUp(): { count: number; amountLabel: string } | null {
+    if (this.financialHubState !== 'ready') {
       return null;
     }
-    const total = this.familyStats.total_families ?? 0;
-    if (total <= 0) {
+    const summary = this.operationsSummary?.financial?.attention_summary;
+    const count = summary?.count;
+    const amount = summary?.total_overdue_amount;
+    if (
+      typeof count !== 'number' || !Number.isFinite(count)
+      || typeof amount !== 'number' || !Number.isFinite(amount)
+    ) {
       return null;
     }
-    const withBcc = this.familyStats.families_with_bcc ?? 0;
-    return Math.round((withBcc / total) * 100);
+    const code = this.stewardshipCurrencyCode();
+    return {
+      count,
+      amountLabel: code ? cfFormatMoney(amount, code) : '',
+    };
   }
 
-  private updateLifeGroupCoverage(): void {
-    if (this.bccStatsState !== 'ready' || this.registryState !== 'ready') {
-      return;
-    }
-
-    const coverage = this.familyCoveragePercent();
-    if (coverage !== null) {
-      const assigned = this.familyStats?.families_with_bcc ?? 0;
-      const total = this.familyStats?.total_families ?? 0;
-      this.lifeGroups[1].value = `${coverage}%`;
-      this.lifeGroups[1].detail = `${assigned} of ${total} families assigned`;
-    }
+  overdueFollowUpUnavailable(): boolean {
+    return this.financialHubState === 'ready' && this.overdueFollowUp() === null;
   }
 
-  isSubscriptionReadOnly(): boolean {
-    return this.subscriptionAccess.isReadOnly();
-  }
-
-  stewardshipCurrencyCode(): string {
-    return this.operationsSummary?.tenant_context?.currency_code || 'INR';
+  openOverdueFamiliesFollowUp(): void {
+    void this.router.navigate(['/donations/dues'], {
+      queryParams: { overdue_only: '1' },
+    });
   }
 
   formatCurrency(value: number | null | undefined, currencyCode?: string): string {
@@ -778,28 +1503,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return '';
     }
     return cfFormatMoney(value, code, 0);
-  }
-
-  givingTrendPoints(): Array<{ month: string; collected: number }> {
-    const points = this.operationsSummary?.collection_trend ?? [];
-    return points.map((point) => ({
-      month: point.label?.split(' ')[0] ?? point.period,
-      collected: Number(point.collected ?? 0),
-    }));
-  }
-
-  maxGivingTrend(): number {
-    const values = this.givingTrendPoints().map((point) => point.collected);
-    const max = values.length ? Math.max(...values) : 0;
-    return max > 0 ? max : 1;
-  }
-
-  givingTrendIsEmpty(): boolean {
-    const points = this.givingTrendPoints();
-    if (!points.length) {
-      return true;
-    }
-    return points.every((point) => point.collected === 0);
   }
 
   givingChannelRows(): GivingChannelRow[] {
@@ -825,16 +1528,13 @@ export class DashboardComponent implements OnInit, OnDestroy {
       return 'This month';
     }
     const start = new Date(`${period.month_start}T12:00:00`);
-    return start.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+    return cfFormatDate(start, 'monthYear');
   }
 
   openFinancialDashboard(): void {
     this.router.navigate(['/donations']);
   }
 
-  openMinistries(): void {
-    this.router.navigate(['/ministries']);
-  }
 
   formatCompactNumber(value: number | null | undefined): string {
     return new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(value ?? 0);
@@ -862,394 +1562,19 @@ export class DashboardComponent implements OnInit, OnDestroy {
     });
   }
 
-  ministriesMembershipTotal(): number {
-    if (!this.ministriesSummary) {
-      return 0;
-    }
-    return this.ministriesSummary.memberships.active + this.ministriesSummary.memberships.inactive;
-  }
 
-  ministriesActiveSharePercent(): number {
-    const total = this.ministriesMembershipTotal();
-    if (total <= 0) {
-      return 0;
-    }
-    return Math.round((this.ministriesSummary!.memberships.active / total) * 100);
-  }
 
-  ministriesOrgMemberBarPercent(activeMembers: number): number {
-    const max = this.ministriesSummary?.top_organizations[0]?.active_members ?? 0;
-    if (max <= 0) {
-      return 0;
-    }
-    return Math.max(4, Math.round((activeMembers / max) * 100));
-  }
 
-  ministriesActionLabel(entry: MinistriesAuditLogEntry): string {
-    const key = entry.action_type || entry.event;
-    return this.ministriesActionLabels[key] ?? key;
-  }
 
-  ministriesActivityActor(entry: MinistriesAuditLogEntry): string {
-    return entry.actor_name?.trim() || 'System';
-  }
 
-  formatMinistriesDate(value: string | null | undefined): string {
-    if (!value) {
-      return '—';
-    }
-    const date = new Date(value.includes('T') ? value : `${value}T00:00:00`);
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-    return date.toLocaleDateString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  }
 
-  formatMinistriesDateTime(value: string | null | undefined): string {
-    if (!value) {
-      return '—';
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) {
-      return value;
-    }
-    return date.toLocaleString(undefined, {
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
-  }
 
-  private resolveMinistriesAccess(user: User | null): void {
-    const hasActiveSupportSession = !!user && this.authService.isPlatformActor(user) && !!this.supportSessions.sessionId;
-    const hasTenantContext = !!user?.tenant_id || hasActiveSupportSession;
-    if (!hasTenantContext || !this.authService.canAccessMinistries(user)) {
-      this.showMinistriesSection = false;
-      this.ministriesSummary = null;
-      this.ministriesActivity = [];
-      return;
-    }
 
-    this.canCreateOrganization = this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.create');
-    this.canManageMembers = this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.manage_members');
-    this.canManageLeadership =
-      this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.manage_leadership');
-    this.canConfigureTaxonomies =
-      this.authService.isSuperAdmin() || this.authService.hasPermission('ministries.configure');
-    this.canViewTenantAuditLogs = false;
 
-    this.entitlements
-      .load()
-      .pipe(
-        switchMap(() => this.ministriesApi.getModuleStatus()),
-        takeUntil(this.destroy$)
-      )
-      .subscribe({
-        next: (response) => {
-          this.canViewTenantAuditLogs =
-            this.authService.canViewTenantAuditLogs(user) && this.entitlements.hasFeature('AUDIT_LOG');
-          const enabled = response.data?.enabled === true && this.entitlements.hasFeature('MINISTRIES');
-          this.showMinistriesSection = enabled;
-          if (enabled) {
-            this.loadMinistriesSummary();
-            if (this.operationsVisited) {
-              this.loadOperationsScopedData();
-            }
-          } else {
-            this.ministriesSummary = null;
-            this.ministriesActivity = [];
-          }
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.showMinistriesSection = false;
-          this.cdr.markForCheck();
-        },
-      });
-  }
 
-  /** Overview — ministries KPIs / membership / leadership summary. */
-  private loadMinistriesSummary(): void {
-    this.loadingMinistries = true;
-    this.cdr.markForCheck();
 
-    this.ministriesApi
-      .getDashboardSummary()
-      .pipe(
-        catchError(() => of(null)),
-        takeUntil(this.destroy$),
-      )
-      .subscribe({
-        next: (summary) => {
-          this.ministriesSummary = summary?.data ?? null;
-          this.loadingMinistries = false;
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.loadingMinistries = false;
-          this.cdr.markForCheck();
-        },
-      });
-  }
 
-  /** Operations — recent ministries audit feed (lazy, session-cached). */
-  private loadMinistriesActivity(): void {
-    if (!this.canViewTenantAuditLogs || this.ministriesActivityLoaded || this.loadingMinistriesActivity) {
-      return;
-    }
 
-    this.loadingMinistriesActivity = true;
-    this.ministriesActivityError = false;
-    this.cdr.markForCheck();
-
-    this.ministriesApi
-      .listAuditLogs({ per_page: 3 })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (activity) => {
-          this.ministriesActivity = activity?.data ?? [];
-          this.ministriesActivityLoaded = true;
-          this.ministriesActivityError = false;
-          this.loadingMinistriesActivity = false;
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.ministriesActivityError = true;
-          this.loadingMinistriesActivity = false;
-          this.cdr.markForCheck();
-        },
-      });
-  }
-
-  /** Overview — BCC stats for Life Groups strip and registry count. */
-  loadBccStatistics(): void {
-    this.bccStatsState = 'loading';
-    this.lifeGroups[0].value = '—';
-    this.lifeGroups[0].detail = 'Loading group count…';
-    this.lifeGroups[1].value = '—';
-    this.lifeGroups[1].detail = 'Families assigned to a Life Group';
-    this.lifeGroups[2].value = '—';
-    this.lifeGroups[2].detail = 'Active BCC leaders across parish';
-    this.cdr.markForCheck();
-
-    this.bccService.getStatistics()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            this.bccStatistics = response.data;
-            this.totalBCCs = response.data.total_bccs ?? 0;
-            const activeBccs = response.data.active_bccs ?? 0;
-            this.lifeGroups[0].value = String(activeBccs);
-            this.lifeGroups[0].detail = `${response.data.total_families_in_bccs ?? 0} families in groups`;
-            this.lifeGroups[2].value = String(response.data.total_leaders ?? 0);
-            this.lifeGroups[2].detail = 'Active BCC leaders across parish';
-            this.bccStatsState = 'ready';
-            this.updateLifeGroupCoverage();
-          } else {
-            this.bccStatsState = 'error';
-          }
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.bccStatsState = 'error';
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  retryBccStats(): void {
-    this.loadBccStatistics();
-  }
-
-  /** Operations — top BCC list (lazy, session-cached). */
-  loadBccHighlights(): void {
-    this.loadingBccDetails = true;
-    this.bccHighlightsError = false;
-    this.cdr.markForCheck();
-
-    this.bccService.getBCCs({ status: 'active', sort_by: 'current_family_count', sort_order: 'desc', per_page: 5, page: 1 })
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            this.bccHighlights = response.data.map(bcc => this.mapBccHighlight(bcc));
-            this.bccHighlightsLoaded = true;
-            this.bccHighlightsError = false;
-          } else if (response.success) {
-            this.bccHighlights = [];
-            this.bccHighlightsLoaded = true;
-            this.bccHighlightsError = false;
-          } else {
-            this.bccHighlightsError = true;
-          }
-          this.loadingBccDetails = false;
-          this.cdr.markForCheck();
-        },
-        error: () => {
-          this.bccHighlightsError = true;
-          this.loadingBccDetails = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  loadSacramentDetails(): void {
-    if (!this.tenantId) return;
-
-    this.loadingSacraments = true;
-    this.sacramentsError = false;
-    this.cdr.markForCheck();
-
-    this.sacramentService.getDashboardSummary({
-      preset: 'calendar_month_mtd',
-      minimal: true,
-      include_gaps: false,
-    }).pipe(takeUntil(this.destroy$)).subscribe({
-      next: (response) => {
-        if (response.success && response.data) {
-          const summary = response.data;
-          this.sacramentsThisMonth = summary.kpis.total_period;
-          this.sacramentHighlights = summary.recent.map((record) => ({
-            id: record.id,
-            typeName: record.type?.name || 'Sacrament',
-            recipientName: record.recipient_name,
-            dateAdministered: record.date_administered,
-            place: record.place_administered,
-          }));
-          this.sacramentTypeCounts = summary.breakdowns.by_type_totals
-            .filter((row) => row.count > 0)
-            .map((row) => ({
-              label: row.label,
-              count: row.count,
-            }));
-          this.sacramentsLoaded = true;
-          this.sacramentsError = false;
-        } else if (response.success) {
-          this.sacramentHighlights = [];
-          this.sacramentTypeCounts = [];
-          this.sacramentsThisMonth = 0;
-          this.sacramentsLoaded = true;
-          this.sacramentsError = false;
-        } else {
-          this.sacramentsError = true;
-        }
-        this.loadingSacraments = false;
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.sacramentsError = true;
-        this.loadingSacraments = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
-  loadMemberCelebrations(): void {
-    this.loadingCelebrations = true;
-    this.celebrationsError = false;
-    this.celebrationsUnauthorized = false;
-    this.cdr.markForCheck();
-
-    this.memberService.getCelebrations()
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success && response.data) {
-            this.weekRangeLabel = response.data.week?.label ?? this.weekRangeLabel;
-            this.weekBirthdays = (response.data.birthdays ?? []).map((item) => this.mapCelebrationItem(item));
-            this.weekAnniversaries = (response.data.anniversaries ?? []).map((item) => this.mapCelebrationItem(item));
-            this.celebrationsLoaded = true;
-            this.celebrationsError = false;
-            this.celebrationsUnauthorized = false;
-          } else if (response.success) {
-            this.weekBirthdays = [];
-            this.weekAnniversaries = [];
-            this.celebrationsLoaded = true;
-            this.celebrationsError = false;
-            this.celebrationsUnauthorized = false;
-          } else {
-            this.celebrationsError = true;
-          }
-          this.loadingCelebrations = false;
-          this.cdr.markForCheck();
-        },
-        error: (error) => {
-          this.celebrationsUnauthorized = error?.status === 403;
-          this.celebrationsError = error?.status !== 403;
-          this.loadingCelebrations = false;
-          this.cdr.markForCheck();
-        }
-      });
-  }
-
-  private mapCelebrationItem(item: {
-    id: string;
-    family_id?: string;
-    name: string;
-    day_label: string;
-    date_label: string;
-    detail: string;
-  }): CelebrationItem {
-    return {
-      id: item.id,
-      name: item.name,
-      dayLabel: item.day_label,
-      dateLabel: item.date_label,
-      detail: item.detail,
-      familyId: item.family_id,
-    };
-  }
-
-  private mapBccHighlight(bcc: BCC): BccHighlight {
-    const meetingDay = bcc.meeting_day ? this.capitalize(bcc.meeting_day) : '';
-    const meetingTime = bcc.meeting_time ? this.formatTimeLabel(bcc.meeting_time) : '';
-    const meetingLabel = [meetingDay, meetingTime].filter(Boolean).join(' · ') || 'Schedule not set';
-
-    return {
-      id: bcc.id,
-      name: bcc.name,
-      code: bcc.bcc_code,
-      families: bcc.current_family_count ?? bcc.families_count ?? 0,
-      meetingLabel,
-      status: bcc.status
-    };
-  }
-
-  private capitalize(value: string): string {
-    return value.charAt(0).toUpperCase() + value.slice(1);
-  }
-
-  private formatTimeLabel(time: string): string {
-    const match = time.match(/^(\d{1,2}):(\d{2})/);
-    if (!match) return time;
-    let hours = Number(match[1]);
-    const minutes = match[2];
-    const suffix = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12;
-    return `${hours}:${minutes} ${suffix}`;
-  }
-
-  formatSacramentDate(dateValue: string): string {
-    const date = new Date(dateValue);
-    if (Number.isNaN(date.getTime())) return dateValue;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  }
-
-  navigateToFamily(familyId?: string): void {
-    if (familyId) {
-      this.router.navigate(['/families', familyId]);
-    }
-  }
-
-  navigateToBcc(bccId: string): void {
-    this.router.navigate(['/bccs', bccId]);
-  }
 
   getSparklinePath(values: number[], width = 72, height = 28): string {
     if (values.length < 2) return '';
@@ -1264,11 +1589,6 @@ export class DashboardComponent implements OnInit, OnDestroy {
         return `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`;
       })
       .join(' ');
-  }
-
-  getChartBarHeightPx(value: number, max: number): number {
-    if (!max) return 4;
-    return Math.max(4, Math.round((value / max) * this.chartBarMaxHeightPx));
   }
 
   navigateTo(route: string): void {

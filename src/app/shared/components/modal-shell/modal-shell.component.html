@@ -1,7 +1,11 @@
 <div
   class="cf-modal-shell__overlay"
-  [class.cf-modal-shell__overlay--nested]="nested"
+  [class.cf-modal-shell__overlay--nested]="nested || !overlayTop"
   [class.cf-modal-shell__overlay--media]="layout === 'media'"
+  [class.cf-modal-shell__overlay--covered]="!overlayTop"
+  [style.z-index]="overlayZIndex"
+  [attr.inert]="overlayTop ? null : ''"
+  [attr.aria-hidden]="overlayTop ? null : true"
   (click)="onBackdropClick()"
 >
   <div
@@ -36,24 +40,41 @@
         </p>
       </div>
       <button
+        *ngIf="headerVariant === 'compact'; else defaultModalClose"
         type="button"
-        class="cf-modal-shell__close"
+        class="cf-btn cf-btn-icon cf-modal-shell__close--compact"
         [disabled]="isSubmitting"
         [attr.aria-label]="closeAriaLabel"
         (click)="onCloseClick()"
       >
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="cf-icon-sm" aria-hidden="true">
-          <line x1="18" y1="6" x2="6" y2="18"></line>
-          <line x1="6" y1="6" x2="18" y2="18"></line>
-        </svg>
+        <app-cf-action-icon name="x" />
       </button>
+      <ng-template #defaultModalClose>
+        <button
+          type="button"
+          class="cf-modal-shell__close"
+          [disabled]="isSubmitting"
+          [attr.aria-label]="closeAriaLabel"
+          (click)="onCloseClick()"
+        >
+          <app-cf-action-icon name="x" />
+        </button>
+      </ng-template>
     </header>
 
     <div
       class="cf-modal-shell__body"
       [class.cf-modal-shell__body--flush]="bodyPadding === 'none'"
       [class.cf-modal-shell__body--media]="layout === 'media'"
+      [class.cf-modal-shell__body--loading]="loading"
+      [attr.aria-busy]="loading || isSubmitting || null"
     >
+      <app-cf-brand-loader
+        *ngIf="loading"
+        size="section"
+        [label]="loadingLabel"
+        [overlay]="true"
+      />
       <ng-content></ng-content>
     </div>
 

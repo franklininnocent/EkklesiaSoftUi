@@ -26,6 +26,7 @@ import {
 } from '@features/ministries-associations/models/ministries.model';
 import { MinistriesApiService } from '@features/ministries-associations/services/ministries-api.service';
 import { EnrollFromFamilyModalComponent } from '../enroll-from-family-modal/enroll-from-family-modal.component';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-family-affiliations-panel',
@@ -175,11 +176,7 @@ export class FamilyAffiliationsPanelComponent implements OnInit, OnChanges, OnDe
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(date) || '—';
   }
 
   private resolveAccess(): void {

@@ -23,11 +23,13 @@ import { FormFieldComponent } from '@shared/components/form-field/form-field.com
 import {
   AssignLeadershipPayload,
   LeadershipConflict,
+  LeadershipTerm,
   OrganizationMembership,
   Position,
 } from '../../models/ministries.model';
 import { MinistriesApiService } from '../../services/ministries-api.service';
 import { LeadershipMemberPickerComponent } from '../leadership-member-picker/leadership-member-picker.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 
 @Component({
   selector: 'app-assign-leadership-modal',
@@ -38,6 +40,7 @@ import { LeadershipMemberPickerComponent } from '../leadership-member-picker/lea
     LeadershipMemberPickerComponent,
     ModalShellComponent,
     FormFieldComponent,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './assign-leadership-modal.component.html',
   styleUrl: './assign-leadership-modal.component.scss',
@@ -50,8 +53,26 @@ export class AssignLeadershipModalComponent implements OnInit {
 
   @Input({ required: true }) organizationId!: string;
   @Input() positionId: string | null = null;
+  /** When set, modal edits an active term instead of creating a new assignment. */
+  @Input() termToEdit: LeadershipTerm | null = null;
   @Output() assigned = new EventEmitter<void>();
+  @Output() updated = new EventEmitter<void>();
   @Output() cancel = new EventEmitter<void>();
+
+  get isEditMode(): boolean {
+    return this.termToEdit !== null;
+  }
+
+  get modalTitle(): string {
+    return this.isEditMode ? 'Edit office bearer' : 'Assign leadership';
+  }
+
+  get submitLabel(): string {
+    if (this.saving) {
+      return this.isEditMode ? 'Saving…' : 'Assigning…';
+    }
+    return this.isEditMode ? 'Save changes' : 'Assign leadership';
+  }
 
   positions: Position[] = [];
   members: OrganizationMembership[] = [];
@@ -78,11 +99,25 @@ export class AssignLeadershipModalComponent implements OnInit {
 
   ngOnInit(): void {
     const today = this.todayIsoDate();
-    this.form.patchValue({
-      position_id: this.positionId ?? '',
-      appointment_date: today,
-      effective_from: today,
-    });
+    if (this.termToEdit) {
+      this.form.patchValue({
+        position_id: this.termToEdit.position_id,
+        membership_id: this.termToEdit.membership_id,
+        appointment_date: this.termToEdit.appointment_date,
+        effective_from: this.termToEdit.effective_from,
+        effective_to: this.termToEdit.effective_to ?? '',
+        term_label: this.termToEdit.term_label ?? '',
+        appointment_reference: this.termToEdit.appointment_reference ?? '',
+        is_interim: this.termToEdit.is_interim,
+        remarks: this.termToEdit.remarks ?? '',
+      });
+    } else {
+      this.form.patchValue({
+        position_id: this.positionId ?? '',
+        appointment_date: today,
+        effective_from: today,
+      });
+    }
     this.form.setValidators((group) => this.appointmentOnOrBeforeEffective(group));
     this.form.valueChanges.subscribe(() => {
       if (this.conflictError || this.formError) {
@@ -144,10 +179,18 @@ export class AssignLeadershipModalComponent implements OnInit {
     this.saving = true;
     this.cdr.markForCheck();
 
-    this.api.assignLeadership(this.organizationId, payload).subscribe({
+    const request$ = this.isEditMode && this.termToEdit
+      ? this.api.updateLeadership(this.organizationId, this.termToEdit.id, payload)
+      : this.api.assignLeadership(this.organizationId, payload);
+
+    request$.subscribe({
       next: () => {
         this.saving = false;
-        this.assigned.emit();
+        if (this.isEditMode) {
+          this.updated.emit();
+        } else {
+          this.assigned.emit();
+        }
         this.cdr.markForCheck();
       },
       error: (error: unknown) => {

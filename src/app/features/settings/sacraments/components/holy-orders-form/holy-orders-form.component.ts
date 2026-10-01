@@ -13,6 +13,7 @@ import { SacramentFormService } from '../../services/sacrament-form.service';
 import { ParticipantSourceControlComponent } from '../shared/participant-source-control/participant-source-control.component';
 import { MinisterPickerComponent } from '../shared/minister-picker/minister-picker.component';
 import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/sacrament-review-panel.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 
 /**
  * Phase 10C — dedicated multi-step Holy Orders registration (ADR-21).
@@ -27,6 +28,7 @@ import { SacramentReviewPanelComponent } from '../shared/sacrament-review-panel/
     ParticipantSourceControlComponent,
     MinisterPickerComponent,
     SacramentReviewPanelComponent,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './holy-orders-form.component.html',
   styleUrl: './holy-orders-form.component.scss',

@@ -168,13 +168,53 @@
           </div>
         }
 
-        <div class="cf-split-field">
-          <label for="mass-intention-date">
-            Scheduled day <span class="cf-split-req" aria-hidden="true">*</span>
-          </label>
-          <input id="mass-intention-date" type="date" formControlName="requested_date" aria-required="true" />
-          <p class="cf-split-field__hint">The calendar day this intention is offered at Mass.</p>
-        </div>
+        @if (recordId && loadedMassCelebration() && !needsAMass()) {
+          <div class="cf-split-field cf-split-field--full">
+            <span class="cf-split-field__label">Mass</span>
+            <p class="mass-intention-modal-form__mass-parent">{{ currentMassLabel() }}</p>
+            @if (canMoveFromEdit()) {
+              <button type="button" class="cf-btn cf-btn--sm" (click)="requestMoveFromEdit()">Move to another Mass</button>
+            }
+          </div>
+        } @else {
+          <div class="cf-split-field cf-split-field--full">
+            <label for="mass-intention-celebration">
+              Mass <span class="cf-split-req" aria-hidden="true">*</span>
+            </label>
+            @if (!isMassLocked()) {
+              <div class="mass-intention-modal-form__mass-tools">
+                <button type="button" class="cf-btn cf-btn--sm" (click)="onMassRangeChange(0)">Today</button>
+                <button type="button" class="cf-btn cf-btn--sm" (click)="onMassRangeChange(7)">Next 7 days</button>
+                <button type="button" class="cf-btn cf-btn--sm" (click)="onMassRangeChange(14)">Next 14 days</button>
+                <button type="button" class="cf-btn cf-btn--sm" (click)="onMassRangeChange(30)">Next 30 days</button>
+                <input
+                  type="search"
+                  class="cf-control"
+                  placeholder="Search date, time, or place"
+                  [value]="massSearch()"
+                  (input)="onMassSearchInput($event)"
+                />
+              </div>
+            }
+            <select
+              id="mass-intention-celebration"
+              formControlName="celebration_id"
+              aria-required="true"
+              [attr.disabled]="isMassLocked() ? true : null"
+            >
+              <option value="" disabled>Select a scheduled Mass</option>
+              @for (mass of assignableMasses(); track mass.id) {
+                <option [value]="mass.id">{{ massLabel(mass) }}</option>
+              }
+            </select>
+            <p class="cf-split-field__hint">The Mass this intention belongs to.</p>
+            @if (canScheduleMass() && !isMassLocked()) {
+              <button type="button" class="cf-btn cf-btn--sm mass-intention-modal-form__create-mass" (click)="openCreateMass()">
+                Create Mass
+              </button>
+            }
+          </div>
+        }
 
         <div class="cf-split-field cf-split-field--full">
           <label for="mass-intention-notes">Office note <span class="cf-split-optional">optional</span></label>
@@ -232,3 +272,9 @@
     </div>
   </form>
 </app-modal-shell>
+
+<app-add-mass-modal
+  [open]="showCreateMass()"
+  (closed)="showCreateMass.set(false)"
+  (created)="onMassCreated($event)"
+/>

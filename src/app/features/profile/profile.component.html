@@ -132,13 +132,13 @@
         </div>
         <div *ngIf="user.created_at">
           <dt>Member since</dt>
-          <dd>{{ user.created_at | date: 'mediumDate' }}</dd>
+          <dd>{{ user.created_at | cfDate }}</dd>
         </div>
         <div>
           <dt>Password</dt>
           <dd *ngIf="user.force_password_change">Password change required</dd>
           <dd *ngIf="!user.force_password_change && user.password_changed_at">
-            Last changed {{ user.password_changed_at | date: 'mediumDate' }}
+            Last changed {{ user.password_changed_at | cfDate }}
           </dd>
           <dd *ngIf="!user.force_password_change && !user.password_changed_at">—</dd>
         </div>

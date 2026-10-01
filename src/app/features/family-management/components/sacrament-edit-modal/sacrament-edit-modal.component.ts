@@ -2,9 +2,16 @@ import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, OnChanges, OnDestroy, OnInit, Output, SimpleChanges, inject, ChangeDetectionStrategy } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Subject, takeUntil } from 'rxjs';
+import { take } from 'rxjs/operators';
 import { FamilyMember } from '@core/models/family.model';
 import { FamilyService } from '../../../../core/services/family.service';
 import { ModalShellComponent } from '@shared/components';
+import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
+import {
+  extractMemberApiError,
+  isMarriageDateConflictError,
+  MARRIAGE_DATE_CONFLICT_CONFIRM
+} from '../../utils/prepare-family-member-payload.util';
 
 export type SacramentFormType = 'baptism' | 'first_communion' | 'confirmation' | 'marriage';
 
@@ -66,6 +73,7 @@ export class SacramentEditModalComponent implements OnInit, OnChanges, OnDestroy
 
   private readonly fb = inject(FormBuilder);
   private readonly familyService = inject(FamilyService);
+  private readonly confirmationDialog = inject(ConfirmationDialogService);
   private readonly destroy$ = new Subject<void>();
 
   form!: FormGroup;
@@ -625,8 +633,46 @@ export class SacramentEditModalComponent implements OnInit, OnChanges, OnDestroy
       },
       error: (err) => {
         this.loading = false;
-        const message = err?.error?.message || err?.message || 'Failed to save sacramental details.';
-        this.error = message;
+        if (this.sacrament === 'marriage' && isMarriageDateConflictError(err) && !payload.acknowledge_marriage_date_conflict) {
+          this.confirmationDialog.confirm({
+            title: MARRIAGE_DATE_CONFLICT_CONFIRM.title,
+            message: MARRIAGE_DATE_CONFLICT_CONFIRM.message,
+            confirmText: MARRIAGE_DATE_CONFLICT_CONFIRM.confirmText,
+          }).pipe(take(1), takeUntil(this.destroy$)).subscribe((result) => {
+            if (result.confirmed) {
+              this.saveMarriageDateWithAck(payload);
+              return;
+            }
+            this.error = extractMemberApiError(err, 'Failed to save sacramental details.');
+          });
+          return;
+        }
+        this.error = extractMemberApiError(err, 'Failed to save sacramental details.');
+      }
+    });
+  }
+
+  private saveMarriageDateWithAck(payload: Partial<FamilyMember>): void {
+    this.loading = true;
+    this.error = null;
+    this.familyService.updateFamilyMember(this.familyId, this.member.id, {
+      ...payload,
+      acknowledge_marriage_date_conflict: true,
+    }).pipe(takeUntil(this.destroy$)).subscribe({
+      next: (response) => {
+        const mergedMember = response?.success && response?.data
+          ? response.data
+          : this.mergeMemberState(payload);
+        this.loading = false;
+        if (response.success) {
+          this.saved.emit(mergedMember);
+        } else {
+          this.error = response.message || 'Failed to save sacramental details.';
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        this.error = extractMemberApiError(err, 'Failed to save sacramental details.');
       }
     });
   }

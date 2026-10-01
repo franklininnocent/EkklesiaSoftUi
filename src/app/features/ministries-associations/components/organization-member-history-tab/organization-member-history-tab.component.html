@@ -18,8 +18,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading member history…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="9"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading member history…" type="table" [rows]="5" [columns]="9"></app-loading-skeleton>
   </div>
 
   <div class="cf-inline-alert" *ngIf="loadError" role="alert">

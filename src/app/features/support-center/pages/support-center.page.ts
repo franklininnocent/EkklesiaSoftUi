@@ -22,6 +22,7 @@ import { DataTableComponent } from '@shared/components/data-table/data-table.com
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
 import { CfDateTimeFieldComponent } from '@shared/components/cf-datetime-field/cf-datetime-field.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import {
   ConfirmationModalComponent,
   ConfirmationResult,
@@ -37,6 +38,7 @@ import {
 import { SupportSessionService } from '../services/support-session.service';
 import { SupportTicketsOpsPanelComponent } from '../components/support-tickets-ops-panel/support-tickets-ops-panel.component';
 import { SupportTicketCatalogPanelComponent } from '../components/support-ticket-catalog-panel/support-ticket-catalog-panel.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import {
   SupportAccessGrant,
   SupportAccessRequest,
@@ -63,6 +65,7 @@ type PendingAction =
   selector: 'app-support-center-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
@@ -78,6 +81,7 @@ type PendingAction =
     FormFieldComponent,
     CfDateTimeFieldComponent,
     LoadingSkeletonComponent,
+    CfBrandLoaderComponent,
     ConfirmationModalComponent,
     SupportTicketsOpsPanelComponent,
     SupportTicketCatalogPanelComponent,

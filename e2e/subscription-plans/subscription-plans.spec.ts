@@ -119,7 +119,27 @@ test.describe.serial('Tenant subscription boundaries', () => {
     await page.goto('/settings/my-subscription');
     await expect(page.getByRole('heading', { name: 'Current subscription' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Compare plans' })).toBeVisible();
-    await expect(page.getByText(/Current plan|Request this plan|Request sent/).first()).toBeVisible();
+
+    const comparison = await page.request.get('/api/tenant/subscription/comparison');
+    expect(comparison.ok()).toBeTruthy();
+    const snapshot = (await comparison.json()).data as {
+      current_plan: { matched: boolean; code: string | null };
+      plans: { code: string; is_current?: boolean; primary_action?: string }[];
+    };
+    const current = snapshot.plans.find((p) => p.is_current);
+    if (current) {
+      const card = page.locator(`[data-plan="${current.code}"]`);
+      await expect(card.getByText('Your Current Plan')).toBeVisible();
+      await expect(card.getByRole('button', { name: /Ask for a quote|Request this plan/ })).toHaveCount(0);
+      expect(current.primary_action).toBe('current');
+    } else {
+      await expect(page.getByText(/Your current plan is not in this comparison|Current plan|Request this plan|Request sent/).first()).toBeVisible();
+    }
+
+    await page.reload();
+    await expect(page.getByRole('heading', { name: 'Compare plans' })).toBeVisible();
+    await page.goto('/settings/my-subscription#compare-plans');
+    await expect(page.getByRole('heading', { name: 'Compare plans' })).toBeVisible();
 
     await context.close();
   });

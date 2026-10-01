@@ -22,6 +22,7 @@ import {
 } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { ConfirmationModalComponent } from '@shared/components/confirmation-modal/confirmation-modal.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { CfFamilyPickerLabelPipe } from '@shared/pipes/cf-family-picker-label.pipe';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
@@ -85,6 +86,7 @@ const AGE_BANDS: { value: BccAgeBand; label: string }[] = [
     StatusBadgeComponent,
     ConfirmationModalComponent,
     AdvancedSearchPanelComponent,
+    CfFamilyPickerLabelPipe,
   ],
   templateUrl: './bcc-members-tab.component.html',
   styleUrl: './bcc-members-tab.component.scss',
@@ -112,6 +114,7 @@ export class BccMembersTabComponent implements OnChanges {
   people: BccPersonRow[] = [];
   page = 1;
   perPage = 15;
+  readonly pageSizeOptions = [15, 30, 50, 100];
   total = 0;
   showAssign = false;
   lookupSearch = '';
@@ -149,25 +152,48 @@ export class BccMembersTabComponent implements OnChanges {
     return !!this.search.trim() || this.activeFilterCount > 0;
   }
 
-  /** Plain-language recap of what the list is currently narrowed to. */
-  get filterSummary(): string {
-    const parts: string[] = [];
+  /** Rows already on screen, so a refresh must not replace them with the skeleton. */
+  get hasVisibleRows(): boolean {
+    return this.view === 'people' ? this.people.length > 0 : this.families.length > 0;
+  }
+
+  /** Plain-language chips for the filters currently applied to this view. */
+  get activeFilters(): Array<{ key: 'status' | 'gender' | 'age_band'; label: string; displayValue: string }> {
+    const filters: Array<{ key: 'status' | 'gender' | 'age_band'; label: string; displayValue: string }> = [];
     const statusOptions = this.view === 'people' ? PEOPLE_STATUSES : FAMILY_STATUSES;
     const status = statusOptions.find((option) => option.value === this.statusFilter);
     if (status) {
-      parts.push(status.label);
+      filters.push({
+        key: 'status',
+        label: this.view === 'people' ? 'Membership status' : 'Family status',
+        displayValue: status.label,
+      });
     }
     if (this.view === 'people') {
       const gender = GENDERS.find((option) => option.value === this.genderFilter);
       if (gender) {
-        parts.push(gender.label);
+        filters.push({ key: 'gender', label: 'Gender', displayValue: gender.label });
       }
       const band = AGE_BANDS.find((option) => option.value === this.ageBand);
       if (band) {
-        parts.push(band.label);
+        filters.push({ key: 'age_band', label: 'Life stage', displayValue: band.label });
       }
     }
-    return parts.join(' · ');
+    return filters;
+  }
+
+  removeFilter(key: 'status' | 'gender' | 'age_band'): void {
+    if (key === 'status') {
+      this.statusFilter = '';
+    } else if (key === 'gender') {
+      this.genderFilter = '';
+    } else {
+      this.ageBand = '';
+    }
+    this.buildSearchFields();
+    this.page = 1;
+    this.load();
+    this.emitQueryChange();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -416,7 +442,19 @@ export class BccMembersTabComponent implements OnChanges {
   }
 
   onPageChange(page: number): void {
+    if (page === this.page) {
+      return;
+    }
     this.page = page;
+    this.load();
+  }
+
+  onPageSizeChange(perPage: number): void {
+    if (!this.pageSizeOptions.includes(perPage) || perPage === this.perPage) {
+      return;
+    }
+    this.perPage = perPage;
+    this.page = 1;
     this.load();
   }
 

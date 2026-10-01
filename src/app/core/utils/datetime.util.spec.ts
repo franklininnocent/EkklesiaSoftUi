@@ -65,7 +65,7 @@ describe('datetime.util', () => {
 
   describe('formatDateTimeDisplay', () => {
     it('formats a readable label', () => {
-      expect(formatDateTimeDisplay('2026-09-10T10:00')).toContain('2026');
+      expect(formatDateTimeDisplay('2026-09-10T10:00')).toBe('10 Sep 2026, 10:00 AM');
     });
   });
 });

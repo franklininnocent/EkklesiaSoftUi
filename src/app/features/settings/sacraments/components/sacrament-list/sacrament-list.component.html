@@ -85,8 +85,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading sacramental records…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="7"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading sacramental records…" type="table" [rows]="5" [columns]="7"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="loaded">
@@ -146,7 +145,7 @@
                 </button>
               </td>
               <td>{{ sacrament.sacrament_type?.name || getSacramentTypeName(sacrament.sacrament_type_id) }}</td>
-              <td>{{ sacrament.date_administered | date: 'MMM d, y' }}</td>
+              <td>{{ sacrament.date_administered | cfDate }}</td>
               <td class="sacrament-list__cell--primary">
                 <span *ngIf="sacrament.minister_title">{{ sacrament.minister_title }} </span>
                 {{ sacrament.minister_name || '—' }}
@@ -352,10 +351,7 @@
     (closeRequested)="closeDetailModal()"
   >
     <div class="cf-split-form-body sacrament-detail-modal" *ngIf="loadingDetail">
-      <div class="sacrament-detail-loading">
-        <div class="sacrament-detail-loading__spinner" aria-hidden="true"></div>
-        <p>Loading sacrament details…</p>
-      </div>
+      <app-cf-brand-loader size="section" label="Loading sacrament details…" />
       <div class="cf-split-form-actions">
         <button type="button" class="cf-btn" (click)="closeDetailModal()">Close</button>
       </div>
@@ -382,7 +378,7 @@
         <div class="cf-split-grid">
           <div class="cf-split-field" *ngIf="detailSacrament.date_administered">
             <span class="sacrament-detail-label">Date</span>
-            <span class="sacrament-detail-value">{{ detailSacrament.date_administered | date: 'mediumDate' }}</span>
+            <span class="sacrament-detail-value">{{ detailSacrament.date_administered | cfDate }}</span>
           </div>
           <div class="cf-split-field" *ngIf="detailSacrament.place_administered">
             <span class="sacrament-detail-label">Place</span>
@@ -416,7 +412,7 @@
             </div>
             <div class="cf-split-field" *ngIf="detailSacrament.recipient_birth_date">
               <span class="sacrament-detail-label">Birth date</span>
-              <span class="sacrament-detail-value" data-testid="sacrament-detail-dob">{{ detailSacrament.recipient_birth_date | date: 'mediumDate' }}</span>
+              <span class="sacrament-detail-value" data-testid="sacrament-detail-dob">{{ detailSacrament.recipient_birth_date | cfDate }}</span>
             </div>
             <div class="cf-split-field" *ngIf="detailSacrament.recipient_gender">
               <span class="sacrament-detail-label">Gender</span>

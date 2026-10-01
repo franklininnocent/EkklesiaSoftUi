@@ -1,4 +1,4 @@
-<section class="coc" role="main" aria-labelledby="coc-title">
+<section class="coc" role="main" aria-label="Collection day workspace">
   <!-- Command Bar -->
   <header class="coc-command">
     <div class="coc-command__context">
@@ -45,20 +45,10 @@
             <path d="M21 3v6h-6" />
           </svg>
         </button>
-      </div>
-    </div>
-
-    <div class="coc-command__hero">
-      <div class="coc-command__copy">
-        <h1 id="coc-title" class="cf-page-title">Collection Operations Center</h1>
-        <p class="coc-command__subtitle">Real-time contribution collection and payment processing workspace</p>
-      </div>
-
-      <div class="coc-command__tools">
         <div class="coc-dropdown" [class.coc-dropdown--open]="quickActionsOpen">
           <button
             type="button"
-            class="coc-btn coc-btn--ghost"
+            class="cf-btn-icon coc-command__icon-btn"
             (click)="toggleQuickActions($event)"
             [attr.aria-expanded]="quickActionsOpen"
             aria-haspopup="menu"
@@ -76,24 +66,22 @@
         </div>
         <button
           type="button"
-          class="coc-btn coc-btn--ghost"
+          class="cf-btn-icon coc-command__icon-btn"
           (click)="exportTodayCollections()"
           [disabled]="!todayPayments.length"
           [attr.aria-label]="'Export'"
           [attr.title]="'Export'"
         >
           <app-cf-action-icon name="download" />
-          <span class="sr-only">Export</span>
         </button>
         <button
           type="button"
-          class="coc-btn coc-btn--ghost"
+          class="cf-btn-icon coc-command__icon-btn"
           routerLink="/donations/payments"
           aria-label="Exit Workspace"
           title="Exit Workspace"
         >
           <app-cf-action-icon name="log-out" />
-          <span class="sr-only">Exit Workspace</span>
         </button>
       </div>
     </div>
@@ -101,11 +89,12 @@
 
   <!-- Executive KPIs -->
   <div class="coc-kpis" role="region" aria-label="Collection metrics">
-    <ng-container *ngFor="let kpi of kpiCards">
-      <a
+    <ng-container *ngFor="let kpi of kpiCards; trackBy: trackKpiCard">
+      <button
         *ngIf="kpi.href"
+        type="button"
         class="coc-kpi coc-kpi--link"
-        [routerLink]="kpi.href"
+        (click)="navigateKpi(kpi)"
         [attr.aria-label]="'View ' + kpi.label"
       >
         <div class="coc-kpi__icon" [attr.data-tone]="kpi.tone" aria-hidden="true">
@@ -123,7 +112,7 @@
             <polyline [attr.points]="kpi.sparkline" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
-      </a>
+      </button>
       <article *ngIf="!kpi.href" class="coc-kpi">
         <div class="coc-kpi__icon" [attr.data-tone]="kpi.tone" aria-hidden="true">
           <svg viewBox="0 0 24 24" focusable="false"><path [attr.d]="kpi.iconPath" fill="currentColor"/></svg>
@@ -208,8 +197,7 @@
               (click)="selectFamily(family)"
             >
               <div>
-                <strong>{{ family.family_name }}</strong>
-                <span>{{ family.family_code }}</span>
+                <strong>{{ family | cfFamilyPickerLabel }}</strong>
               </div>
               <span class="coc-search-results__meta">{{ familyAreaLabel(family) }}</span>
             </button>
@@ -237,7 +225,7 @@
           <div class="coc-family-card__identity">
             <div class="coc-family-card__avatar" aria-hidden="true">{{ familyInitials(selectedFamily) }}</div>
             <div>
-              <h2>{{ selectedFamily.family_name }}</h2>
+              <h2>{{ selectedFamily | cfFamilyHeadName }}</h2>
               <p>{{ selectedFamily.family_code }} · {{ familyAreaLabel(selectedFamily) }}</p>
             </div>
             <span class="coc-family-card__status" [class.inactive]="selectedFamily.status !== 'active'">
@@ -419,7 +407,7 @@
           </div>
         </header>
         <div class="coc-target-stats">
-          <div><span>Target</span><strong>{{ formatCurrency(collectionTarget) }}</strong></div>
+          <div><span>Target</span><strong>{{ formatCurrency(collectionTargetValue) }}</strong></div>
           <div><span>Collected</span><strong>{{ formatCurrency(sessionTotal) }}</strong></div>
           <div><span>Remaining</span><strong>{{ formatCurrency(collectionRemaining) }}</strong></div>
         </div>
@@ -473,13 +461,14 @@
   </div>
 
   <!-- Shortcuts Drawer -->
-  <div class="coc-shortcuts-backdrop" *ngIf="shortcutsOpen" (click)="closeShortcuts()" aria-hidden="true"></div>
+  <div class="coc-shortcuts-backdrop" *ngIf="shortcutsOpen" [style.z-index]="shortcutsZIndex" (click)="closeShortcuts()" aria-hidden="true"></div>
   <aside
     class="coc-shortcuts"
     *ngIf="shortcutsOpen"
     role="dialog"
     aria-modal="true"
     aria-labelledby="coc-shortcuts-title"
+    [style.z-index]="shortcutsZIndex"
   >
     <header>
       <h2 id="coc-shortcuts-title">Keyboard Shortcuts</h2>

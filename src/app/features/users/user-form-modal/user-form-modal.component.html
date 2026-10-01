@@ -340,8 +340,11 @@
         type="submit"
         class="cf-btn cf-btn-primary"
         [disabled]="isSubmitting"
+        [attr.aria-busy]="isSubmitting"
       >
-        {{ isSubmitting ? 'Saving…' : (isEditMode ? 'Save changes' : 'Create') }}
+        <app-cf-busy-label [busy]="isSubmitting" busyLabel="Saving">
+          {{ isEditMode ? 'Save changes' : 'Create' }}
+        </app-cf-busy-label>
       </button>
       <button
         type="button"

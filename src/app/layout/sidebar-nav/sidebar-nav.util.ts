@@ -74,10 +74,8 @@ export function nodeMatchesUrl(node: SidebarNavNode, url: string): boolean {
     return false;
   }
 
-  const { path, query } = parseNavigationUrl(url);
-  const routePath = node.route.split('?')[0];
-
-  if (!pathMatches(path, routePath, node.exact ?? false)) {
+  const { path } = parseNavigationUrl(url);
+  if (matchedRouteLength(node, path) === 0) {
     return false;
   }
 
@@ -88,6 +86,27 @@ export function nodeMatchesUrl(node: SidebarNavNode, url: string): boolean {
   return queryMatchScore(node, url) > 0;
 }
 
+/** Longest path on this node that matches `path` (link route or section prefix). */
+export function matchedRouteLength(node: SidebarNavNode, path: string): number {
+  let length = 0;
+
+  if (node.route) {
+    const routePath = node.route.split('?')[0];
+    if (pathMatches(path, routePath, node.exact ?? false)) {
+      length = routePath.length;
+    }
+  }
+
+  if (node.activePath) {
+    const activePath = node.activePath.split('?')[0];
+    if (pathMatches(path, activePath, false)) {
+      length = Math.max(length, activePath.length);
+    }
+  }
+
+  return length;
+}
+
 export function isCrossLink(node: SidebarNavNode): boolean {
   return node.crossLink === true || node.excludeFromAutoExpand === true;
 }
@@ -96,6 +115,7 @@ interface MatchCandidate {
   nodeId: string;
   routeLength: number;
   queryScore: number;
+  exact: boolean;
   crossLink: boolean;
   ancestorIds: string[];
 }
@@ -111,8 +131,9 @@ export function resolveNavActivation(roots: SidebarNavNode[], url: string): NavA
     if (node.route && nodeMatchesUrl(node, url)) {
       candidates.push({
         nodeId: node.id,
-        routeLength: node.route.split('?')[0].length,
+        routeLength: matchedRouteLength(node, parseNavigationUrl(url).path),
         queryScore: queryMatchScore(node, url),
+        exact: node.exact === true,
         crossLink: isCrossLink(node),
         ancestorIds: [...ancestors],
       });
@@ -136,7 +157,13 @@ export function resolveNavActivation(roots: SidebarNavNode[], url: string): NavA
     if (candidate.routeLength !== best.routeLength) {
       return candidate.routeLength > best.routeLength ? candidate : best;
     }
-    return candidate.queryScore > best.queryScore ? candidate : best;
+    if (candidate.queryScore !== best.queryScore) {
+      return candidate.queryScore > best.queryScore ? candidate : best;
+    }
+    if (candidate.exact !== best.exact) {
+      return candidate.exact ? candidate : best;
+    }
+    return best;
   });
 
   return {

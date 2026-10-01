@@ -1,0 +1,360 @@
+<section class="mass-schedule-page cf-page mass-schedule-page--compact">
+  <app-page-header
+    class="mass-schedule-page__header"
+    [title]="isTemporary() ? 'Temporary Mass schedule' : 'Regular Mass schedule'"
+    [titleLevel]="3"
+    [subtitle]="
+      isTemporary()
+        ? 'Replace the regular schedule for chosen dates. Preview before saving.'
+        : 'Weekly Mass times. Preview before saving.'
+    "
+    [backLink]="isTemporary() ? ['/mass-intentions/masses/temporaries'] : ['/mass-intentions/masses']"
+    [backLabel]="isTemporary() ? 'Temporary schedules' : 'Masses'"
+  >
+    @if (!loading() && !loadError()) {
+      <app-list-toolbar
+        class="mass-schedule-page__filters-trigger"
+        [showSearch]="false"
+        [filterCount]="defaultsDrawerFilterCount()"
+        (filtersOpened)="openDefaultsPanel()"
+      />
+    }
+    <a routerLink="/mass-intentions/masses/temporaries" class="cf-btn cf-btn-ghost cf-btn--sm">Temporary schedules</a>
+    @if (isTemporary() && scheduleStatus() === 'active') {
+      <button type="button" class="cf-btn cf-btn-ghost cf-btn--sm" (click)="inactivateTemporary()" [disabled]="lifecycleBusy()">
+        Inactivate
+      </button>
+    }
+    @if (isTemporary() && scheduleStatus() === 'inactive') {
+      <button type="button" class="cf-btn cf-btn-ghost cf-btn--sm" (click)="archiveTemporary()" [disabled]="lifecycleBusy()">
+        Archive
+      </button>
+    }
+  </app-page-header>
+
+  @if (loading()) {
+    <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <app-loading-skeleton label="Loading schedule…" type="table" [rows]="4" [columns]="3" />
+    </div>
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="isTemporary() && scheduleId() ? reloadTemporary(scheduleId()!) : reloadRegular()">
+        Try again
+      </button>
+    </div>
+  } @else {
+    @if (getActiveDefaultsFilters().length) {
+      <div class="mass-schedule-page__chips" role="region" aria-label="Parish defaults">
+        <span class="cf-meta">Parish defaults</span>
+        <div class="mass-schedule-page__chip-list">
+          @for (filter of getActiveDefaultsFilters(); track filter.key) {
+            <span class="cf-badge cf-badge--info">
+              {{ filter.label }}: {{ filter.displayValue }}
+              <button
+                type="button"
+                class="mass-schedule-page__chip-remove"
+                (click)="removeDefaultsFilter(filter)"
+                [attr.aria-label]="'Remove: ' + filter.label"
+              >
+                ×
+              </button>
+            </span>
+          }
+        </div>
+        <button type="button" class="cf-btn cf-btn--sm" (click)="clearAllDefaultsFilters()">Reset</button>
+      </div>
+    }
+
+    @if (generationAttention() || generationFailed() || generationOk()) {
+    <div class="mass-schedule-page__setup cf-panel">
+      @if (generationAttention(); as attention) {
+        <div
+          class="mass-schedule-page__generation cf-inline-alert mass-schedule-page__generation--attention"
+          role="status"
+          aria-live="polite"
+        >
+          <dl class="mass-schedule-page__generation-facts">
+            <div class="mass-schedule-page__generation-fact">
+              <dt>Generated through</dt>
+              <dd>
+                <time [attr.datetime]="attention.generatedThrough">{{ attention.generatedThrough }}</time>
+              </dd>
+            </div>
+            <div class="mass-schedule-page__generation-fact">
+              <dt>Should reach</dt>
+              <dd>
+                <time [attr.datetime]="attention.requiredThrough">{{ attention.requiredThrough }}</time>
+              </dd>
+            </div>
+          </dl>
+          <button
+            type="button"
+            class="cf-btn cf-btn-primary cf-btn--sm"
+            (click)="retryGeneration()"
+            [disabled]="generationRetrying()"
+          >
+            {{ generationRetrying() ? 'Retrying…' : 'Try again' }}
+          </button>
+        </div>
+      } @else if (generationFailed(); as failed) {
+        <div
+          class="mass-schedule-page__generation cf-inline-alert mass-schedule-page__generation--attention"
+          role="alert"
+        >
+          <p class="mass-schedule-page__generation-message">{{ failed.message }}</p>
+          <button
+            type="button"
+            class="cf-btn cf-btn-primary cf-btn--sm"
+            (click)="retryGeneration()"
+            [disabled]="generationRetrying()"
+          >
+            {{ generationRetrying() ? 'Retrying…' : 'Try again' }}
+          </button>
+        </div>
+      } @else if (generationOk(); as ok) {
+        <p class="mass-schedule-page__generation-ok cf-meta" role="status">
+          Masses generated through <time [attr.datetime]="ok.generatedThrough">{{ ok.generatedThrough }}</time>.
+        </p>
+      }
+    </div>
+    }
+
+    <div class="mass-schedule-page__grid">
+      @for (day of weekdays; track day.weekday) {
+        <section class="mass-schedule-page__day cf-panel" [attr.aria-labelledby]="'day-' + day.weekday">
+          <div class="mass-schedule-page__day-head">
+            <h2 class="mass-schedule-page__section-title" [id]="'day-' + day.weekday">{{ day.label }}</h2>
+            <div class="mass-schedule-page__day-actions">
+              <button type="button" class="cf-btn cf-btn--sm cf-btn-ghost" (click)="copyFromPreviousDay(day.weekday)">
+                Copy from {{ previousDayLabel(day.weekday) }}
+              </button>
+              <button type="button" class="cf-btn cf-btn--sm" (click)="addSlot(day.weekday)">Add time</button>
+            </div>
+          </div>
+          @if (slotsForDay(day.weekday).length === 0) {
+            <p class="cf-meta">No Masses this day.</p>
+          } @else {
+            <ul class="mass-schedule-page__slot-list">
+              @for (slot of slotsForDay(day.weekday); track $index; let i = $index) {
+                <li class="mass-schedule-page__slot">
+                  <div class="mass-schedule-page__slot-row">
+                    <label class="cf-meta">Time</label>
+                    <input
+                      type="time"
+                      [(ngModel)]="slot.celebrated_at"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onSlotChange()"
+                    />
+                    <button
+                      type="button"
+                      class="cf-btn cf-btn-ghost cf-btn--sm"
+                      (click)="removeSlot(day.weekday, i)"
+                      [attr.aria-label]="'Remove ' + day.label + ' Mass time'"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                  <div class="mass-schedule-page__slot-row">
+                    <label class="cf-meta">Place</label>
+                    <select
+                      [(ngModel)]="slot.place_source"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onSlotChange()"
+                    >
+                      <option value="inherit">Inherit default</option>
+                      <option value="override">Override</option>
+                      <option value="unset">No place</option>
+                    </select>
+                    @if (slot.place_source === 'override') {
+                      <input
+                        type="text"
+                        [(ngModel)]="slot.place"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="onSlotChange()"
+                        placeholder="Place"
+                      />
+                    }
+                  </div>
+                  <div class="mass-schedule-page__slot-row">
+                    <label class="cf-meta">Priest</label>
+                    <select
+                      [(ngModel)]="slot.celebrant_source"
+                      [ngModelOptions]="{ standalone: true }"
+                      (ngModelChange)="onSlotChange()"
+                    >
+                      <option value="inherit">Inherit default</option>
+                      <option value="override">Override</option>
+                      <option value="unset">No priest</option>
+                    </select>
+                    @if (slot.celebrant_source === 'override') {
+                      <input
+                        type="text"
+                        [(ngModel)]="slot.celebrant_name"
+                        [ngModelOptions]="{ standalone: true }"
+                        (ngModelChange)="onSlotChange()"
+                        placeholder="Priest"
+                      />
+                    }
+                  </div>
+                  @if (!isTemporary()) {
+                    <details class="mass-schedule-page__wom">
+                      <summary class="cf-meta">Weeks of month (optional)</summary>
+                      <p class="cf-meta">Leave empty for every week. Example: 2nd and 4th Sunday evenings only.</p>
+                      <div class="mass-schedule-page__wom-options">
+                        @for (wom of weekOfMonthOptions; track wom.value) {
+                          <label>
+                            <input
+                              type="checkbox"
+                              [checked]="weekOfMonthSelected(slot, wom.value)"
+                              (change)="toggleWeekOfMonth(day.weekday, i, wom.value, $any($event.target).checked)"
+                            />
+                            {{ wom.label }}
+                          </label>
+                        }
+                      </div>
+                    </details>
+                  }
+                </li>
+              }
+            </ul>
+          }
+        </section>
+      }
+    </div>
+
+    <div class="mass-schedule-page__preview-history">
+      <aside class="mass-schedule-page__preview cf-panel" aria-live="polite">
+      <h2 class="mass-schedule-page__section-title">Preview</h2>
+      @if (dirty()) {
+        <p class="cf-meta">You have unsaved changes.</p>
+      }
+      @if (previewError()) {
+        <p class="cf-inline-alert" role="alert">{{ previewError() }}</p>
+      }
+      @if (applyError()) {
+        <div class="cf-inline-alert" role="alert">
+          <p>{{ applyError() }}</p>
+          @if (stalePreview()) {
+            <button type="button" class="cf-btn cf-btn--sm" (click)="runPreview()">Preview again</button>
+          }
+        </div>
+      }
+      @if (previewCounts(); as counts) {
+        <ul class="mass-schedule-page__counts">
+          <li>{{ counts['create'] ?? 0 }} to add</li>
+          <li>{{ counts['update'] ?? 0 }} to update</li>
+          <li>{{ counts['suppress'] ?? 0 }} removed from schedule</li>
+          @if ((counts['conflict'] ?? 0) > 0) {
+            <li class="mass-schedule-page__conflict">
+              {{ counts['conflict'] }} need attention (intentions on those Masses)
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="cf-meta">Preview shows what will change before you save.</p>
+      }
+      @if (previewConflicts().length) {
+        <section class="mass-schedule-page__conflicts" aria-labelledby="schedule-conflicts-heading">
+          <h3 id="schedule-conflicts-heading" class="mass-schedule-page__section-title">Masses that need attention</h3>
+          <p class="cf-meta">
+            These Masses will not change automatically. Open a Mass to reassign intentions, or keep it on the calendar as-is.
+          </p>
+          <ul class="mass-schedule-page__conflict-list">
+            @for (row of previewConflicts(); track row.celebration_id) {
+              <li class="mass-schedule-page__conflict-row">
+                <span class="mass-schedule-page__conflict-label">{{ conflictLabel(row) }}</span>
+                <a [routerLink]="['/mass-intentions/masses', row.celebration_id]" class="cf-btn cf-btn-ghost cf-btn--sm">
+                  Open Mass
+                </a>
+                @if (
+                  row.reason_code !== 'move_unsaid_only' &&
+                  (row.reason_code === 'update_blocked' || row.reason_code === 'apply_or_move') &&
+                  row.proposed?.celebrated_at
+                ) {
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm cf-btn-primary"
+                    (click)="applyConflictProposal(row)"
+                    [disabled]="applyingProposalId() === row.celebration_id"
+                  >
+                    {{ applyingProposalId() === row.celebration_id ? 'Applying…' : 'Apply new time on this Mass' }}
+                  </button>
+                }
+                @if (
+                  (row.reason_code === 'suppress_blocked' || row.reason_code === 'move_then_remove') &&
+                  row.intention_count === 0
+                ) {
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm cf-btn-primary"
+                    (click)="markScheduleChangedFromConflict(row)"
+                    [disabled]="markingScheduleChangedId() === row.celebration_id"
+                  >
+                    {{ markingScheduleChangedId() === row.celebration_id ? 'Updating…' : 'Mark schedule changed' }}
+                  </button>
+                }
+                @if (row.reason_code !== 'move_unsaid_only') {
+                  <button
+                    type="button"
+                    class="cf-btn cf-btn--sm"
+                    (click)="keepConflictMass(row.celebration_id)"
+                    [disabled]="keepingConflictId() === row.celebration_id"
+                  >
+                    {{ keepingConflictId() === row.celebration_id ? 'Keeping…' : 'Keep this Mass' }}
+                  </button>
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
+      <div class="mass-schedule-page__actions">
+        <button type="button" class="cf-btn" (click)="runPreview()" [disabled]="previewing() || saving()">
+          {{ previewing() ? 'Previewing…' : 'Preview changes' }}
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-primary"
+          (click)="saveWeeklySchedule()"
+          [disabled]="saving() || previewing()"
+        >
+          {{ saving() ? 'Saving…' : isTemporary() ? 'Save temporary schedule' : 'Save weekly schedule' }}
+        </button>
+        @if (!previewFingerprint() && !previewing() && !saving()) {
+          <p class="cf-meta">Save will preview your changes first, then apply them.</p>
+        }
+      </div>
+      </aside>
+
+      @if (revisionHistory().length) {
+        <section class="cf-panel mass-schedule-page__history" aria-labelledby="schedule-history-heading">
+          <h2 id="schedule-history-heading" class="mass-schedule-page__section-title">Schedule history</h2>
+          <ul class="mass-schedule-page__history-list">
+            @for (rev of revisionHistory(); track rev.revision_number) {
+              <li class="cf-meta">
+                Revision {{ rev.revision_number }} · {{ rev.status }}
+                @if (rev.effective_from) {
+                  · from {{ rev.effective_from }}
+                }
+                @if (rev.effective_to) {
+                  · through {{ rev.effective_to }}
+                }
+              </li>
+            }
+          </ul>
+        </section>
+      }
+    </div>
+
+    <app-advanced-search-panel
+      mode="sidepanel"
+      [fields]="defaultsSearchFields"
+      [isExpanded]="showDefaultsPanel()"
+      (search)="onDefaultsPanelApply($event)"
+      (clear)="onDefaultsPanelClear()"
+      (close)="showDefaultsPanel.set(false)"
+    />
+  }
+</section>

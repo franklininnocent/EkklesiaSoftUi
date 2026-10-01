@@ -29,6 +29,11 @@
           <app-cf-action-icon name="print" />
         </button>
       }
+      @if (canSchedule() && selectedIds().size > 0) {
+        <button type="button" class="cf-btn" (click)="openMoveSelected()">
+          Move selected ({{ selectedIds().size }})
+        </button>
+      }
       @if (canCreate()) {
         <button
           type="button"
@@ -84,8 +89,7 @@
 
   @if (loading() && !loaded()) {
     <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-      <p class="cf-loading-block__label">Loading intentions…</p>
-      <app-loading-skeleton type="table" [rows]="6" [columns]="6" />
+      <app-loading-skeleton label="Loading intentions…" type="table" [rows]="6" [columns]="6" />
     </div>
   } @else if (loadError()) {
     <div class="cf-inline-alert cf-panel" role="alert">
@@ -113,13 +117,18 @@
       <app-data-table [clickableRows]="true" [ariaBusy]="loading()">
         <thead>
           <tr>
+            @if (canSchedule()) {
+              <th scope="col" class="mass-intentions-list__select-col">
+                <span class="cf-visually-hidden">Select</span>
+              </th>
+            }
             <th
               scope="col"
               class="mass-intentions-list__sortable"
               [attr.aria-sort]="sortAriaSort('requested_date')"
               (click)="sortBy('requested_date')"
             >
-              Scheduled day <span aria-hidden="true">{{ sortIcon('requested_date') }}</span>
+              Mass <span aria-hidden="true">{{ sortIcon('requested_date') }}</span>
             </th>
             <th
               scope="col"
@@ -164,6 +173,18 @@
                 (keydown.enter)="openView(row.id)"
                 [attr.aria-label]="'View intention for ' + row.beneficiary_name"
               >
+                @if (canSchedule()) {
+                  <td class="mass-intentions-list__select-col" (click)="$event.stopPropagation()">
+                    @if (canMoveRow(row)) {
+                      <input
+                        type="checkbox"
+                        [checked]="isSelected(row.id)"
+                        (change)="toggleSelect(row.id, $any($event.target).checked)"
+                        [attr.aria-label]="'Select intention for ' + row.beneficiary_name"
+                      />
+                    }
+                  </td>
+                }
                 <td class="mass-intentions-list__day">
                   <time [attr.datetime]="row.requested_date || undefined">{{ scheduledDay(row) }}</time>
                 </td>
@@ -195,33 +216,24 @@
                   </span>
                 </td>
                 <td class="mass-intentions-list__status">
-                  <div class="mass-intentions-list__status-inner" [attr.title]="statusLabel(row)">
-                    @if (row.status === 'open') {
-                      <span class="mass-intentions-list__status-icon" aria-hidden="true">
-                        <app-cf-action-icon name="book-open" />
-                      </span>
-                    } @else if (row.status === 'closed') {
-                      <span class="mass-intentions-list__status-icon" aria-hidden="true">
-                        <app-cf-action-icon name="check" />
-                      </span>
-                    }
-                    <app-status-badge [label]="statusLabel(row)" [tone]="statusTone(row)" />
-                  </div>
+                  <app-status-badge [label]="statusLabel(row)" [tone]="statusTone(row)" />
                 </td>
                 <td
                   class="cf-table__actions-col cf-table__actions-cell mass-intentions-list__actions"
                   (click)="$event.stopPropagation()"
                 >
                   <div class="cf-row-actions">
-                    <button
-                      type="button"
-                      class="cf-btn cf-btn-icon cf-btn--sm"
-                      (click)="openView(row.id)"
-                      aria-label="View"
-                      title="View"
-                    >
-                      <app-cf-action-icon name="eye" />
-                    </button>
+                    @if (canMoveRow(row)) {
+                      <button
+                        type="button"
+                        class="cf-btn cf-btn-icon cf-btn--sm"
+                        (click)="openMoveOne(row)"
+                        aria-label="Move to another Mass"
+                        title="Move to another Mass"
+                      >
+                        <app-cf-action-icon name="arrow-right" />
+                      </button>
+                    }
                     @if (row.status === 'open' && canCreate()) {
                       <button
                         type="button"
@@ -260,6 +272,16 @@
     [recordId]="editId()"
     (closed)="closeFormModal()"
     (saved)="onSaved()"
+    (moveRequested)="onMoveFromView($event)"
+  />
+
+  <app-move-mass-intention-modal
+    [open]="showMoveModal()"
+    [intentionIds]="moveIntentionIds()"
+    [fromMassLabel]="moveFromMassLabel()"
+    [excludeCelebrationId]="moveExcludeCelebrationId()"
+    (closed)="closeMoveModal()"
+    (moved)="onMoved()"
   />
 
   <app-mass-intention-view-modal
@@ -267,6 +289,7 @@
     [requestId]="viewId()"
     (closed)="closeViewModal()"
     (editRequested)="onEditFromView($event)"
+    (moveRequested)="onMoveFromView($event)"
     (recordClosed)="reload()"
   />
 

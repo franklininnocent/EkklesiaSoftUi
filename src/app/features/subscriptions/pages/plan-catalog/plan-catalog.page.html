@@ -14,8 +14,7 @@
   </div>
 
   <div *ngIf="loading && plans.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-loading-block__label">Loading plans…</p>
-    <app-loading-skeleton type="card" [rows]="3"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading plans…" type="card" [rows]="3"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">

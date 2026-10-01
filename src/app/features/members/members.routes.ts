@@ -4,7 +4,16 @@ import { MemberListComponent } from './components/member-list/member-list.compon
 export const MEMBERS_ROUTES: Routes = [
   {
     path: '',
-    component: MemberListComponent
-  }
+    pathMatch: 'full',
+    redirectTo: 'list',
+  },
+  {
+    path: 'list',
+    component: MemberListComponent,
+  },
+  {
+    path: 'celebrations',
+    loadComponent: () =>
+      import('./pages/member-celebrations.page').then((m) => m.MemberCelebrationsPageComponent),
+  },
 ];
-

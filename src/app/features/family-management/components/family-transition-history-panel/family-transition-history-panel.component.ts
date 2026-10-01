@@ -11,11 +11,13 @@ import {
 } from '@angular/core';
 import { FamilyService } from '@core/services/family.service';
 import { FamilyTransitionHistoryRecord } from '@core/models/family.model';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 
 @Component({
   selector: 'app-family-transition-history-panel',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CfBrandLoaderComponent],
   templateUrl: './family-transition-history-panel.component.html',
   styleUrl: './family-transition-history-panel.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -76,7 +78,7 @@ export class FamilyTransitionHistoryPanelComponent implements OnInit, OnChanges 
     const date = new Date(value);
     return Number.isNaN(date.getTime())
       ? value
-      : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+      : cfFormatDate(date) || value;
   }
 
   private loadHistory(): void {

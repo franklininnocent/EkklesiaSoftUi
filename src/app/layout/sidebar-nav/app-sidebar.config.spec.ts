@@ -52,6 +52,32 @@ describe('app-sidebar.config', () => {
     ]);
   });
 
+  it('exposes Families dashboard, family list, and member links under the parish menu', () => {
+    const sections = buildAppSidebarSections();
+    const parish = sections.find((section) => section.id === 'parish');
+    const families = parish?.items.find((item) => item.id === 'families');
+
+    expect(parish?.items.some((item) => item.id === 'members')).toBe(false);
+    expect(families?.route).toBe('/families');
+    expect(families?.menuId).toBe('families');
+    expect(families?.children?.map((child) => ({ id: child.id, route: child.route, menuId: child.menuId, exact: child.exact }))).toEqual([
+      { id: 'families-dashboard', route: '/families', menuId: undefined, exact: true },
+      { id: 'families-list', route: '/families/list', menuId: undefined, exact: undefined },
+      { id: 'members', route: '/members/list', menuId: 'members', exact: undefined },
+      { id: 'member-birthdays', route: '/members/celebrations', menuId: 'members', exact: true },
+      { id: 'member-anniversaries', route: '/members/celebrations', menuId: 'members', exact: true },
+    ]);
+  });
+
+  it('hides the Members submenu without removing Families or Dashboard', () => {
+    const sections = filterSidebarSections(buildAppSidebarSections(), (menuId) => menuId !== 'members');
+    const parish = sections.find((section) => section.id === 'parish');
+    const families = parish?.items.find((item) => item.id === 'families');
+
+    expect(families?.route).toBe('/families');
+    expect(families?.children?.map((child) => child.id)).toEqual(['families-dashboard', 'families-list']);
+  });
+
   it('filters items by menu visibility', () => {
     const sections = filterSidebarSections(buildAppSidebarSections(), (menuId) => menuId !== 'tenants');
     const platform = sections.find((section) => section.id === 'platform');

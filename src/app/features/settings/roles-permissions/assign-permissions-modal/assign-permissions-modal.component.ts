@@ -12,6 +12,8 @@ import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
+import { CfLoadingContainerComponent } from '@shared/components/cf-loading-container/cf-loading-container.component';
 import { filter, take } from 'rxjs/operators';
 
 interface PermissionGroup {
@@ -34,7 +36,9 @@ type AssignmentFilter = '' | 'all' | 'assigned' | 'not_assigned';
     ModalShellComponent,
     ListToolbarComponent,
     AdvancedSearchPanelComponent,
-    CfEmptyStateComponent
+    CfEmptyStateComponent,
+    CfBrandLoaderComponent,
+    CfLoadingContainerComponent,
   ],
   templateUrl: './assign-permissions-modal.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,

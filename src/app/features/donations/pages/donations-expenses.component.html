@@ -1,4 +1,4 @@
-<section class="cf-page donations-expenses">
+<section class="cf-page cf-financial-dashboard donations-expenses">
   <app-page-header
     title="Parish Disbursements"
     [titleLevel]="3"
@@ -6,8 +6,8 @@
     <a
       routerLink="/donations"
       class="cf-btn cf-btn-icon"
-      aria-label="Back to Command Center"
-      title="Back to Command Center"
+      aria-label="Back to Overview"
+      title="Back to Overview"
     >
       <app-cf-action-icon name="arrow-left" />
     </a>
@@ -74,26 +74,51 @@
     </form>
   </app-modal-shell>
 
-  <p *ngIf="loading" class="donations-expenses__status">Loading disbursements…</p>
-  <p *ngIf="error" class="donations-expenses__error" role="alert">{{ error }}</p>
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <app-loading-skeleton label="Loading disbursements…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+  </div>
 
-  <section class="cf-panel" *ngIf="!loading && !error">
-    <table class="donations-expenses__table" *ngIf="expenses.length; else emptyState">
+  <div class="cf-inline-alert cf-panel" *ngIf="!loading && error" role="alert">
+    <p>{{ error }}</p>
+  </div>
+
+  <app-stewardship-table-panel
+    *ngIf="!loading && !error && expenses.length"
+    title="Disbursement register"
+    [meta]="expenses.length + ' record' + (expenses.length === 1 ? '' : 's')"
+  >
+    <app-data-table>
       <thead>
-        <tr><th>Date</th><th>Category</th><th>Payee</th><th>Method</th><th>Amount</th></tr>
+        <tr>
+          <th scope="col">Date</th>
+          <th scope="col">Category</th>
+          <th scope="col">Payee</th>
+          <th scope="col">Method</th>
+          <th scope="col" class="cf-table__num">Amount</th>
+        </tr>
       </thead>
       <tbody>
         <tr *ngFor="let row of expenses">
-          <td>{{ row.expense_date | date:'mediumDate' }}</td>
+          <td>{{ row.expense_date | cfDate }}</td>
           <td>{{ row.category }}</td>
           <td>{{ row.payee || '—' }}</td>
           <td>{{ row.method }}</td>
-          <td>{{ row.amount | cfCurrency }}</td>
+          <td class="cf-table__num">{{ row.amount | cfCurrency }}</td>
         </tr>
       </tbody>
-    </table>
-    <ng-template #emptyState>
-      <p class="donations-expenses__empty">No disbursements recorded yet. Use Record Disbursement to log parish expenses.</p>
-    </ng-template>
-  </section>
+    </app-data-table>
+  </app-stewardship-table-panel>
+
+  <app-cf-empty-state
+    *ngIf="!loading && !error && !expenses.length"
+    icon="wallet"
+    title="No disbursements recorded yet"
+    description="Use Record Disbursement to log parish expenses."
+  ></app-cf-empty-state>
 </section>

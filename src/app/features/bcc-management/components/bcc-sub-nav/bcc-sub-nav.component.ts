@@ -15,7 +15,6 @@ export class BccSubNavComponent {
 
   private buildTabs(): TabStripItem[] {
     const items: TabStripItem[] = [
-      { id: 'dashboard', label: 'Dashboard', routerLink: '/bccs', exact: true },
       { id: 'list', label: 'BCC List', routerLink: '/bccs/list' },
     ];
 

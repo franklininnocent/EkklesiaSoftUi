@@ -10,6 +10,12 @@ import {
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { AddMassModalComponent } from '../components/add-mass-modal.component';
 import { AssignIntentionsModalComponent } from '../components/assign-intentions-modal.component';
+import { MassIntentionFormModalComponent } from '../components/mass-intention-form-modal.component';
+import {
+  canCreateMassIntention,
+  canFulfilMasses,
+  canScheduleMasses,
+} from '../utils/mass-intentions-auth.util';
 import { formatMassDayTime } from '../utils/mass-celebration-display';
 import {
   CancelMassModalComponent,
@@ -32,6 +38,7 @@ import {
     CancelMassModalComponent,
     AssignIntentionsModalComponent,
     AddMassModalComponent,
+    MassIntentionFormModalComponent,
   ],
   template: `
     <div class="cf-page">
@@ -42,6 +49,9 @@ import {
           [backLink]="['/mass-intentions/masses']"
           backLabel="Masses"
         >
+          @if (canCreate() && ws.celebration.status === 'scheduled') {
+            <button type="button" class="cf-btn cf-btn-primary" (click)="showAddIntention.set(true)">Add intention</button>
+          }
           @if (canSchedule() && ws.celebration.status === 'scheduled') {
             <button type="button" class="cf-btn cf-btn-ghost" (click)="showEditMass.set(true)">Edit Mass</button>
             <button type="button" class="cf-btn cf-btn-ghost" (click)="showAssign.set(true)">Put on this Mass</button>
@@ -106,6 +116,13 @@ import {
         <p>Loading…</p>
       }
 
+      <app-mass-intention-form-modal
+        [open]="showAddIntention()"
+        [presetCelebrationId]="celebrationId"
+        (closed)="showAddIntention.set(false)"
+        (saved)="onIntentionAdded()"
+      />
+
       <app-add-mass-modal
         [open]="showEditMass()"
         [celebration]="workspace()?.celebration ?? null"
@@ -124,7 +141,7 @@ import {
       <app-confirmation-modal
         [show]="showCancelReason()"
         title="Cancel this Mass"
-        message="Intentions are not deleted — you can move them to another Mass or leave them not scheduled."
+        message="Every unsaid intention must be moved to another Mass before this Mass can be cancelled."
         confirmText="Cancel this Mass"
         confirmButtonClass="btn-danger"
         [showDescriptionInput]="true"
@@ -142,6 +159,13 @@ import {
         [otherCelebrations]="otherCelebrations()"
         (closed)="closeCancelReassign()"
         (confirmed)="onCancelMass($event)"
+        (addMassRequested)="openAddMassForCancel()"
+      />
+
+      <app-add-mass-modal
+        [open]="showAddMassForCancel()"
+        (closed)="showAddMassForCancel.set(false)"
+        (created)="onAddMassForCancelCreated()"
       />
 
       <app-confirmation-modal
@@ -214,9 +238,11 @@ export class MassCelebrationDetailPageComponent implements OnInit {
   readonly selected = signal(new Set<string>());
   readonly celebrantOverrides = signal<Record<string, string>>({});
   readonly showEditMass = signal(false);
+  readonly showAddIntention = signal(false);
   readonly showAssign = signal(false);
   readonly showCancelReason = signal(false);
   readonly showCancelReassign = signal(false);
+  readonly showAddMassForCancel = signal(false);
   readonly cancelReason = signal('');
   readonly otherCelebrations = signal<MassCelebrationSummary[]>([]);
   readonly showUndo = signal(false);
@@ -230,11 +256,21 @@ export class MassCelebrationDetailPageComponent implements OnInit {
   }
 
   canFulfil(): boolean {
-    return this.auth.hasPermission('mass.intentions.fulfil');
+    return canFulfilMasses(this.auth);
   }
 
   canSchedule(): boolean {
-    return this.auth.hasPermission('mass.intentions.schedule');
+    return canScheduleMasses(this.auth);
+  }
+
+  canCreate(): boolean {
+    return canCreateMassIntention(this.auth);
+  }
+
+  onIntentionAdded(): void {
+    this.showAddIntention.set(false);
+    this.toast.success('Intention added to this Mass.');
+    this.reload();
   }
 
   dayTime(celebration: MassCelebrationSummary): string {
@@ -304,10 +340,33 @@ export class MassCelebrationDetailPageComponent implements OnInit {
   }
 
   openCancel(): void {
-    this.api.listCelebrations({ status: 'scheduled', per_page: 100 }).subscribe({
+    this.loadOtherCelebrationsForCancel(() => {
+      this.showCancelReason.set(true);
+    });
+  }
+
+  openAddMassForCancel(): void {
+    this.showAddMassForCancel.set(true);
+  }
+
+  onAddMassForCancelCreated(): void {
+    this.showAddMassForCancel.set(false);
+    this.loadOtherCelebrationsForCancel();
+  }
+
+  private loadOtherCelebrationsForCancel(done?: () => void): void {
+    const from = new Date().toISOString().slice(0, 10);
+    const to = new Date();
+    to.setDate(to.getDate() + 92);
+    this.api.listCelebrations({
+      from,
+      to: to.toISOString().slice(0, 10),
+      assignable_only: 1,
+      per_page: 100,
+    }).subscribe({
       next: (res) => {
         this.otherCelebrations.set((res.data ?? []).filter((c) => c.id !== this.celebrationId));
-        this.showCancelReason.set(true);
+        done?.();
       },
     });
   }

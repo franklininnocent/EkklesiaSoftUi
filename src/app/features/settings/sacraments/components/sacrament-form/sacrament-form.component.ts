@@ -11,11 +11,12 @@ import { selectCurrentUser } from '@core/store/auth/auth.selectors';
 import { take } from 'rxjs';
 import { SacramentStatus } from '../../constants/sacrament.constants';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { CfLoadingContainerComponent } from '@shared/components/cf-loading-container/cf-loading-container.component';
 
 @Component({
   selector: 'app-sacrament-form',
   standalone: true,
-  imports: [CommonModule, FormsModule, ModalShellComponent],
+  imports: [CommonModule, FormsModule, ModalShellComponent, CfLoadingContainerComponent],
   templateUrl: './sacrament-form.component.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrl: './sacrament-form.component.scss'

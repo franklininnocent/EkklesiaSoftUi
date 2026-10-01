@@ -3,113 +3,202 @@
     <p>Activate this organization to manage leadership.</p>
   </div>
 
-  <section class="organization-leadership__section" aria-labelledby="leadership-current-heading">
-    <app-page-header variant="panel" title="Current office bearers">
-      <button
-        *ngIf="canAssign"
-        type="button"
-        class="cf-btn cf-btn-primary"
-        (click)="openAssignModal()"
+  <div class="organization-leadership__workspace">
+    <section
+      class="organization-leadership__column cf-panel"
+      aria-label="Current office bearers"
+    >
+      <app-page-header variant="panel" title="Current office bearers">
+        <ng-container *ngIf="showCurrentToolbarActions">
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="editSelected()"
+            [disabled]="!canEditSelected"
+            [attr.aria-label]="editSelectedAriaLabel"
+            [attr.title]="editSelectedAriaLabel"
+          >
+            <app-cf-action-icon name="pencil" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="handoverSelected()"
+            [disabled]="!canHandoverSelected"
+            [attr.aria-label]="handoverSelectedAriaLabel"
+            [attr.title]="handoverSelectedAriaLabel"
+          >
+            <app-cf-action-icon name="arrow-right" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="terminateSelected()"
+            [disabled]="!canTerminateSelected"
+            [attr.aria-label]="terminateSelectedAriaLabel"
+            [attr.title]="terminateSelectedAriaLabel"
+          >
+            <app-cf-action-icon name="badge-minus" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="assignFromToolbar()"
+            [disabled]="!canAssignFromToolbar"
+            [attr.aria-label]="assignSelectedAriaLabel"
+            [attr.title]="assignSelectedAriaLabel"
+          >
+            <app-cf-action-icon name="users" />
+          </button>
+        </ng-container>
+      </app-page-header>
+
+      <div
+        class="cf-loading-block"
+        *ngIf="currentLoading && !currentLoaded"
+        role="status"
+        aria-live="polite"
+        aria-busy="true"
       >
-        Assign
-      </button>
-    </app-page-header>
+        <app-loading-skeleton label="Loading current leadership…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+      </div>
 
-    <div
-      class="cf-loading-block"
-      *ngIf="currentLoading && !currentLoaded"
-      role="status"
-      aria-live="polite"
-      aria-busy="true"
-    >
-      <p class="cf-loading-block__label">Loading current leadership…</p>
-      <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
-    </div>
-
-    <div class="cf-inline-alert" *ngIf="currentError" role="alert">
-      <p>{{ currentError }}</p>
-      <button type="button" class="cf-btn cf-btn-primary" (click)="retryCurrent()">Try again</button>
-    </div>
-
-    <ng-container *ngIf="currentLoaded && !currentError">
-      <app-data-table *ngIf="currentRows.length; else emptyCurrent">
-        <thead>
-          <tr>
-            <th scope="col">Position</th>
-            <th scope="col">Member</th>
-            <th scope="col">Term</th>
-            <th scope="col">Status</th>
-            <th *ngIf="showCurrentActions" scope="col" class="cf-table__actions-col">Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let row of currentRows">
-            <ng-container *ngIf="row.type === 'filled'">
-              <td>
-                <strong>{{ positionName(row.term) }}</strong>
-                <app-status-badge *ngIf="row.term.is_interim" label="Interim" tone="info"></app-status-badge>
-              </td>
-              <td>{{ holderName(row.term) }}</td>
-              <td>{{ termRange(row.term) }}</td>
-              <td>
-                <app-status-badge [label]="statusLabel(row.term.status)" [tone]="statusTone(row.term.status)"></app-status-badge>
-              </td>
-              <td *ngIf="showCurrentActions" class="cf-table__actions-cell">
-                <app-action-bar
-                  *ngIf="row.term.status === 'active'"
-                  [actions]="currentRowActions(row.term)"
-                  size="sm"
-                  (actionClicked)="onCurrentRowAction($event, row.term)"
-                ></app-action-bar>
-              </td>
-            </ng-container>
-
-            <ng-container *ngIf="row.type === 'vacant'">
-              <td>
-                <strong>{{ row.position.name }}</strong>
-              </td>
-              <td>Vacant</td>
-              <td>—</td>
-              <td>
-                <app-status-badge label="Vacant" tone="neutral"></app-status-badge>
-              </td>
-              <td *ngIf="showCurrentActions" class="cf-table__actions-cell">
-                <button
-                  *ngIf="canAssign"
-                  type="button"
-                  class="cf-btn cf-btn-primary"
-                  (click)="openAssignModal(row.position.id)"
-                >
-                  Assign
-                </button>
-              </td>
-            </ng-container>
-          </tr>
-        </tbody>
-      </app-data-table>
-
-      <ng-template #emptyCurrent>
-        <app-cf-empty-state
-          icon="◇"
-          title="No office bearers assigned"
-          description="Assign leaders once positions are configured in Settings."
-          [hasActions]="true"
+      <div class="cf-inline-alert" *ngIf="currentError" role="alert">
+        <p>{{ currentError }}</p>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          (click)="retryCurrent()"
+          aria-label="Try again"
+          title="Try again"
         >
-          <a routerLink="/ministries/settings" class="cf-btn cf-btn-primary">Go to Settings</a>
-        </app-cf-empty-state>
-      </ng-template>
-    </ng-container>
-  </section>
+          <app-cf-action-icon name="refresh" />
+        </button>
+      </div>
 
-  <section class="organization-leadership__section">
-    <app-section-card
-      title="Leadership history"
-      [collapsible]="true"
-      [expanded]="timelineExpanded"
-      expandLabel="Show leadership history"
-      collapseLabel="Hide leadership history"
-      (expandedChange)="onTimelineToggle($event)"
+      <ng-container *ngIf="currentLoaded && !currentError">
+        <app-data-table *ngIf="currentTotalItems; else emptyCurrent">
+          <thead>
+            <tr>
+              <th
+                *ngIf="showCurrentSelectionColumn"
+                scope="col"
+                class="organization-leadership__select-col"
+              >
+                Select
+              </th>
+              <th
+                scope="col"
+                appSortable="position"
+                [direction]="currentSortBy === 'position' ? currentSortDir : null"
+                (sort)="onCurrentSort($event)"
+              >
+                Position
+              </th>
+              <th
+                scope="col"
+                appSortable="member"
+                [direction]="currentSortBy === 'member' ? currentSortDir : null"
+                (sort)="onCurrentSort($event)"
+              >
+                Member
+              </th>
+              <th
+                scope="col"
+                appSortable="term"
+                [direction]="currentSortBy === 'term' ? currentSortDir : null"
+                (sort)="onCurrentSort($event)"
+              >
+                Term
+              </th>
+              <th
+                scope="col"
+                appSortable="status"
+                [direction]="currentSortBy === 'status' ? currentSortDir : null"
+                (sort)="onCurrentSort($event)"
+              >
+                Status
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              *ngFor="let row of paginatedCurrentRows"
+              [class.organization-leadership__row--selected]="isCurrentRowSelected(row)"
+              [attr.aria-selected]="showCurrentSelectionColumn ? isCurrentRowSelected(row) : null"
+            >
+              <td *ngIf="showCurrentSelectionColumn" class="organization-leadership__select-col">
+                <input
+                  type="checkbox"
+                  [checked]="isCurrentRowSelected(row)"
+                  (change)="onSelectCurrentRow(row, $any($event.target).checked)"
+                  [attr.aria-label]="'Select ' + currentRowLabel(row)"
+                />
+              </td>
+              <ng-container *ngIf="row.type === 'filled'">
+                <td>
+                  <strong>{{ positionName(row.term) }}</strong>
+                  <app-status-badge *ngIf="row.term.is_interim" label="Interim" tone="info"></app-status-badge>
+                </td>
+                <td>{{ holderName(row.term) }}</td>
+                <td>{{ termRange(row.term) }}</td>
+                <td>
+                  <app-status-badge [label]="statusLabel(row.term.status)" [tone]="statusTone(row.term.status)"></app-status-badge>
+                </td>
+              </ng-container>
+
+              <ng-container *ngIf="row.type === 'vacant'">
+                <td>
+                  <strong>{{ row.position.name }}</strong>
+                </td>
+                <td>—</td>
+                <td>—</td>
+                <td>
+                  <app-status-badge label="Vacant" tone="neutral"></app-status-badge>
+                </td>
+              </ng-container>
+            </tr>
+          </tbody>
+        </app-data-table>
+
+        <app-pagination
+          *ngIf="currentTotalItems > currentPerPage"
+          [currentPage]="currentPage"
+          [pageSize]="currentPerPage"
+          [totalItems]="currentTotalItems"
+          [pageSizeOptions]="perPageOptions"
+          [showPageSizeSelector]="true"
+          [showPageInfo]="true"
+          (pageChange)="onCurrentPageChange($event)"
+          (pageSizeChange)="onCurrentPageSizeChange($event)"
+        ></app-pagination>
+
+        <ng-template #emptyCurrent>
+          <app-cf-empty-state
+            icon="◇"
+            title="No office bearers assigned"
+            description="Assign leaders once positions are configured in Settings."
+            [hasActions]="true"
+          >
+            <a
+              routerLink="/ministries/settings"
+              class="cf-btn cf-btn-icon"
+              aria-label="Go to Settings"
+              title="Go to Settings"
+            >
+              <app-cf-action-icon name="link" />
+            </a>
+          </app-cf-empty-state>
+        </ng-template>
+      </ng-container>
+    </section>
+
+    <section
+      class="organization-leadership__column cf-panel"
+      aria-label="Leadership history"
     >
+      <app-page-header variant="panel" title="Leadership history"></app-page-header>
+
       <div class="cf-filters organization-leadership__filters">
         <select
           [(ngModel)]="positionFilter"
@@ -140,26 +229,75 @@
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="cf-loading-block__label">Loading history…</p>
-        <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading history…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
       </div>
 
       <div class="cf-inline-alert" *ngIf="timelineError" role="alert">
         <p>{{ timelineError }}</p>
-        <button type="button" class="cf-btn cf-btn-primary" (click)="retryTimeline()">Try again</button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          (click)="retryTimeline()"
+          aria-label="Try again"
+          title="Try again"
+        >
+          <app-cf-action-icon name="refresh" />
+        </button>
       </div>
 
       <ng-container *ngIf="timelineLoaded && !timelineError">
-        <div *ngIf="timelineTerms.length; else emptyTimeline">
+        <div *ngIf="timelineTerms.length || timelineTotalItems; else emptyTimeline">
           <app-data-table [ariaBusy]="timelineLoading">
             <thead>
               <tr>
-                <th scope="col">Position</th>
-                <th scope="col">Member</th>
-                <th scope="col">Start date</th>
-                <th scope="col">End date</th>
-                <th scope="col">Status</th>
-                <th scope="col">Exit reason</th>
+                <th
+                  scope="col"
+                  appSortable="position_name"
+                  [direction]="timelineSortBy === 'position_name' ? timelineSortDir : null"
+                  (sort)="onTimelineSort($event)"
+                >
+                  Position
+                </th>
+                <th
+                  scope="col"
+                  appSortable="member_name"
+                  [direction]="timelineSortBy === 'member_name' ? timelineSortDir : null"
+                  (sort)="onTimelineSort($event)"
+                >
+                  Member
+                </th>
+                <th
+                  scope="col"
+                  appSortable="effective_from"
+                  [direction]="timelineSortBy === 'effective_from' ? timelineSortDir : null"
+                  (sort)="onTimelineSort($event)"
+                >
+                  Start date
+                </th>
+                <th
+                  scope="col"
+                  appSortable="effective_to"
+                  [direction]="timelineSortBy === 'effective_to' ? timelineSortDir : null"
+                  (sort)="onTimelineSort($event)"
+                >
+                  End date
+                </th>
+                <th
+                  scope="col"
+                  appSortable="status"
+                  [direction]="timelineSortBy === 'status' ? timelineSortDir : null"
+                  (sort)="onTimelineSort($event)"
+                >
+                  Status
+                </th>
+                <th
+                  scope="col"
+                  appSortable="exit_reason"
+                  [direction]="timelineSortBy === 'exit_reason' ? timelineSortDir : null"
+                  (sort)="onTimelineSort($event)"
+                >
+                  Exit reason
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -180,12 +318,15 @@
           </app-data-table>
 
           <app-pagination
-            [currentPage]="currentPage"
-            [pageSize]="perPage"
-            [totalItems]="totalItems"
+            *ngIf="timelineTotalItems > timelinePerPage"
+            [currentPage]="timelinePage"
+            [pageSize]="timelinePerPage"
+            [totalItems]="timelineTotalItems"
             [pageSizeOptions]="perPageOptions"
-            (pageChange)="onPageChange($event)"
-            (pageSizeChange)="onPageSizeChange($event)"
+            [showPageSizeSelector]="true"
+            [showPageInfo]="true"
+            (pageChange)="onTimelinePageChange($event)"
+            (pageSizeChange)="onTimelinePageSizeChange($event)"
           ></app-pagination>
         </div>
 
@@ -202,8 +343,8 @@
           ></app-cf-empty-state>
         </ng-template>
       </ng-container>
-    </app-section-card>
-  </section>
+    </section>
+  </div>
 
   <app-assign-leadership-modal
     *ngIf="showAssignModal"
@@ -211,6 +352,14 @@
     [positionId]="assignPositionId"
     (assigned)="onLeadershipAssigned()"
     (cancel)="closeAssignModal()"
+  ></app-assign-leadership-modal>
+
+  <app-assign-leadership-modal
+    *ngIf="showEditModal && editTerm"
+    [organizationId]="organizationId"
+    [termToEdit]="editTerm"
+    (updated)="onLeadershipUpdated()"
+    (cancel)="closeEditModal()"
   ></app-assign-leadership-modal>
 
   <app-handover-leadership-modal

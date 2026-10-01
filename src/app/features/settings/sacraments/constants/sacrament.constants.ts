@@ -132,7 +132,7 @@ export const PAGINATION_DEFAULTS = {
 export const DATE_VALIDATION = {
   MAX_FUTURE_DAYS: 1, // Allow 1 day in future for corrections
   DATE_FORMAT: 'YYYY-MM-DD',
-  DISPLAY_FORMAT: 'MMM d, y'
+  DISPLAY_FORMAT: 'd MMM yyyy'
 } as const;
 
 /**

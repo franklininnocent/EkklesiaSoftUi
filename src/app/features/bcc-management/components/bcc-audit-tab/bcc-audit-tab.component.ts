@@ -15,11 +15,13 @@ import { DataTableComponent } from '@shared/components/data-table/data-table.com
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
 import { BccAuditEntry, BccPaged } from '../../models/bcc.model';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-bcc-audit-tab',
   standalone: true,
-  imports: [CommonModule, CfEmptyStateComponent, DataTableComponent, LoadingSkeletonComponent, PaginationComponent],
+  imports: [
+    CfDatePipe,CommonModule, CfEmptyStateComponent, DataTableComponent, LoadingSkeletonComponent, PaginationComponent],
   templateUrl: './bcc-audit-tab.component.html',
   styleUrl: './bcc-audit-tab.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

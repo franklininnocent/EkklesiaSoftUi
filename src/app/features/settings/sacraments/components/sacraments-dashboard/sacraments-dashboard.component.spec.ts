@@ -322,7 +322,7 @@ describe('SacramentsDashboardComponent', () => {
     fixture.detectChanges();
     component.openMembersProgression('baptized_without_communion');
 
-    expect(router.navigate).toHaveBeenCalledWith(['/members'], {
+    expect(router.navigate).toHaveBeenCalledWith(['/members/list'], {
       queryParams: {
         progression: 'baptized_without_communion',
       },
@@ -333,7 +333,7 @@ describe('SacramentsDashboardComponent', () => {
     fixture.detectChanges();
     component.openMembersProgression('female_unmarried_over_18');
 
-    expect(router.navigate).toHaveBeenCalledWith(['/members'], {
+    expect(router.navigate).toHaveBeenCalledWith(['/members/list'], {
       queryParams: {
         progression: 'female_unmarried_over_18',
       },

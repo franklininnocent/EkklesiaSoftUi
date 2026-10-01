@@ -6,8 +6,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading {{ listTitle.toLowerCase() }}…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading {{ listTitle.toLowerCase() }}…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="loaded">
@@ -22,35 +21,116 @@
         <button type="button" class="cf-btn" (click)="clearStatusError()">Dismiss</button>
       </div>
 
-      <app-list-toolbar
-        [searchPlaceholder]="'Search ' + listTitle.toLowerCase() + '…'"
-        [searchValue]="tableSearch"
-        [showFilters]="false"
-        (searchChange)="onSearchChange($event)"
-      >
-        <button
-          *ngIf="canConfigure"
-          type="button"
-          class="cf-btn cf-btn-primary"
-          (click)="openCreateForm()"
+      <div class="taxonomy-crud-panel__toolbar-row">
+        <div class="taxonomy-crud-panel__filter-chips" *ngIf="activeFilterChips.length">
+          <app-cf-active-filter-chips
+            class="cf-active-filters--embedded"
+            [chips]="activeFilterChips"
+            [showClearAll]="activeFilterChips.length > 1"
+            (remove)="onActiveFilterChipRemove($event)"
+            (clearAll)="clearAllListFilters()"
+          />
+        </div>
+
+        <app-list-toolbar
+          class="taxonomy-crud-panel__toolbar"
+          [searchPlaceholder]="'Search ' + listTitle.toLowerCase() + '…'"
+          [searchValue]="tableSearch"
+          [filterCount]="drawerFilterCount"
+          (searchChange)="onSearchChange($event)"
+          (filtersOpened)="showFilters = true"
         >
-          Add {{ singularLabel }}
-        </button>
-      </app-list-toolbar>
+        <ng-container *ngIf="canConfigure">
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="editSelected()"
+            [disabled]="!selectedItem"
+            [attr.aria-label]="editSelectedAriaLabel"
+            [attr.title]="editSelectedAriaLabel"
+          >
+            <app-cf-action-icon name="pencil" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon"
+            (click)="toggleStatusSelected()"
+            [disabled]="!canToggleStatusSelected"
+            [attr.aria-label]="statusSelectedAriaLabel"
+            [attr.title]="statusSelectedAriaLabel"
+            [attr.aria-busy]="statusUpdatingSelected"
+          >
+            <app-cf-action-icon [name]="statusSelectedIcon" />
+          </button>
+          <button
+            type="button"
+            class="cf-btn cf-btn-icon cf-btn-primary"
+            (click)="openCreateForm()"
+            [attr.aria-label]="addActionLabel"
+            [attr.title]="addActionLabel"
+          >
+            <app-cf-action-icon name="plus" />
+          </button>
+        </ng-container>
+        </app-list-toolbar>
+      </div>
 
       <ng-container *ngIf="filteredItems.length; else emptyList">
         <div class="cf-panel taxonomy-crud-panel__panel">
           <app-data-table>
             <thead>
               <tr>
-                <th scope="col">Code</th>
-                <th scope="col">Name</th>
-                <th scope="col">Description</th>
-                <th scope="col">Order</th>
-                <th scope="col" *ngIf="isPositionsKind">Occupancy</th>
-                <th scope="col">Status</th>
-                <th scope="col" *ngIf="canConfigure" class="cf-table__actions-col">
-                  <span class="sr-only">Actions</span>
+                <th *ngIf="canConfigure" scope="col" class="taxonomy-crud-panel__select-col">
+                  Select
+                </th>
+                <th
+                  scope="col"
+                  appSortable="code"
+                  [direction]="sortBy === 'code' ? sortDir : null"
+                  (sort)="onSort($event)"
+                >
+                  Code
+                </th>
+                <th
+                  scope="col"
+                  appSortable="name"
+                  [direction]="sortBy === 'name' ? sortDir : null"
+                  (sort)="onSort($event)"
+                >
+                  Name
+                </th>
+                <th
+                  scope="col"
+                  appSortable="description"
+                  [direction]="sortBy === 'description' ? sortDir : null"
+                  (sort)="onSort($event)"
+                >
+                  Description
+                </th>
+                <th
+                  scope="col"
+                  appSortable="display_order"
+                  [direction]="sortBy === 'display_order' ? sortDir : null"
+                  (sort)="onSort($event)"
+                >
+                  Order
+                </th>
+                <th
+                  *ngIf="isPositionsKind"
+                  scope="col"
+                  appSortable="single_occupancy"
+                  [direction]="sortBy === 'single_occupancy' ? sortDir : null"
+                  (sort)="onSort($event)"
+                >
+                  Occupancy
+                </th>
+                <th
+                  scope="col"
+                  appSortable="is_active"
+                  [direction]="sortBy === 'is_active' ? sortDir : null"
+                  (sort)="onSort($event)"
+                >
+                  Status
                 </th>
               </tr>
             </thead>
@@ -58,7 +138,17 @@
               <tr
                 *ngFor="let item of filteredItems"
                 [class.taxonomy-crud-panel__row--inactive]="!item.is_active"
+                [class.taxonomy-crud-panel__row--selected]="isSelected(item)"
+                [attr.aria-selected]="isSelected(item)"
               >
+                <td *ngIf="canConfigure" class="taxonomy-crud-panel__select-col">
+                  <input
+                    type="checkbox"
+                    [checked]="isSelected(item)"
+                    (change)="onSelectItem(item, $any($event.target).checked)"
+                    [attr.aria-label]="'Select ' + item.name"
+                  />
+                </td>
                 <td>{{ item.code }}</td>
                 <td><strong>{{ item.name }}</strong></td>
                 <td>
@@ -77,13 +167,6 @@
                     [tone]="statusTone(item)"
                   ></app-status-badge>
                 </td>
-                <td *ngIf="canConfigure" class="cf-table__actions-cell">
-                  <app-action-bar
-                    [actions]="rowActions(item)"
-                    size="sm"
-                    (actionClicked)="onRowAction($event, item)"
-                  ></app-action-bar>
-                </td>
               </tr>
             </tbody>
           </app-data-table>
@@ -94,8 +177,12 @@
         <app-cf-empty-state
           *ngIf="items.length && !filteredItems.length"
           icon="◇"
-          [title]="'No ' + listTitle.toLowerCase() + ' match your search'"
-          description="Try a different search term."
+          [title]="'No ' + listTitle.toLowerCase() + ' match your filters'"
+          [description]="
+            hasActiveFilters
+              ? 'Try clearing search or filters.'
+              : 'Try a different search term.'
+          "
           [hasActions]="false"
         ></app-cf-empty-state>
 
@@ -250,4 +337,25 @@
       </button>
     </ng-container>
   </app-modal-shell>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+
+  <app-confirmation-modal
+    [show]="confirmDeactivateOpen"
+    [title]="deactivateConfirmTitle"
+    [message]="deactivateConfirmMessage"
+    confirmText="Deactivate"
+    cancelText="Cancel"
+    confirmButtonClass="btn-danger"
+    (confirmed)="onDeactivateConfirmed($event)"
+    (cancelled)="closeDeactivateConfirm()"
+    (closed)="closeDeactivateConfirm()"
+  ></app-confirmation-modal>
 </div>

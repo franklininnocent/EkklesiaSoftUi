@@ -56,6 +56,10 @@
       </div>
     </ng-container>
 
+    <p *ngIf="marriageNeedsResolution" class="sacrament-tile__empty">
+      This marriage is not clearly linked to one spouse. Review the family so both husband and wife show the same marriage.
+    </p>
+
     <p *ngIf="showNoProfileSummary && !hasRegisterRecord" class="sacrament-tile__empty">
       No profile summary added yet
     </p>

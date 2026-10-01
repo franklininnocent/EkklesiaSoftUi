@@ -129,19 +129,6 @@ export class BCCService {
     });
   }
 
-  getDashboard(params: Record<string, string | number | undefined | null> = {}): Observable<ApiResponse<unknown>> {
-    const cleaned: Record<string, string | number> = {};
-    Object.entries(params).forEach(([key, value]) => {
-      if (value === undefined || value === null || value === '' || value === 'all') {
-        return;
-      }
-      cleaned[key] = value;
-    });
-    return this.http.get<ApiResponse<unknown>>(`${this.apiUrl}/dashboard`, {
-      params: this.toParams(cleaned),
-    });
-  }
-
   getOverview(bccId: string): Observable<ApiResponse<unknown>> {
     return this.http.get<ApiResponse<unknown>>(`${this.apiUrl}/${bccId}/dashboard`);
   }

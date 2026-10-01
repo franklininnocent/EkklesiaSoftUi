@@ -21,6 +21,7 @@ import { BCCService } from '../../../../core/services/bcc.service';
 import { Family, BCC, FamilyMember } from '../../../../core/models/family.model';
 import { FamilyMemberFormModalComponent, FamilyMemberFormValue } from '../family-member-form-modal/family-member-form-modal.component';
 import { ModalShellComponent } from '@shared/components';
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 import { PhoneCodeService } from '../../../../core/services/phone-code.service';
 import { AuthService } from '@core/services';
 import { getCountryCallingCode, CountryCode, parsePhoneNumber } from 'libphonenumber-js';
@@ -29,18 +30,21 @@ import {
   extractMemberApiError,
   getMemberApiData,
   getMemberApiMessage,
+  isMarriageDateConflictError,
   isMemberApiSuccess,
+  MARRIAGE_DATE_CONFLICT_CONFIRM,
   prepareFamilyMemberPayload
 } from '../../utils/prepare-family-member-payload.util';
 import { ToastService } from '../../../../core/services/toast.service';
 import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { filter, take } from 'rxjs/operators';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-family-form',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, FormsModule, FamilyMemberFormModalComponent, ModalShellComponent],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, FamilyMemberFormModalComponent, ModalShellComponent, CfBusyLabelComponent],
   templateUrl: './family-form.html',
   changeDetection: ChangeDetectionStrategy.Eager,
   styleUrls: ['./family-form.scss']
@@ -440,11 +444,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
       if (Number.isNaN(date.getTime())) {
         return String(value);
       }
-      return date.toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      });
+      return cfFormatDate(date) || '—';
     } catch {
       return String(value);
     }
@@ -643,7 +643,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
       first_communion_place: [member?.first_communion_place || ''],
       confirmation_date: [member?.confirmation_date || ''],
       confirmation_place: [member?.confirmation_place || ''],
-      marriage_date: [member?.marriage_date || ''],
+      marriage_date: [member?.suggested_marriage_date || member?.marriage_date || ''],
       marriage_place: [member?.marriage_place || ''],
       marriage_spouse_name: [member?.marriage_spouse_name || ''],
       marriage_bride_full_name: [member?.marriage_bride_full_name || ''],
@@ -1047,8 +1047,10 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
           }
         },
         error: (error) => {
-          this.memberModalSaving = false;
-          this.memberModalError = this.extractApiError(error, 'Failed to update family member.');
+          this.handleMemberMutationError(error, value, 'Failed to update family member.', () => {
+            value.acknowledge_marriage_date_conflict = true;
+            this.onMemberModalSave(value);
+          });
         }
       });
 
@@ -1084,8 +1086,10 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
         }
       },
       error: (error) => {
-        this.memberModalSaving = false;
-        this.memberModalError = this.extractApiError(error, 'Failed to add family member.');
+        this.handleMemberMutationError(error, value, 'Failed to add family member.', () => {
+          value.acknowledge_marriage_date_conflict = true;
+          this.onMemberModalSave(value);
+        });
       }
     });
   }
@@ -1202,7 +1206,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
       first_communion_place: member.first_communion_place || '',
       confirmation_date: member.confirmation_date || '',
       confirmation_place: member.confirmation_place || '',
-      marriage_date: member.marriage_date || '',
+      marriage_date: member.suggested_marriage_date || member.marriage_date || '',
       marriage_place: member.marriage_place || '',
       marriage_spouse_name: member.marriage_spouse_name || '',
       marriage_bride_full_name: member.marriage_bride_full_name || '',
@@ -1287,6 +1291,33 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
 
   private extractApiError(error: unknown, fallback: string): string {
     return extractMemberApiError(error, fallback);
+  }
+
+  private handleMemberMutationError(
+    error: unknown,
+    value: FamilyMemberFormValue,
+    fallback: string,
+    retry: () => void
+  ): void {
+    this.memberModalSaving = false;
+    if (isMarriageDateConflictError(error) && !value.acknowledge_marriage_date_conflict) {
+      this.confirmationDialog.confirm({
+        title: MARRIAGE_DATE_CONFLICT_CONFIRM.title,
+        message: MARRIAGE_DATE_CONFLICT_CONFIRM.message,
+        confirmText: MARRIAGE_DATE_CONFLICT_CONFIRM.confirmText,
+      }).pipe(take(1)).subscribe((result) => {
+        if (result.confirmed) {
+          retry();
+          return;
+        }
+        this.memberModalError = this.extractApiError(error, fallback);
+        this.cdr.markForCheck();
+      });
+      return;
+    }
+
+    this.memberModalError = this.extractApiError(error, fallback);
+    this.cdr.markForCheck();
   }
 
   /**
@@ -1873,11 +1904,7 @@ export class FamilyFormComponent implements OnInit, OnChanges, AfterViewInit {
     if (!dateString) return '';
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'long', 
-        day: 'numeric' 
-      });
+      return cfFormatDate(date) || '—';
     } catch {
       return dateString;
     }

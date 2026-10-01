@@ -26,6 +26,7 @@ import {
 import { AuthService } from '@core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
 import { ChangePasswordModalComponent } from './components/change-password-modal/change-password-modal.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 const TENANT_TIER_LABELS: Record<string, string> = {
   platform: 'Platform',
@@ -38,6 +39,7 @@ const TENANT_TIER_LABELS: Record<string, string> = {
   selector: 'app-profile',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     PageHeaderComponent,

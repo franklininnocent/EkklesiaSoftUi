@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, DestroyRef, HostListener, inject, OnInit } from '@angular/core';
+import { Component, DestroyRef, HostListener, inject, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -13,15 +13,17 @@ import { DonationsService } from '@features/donations/services/donations.service
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { FinancialAiResponse, FinancialGlobalSearchResult, FinancialSearchResultItem } from '@features/donations/models/donation.model';
+import { CfFamilyPickerLabelPipe } from '@shared/pipes/cf-family-picker-label.pipe';
+import { CF_OVERLAY_Z, CfOverlayHandle, CfOverlayStackService } from '@core/services/cf-overlay-stack.service';
 
 
 @Component({
   selector: 'app-command-palette',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, CfFamilyPickerLabelPipe],
   template: `
-    <div class="palette-backdrop" *ngIf="isOpen" (click)="close()"></div>
-    <section class="command-palette cf-panel" *ngIf="isOpen" role="dialog" aria-label="Command center">
+    <div class="palette-backdrop" *ngIf="isOpen" [style.z-index]="overlayZIndex" (click)="close()"></div>
+    <section class="command-palette cf-panel" *ngIf="isOpen" role="dialog" aria-label="Command center" [style.z-index]="overlayZIndex">
       <header class="palette-header">
         <input
           #queryInput
@@ -46,8 +48,7 @@ import { FinancialAiResponse, FinancialGlobalSearchResult, FinancialSearchResult
         <ng-container *ngIf="query.length >= 2">
           <p class="group-label">Families</p>
           <button type="button" class="result-btn" *ngFor="let family of families" (click)="openFamily(family)">
-            <strong>{{ family.family_name }}</strong>
-            <span>{{ family.family_code }} · {{ family.head_of_family || 'Family' }}</span>
+            <strong>{{ family | cfFamilyPickerLabel }}</strong>
           </button>
           <p *ngIf="!families.length" class="empty">No families match.</p>
         </ng-container>
@@ -83,10 +84,10 @@ import { FinancialAiResponse, FinancialGlobalSearchResult, FinancialSearchResult
     </section>
   `,
   styles: [`
-    .palette-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: 1300; }
+    .palette-backdrop { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.5); z-index: var(--cf-z-command-palette); }
     .command-palette {
       position: fixed; top: 10vh; left: 50%; transform: translateX(-50%); width: min(720px, calc(100vw - 2rem));
-      z-index: 1301; overflow: hidden; padding: 0; box-shadow: var(--cf-shadow-lg);
+      z-index: var(--cf-z-command-palette); overflow: hidden; padding: 0; box-shadow: var(--cf-shadow-lg);
     }
     .palette-header { padding: 1rem; border-bottom: 1px solid var(--cf-panel-border); display: grid; gap: 0.35rem; }
     .palette-header input { width: 100%; border: 0; font-size: 1rem; outline: none; background: transparent; color: var(--cf-slate-900); }
@@ -103,7 +104,7 @@ import { FinancialAiResponse, FinancialGlobalSearchResult, FinancialSearchResult
     .ai-answer ul { margin: 0.5rem 0 0; padding-left: 1.1rem; color: var(--cf-slate-700); }
   `]
 })
-export class CommandPaletteComponent implements OnInit {
+export class CommandPaletteComponent implements OnInit, OnDestroy {
   private readonly paletteService = inject(CommandPaletteService);
   private readonly quickCollectService = inject(QuickCollectService);
   private readonly donationsService = inject(DonationsService);
@@ -111,10 +112,13 @@ export class CommandPaletteComponent implements OnInit {
   private readonly authService = inject(AuthService);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly supportSessions = inject(SupportSessionService);
+  private readonly overlayStack = inject(CfOverlayStackService);
   private readonly router = inject(Router);
   private readonly destroyRef = inject(DestroyRef);
   private readonly search$ = new Subject<string>();
   private readonly financialSearch$ = new Subject<string>();
+  private overlayHandle: CfOverlayHandle | null = null;
+  overlayZIndex: number = CF_OVERLAY_Z.commandPalette;
 
   isOpen = false;
   query = '';
@@ -160,10 +164,7 @@ export class CommandPaletteComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    this.paletteService.open$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
-      this.isOpen = true;
-      this.aiResponse = null;
-    });
+    this.paletteService.open$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.open());
 
     this.search$.pipe(
       debounceTime(180),
@@ -209,20 +210,45 @@ export class CommandPaletteComponent implements OnInit {
       return;
     }
     if (event.key === 'Escape' && this.isOpen) {
+      if (this.overlayHandle && !this.overlayHandle.isTop()) {
+        return;
+      }
+      event.preventDefault();
+      event.stopImmediatePropagation();
       this.close();
     }
   }
 
   open(): void {
-    this.isOpen = true;
     this.query = '';
     this.aiResponse = null;
     this.searchGroups = [];
+    if (!this.isOpen) {
+      this.isOpen = true;
+      this.registerOverlay();
+    }
   }
 
   close(): void {
     this.isOpen = false;
     this.searchGroups = [];
+    this.releaseOverlay();
+  }
+
+  ngOnDestroy(): void {
+    this.releaseOverlay();
+  }
+
+  private registerOverlay(): void {
+    this.releaseOverlay();
+    this.overlayHandle = this.overlayStack.push('palette', () => this.close());
+    this.overlayZIndex = this.overlayHandle.zIndex;
+  }
+
+  private releaseOverlay(): void {
+    this.overlayHandle?.release();
+    this.overlayHandle = null;
+    this.overlayZIndex = CF_OVERLAY_Z.commandPalette;
   }
 
   onQueryChange(value: string): void {

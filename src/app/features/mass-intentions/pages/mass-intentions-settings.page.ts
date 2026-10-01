@@ -5,6 +5,10 @@ import { RouterModule } from '@angular/router';
 import { ToastService } from '@core/services/toast.service';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { MassIntentionsApiService } from '../services/mass-intentions-api.service';
+import {
+  massIntentionsSettingsBackLabel,
+  massIntentionsSettingsBackLink,
+} from '../utils/mass-intentions-chrome-header.util';
 
 @Component({
   selector: 'app-mass-intentions-settings-page',
@@ -15,8 +19,8 @@ import { MassIntentionsApiService } from '../services/mass-intentions-api.servic
       <app-page-header
         title="Settings"
         subtitle="Parish Mass intention settings"
-        [backLink]="['/mass-intentions/intentions']"
-        backLabel="Dashboard"
+        [backLink]="settingsBackLink"
+        [backLabel]="settingsBackLabel"
       />
 
       <form class="cf-panel mass-settings" [formGroup]="form" (ngSubmit)="save()">
@@ -70,6 +74,9 @@ import { MassIntentionsApiService } from '../services/mass-intentions-api.servic
   ],
 })
 export class MassIntentionsSettingsPageComponent {
+  readonly settingsBackLink = massIntentionsSettingsBackLink();
+  readonly settingsBackLabel = massIntentionsSettingsBackLabel();
+
   private readonly api = inject(MassIntentionsApiService);
   private readonly fb = inject(FormBuilder);
   private readonly toast = inject(ToastService);

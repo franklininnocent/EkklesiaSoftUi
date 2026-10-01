@@ -2,7 +2,8 @@ import { Pipe, PipeTransform } from '@angular/core';
 import { CF_DEFAULT_DATE_LOCALE, cfFormatDate, CfDateStyle } from '@shared/utils/cf-intl.util';
 
 /**
- * `{{ record.payment_date | cfDate }}`, `{{ createdAt | cfDate: 'datetime' }}`.
+ * `{{ record.payment_date | cfDate }}` → `30 Sep 2026`.
+ * `{{ createdAt | cfDate: 'datetime' }}` → `30 Sep 2026, 9:59 AM`.
  * `YYYY-MM-DD` values render as that calendar day in every timezone.
  */
 @Pipe({

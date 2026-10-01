@@ -2,228 +2,42 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { RouterModule } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import {
   MassIntentionsApiService,
   MassIntentionsHomeSummary,
   MassIntentionsTrendPoint,
+  MassIntentionsUpcomingCelebration,
 } from '../services/mass-intentions-api.service';
+import { cfEnglishMonthShort, cfEnglishWeekdayShort } from '@shared/utils/cf-intl.util';
+import { formatMassCelebrationTime } from '../utils/mass-celebration-display';
+import { formatMassIntentionScheduledDay } from '../utils/mass-intention-list-display';
+import { MassIntentionsSixMonthTrendComponent } from '../components/mass-intentions-six-month-trend.component';
 import {
-  canConfigureMassIntentions,
   canCreateMassIntention,
   canExportMassRegister,
+  canScheduleMasses,
+  canViewMassOfferings,
 } from '../utils/mass-intentions-auth.util';
+import { massIntentionsHomePeriodSubtitle } from '../utils/mass-intentions-chrome-header.util';
 
 @Component({
   selector: 'app-mass-intentions-home-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, PageHeaderComponent, LoadingSkeletonComponent],
-  template: `
-    <div class="cf-page mass-dash">
-      <app-page-header title="Mass intentions" [subtitle]="periodSubtitle()">
-        @if (canCreate()) {
-          <a
-            routerLink="/mass-intentions/intentions"
-            [queryParams]="{ create: '1' }"
-            class="cf-btn cf-btn-primary"
-          >
-            New intention
-          </a>
-        }
-        @if (canRegister()) {
-          <a routerLink="/mass-intentions/reports" class="cf-btn">Reports</a>
-        }
-        @if (canConfigure()) {
-          <a routerLink="/mass-intentions/settings" class="cf-btn">Settings</a>
-        }
-      </app-page-header>
-
-      @if (loading()) {
-        <app-loading-skeleton type="card" [rows]="4" />
-      } @else if (loadError()) {
-        <div class="cf-inline-alert cf-panel" role="alert">{{ loadError() }}</div>
-      } @else if (summary(); as s) {
-        <div class="cf-kpi-strip" aria-label="Mass intention snapshot">
-          <a
-            class="cf-kpi-card--executive"
-            routerLink="/mass-intentions/intentions"
-            [queryParams]="{ status: 'open' }"
-            title="Open intentions"
-          >
-            <span class="cf-kpi-card__label">Open</span>
-            <strong class="cf-kpi-card__value">{{ s.kpis?.open ?? s.queue.open }}</strong>
-            <span class="cf-kpi-card__trend">Active on the register</span>
-          </a>
-          <a
-            class="cf-kpi-card--executive"
-            routerLink="/mass-intentions/intentions"
-            [queryParams]="{ status: 'closed' }"
-            title="Closed intentions"
-          >
-            <span class="cf-kpi-card__label">Closed</span>
-            <strong class="cf-kpi-card__value">{{ s.kpis?.closed ?? s.queue.closed }}</strong>
-            <span class="cf-kpi-card__trend">Finished or past scheduled day</span>
-          </a>
-          <article class="cf-kpi-card--executive" title="Registered this month">
-            <span class="cf-kpi-card__label">Registered this month</span>
-            <strong class="cf-kpi-card__value">{{ s.kpis?.intentions_registered_this_month ?? s.period.intentions_registered_this_month }}</strong>
-            <span class="cf-kpi-card__trend">{{ lastMonthHint(s.kpis?.intentions_registered_last_month ?? s.period.intentions_registered_last_month) }}</span>
-          </article>
-        </div>
-
-        <div class="mass-dash__grid">
-          <section class="cf-panel mass-dash__queue" aria-label="Quick actions">
-            <h2 class="mass-dash__section-title">Office actions</h2>
-            <nav class="cf-decision-strip mass-dash__workspace" aria-label="Mass intention workspace">
-              <div class="cf-decision-strip__copy">
-                <strong>Parish office register</strong>
-                <span>Record intentions when someone visits the office. Open through the scheduled day, then close automatically.</span>
-              </div>
-              <div class="cf-decision-strip__actions">
-                @if (canCreate()) {
-                  <a
-                    routerLink="/mass-intentions/intentions"
-                    [queryParams]="{ create: '1' }"
-                    class="cf-btn cf-btn-primary"
-                  >
-                    New intention
-                  </a>
-                }
-                <a
-                  routerLink="/mass-intentions/intentions"
-                  [queryParams]="{ status: 'all' }"
-                  class="cf-btn"
-                >
-                  All intentions
-                </a>
-                <a routerLink="/mass-intentions/masses" class="cf-btn">Masses</a>
-                @if (canRegister()) {
-                  <a routerLink="/mass-intentions/reports" class="cf-btn">Reports</a>
-                }
-                @if (canConfigure()) {
-                  <a routerLink="/mass-intentions/audit" class="cf-btn">Audit</a>
-                }
-              </div>
-            </nav>
-            @if (!canCreate()) {
-              <p class="mass-dash__muted">
-                You can view intentions but need the <strong>Create Mass Intentions</strong> permission to add new records.
-              </p>
-            }
-          </section>
-
-          <section class="cf-panel" aria-label="Last six months">
-            <h2 class="mass-dash__section-title">Last six months</h2>
-            @if (trendPoints().length === 0) {
-              <p class="mass-dash__muted">No month-by-month activity yet.</p>
-            } @else {
-              <ul class="mass-dash__trend" role="list">
-                @for (point of trendPoints(); track point.month) {
-                  <li class="mass-dash__trend-row" [class.mass-dash__trend-row--current]="point.is_current">
-                    <span class="mass-dash__trend-label">{{ point.label }}</span>
-                    <span class="mass-dash__trend-bars" aria-hidden="true">
-                      <span class="mass-dash__bar mass-dash__bar--registered" [style.width.%]="barWidth(point.registered ?? 0)"></span>
-                      <span class="mass-dash__bar mass-dash__bar--closed" [style.width.%]="barWidth(point.closed ?? 0)"></span>
-                    </span>
-                    <span class="mass-dash__trend-nums">
-                      {{ point.registered }} registered · {{ point.closed }} closed
-                    </span>
-                  </li>
-                }
-              </ul>
-            }
-          </section>
-        </div>
-      }
-    </div>
-  `,
-  styles: [
-    `
-      .mass-dash {
-        display: grid;
-        gap: var(--cf-space-4);
-      }
-      .mass-dash .cf-kpi-strip {
-        margin: 0;
-      }
-      .mass-dash .cf-kpi-card--executive {
-        text-decoration: none;
-        color: inherit;
-        min-height: var(--cf-touch-target);
-      }
-      .mass-dash__grid {
-        display: grid;
-        gap: var(--cf-space-4);
-        grid-template-columns: 1fr;
-      }
-      @media (min-width: 56rem) {
-        .mass-dash__grid {
-          grid-template-columns: 1fr 1fr;
-        }
-      }
-      .mass-dash__section-title {
-        font-size: var(--cf-text-section-title);
-        margin: 0 0 var(--cf-space-3);
-        font-weight: 700;
-      }
-      .mass-dash__queue {
-        padding: var(--cf-space-3);
-        display: grid;
-        gap: var(--cf-space-3);
-      }
-      .mass-dash__muted {
-        font-size: var(--cf-text-sm);
-        color: var(--cf-color-text-muted);
-        margin: 0;
-      }
-      .mass-dash__workspace {
-        margin: 0;
-      }
-      .mass-dash__trend {
-        list-style: none;
-        margin: 0;
-        padding: 0;
-        display: grid;
-        gap: var(--cf-space-3);
-      }
-      .mass-dash__trend-row {
-        display: grid;
-        gap: var(--cf-space-1);
-      }
-      .mass-dash__trend-label {
-        font-size: var(--cf-text-sm);
-        font-weight: 600;
-      }
-      .mass-dash__trend-bars {
-        display: grid;
-        gap: 2px;
-      }
-      .mass-dash__bar {
-        display: block;
-        height: 0.45rem;
-        border-radius: 999px;
-        min-width: 0.35rem;
-        background: var(--cf-slate-300, #cbd5e1);
-      }
-      .mass-dash__bar--registered {
-        background: var(--cf-forest, #1b4332);
-      }
-      .mass-dash__bar--closed {
-        background: var(--cf-slate-400, #94a3b8);
-      }
-      .mass-dash__trend-nums {
-        font-size: var(--cf-text-xs);
-        color: var(--cf-color-text-muted);
-      }
-      @media (max-width: 40rem) {
-        .mass-dash .cf-kpi-strip {
-          grid-auto-flow: row;
-          grid-auto-columns: minmax(0, 1fr);
-        }
-      }
-    `,
+  imports: [
+    CommonModule,
+    RouterModule,
+    PageHeaderComponent,
+    LoadingSkeletonComponent,
+    CfEmptyStateComponent,
+    CfCurrencyPipe,
+    MassIntentionsSixMonthTrendComponent,
   ],
+  templateUrl: './mass-intentions-home.page.html',
+  styleUrl: './mass-intentions-home.page.scss',
 })
 export class MassIntentionsHomePageComponent {
   private readonly api = inject(MassIntentionsApiService);
@@ -256,19 +70,16 @@ export class MassIntentionsHomePageComponent {
     return canCreateMassIntention(this.auth);
   }
 
-  canRegister(): boolean {
-    return canExportMassRegister(this.auth);
+  canSchedule(): boolean {
+    return canScheduleMasses(this.auth);
   }
 
-  canConfigure(): boolean {
-    return canConfigureMassIntentions(this.auth);
+  canLinkOfferingsReport(): boolean {
+    return canExportMassRegister(this.auth) && canViewMassOfferings(this.auth);
   }
 
   periodSubtitle(): string {
-    const label = this.summary()?.period.label;
-    return label
-      ? `Parish office register — ${label}`
-      : 'Parish office register — open intentions and monthly activity.';
+    return massIntentionsHomePeriodSubtitle(this.summary()?.period.label);
   }
 
   lastMonthHint(lastMonth: number | undefined): string {
@@ -282,8 +93,154 @@ export class MassIntentionsHomePageComponent {
     return this.summary()?.trend ?? [];
   }
 
-  barWidth(value: number): number {
-    const max = Math.max(1, ...this.trendPoints().flatMap((p) => [p.registered ?? 0, p.closed ?? 0]));
-    return Math.round((value / max) * 100);
+  upcomingMasses(s: MassIntentionsHomeSummary): MassIntentionsUpcomingCelebration[] {
+    return s.upcoming_celebrations ?? [];
   }
+
+  isNextUpcomingMass(s: MassIntentionsHomeSummary, mass: MassIntentionsUpcomingCelebration): boolean {
+    const nextId = s.meta?.next_upcoming_celebration_id;
+    if (nextId) {
+      return mass.id === nextId;
+    }
+    const list = this.upcomingMasses(s);
+    return list.length > 0 && list[0].id === mass.id;
+  }
+
+  operationalNeedsTick(s: MassIntentionsHomeSummary): number {
+    return s.operational?.needs_a_tick ?? s.kpis?.needs_a_tick ?? 0;
+  }
+
+  operationalNeedsAMass(s: MassIntentionsHomeSummary): number {
+    return s.operational?.needs_a_mass ?? s.kpis?.needs_a_mass ?? 0;
+  }
+
+  operationalScheduleAttention(s: MassIntentionsHomeSummary): number {
+    return s.operational?.schedule_attention ?? s.kpis?.schedule_attention ?? 0;
+  }
+
+  generationNeedsAttention(s: MassIntentionsHomeSummary): boolean {
+    return s.generation?.attention_required === true;
+  }
+
+  showScheduleAttention(s: MassIntentionsHomeSummary): boolean {
+    if (!this.canSchedule()) {
+      return false;
+    }
+    return this.operationalScheduleAttention(s) > 0 || this.generationNeedsAttention(s);
+  }
+
+  scheduleAttentionLabel(s: MassIntentionsHomeSummary): string {
+    if (this.operationalScheduleAttention(s) > 0) {
+      return `Schedule preview (${this.operationalScheduleAttention(s)})`;
+    }
+    return 'Mass calendar';
+  }
+
+  showAttentionStrip(s: MassIntentionsHomeSummary): boolean {
+    return (
+      this.operationalNeedsTick(s) > 0 ||
+      this.operationalNeedsAMass(s) > 0 ||
+      this.showScheduleAttention(s)
+    );
+  }
+
+  attentionSummary(s: MassIntentionsHomeSummary): string {
+    const parts: string[] = [];
+    if (this.operationalNeedsTick(s) > 0) {
+      parts.push(`${this.operationalNeedsTick(s)} Mass${this.operationalNeedsTick(s) === 1 ? '' : 'es'} to mark said`);
+    }
+    if (this.operationalNeedsAMass(s) > 0) {
+      parts.push(`${this.operationalNeedsAMass(s)} without a Mass`);
+    }
+    if (this.showScheduleAttention(s)) {
+      if (this.generationNeedsAttention(s)) {
+        parts.push('calendar generation behind');
+      } else if (this.operationalScheduleAttention(s) > 0) {
+        parts.push('schedule preview conflicts');
+      }
+    }
+    return parts.join(' · ');
+  }
+
+  registeredThisMonthParams(s: MassIntentionsHomeSummary): Record<string, string> {
+    const from = s.period.created_from;
+    const to = s.period.created_to;
+    if (from && to) {
+      return { status: 'all', created_from: from, created_to: to };
+    }
+    return {};
+  }
+
+  showOfferingsKpi(s: MassIntentionsHomeSummary): boolean {
+    return (
+      canViewMassOfferings(this.auth) &&
+      (s.offerings?.received_this_month != null || s.kpis?.offering_received_this_month != null)
+    );
+  }
+
+  offeringsThisMonth(s: MassIntentionsHomeSummary): string {
+    return s.offerings?.received_this_month ?? s.kpis?.offering_received_this_month ?? '0';
+  }
+
+  offeringsReceiptHint(s: MassIntentionsHomeSummary): string {
+    const count = s.offerings?.receipts_this_month ?? s.kpis?.receipts_this_month;
+    if (count === undefined) {
+      return 'Received this month';
+    }
+    return `${count} receipt${count === 1 ? '' : 's'} this month`;
+  }
+
+  formatMassDay(iso: string | null | undefined): string {
+    return formatMassIntentionScheduledDay(iso);
+  }
+
+  formatMassTime(at: string | null | undefined): string {
+    return at ? formatMassCelebrationTime(at) : '';
+  }
+
+  massDateWeekday(iso: string | null | undefined): string {
+    const parsed = this.parseMassDate(iso);
+    return parsed ? cfEnglishWeekdayShort(parsed) : '—';
+  }
+
+  massDateDay(iso: string | null | undefined): string {
+    const parsed = this.parseMassDate(iso);
+    return parsed ? String(parsed.getDate()) : '—';
+  }
+
+  massDateMonth(iso: string | null | undefined): string {
+    const parsed = this.parseMassDate(iso);
+    return parsed ? cfEnglishMonthShort(parsed) : '';
+  }
+
+  intentionCountLabel(count: number | null | undefined): string {
+    const n = count ?? 0;
+    if (n === 0) {
+      return 'None yet';
+    }
+    return n === 1 ? 'intention' : 'intentions';
+  }
+
+  massRowAriaLabel(mass: MassIntentionsUpcomingCelebration): string {
+    const when = `${this.formatMassDay(mass.celebrated_on)}, ${this.formatMassTime(mass.celebrated_at) || 'time not set'}`;
+    const parts = [when];
+    if (mass.place?.trim()) {
+      parts.push(mass.place.trim());
+    }
+    if (mass.celebrant_name?.trim()) {
+      parts.push(mass.celebrant_name.trim());
+    }
+    const count = mass.intention_count ?? 0;
+    parts.push(`${count} intention${count === 1 ? '' : 's'}`);
+    return parts.join(', ');
+  }
+
+  private parseMassDate(iso: string | null | undefined): Date | null {
+    if (!iso) {
+      return null;
+    }
+    const parsed = new Date(`${iso}T12:00:00`);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
 }

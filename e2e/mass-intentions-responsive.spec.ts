@@ -18,7 +18,12 @@ for (const viewport of viewports) {
       const context = await browser.newContext({ storageState: tenantAdminState });
       const page = await context.newPage();
 
-      for (const path of ['/mass-intentions', '/mass-intentions/intentions', '/mass-intentions/masses']) {
+      for (const path of [
+        '/mass-intentions',
+        '/mass-intentions/intentions',
+        '/mass-intentions/masses',
+        '/mass-intentions/masses/schedule',
+      ]) {
         await page.goto(path);
         const scrollWidth = await page.evaluate(() => document.documentElement.scrollWidth);
         const clientWidth = await page.evaluate(() => document.documentElement.clientWidth);

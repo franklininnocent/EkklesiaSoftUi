@@ -20,7 +20,7 @@ import {
   PasswordRecoveryService,
   PasswordRecoveryViewState,
 } from '@core/services/password-recovery.service';
-
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -28,6 +28,7 @@ import {
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
+    CfBusyLabelComponent,
   ],
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',

@@ -1,0 +1,168 @@
+/**
+ * Donations module UI baseline — aligned with /donations (Financial Dashboard).
+ * Loaded once on the stewardship workspace shell; applies to all sub-routes.
+ */
+
+.stewardship-shell__content {
+  min-width: 0;
+
+  /* Page rhythm (dashboard uses 0.65rem section gap) */
+  .cf-page,
+  .cf-page.cf-financial-dashboard {
+    display: grid;
+    gap: 0.65rem;
+    min-width: 0;
+  }
+
+  .cf-page.cf-split-page {
+    gap: 0.65rem;
+  }
+
+  .cf-split-page .cf-split-workspace {
+    gap: 1rem;
+  }
+
+  /* Page header actions — icon toolbar row (Overview / dues pattern) */
+  app-page-header .cf-page-header__actions {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: var(--cf-toolbar-gap, 0.35rem);
+  }
+
+  app-page-header .cf-page-header__actions .cf-btn-icon,
+  app-page-header .cf-page-header__actions .cf-list-toolbar .cf-btn-icon {
+    width: var(--cf-control-height);
+    min-width: var(--cf-control-height);
+    padding: 0;
+  }
+
+  app-page-header .cf-list-toolbar {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: var(--cf-toolbar-gap, 0.35rem);
+  }
+
+  app-page-header .cf-list-toolbar__primary {
+    flex-wrap: nowrap;
+    margin-left: 0;
+  }
+
+  /* Active filter chips — see stewardship-dashboard-shared.scss */
+
+  /* Inline filter panels */
+  .cf-filters.cf-panel {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--cf-space-2);
+    padding: var(--cf-space-2) var(--cf-panel-pad);
+  }
+
+  .cf-filters.cf-panel input[type='search'],
+  .cf-filters.cf-panel select {
+    min-height: var(--cf-control-height);
+    font-size: var(--cf-text-sm, 0.875rem);
+  }
+
+  /* List / table panels */
+  .cf-panel.stewardship-table-panel,
+  .donations-dues__panel,
+  .plans-card--table,
+  .projects-page__list.cf-panel {
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .stewardship-panel-head,
+  .stewardship-panel-head__copy {
+    padding: 0;
+  }
+
+  .stewardship-panel-head {
+    padding: var(--cf-space-2) var(--cf-panel-pad) var(--cf-space-1);
+  }
+
+  .stewardship-panel-head .cf-section-title,
+  .stewardship-panel-head .cf-subsection-title {
+    margin: 0;
+    line-height: 1.25;
+  }
+
+  .stewardship-panel-head .cf-meta {
+    margin: 0;
+    line-height: 1.3;
+  }
+
+  .cf-panel app-data-table,
+  .cf-panel > table.cf-table {
+    padding: 0 var(--cf-panel-pad);
+  }
+
+  .cf-panel app-pagination {
+    padding: 0 var(--cf-panel-pad) var(--cf-panel-pad);
+  }
+
+  .cf-panel app-data-table .cf-table thead th,
+  .cf-panel > table.cf-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--cf-slate-50);
+    border-bottom: 1px solid var(--cf-panel-border);
+    box-shadow: 0 1px 0 var(--cf-panel-border);
+  }
+
+  .cf-panel app-data-table .cf-table tbody td,
+  .cf-panel > table.cf-table tbody td {
+    vertical-align: top;
+  }
+
+  .cf-panel app-data-table .cf-table tbody td.cf-table__actions-cell,
+  .cf-panel > table.cf-table tbody td.cf-table__actions-cell {
+    vertical-align: middle;
+  }
+
+  .cf-panel .cf-table__num,
+  .cf-panel td.cf-table__num,
+  .donations-dues__num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  /* Loading & errors */
+  .cf-loading-block {
+    display: grid;
+    gap: var(--cf-space-2);
+  }
+
+  .cf-inline-alert.cf-panel,
+  .cf-state--error.cf-panel {
+    margin: 0;
+  }
+
+  /* Decision strips — consistent density */
+  .cf-decision-strip {
+    padding: var(--cf-space-2) var(--cf-space-3);
+  }
+
+  /* Reports workbench section head */
+  .reports-workbench__head {
+    padding: var(--cf-space-2) var(--cf-panel-pad) var(--cf-space-1);
+    gap: var(--cf-space-2);
+  }
+
+  .reports-workbench__head h2 {
+    margin: 0;
+    font-size: var(--cf-text-section-title);
+    line-height: 1.25;
+  }
+
+  .reports-workbench__lead {
+    margin: 0.15rem 0 0;
+    font-size: var(--cf-text-meta);
+    line-height: 1.3;
+    color: var(--cf-muted);
+  }
+}

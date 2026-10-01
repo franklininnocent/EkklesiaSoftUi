@@ -124,7 +124,7 @@
               {{ diocese.active ? 'Active' : 'Inactive' }}
             </span>
           </td>
-          <td>{{ diocese.established_date ? (diocese.established_date | date: 'MMM d, y') : 'N/A' }}</td>
+          <td>{{ diocese.established_date ? (diocese.established_date | cfDate) : 'N/A' }}</td>
           <td class="actions-cell">
             <button (click)="onViewDiocese(diocese)" class="action-btn view" title="View Details">
               👁️

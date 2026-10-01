@@ -21,6 +21,7 @@ import {
   TenantDataExportModule,
   TenantDataExportStatus,
 } from './tenant-data-export.model';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-data-export-page',
@@ -409,7 +410,7 @@ export class DataExportPage implements OnInit, OnDestroy {
     if (Number.isNaN(date.getTime())) {
       return '—';
     }
-    return date.toLocaleString();
+    return cfFormatDate(value, 'datetime') || '—';
   }
 
   modulesLabel(modules?: string[]): string {

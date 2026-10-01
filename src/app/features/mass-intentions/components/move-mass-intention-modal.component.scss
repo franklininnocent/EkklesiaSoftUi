@@ -1,0 +1,64 @@
+@use '../../donations/styles/stewardship-split-layout.scss';
+
+.cf-split-form-actions {
+  justify-content: flex-end;
+}
+
+.move-mass-modal__range {
+  width: fit-content;
+  max-width: 100%;
+
+  button {
+    border: 0;
+    background: transparent;
+    padding: 0.35rem 0.65rem;
+    font-size: 0.78rem;
+    cursor: pointer;
+    white-space: nowrap;
+
+    &.active {
+      background: var(--cf-primary);
+      color: #fff;
+    }
+
+    &:focus-visible {
+      outline: 2px solid var(--cf-primary);
+      outline-offset: 1px;
+    }
+  }
+}
+
+.move-mass-modal__option {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.move-mass-modal__select {
+  width: 100%;
+
+  ::ng-deep .ng-select-container {
+    min-height: var(--cf-control-height);
+    border: 1px solid var(--cf-panel-border);
+    border-radius: var(--cf-radius-sm);
+    font-size: var(--cf-text-base);
+    background: var(--cf-panel-bg);
+  }
+
+  ::ng-deep .ng-select.ng-select-focused .ng-select-container {
+    border-color: var(--cf-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.12);
+  }
+
+  ::ng-deep .ng-dropdown-panel {
+    border: 1px solid var(--cf-panel-border);
+    border-radius: var(--cf-radius-sm);
+    box-shadow: var(--cf-shadow-lg);
+  }
+
+  ::ng-deep .ng-option {
+    font-size: var(--cf-text-base);
+    white-space: nowrap;
+  }
+}

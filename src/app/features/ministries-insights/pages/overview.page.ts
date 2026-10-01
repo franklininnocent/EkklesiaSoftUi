@@ -15,6 +15,7 @@ import {
   MinistriesInsightsWindowDays,
 } from '../models/ministries-insights.model';
 import { insightsSeverityTone, insightsStatusLabel } from '../utils/insights-labels';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 interface KpiTile {
   key: keyof MinistriesInsightsOverviewKpis;
@@ -27,6 +28,7 @@ interface KpiTile {
   selector: 'app-ministries-insights-overview-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     RouterModule,
     CfEmptyStateComponent,

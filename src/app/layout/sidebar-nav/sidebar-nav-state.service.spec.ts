@@ -18,7 +18,7 @@ describe('SidebarNavStateService', () => {
         SidebarNavStateService,
         provideRouter([
           { path: 'donations/campaigns', component: StubPageComponent },
-          { path: 'members', component: StubPageComponent },
+          { path: 'members/list', component: StubPageComponent },
           { path: '**', component: StubPageComponent },
         ]),
       ],
@@ -60,16 +60,18 @@ describe('SidebarNavStateService', () => {
     expect(service.isExpanded('donations')).toBe(true);
   });
 
-  it('collapses donations when navigating to a sibling top-level menu', async () => {
+  it('collapses donations and expands Families when opening Members', async () => {
     await router.navigateByUrl('/donations/campaigns');
     TestBed.flushEffects();
     expect(service.isExpanded('donations')).toBe(true);
 
-    await router.navigateByUrl('/members');
+    await router.navigateByUrl('/members/list');
     TestBed.flushEffects();
 
     expect(service.isExpanded('donations')).toBe(false);
     expect(service.isExpanded('donations-projects')).toBe(false);
+    expect(service.isExpanded('families')).toBe(true);
+    expect(service.isActive('members')).toBe(true);
   });
 
   it('clears stale active state after navigation', async () => {
@@ -77,7 +79,7 @@ describe('SidebarNavStateService', () => {
     TestBed.flushEffects();
     expect(service.isActive('donations-projects-campaigns')).toBe(true);
 
-    await router.navigateByUrl('/members');
+    await router.navigateByUrl('/members/list');
     TestBed.flushEffects();
     expect(service.isActive('donations-projects-campaigns')).toBe(false);
   });

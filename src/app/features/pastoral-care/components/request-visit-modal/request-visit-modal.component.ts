@@ -12,13 +12,14 @@ import {
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Family, FamilyMember } from '@core/models/family.model';
 import { ModalShellComponent } from '@shared/components';
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 import { PastoralCareService } from '../../services/pastoral-care.service';
 import { PastoralCareType } from '../../models/pastoral-care.model';
 
 @Component({
   selector: 'app-request-visit-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent, CfBusyLabelComponent],
   templateUrl: './request-visit-modal.component.html',
   styleUrl: './request-visit-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

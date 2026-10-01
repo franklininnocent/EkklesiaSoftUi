@@ -54,8 +54,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading families…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading families…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
@@ -65,7 +64,7 @@
 
   <ng-container *ngIf="loaded && !error">
     <div class="cf-panel family-list__panel" *ngIf="families.length">
-      <app-data-table [clickableRows]="true">
+      <app-data-table [clickableRows]="true" [loading]="loading" loadingLabel="Loading families…">
         <thead>
           <tr>
             <th scope="col" class="sortable" (click)="sortBy('family_code')">
@@ -79,7 +78,6 @@
             </th>
             <th scope="col">Members</th>
             <th scope="col">Contact</th>
-            <th *ngIf="isTenantAdmin" scope="col" class="cf-table__actions-col">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -154,24 +152,6 @@
                 </div>
                 <ng-template #noContact><span class="cf-meta">—</span></ng-template>
               </ng-container>
-            </td>
-            <td
-              *ngIf="isTenantAdmin"
-              class="cf-table__actions-cell"
-              (click)="$event.stopPropagation()"
-              (keydown)="$event.stopPropagation()"
-            >
-              <div class="cf-row-actions">
-                <button
-                  type="button"
-                  class="cf-btn cf-btn--sm cf-btn-danger"
-                  cfDisableWhenReadOnly
-                  (click)="deleteFamily(family)"
-                  title="Delete family"
-                >
-                  Delete
-                </button>
-              </div>
             </td>
           </tr>
         </tbody>

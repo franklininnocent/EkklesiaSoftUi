@@ -3,7 +3,47 @@
   gap: var(--cf-space-3);
 }
 
-.organization-leadership__section {
+.organization-leadership__select-col {
+  width: 1%;
+  white-space: nowrap;
+  vertical-align: middle;
+  text-align: center;
+
+  input[type='checkbox'] {
+    margin: 0;
+    vertical-align: middle;
+  }
+}
+
+.organization-leadership__row--selected td {
+  background: var(--table-row-selected, var(--cf-slate-50));
+}
+
+.organization-leadership__row--selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--cf-primary);
+}
+
+.organization-leadership__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--cf-space-3);
+  align-items: start;
+  min-width: 0;
+}
+
+.organization-leadership__column {
   display: grid;
   gap: var(--cf-space-3);
+  min-width: 0;
+  min-height: 0;
+}
+
+.organization-leadership__filters {
+  margin-top: calc(-1 * var(--cf-space-1));
+}
+
+@media (max-width: 1024px) {
+  .organization-leadership__workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

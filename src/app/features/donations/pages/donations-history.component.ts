@@ -3,6 +3,7 @@ import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { DonationsService } from '../services/donations.service';
@@ -27,7 +28,16 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
 @Component({
   selector: 'app-donations-history',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent],
+  imports: [
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    PageHeaderComponent,
+    CfCurrencyPipe,
+    CfActionIconComponent,
+  ],
   templateUrl: './donations-history.component.html',
   styleUrl: './donations-history.component.scss'
 })

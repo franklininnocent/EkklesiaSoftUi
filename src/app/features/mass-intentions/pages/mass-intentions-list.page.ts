@@ -18,7 +18,8 @@ import { MassIntentionFormModalComponent } from '../components/mass-intention-fo
 import { MassIntentionViewModalComponent } from '../components/mass-intention-view-modal.component';
 import { MassIntentionRecord, MassIntentionsApiService } from '../services/mass-intentions-api.service';
 import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
-import { canCreateMassIntention, canExportMassRegister } from '../utils/mass-intentions-auth.util';
+import { canCreateMassIntention, canExportMassRegister, canScheduleMasses } from '../utils/mass-intentions-auth.util';
+import { MoveMassIntentionModalComponent } from '../components/move-mass-intention-modal.component';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 import { ToastService } from '@core/services/toast.service';
 import {
@@ -32,6 +33,7 @@ import {
   massIntentionListDescription,
   massIntentionBeneficiaryIdentification,
   massIntentionListType,
+  massIntentionListMass,
   massIntentionNeedsCategory,
 } from '../utils/mass-intention-list-display';
 import { massIntentionStageLabel, massIntentionStageTone } from '../utils/mass-intention-status-display';
@@ -72,6 +74,7 @@ const SORT_COLUMNS: MassIntentionSortColumn[] = [
     DataTableComponent,
     MassIntentionFormModalComponent,
     MassIntentionViewModalComponent,
+    MoveMassIntentionModalComponent,
     DisableWhenReadOnlyDirective,
     AdvancedSearchPanelComponent,
     CfActionIconComponent,
@@ -96,6 +99,9 @@ export class MassIntentionsListPageComponent {
   readonly search = signal('');
   readonly filterStatus = signal<StatusFilterValue>('');
   readonly filterRequestedDate = signal('');
+  readonly filterNeedsAMass = signal(false);
+  readonly filterCreatedFrom = signal('');
+  readonly filterCreatedTo = signal('');
   readonly showAdvancedSearch = signal(false);
   readonly currentPage = signal(1);
   readonly totalItems = signal(0);
@@ -107,6 +113,10 @@ export class MassIntentionsListPageComponent {
   readonly exportBusy = signal(false);
   readonly sortColumn = signal<MassIntentionSortColumn>(DEFAULT_SORT_COLUMN);
   readonly sortDirection = signal<SortDirection>(DEFAULT_SORT_DIRECTION);
+  readonly selectedIds = signal<Set<string>>(new Set());
+  readonly showMoveModal = signal(false);
+  readonly moveFromMassLabel = signal('');
+  readonly moveExcludeCelebrationId = signal<string | null>(null);
 
   searchFields: SearchField[] = [];
 
@@ -121,6 +131,11 @@ export class MassIntentionsListPageComponent {
       const perPageRaw = Number(params.get('per_page') || 20);
       const perPage = this.pageSizeOptions.includes(perPageRaw) ? perPageRaw : 20;
       this.filterStatus.set(this.parseStatusFromQuery(params.get('status'), params.has('status')));
+      this.filterNeedsAMass.set(params.get('needs_a_mass') === '1');
+      const createdFrom = params.get('created_from') ?? '';
+      const createdTo = params.get('created_to') ?? '';
+      this.filterCreatedFrom.set(this.isIsoDate(createdFrom) ? createdFrom : '');
+      this.filterCreatedTo.set(this.isIsoDate(createdTo) ? createdTo : '');
       this.filterRequestedDate.set(this.isIsoDate(requestedDate) ? requestedDate : '');
       this.search.set(search);
       this.currentPage.set(page);
@@ -140,6 +155,10 @@ export class MassIntentionsListPageComponent {
 
   canCreate(): boolean {
     return canCreateMassIntention(this.auth);
+  }
+
+  canSchedule(): boolean {
+    return canScheduleMasses(this.auth);
   }
 
   canExport(): boolean {
@@ -194,6 +213,12 @@ export class MassIntentionsListPageComponent {
     if (this.filterRequestedDate()) {
       count += 1;
     }
+    if (this.filterNeedsAMass()) {
+      count += 1;
+    }
+    if (this.filterCreatedFrom() && this.filterCreatedTo()) {
+      count += 1;
+    }
     return count;
   }
 
@@ -216,6 +241,24 @@ export class MassIntentionsListPageComponent {
         displayValue: formatMassIntentionScheduledDay(day),
       });
     }
+    if (this.filterNeedsAMass()) {
+      filters.push({
+        key: 'needs_a_mass',
+        label: 'Queue',
+        value: '1',
+        displayValue: 'Needs a Mass',
+      });
+    }
+    const createdFrom = this.filterCreatedFrom();
+    const createdTo = this.filterCreatedTo();
+    if (createdFrom && createdTo) {
+      filters.push({
+        key: 'created_period',
+        label: 'Registered',
+        value: `${createdFrom}:${createdTo}`,
+        displayValue: `${formatMassIntentionScheduledDay(createdFrom)} – ${formatMassIntentionScheduledDay(createdTo)}`,
+      });
+    }
     return filters;
   }
 
@@ -224,7 +267,9 @@ export class MassIntentionsListPageComponent {
       this.registerEmpty() &&
       !this.search().trim() &&
       this.filterStatus() === 'open' &&
-      !this.filterRequestedDate()
+      !this.filterRequestedDate() &&
+      !this.filterNeedsAMass() &&
+      !this.filterCreatedFrom()
     );
   }
 
@@ -298,6 +343,23 @@ export class MassIntentionsListPageComponent {
     }
     if (filter.key === 'requested_date') {
       this.applyDrawerFiltersToRoute({ requestedDate: '' });
+      return;
+    }
+    if (filter.key === 'needs_a_mass') {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { needs_a_mass: null, page: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
+    if (filter.key === 'created_period') {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { created_from: null, created_to: null, page: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
     }
   }
 
@@ -311,6 +373,9 @@ export class MassIntentionsListPageComponent {
         page: null,
         sort: null,
         direction: null,
+        needs_a_mass: null,
+        created_from: null,
+        created_to: null,
       },
       queryParamsHandling: 'merge',
       replaceUrl: true,
@@ -347,9 +412,88 @@ export class MassIntentionsListPageComponent {
     this.openEdit(id);
   }
 
+  onMoveFromView(row: MassIntentionRecord): void {
+    this.closeViewModal();
+    this.closeFormModal();
+    this.selectedIds.set(new Set([row.id]));
+    if (row.mass_celebration?.id) {
+      this.moveFromMassLabel.set(massIntentionListMass(row));
+      this.moveExcludeCelebrationId.set(row.mass_celebration.id);
+    } else {
+      this.moveFromMassLabel.set('Needs a Mass');
+      this.moveExcludeCelebrationId.set(null);
+    }
+    this.showMoveModal.set(true);
+  }
+
   onSaved(): void {
     this.closeFormModal();
     this.reload();
+  }
+
+  moveIntentionIds(): string[] {
+    return [...this.selectedIds()];
+  }
+
+  canMoveRow(row: MassIntentionRecord): boolean {
+    return (
+      this.canSchedule() &&
+      row.status === 'open' &&
+      !row.needs_a_mass &&
+      !!row.mass_celebration?.id
+    );
+  }
+
+  isSelected(id: string): boolean {
+    return this.selectedIds().has(id);
+  }
+
+  toggleSelect(id: string, checked: boolean): void {
+    const next = new Set(this.selectedIds());
+    if (checked) {
+      next.add(id);
+    } else {
+      next.delete(id);
+    }
+    this.selectedIds.set(next);
+  }
+
+  openMoveOne(row: MassIntentionRecord): void {
+    this.selectedIds.set(new Set([row.id]));
+    this.prepareMoveModalFromSelection();
+    this.showMoveModal.set(true);
+  }
+
+  openMoveSelected(): void {
+    if (this.selectedIds().size === 0) {
+      return;
+    }
+    this.prepareMoveModalFromSelection();
+    this.showMoveModal.set(true);
+  }
+
+  closeMoveModal(): void {
+    this.showMoveModal.set(false);
+  }
+
+  onMoved(): void {
+    this.selectedIds.set(new Set());
+    this.showMoveModal.set(false);
+    this.toast.success('Intentions moved to the selected Mass.');
+    this.reload();
+  }
+
+  private prepareMoveModalFromSelection(): void {
+    const ids = [...this.selectedIds()];
+    const rows = this.items().filter((r) => ids.includes(r.id));
+    const massIds = new Set(rows.map((r) => r.mass_celebration?.id).filter(Boolean));
+    if (massIds.size === 1 && rows[0]) {
+      this.moveFromMassLabel.set(massIntentionListMass(rows[0]));
+      this.moveExcludeCelebrationId.set(rows[0].mass_celebration?.id ?? null);
+    } else {
+      this.moveFromMassLabel.set('Multiple Masses');
+      this.moveExcludeCelebrationId.set(null);
+    }
   }
 
   onSearch(term: string): void {
@@ -403,7 +547,7 @@ export class MassIntentionsListPageComponent {
   }
 
   scheduledDay(row: MassIntentionRecord): string {
-    return formatMassIntentionScheduledDay(row.requested_date);
+    return massIntentionListMass(row);
   }
 
   beneficiaryIdentification(row: MassIntentionRecord): string | null {
@@ -513,6 +657,13 @@ export class MassIntentionsListPageComponent {
     if (this.filterRequestedDate()) {
       query['requested_date'] = this.filterRequestedDate();
     }
+    if (this.filterNeedsAMass()) {
+      query['needs_a_mass'] = 1;
+    }
+    if (this.filterCreatedFrom() && this.filterCreatedTo()) {
+      query['created_from'] = this.filterCreatedFrom();
+      query['created_to'] = this.filterCreatedTo();
+    }
     query['sort'] = this.sortColumn();
     query['direction'] = this.sortDirection();
     return query;
@@ -596,6 +747,8 @@ export class MassIntentionsListPageComponent {
           !this.search().trim() &&
           this.filterStatus() === 'open' &&
           !this.filterRequestedDate() &&
+          !this.filterNeedsAMass() &&
+          !this.filterCreatedFrom() &&
           this.currentPage() === 1
         ) {
           this.registerEmpty.set((res.total ?? 0) === 0);

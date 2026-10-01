@@ -27,8 +27,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading guest members…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading guest members…" type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="loaded">

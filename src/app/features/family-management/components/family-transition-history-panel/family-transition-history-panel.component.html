@@ -7,7 +7,7 @@
     <button type="button" class="cf-btn" (click)="reload()" [disabled]="loading">Refresh</button>
   </div>
 
-  <p class="family-transition-history-panel__status" *ngIf="loading" role="status">Loading history…</p>
+  <app-cf-brand-loader *ngIf="loading" size="inline" label="Loading history…" />
   <p class="family-transition-history-panel__error" *ngIf="!loading && error" role="alert">{{ error }}</p>
 
   <p class="family-transition-history-panel__empty" *ngIf="!loading && !error && !records.length">

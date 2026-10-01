@@ -1,4 +1,4 @@
-<section class="history-page cf-page cf-split-page" [class.history-page--comfortable]="density === 'comfortable'">
+<section class="history-page cf-page cf-split-page cf-financial-dashboard" [class.history-page--comfortable]="density === 'comfortable'">
   <app-page-header
     title="Activity History"
     subtitle="Stewardship timeline — filter and scan recent parish activity side by side.">
@@ -17,8 +17,7 @@
   </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!activitiesLoaded" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-split-loading__label">Loading activity history…</p>
-    <app-loading-skeleton type="table" [rows]="8" [columns]="1"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading activity history…" type="table" [rows]="8" [columns]="1"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="activitiesLoaded">
@@ -181,16 +180,21 @@
             </div>
 
             <div class="cf-split-list-empty-state" *ngIf="!groupedActivities.length">
-              <div class="history-empty">
-                <div class="history-empty__graphic" aria-hidden="true">◴</div>
-                <h3>No recent activity</h3>
-                <p>Contribution, donor, family, and stewardship activities will appear here.</p>
+              <app-cf-empty-state
+                icon="◴"
+                title="No recent activity"
+                description="Contribution, donor, family, and stewardship activities will appear here."
+              >
                 <button
-          aria-label="Refresh"
-          title="Refresh" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="reload()">
-          <app-cf-action-icon name="refresh" />
+                  aria-label="Refresh"
+                  title="Refresh"
+                  type="button"
+                  class="cf-btn cf-btn-icon cf-btn-primary"
+                  (click)="reload()"
+                >
+                  <app-cf-action-icon name="refresh" />
                 </button>
-              </div>
+              </app-cf-empty-state>
             </div>
           </div>
         </article>

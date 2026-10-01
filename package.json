@@ -17,7 +17,7 @@
     "lint:tokens": "node scripts/lint-tokens.mjs",
     "generate:legacy-compat": "node scripts/generate-legacy-compat.mjs",
     "e2e": "ng e2e",
-    "e2e:rbac": "playwright test e2e/tenant-rbac.spec.ts",
+    "e2e:rbac": "playwright test e2e/tenant-rbac.spec.ts e2e/mass-schedule-week.spec.ts",
     "e2e:cross-tenant": "playwright test e2e/cross-tenant-isolation.spec.ts",
     "e2e:sacraments": "playwright test e2e/sacraments",
     "e2e:church-profile-leadership": "playwright test e2e/church-profile/church-profile.spec.ts -g leadership",

@@ -27,8 +27,7 @@
     aria-labelledby="sub-mgmt-tab-settings">
 
     <div *ngIf="settingsLoading && !settingsLoaded" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-      <p class="cf-loading-block__label">Loading access settings…</p>
-      <app-loading-skeleton type="card" [rows]="4"></app-loading-skeleton>
+      <app-loading-skeleton label="Loading access settings…" type="card" [rows]="4"></app-loading-skeleton>
     </div>
 
     <div *ngIf="settingsError && !settingsLoading" class="cf-inline-alert cf-panel" role="alert">
@@ -100,8 +99,7 @@
     aria-labelledby="sub-mgmt-tab-duration">
 
     <div *ngIf="durationsLoading && durationOptions.length === 0" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-      <p class="cf-loading-block__label">Loading duration options…</p>
-      <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+      <app-loading-skeleton label="Loading duration options…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
     </div>
 
     <div *ngIf="durationsError && !durationsLoading" class="cf-inline-alert cf-panel" role="alert">

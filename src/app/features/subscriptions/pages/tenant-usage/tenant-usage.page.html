@@ -7,7 +7,7 @@
         <input type="checkbox" [(ngModel)]="attentionOnly" (ngModelChange)="applyFilter()" />
         Only churches that are nearly full
       </label>
-      <span class="sa-muted" *ngIf="result?.snapshot_date">Measured {{ result!.snapshot_date | date: 'mediumDate' }}</span>
+      <span class="sa-muted" *ngIf="result?.snapshot_date">Measured {{ result!.snapshot_date | cfDate }}</span>
     </div>
 
     <div *ngIf="loading && !result" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">

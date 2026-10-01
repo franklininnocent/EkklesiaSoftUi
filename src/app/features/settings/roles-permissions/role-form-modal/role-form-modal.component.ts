@@ -13,11 +13,13 @@ import { isHighRiskPermissionName } from '@shared/utils/rbac-permission.util';
 import { isProtectedRoleDefinition } from '@shared/utils/rbac-role.util';
 import { RolePermissionWorkspaceComponent } from '../role-permission-workspace/role-permission-workspace.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 
 @Component({
   selector: 'app-role-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, RolePermissionWorkspaceComponent, ModalShellComponent],
+  imports: [CommonModule, ReactiveFormsModule, RolePermissionWorkspaceComponent, ModalShellComponent, CfBrandLoaderComponent, CfBusyLabelComponent],
   templateUrl: './role-form-modal.component.html',
   styleUrl: './role-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

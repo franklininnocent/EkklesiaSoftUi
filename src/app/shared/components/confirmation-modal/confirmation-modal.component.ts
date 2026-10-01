@@ -15,6 +15,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ModalShellComponent } from '../modal-shell/modal-shell.component';
+import { CfBrandLoaderComponent } from '../cf-brand-loader/cf-brand-loader.component';
 
 export interface ConfirmationResult {
   confirmed: boolean;
@@ -24,7 +25,7 @@ export interface ConfirmationResult {
 @Component({
   selector: 'app-confirmation-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, ModalShellComponent],
+  imports: [CommonModule, FormsModule, ModalShellComponent, CfBrandLoaderComponent],
   templateUrl: './confirmation-modal.component.html',
   styleUrls: ['./confirmation-modal.component.scss'],
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -43,6 +44,8 @@ export class ConfirmationModalComponent implements OnChanges {
   @Input() descriptionMaxLength = 500;
   /** When true, the description field must be non-empty before confirm is enabled. */
   @Input() descriptionRequired = false;
+  /** Minimum trimmed length when a reason is required. 0 keeps any non-empty value valid. */
+  @Input() descriptionMinLength = 0;
   /** Parent-controlled busy state for async confirm handlers (keeps modal open). */
   @Input() externalSubmitting = false;
   /** When true, stacks above an already-open modal. */
@@ -80,6 +83,13 @@ export class ConfirmationModalComponent implements OnChanges {
     return this.description.length > this.descriptionMaxLength;
   }
 
+  get isDescriptionTooShort(): boolean {
+    if (this.descriptionMinLength <= 0) {
+      return false;
+    }
+    return this.description.trim().length < this.descriptionMinLength;
+  }
+
   get isDescriptionMissing(): boolean {
     return this.descriptionRequired && this.showDescriptionInput && !this.description.trim();
   }
@@ -93,7 +103,7 @@ export class ConfirmationModalComponent implements OnChanges {
   }
 
   onConfirm(): void {
-    if (this.isBusy || this.isDescriptionTooLong || this.isDescriptionMissing) {
+    if (this.isBusy || this.isDescriptionTooLong || this.isDescriptionMissing || this.isDescriptionTooShort) {
       return;
     }
 

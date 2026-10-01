@@ -36,17 +36,36 @@ export function buildAppSidebarSections(): SidebarNavSection[] {
       label: 'Parish',
       items: [
         CHURCH_PROFILE_SIDEBAR_TREE,
-        leaf('families', 'Families', '/families', {
-          icon: 'families',
-          menuId: 'families',
-        }),
-        leaf('bccs', 'BCCs', '/bccs', {
+        {
+          ...leaf('families', 'Families', '/families', {
+            icon: 'families',
+            menuId: 'families',
+          }),
+          children: [
+            leaf('families-dashboard', 'Dashboard', '/families', { exact: true }),
+            leaf('families-list', 'Family List', '/families/list', {
+              activePath: '/families/',
+            }),
+            leaf('members', 'Members', '/members/list', {
+              menuId: 'members',
+            }),
+            leaf('member-birthdays', 'Birthdays', '/members/celebrations', {
+              menuId: 'members',
+              exact: true,
+              query: { tab: 'birthdays' },
+              defaultWhenQueryMissing: { tab: 'birthdays' },
+            }),
+            leaf('member-anniversaries', 'Wedding Anniversaries', '/members/celebrations', {
+              menuId: 'members',
+              exact: true,
+              query: { tab: 'anniversaries' },
+            }),
+          ],
+        },
+        leaf('bccs', 'BCCs', '/bccs/list', {
           icon: 'bccs',
           menuId: 'bccs',
-        }),
-        leaf('members', 'Members', '/members', {
-          icon: 'members',
-          menuId: 'members',
+          activePath: '/bccs',
         }),
         {
           ...leaf('sacraments', 'Sacraments', '/sacraments', {
@@ -59,7 +78,7 @@ export function buildAppSidebarSections(): SidebarNavSection[] {
           ],
         },
         {
-          ...leaf('mass-intentions', 'Mass intentions', '/mass-intentions', {
+          ...leaf('mass-intentions', 'Holy Mass', '/mass-intentions', {
             icon: 'mass-intentions',
             menuId: 'mass-intentions',
           }),

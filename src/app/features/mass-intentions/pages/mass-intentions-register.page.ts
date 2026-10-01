@@ -2,11 +2,15 @@ import { CommonModule } from '@angular/common';
 import { Component, inject, signal } from '@angular/core';
 import { ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from '@core/services/auth.service';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
-import { formatMassDayTime } from '../utils/mass-celebration-display';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { formatMassDayTime } from '../utils/mass-celebration-display';
 import {
   MassIntentionsApiService,
   MassListReportRow,
@@ -15,6 +19,10 @@ import {
   RegisterRow,
   StillToSayReportRow,
 } from '../services/mass-intentions-api.service';
+import {
+  massIntentionsDashboardBackLink,
+  massIntentionsReportsBackLabel,
+} from '../utils/mass-intentions-chrome-header.util';
 
 type ReportTab =
   | 'canonical'
@@ -26,200 +34,25 @@ type ReportTab =
 @Component({
   selector: 'app-mass-intentions-register-page',
   standalone: true,
-  imports: [CommonModule, RouterModule, PageHeaderComponent, CfCurrencyPipe, ListToolbarComponent, DataTableComponent],
-  template: `
-    <div class="cf-page">
-      <app-page-header
-        title="Reports"
-        subtitle="Print-friendly lists for the parish register"
-        [backLink]="['/mass-intentions']"
-        backLabel="Dashboard"
-      >
-        <button type="button" class="cf-btn cf-btn-ghost" (click)="print()">Print</button>
-        @if (canSeeOfferings()) {
-          <button type="button" class="cf-btn cf-btn-ghost" (click)="downloadLedgerBridge()">
-            Donations ledger export
-          </button>
-        }
-      </app-page-header>
-
-      <nav class="mass-reports__tabs" aria-label="Report type">
-        @for (tab of visibleTabs(); track tab.id) {
-          <button
-            type="button"
-            class="cf-btn cf-btn-ghost mass-reports__tab"
-            [class.mass-reports__tab--active]="activeTab() === tab.id"
-            (click)="selectTab(tab.id)"
-          >
-            {{ tab.label }}
-          </button>
-        }
-      </nav>
-
-      <app-list-toolbar
-        searchPlaceholder="Filter this list…"
-        [searchValue]="reportSearch()"
-        [filterCount]="0"
-        (searchChange)="reportSearch.set($event)"
-      />
-
-      @if (loading()) {
-        <p>Loading…</p>
-      } @else {
-        <div class="cf-panel mass-register__table">
-          <app-data-table [ariaBusy]="loading()">
-          @switch (activeTab()) {
-            @case ('canonical') {
-              <table class="cf-data-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Intention</th>
-                    <th>Day asked</th>
-                    <th>Said</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of filteredCanonical(); track row.request_id) {
-                    <tr>
-                      <td>{{ row.beneficiary_name }}</td>
-                      <td>{{ row.intention_text }}</td>
-                      <td>{{ row.requested_date || '—' }}</td>
-                      <td>{{ row.progress }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            }
-            @case ('mass-list') {
-              <table class="cf-data-table">
-                <thead>
-                  <tr>
-                    <th>Day and time</th>
-                    <th>Place</th>
-                    <th>Priest</th>
-                    <th>Intentions</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of filteredMassList(); track row.celebration_id) {
-                    <tr>
-                      <td>{{ formatMassDayTime(row.celebrated_on, row.celebrated_at) }}</td>
-                      <td>{{ row.place || '—' }}</td>
-                      <td>{{ row.celebrant_name || '—' }}</td>
-                      <td>{{ row.intention_count }}</td>
-                      <td>{{ row.status }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            }
-            @case ('still-to-say') {
-              <table class="cf-data-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Intention</th>
-                    <th>Mass #</th>
-                    <th>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of filteredStillToSay(); track row.obligation_id) {
-                    <tr>
-                      <td>{{ row.beneficiary_name }}</td>
-                      <td>{{ row.intention_text }}</td>
-                      <td>{{ row.sequence }}</td>
-                      <td>{{ row.status }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            }
-            @case ('offerings') {
-              <table class="cf-data-table mass-reports__money">
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Name</th>
-                    <th>Receipt</th>
-                    <th>Method</th>
-                    <th class="mass-reports__amount">Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of filteredOfferings(); track row.receipt_number) {
-                    <tr>
-                      <td>{{ row.received_on }}</td>
-                      <td>{{ row.beneficiary_name }}</td>
-                      <td>{{ row.receipt_number }}</td>
-                      <td>{{ row.payment_method }}</td>
-                      <td class="mass-reports__amount">{{ row.amount | cfCurrency }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            }
-            @case ('masses-said') {
-              <table class="cf-data-table">
-                <thead>
-                  <tr>
-                    <th>Said on</th>
-                    <th>Mass day</th>
-                    <th>Name</th>
-                    <th>Intention</th>
-                    <th>Priest</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (row of filteredMassesSaid(); track row.said_on + row.sequence) {
-                    <tr>
-                      <td>{{ row.said_on }}</td>
-                      <td>{{ row.mass_day || '—' }}</td>
-                      <td>{{ row.beneficiary_name }}</td>
-                      <td>{{ row.intention_text }}</td>
-                      <td>{{ row.celebrant || '—' }}</td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            }
-          }
-          </app-data-table>
-        </div>
-      }
-    </div>
-  `,
-  styles: [
-    `
-      .mass-register__table {
-        padding: var(--cf-space-3);
-      }
-      .mass-reports__tabs {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--cf-space-2);
-        margin-bottom: var(--cf-space-3);
-      }
-      .mass-reports__tab--active {
-        font-weight: 600;
-        text-decoration: underline;
-      }
-      .mass-reports__amount {
-        text-align: right;
-        font-variant-numeric: tabular-nums;
-      }
-      @media print {
-        .cf-btn,
-        .mass-reports__tabs {
-          display: none !important;
-        }
-      }
-    `,
+  imports: [
+    CommonModule,
+    RouterModule,
+    PageHeaderComponent,
+    CfCurrencyPipe,
+    ListToolbarComponent,
+    DataTableComponent,
+    LoadingSkeletonComponent,
+    CfEmptyStateComponent,
+    StatusBadgeComponent,
+    CfActionIconComponent,
   ],
+  templateUrl: './mass-intentions-register.page.html',
+  styleUrl: './mass-intentions-register.page.scss',
 })
 export class MassIntentionsRegisterPageComponent {
+  readonly dashboardBackLink = massIntentionsDashboardBackLink();
+  readonly dashboardBackLabel = massIntentionsReportsBackLabel();
+
   private readonly api = inject(MassIntentionsApiService);
   private readonly auth = inject(AuthService);
   private readonly route = inject(ActivatedRoute);
@@ -233,6 +66,7 @@ export class MassIntentionsRegisterPageComponent {
   readonly stillToSay = signal<StillToSayReportRow[]>([]);
   readonly offerings = signal<OfferingsReportRow[]>([]);
   readonly massesSaid = signal<MassesSaidReportRow[]>([]);
+  readonly massListRangeLabel = signal('');
 
   private readonly allTabs: { id: ReportTab; label: string; needsOfferings?: boolean }[] = [
     { id: 'canonical', label: 'Canonical register' },
@@ -241,6 +75,14 @@ export class MassIntentionsRegisterPageComponent {
     { id: 'offerings', label: 'Offerings', needsOfferings: true },
     { id: 'masses-said', label: 'Masses said' },
   ];
+
+  private readonly tabBlurbs: Record<ReportTab, string> = {
+    canonical: 'Names, intentions, and progress for the canonical parish register.',
+    'mass-list': 'Upcoming Masses and how many intentions are on each one.',
+    'still-to-say': 'Intentions that still need to be said at Mass.',
+    offerings: 'Stipends and offerings recorded with receipts.',
+    'masses-said': 'Intentions already said, with Mass day and celebrant.',
+  };
 
   visibleTabs(): { id: ReportTab; label: string }[] {
     const canMoney = this.auth.hasPermission('mass.intentions.offerings.view');
@@ -255,10 +97,56 @@ export class MassIntentionsRegisterPageComponent {
     this.loadTab(initial);
   }
 
+  tabBlurb(): string {
+    const base = this.tabBlurbs[this.activeTab()];
+    if (this.activeTab() === 'mass-list' && this.massListRangeLabel()) {
+      return `${base} ${this.massListRangeLabel()}`;
+    }
+    return base;
+  }
+
+  filteredRowCount(): number {
+    return this.currentFilteredRows().length;
+  }
+
+  totalRowCount(): number {
+    return this.currentRawRows().length;
+  }
+
+  resultsSummary(): string {
+    const shown = this.filteredRowCount();
+    const total = this.totalRowCount();
+    let summary =
+      shown === total
+        ? `${shown} ${shown === 1 ? 'row' : 'rows'}`
+        : `${shown} of ${total} rows`;
+    if (this.activeTab() === 'mass-list' && this.massListRangeLabel()) {
+      summary += ` ${this.massListRangeLabel()}`;
+    }
+    return summary;
+  }
+
   selectTab(id: ReportTab): void {
     this.activeTab.set(id);
     this.reportSearch.set('');
     this.loadTab(id);
+  }
+
+  massStatusLabel(status?: string): string {
+    if (status === 'cancelled') {
+      return 'Cancelled';
+    }
+    if (status === 'scheduled') {
+      return 'Scheduled';
+    }
+    return status ?? '—';
+  }
+
+  massStatusTone(status?: string): StatusBadgeTone {
+    if (status === 'cancelled') {
+      return 'neutral';
+    }
+    return 'info';
   }
 
   private matches(term: string, ...parts: (string | null | undefined)[]): boolean {
@@ -320,6 +208,51 @@ export class MassIntentionsRegisterPageComponent {
     });
   }
 
+  private currentFilteredRows(): unknown[] {
+    switch (this.activeTab()) {
+      case 'canonical':
+        return this.filteredCanonical();
+      case 'mass-list':
+        return this.filteredMassList();
+      case 'still-to-say':
+        return this.filteredStillToSay();
+      case 'offerings':
+        return this.filteredOfferings();
+      case 'masses-said':
+        return this.filteredMassesSaid();
+      default:
+        return [];
+    }
+  }
+
+  private currentRawRows(): unknown[] {
+    switch (this.activeTab()) {
+      case 'canonical':
+        return this.canonical();
+      case 'mass-list':
+        return this.massList();
+      case 'still-to-say':
+        return this.stillToSay();
+      case 'offerings':
+        return this.offerings();
+      case 'masses-said':
+        return this.massesSaid();
+      default:
+        return [];
+    }
+  }
+
+  private isoDate(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  private formatRangeLabel(from: string, to: string): string {
+    return `(from ${from} through ${to})`;
+  }
+
   private loadTab(tab: ReportTab): void {
     this.loading.set(true);
     const done = (): void => this.loading.set(false);
@@ -334,8 +267,14 @@ export class MassIntentionsRegisterPageComponent {
           error: done,
         });
         break;
-      case 'mass-list':
-        this.api.getMassListReport().subscribe({
+      case 'mass-list': {
+        const today = new Date();
+        const from = this.isoDate(today);
+        const toDate = new Date(today);
+        toDate.setDate(toDate.getDate() + 14);
+        const to = this.isoDate(toDate);
+        this.massListRangeLabel.set(this.formatRangeLabel(from, to));
+        this.api.getMassListReport(from, to).subscribe({
           next: (res) => {
             this.massList.set(res.data ?? []);
             done();
@@ -343,6 +282,7 @@ export class MassIntentionsRegisterPageComponent {
           error: done,
         });
         break;
+      }
       case 'still-to-say':
         this.api.getStillToSayReport().subscribe({
           next: (res) => {

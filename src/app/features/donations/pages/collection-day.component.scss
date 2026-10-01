@@ -1,4 +1,4 @@
-/* Collection Operations Center — enterprise financial workspace */
+/* Collection day — enterprise financial workspace */
 
 :host {
   display: block;
@@ -37,10 +37,9 @@
   gap: 1.15rem;
 }
 
-/* Command Bar — two-row ops header (context + hero) */
+/* Command Bar — session context + toolbar */
 .coc-command {
-  display: grid;
-  gap: 0;
+  display: block;
   border: 1px solid var(--coc-border);
   border-radius: calc(var(--coc-radius) + 2px);
   background:
@@ -56,7 +55,6 @@
   align-items: center;
   gap: 1rem;
   padding: 0.65rem 1.1rem;
-  border-bottom: 1px solid var(--coc-border);
   background: rgba(255, 255, 255, 0.55);
 }
 
@@ -147,43 +145,6 @@
   &:hover:not(:disabled) {
     color: var(--coc-accent);
   }
-}
-
-.coc-command__hero {
-  display: grid;
-  grid-template-columns: minmax(18rem, 1.45fr) minmax(14rem, 0.85fr);
-  gap: 1.5rem 2rem;
-  align-items: start;
-  padding: 1.35rem 1.25rem 1.15rem;
-}
-
-.coc-command__copy {
-  min-width: 0;
-}
-
-.coc-command h1 {
-  margin: 0;
-  font-size: var(--cf-text-page-title);
-  font-weight: var(--cf-font-weight-page-title, 700);
-  line-height: var(--cf-leading-page-title, 1.25);
-  letter-spacing: -0.01em;
-}
-
-.coc-command__subtitle {
-  margin: 0.55rem 0 0;
-  max-width: 38rem;
-  font-size: 0.96rem;
-  line-height: 1.55;
-  color: var(--coc-muted);
-}
-
-.coc-command__tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.45rem;
-  justify-content: flex-end;
-  align-items: center;
-  align-self: start;
 }
 
 /* Buttons */
@@ -307,6 +268,11 @@
   color: inherit;
   text-decoration: none;
   cursor: pointer;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
 }
 
 .coc-kpi--link:hover {
@@ -1140,13 +1106,6 @@
     justify-content: flex-end;
   }
 
-  .coc-command__hero {
-    grid-template-columns: 1fr;
-  }
-
-  .coc-command__tools {
-    justify-content: flex-start;
-  }
 }
 
 @media (max-width: 1024px) {
@@ -1182,10 +1141,6 @@
 
   .coc-command__context {
     padding: 0.65rem 0.85rem;
-  }
-
-  .coc-command__hero {
-    padding: 1rem 0.85rem;
   }
 
   .coc-command__fact-value--truncate {

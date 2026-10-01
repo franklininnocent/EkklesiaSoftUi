@@ -22,6 +22,7 @@ import { PopeDetailsManagementComponent } from '../ecclesiastical/pope-details/p
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { UserAvatarComponent, ImageViewerComponent } from '@shared/components';
@@ -39,7 +40,7 @@ interface AssignRoleTenantGroup {
 @Component({
   selector: 'app-roles-permissions',
   standalone: true,
-  imports: [CommonModule, FormsModule, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, DataTableComponent, StatusBadgeComponent, UserAvatarComponent, ImageViewerComponent],
+  imports: [CommonModule, FormsModule, PaginationComponent, SortableDirective, RoleFormModalComponent, AssignPermissionsModalComponent, PopeDetailsManagementComponent, PageHeaderComponent, ConfirmationModalComponent, ListToolbarComponent, AdvancedSearchPanelComponent, CfEmptyStateComponent, DataTableComponent, StatusBadgeComponent, UserAvatarComponent, ImageViewerComponent, CfBrandLoaderComponent],
   templateUrl: './roles-permissions.component.html',
   styleUrl: './roles-permissions.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

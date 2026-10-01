@@ -144,7 +144,7 @@
                   [tone]="sessionStatusTone(row.status)"
                 ></app-status-badge>
               </td>
-              <td>{{ row.last_activity_at | date: 'short' }}</td>
+              <td>{{ row.last_activity_at | cfDate: 'datetime' }}</td>
               <td class="cf-table__actions-cell application-access__col-actions">
                 <button
                   type="button"
@@ -193,7 +193,7 @@
               <td>
                 <app-status-badge [label]="row.risk_level || 'LOW'" [tone]="riskTone(row.risk_level)"></app-status-badge>
               </td>
-              <td>{{ row.occurred_at | date: 'short' }}</td>
+              <td>{{ row.occurred_at | cfDate: 'datetime' }}</td>
             </tr>
           </tbody>
         </app-data-table>

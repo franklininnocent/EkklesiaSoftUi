@@ -98,8 +98,7 @@
             [disabled]="state.busy"
             [attr.aria-busy]="state.busy"
           >
-            <span *ngIf="state.busy" class="cf-spinner" aria-hidden="true"></span>
-            Create Account
+            <app-cf-busy-label [busy]="state.busy" busyLabel="Creating account">Create Account</app-cf-busy-label>
           </button>
         </ng-container>
 

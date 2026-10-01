@@ -299,6 +299,8 @@ export interface DonationDashboardSnapshot {
   overdue_families: number;
   due_next_14_days_amount: number;
   due_next_14_days_families: number;
+  due_later_amount?: number;
+  due_later_families?: number;
   participation: {
     participating: number;
     active: number;
@@ -1046,6 +1048,7 @@ export interface DonationFamilyFinancialProfile {
     }>;
     outstanding_installments: Array<{
       id: string;
+      project_id?: string;
       project_name?: string;
       installment_label: string;
       due_date: string;
@@ -1055,6 +1058,7 @@ export interface DonationFamilyFinancialProfile {
     }>;
     installment_ledger?: Array<{
       id: string;
+      project_id?: string;
       project_name?: string;
       installment_label: string;
       due_date: string;
@@ -1191,6 +1195,36 @@ export interface FamilyFinancialAnalytics {
     family_mandatory_pending: number;
     tenant_average_mandatory_pending: number;
   };
+}
+
+export interface CollectPaymentContext {
+  family: {
+    id: string;
+    family_name: string;
+    family_code: string;
+    head_of_family?: string | null;
+  } | null;
+  project: {
+    id: string;
+    name: string;
+    code?: string | null;
+    fund_id?: string | null;
+  } | null;
+  suggested_allocation: {
+    allocatable_type: 'due' | 'project_installment' | 'project' | 'fund';
+    allocatable_id: string;
+    label: string;
+    collectible_amount: number;
+    amount_due?: number;
+    amount_paid?: number;
+    status?: string;
+  } | null;
+  collectible_amount: number;
+  payment_date: string;
+  currency_code: string | null;
+  can_collect: boolean;
+  overpayment_becomes_credit: boolean;
+  message?: string | null;
 }
 
 export interface DonationPayment {
@@ -1461,12 +1495,49 @@ export interface DonationProject {
   installment_interval_days?: number | null;
   auto_generate_installments?: boolean;
   status: string;
-  collection_percentage?: number;
+  overall_target?: number;
+  has_funding_target?: boolean;
+  collection_percentage?: number | null;
+  needs_attention?: boolean;
   families_enrolled?: number;
   fund?: { id: string; name: string; code: string };
   assignments_count?: number;
   installment_dues_count?: number;
+  installment_schedule?: ProjectInstallmentSchedule;
   assignments?: ProjectFamilyAssignment[];
+}
+
+export interface ProjectInstallmentSchedule {
+  state: 'not_generated' | 'generated' | 'payments_recorded';
+  active_count: number;
+  pending_count: number;
+  partial_count: number;
+  paid_count: number;
+  waived_count: number;
+  cancelled_count: number;
+  overdue_count: number;
+  families_with_schedule: number;
+  families_with_payments: number;
+  families_regenerable: number;
+  families_missing: number;
+  can_generate: boolean;
+  can_regenerate: boolean;
+}
+
+export interface ProjectInstallmentGenerationResult {
+  outcome?: 'generated' | 'already_generated' | 'regenerated' | 'unchanged' | 'blocked' | 'empty' | string;
+  mode?: string;
+  created?: number;
+  updated?: number;
+  cancelled?: number;
+  reactivated?: number;
+  unchanged?: number;
+  skipped?: number;
+  skipped_locked?: number;
+  families?: number;
+  families_locked?: number;
+  installments?: number;
+  schedule?: ProjectInstallmentSchedule;
 }
 
 export interface ProjectFamilyAssignment {
@@ -1494,7 +1565,21 @@ export interface ProjectInstallmentDue {
   amount_paid: number;
   outstanding_amount?: number;
   status: string;
-  family?: { id: string; family_name: string };
+  /** Resolved head person name for list display (API-computed). */
+  family_head_name?: string | null;
+  family?: {
+    id: string;
+    family_name?: string;
+    family_code?: string;
+    head_of_family?: string | null;
+    members?: Array<{
+      first_name: string;
+      middle_name?: string;
+      last_name: string;
+      relationship_to_head: string;
+      status?: string;
+    }>;
+  };
   project?: { id: string; name: string; code: string };
 }
 
@@ -1525,5 +1610,49 @@ export interface ProjectDashboard {
     total: number;
     paid: number;
     pending: number;
+  };
+}
+
+export type ProjectFamilyProgressStatus = 'completed' | 'partial' | 'not_started';
+
+export type ProjectFamilyProgressSort =
+  | 'family_name'
+  | 'family_code'
+  | 'target_amount'
+  | 'amount_collected'
+  | 'outstanding_amount'
+  | 'completion_percentage';
+
+export interface ProjectFamilyProgressRow {
+  family_id: string;
+  family_code: string | null;
+  family_name: string | null;
+  head_of_family: string | null;
+  bcc_id: string | null;
+  bcc_name: string | null;
+  target_amount: number;
+  amount_collected: number;
+  outstanding_amount: number;
+  completion_percentage: number;
+  status: ProjectFamilyProgressStatus;
+}
+
+export interface ProjectFamilyProgressQuery {
+  search?: string;
+  status?: ProjectFamilyProgressStatus | '';
+  bcc_id?: string;
+  sort?: ProjectFamilyProgressSort;
+  direction?: 'asc' | 'desc';
+  page?: number;
+  per_page?: number;
+}
+
+export interface ProjectFamilyProgressResponse {
+  success: boolean;
+  data: PaginatedResponse<ProjectFamilyProgressRow>;
+  meta?: {
+    filter_options?: {
+      bccs?: Array<{ id: string; name: string }>;
+    };
   };
 }

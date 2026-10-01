@@ -46,7 +46,7 @@
   </div>
 
   <p class="insights-overview__hint" *ngIf="o.window">
-    Activity window {{ o.window.current_start | date: 'mediumDate' }} – {{ o.window.current_end | date: 'mediumDate' }}
+    Activity window {{ o.window.current_start | cfDate }} – {{ o.window.current_end | cfDate }}
     · Compare vs prior {{ windowDays }} days
   </p>
 

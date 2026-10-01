@@ -4,6 +4,11 @@
   display: block;
 }
 
+.cf-table-responsive--loading-host {
+  position: relative;
+  min-height: 4rem;
+}
+
 .cf-table-responsive {
   @include cf-table-scroll-wrapper;
 

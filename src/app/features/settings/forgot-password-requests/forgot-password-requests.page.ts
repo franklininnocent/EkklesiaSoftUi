@@ -19,6 +19,7 @@ import {
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import {
   ConfirmationModalComponent,
   ConfirmationResult,
@@ -26,6 +27,7 @@ import {
 import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { ModalShellComponent } from '@shared/components';
 import { AuthService } from '@core/services/auth.service';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import {
   PasswordRecoveryRequestItem,
   PasswordRecoveryService,
@@ -50,6 +52,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
   selector: 'app-forgot-password-requests-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     PageHeaderComponent,
     ListToolbarComponent,
@@ -60,6 +63,7 @@ const STATUS_OPTIONS: Array<{ value: string; label: string }> = [
     ConfirmationModalComponent,
     StatusBadgeComponent,
     ModalShellComponent,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './forgot-password-requests.page.html',
   styleUrl: './forgot-password-requests.page.scss',

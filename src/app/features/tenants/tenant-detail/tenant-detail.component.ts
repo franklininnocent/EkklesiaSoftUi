@@ -25,11 +25,13 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
 import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { TenantPlanPanelComponent } from '@features/subscriptions/components/tenant-plan-panel/tenant-plan-panel.component';
 import { Subject, takeUntil } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { environment } from '@environments/environment';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type TenantDetailTab =
   | 'overview'
@@ -54,6 +56,7 @@ type TenantDetailTab =
     ModalShellComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
+    CfBrandLoaderComponent,
     DataTableComponent,
     UserAvatarComponent,
     ImageViewerComponent,
@@ -672,17 +675,13 @@ export class TenantDetailComponent implements OnInit, OnDestroy {
 
   formatDate(dateString: string | null | undefined): string {
     if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'short', day: 'numeric',
-    });
+    return cfFormatDate(dateString) || 'N/A';
   }
 
   formatDateTime(value: string | null | undefined): string {
     if (!value) return '—';
     try {
-      return new Date(value).toLocaleString(undefined, {
-        year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
-      });
+      return cfFormatDate(value, 'datetime') || value;
     } catch {
       return value;
     }

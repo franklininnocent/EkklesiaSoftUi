@@ -20,13 +20,15 @@ import { BishopService, DioceseService, extractBishopList } from '@core/services
 import { ToastService } from '@core/services';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { markFormGroupTouched } from '@core/validators/form-validation.helper';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 type SuccessorMode = 'new' | 'existing';
 
 @Component({
   selector: 'app-appoint-successor-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, NgSelectModule, ModalShellComponent],
+  imports: [
+    CfDatePipe,CommonModule, ReactiveFormsModule, NgSelectModule, ModalShellComponent],
   templateUrl: './appoint-successor-modal.component.html',
   styleUrl: './appoint-successor-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

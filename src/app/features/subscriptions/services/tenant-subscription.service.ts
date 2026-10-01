@@ -6,6 +6,7 @@ import { environment } from '@environments/environment';
 import { PublicPlanCard } from '../models/subscription-admin.models';
 import {
   SubmitUpgradeRequestPayload,
+  TenantPlanComparison,
   TenantSubscriptionOverview,
   UpgradeRequest,
   UsageRow,
@@ -42,6 +43,13 @@ export class TenantSubscriptionService {
   overview(): Observable<TenantSubscriptionOverview> {
     return this.http
       .get<ApiEnvelope<TenantSubscriptionOverview>>(`${this.base}/tenant/subscription/overview`)
+      .pipe(map((res) => res.data));
+  }
+
+  /** Authenticated comparison catalog with this church's current plan flagged by the API. */
+  comparison(): Observable<TenantPlanComparison> {
+    return this.http
+      .get<ApiEnvelope<TenantPlanComparison>>(`${this.base}/tenant/subscription/comparison`)
       .pipe(map((res) => res.data));
   }
 

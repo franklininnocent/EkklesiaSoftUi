@@ -1,4 +1,4 @@
-<section class="recurring-page cf-page cf-split-page">
+<section class="recurring-page cf-page cf-split-page cf-financial-dashboard">
   <app-page-header
     title="Recurring Gifts"
     subtitle="Scheduled voluntary giving — create schedules and manage collections side by side.">
@@ -17,8 +17,7 @@
   </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!schedulesLoaded" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-split-loading__label">Loading recurring schedules…</p>
-    <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading recurring schedules…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="schedulesLoaded">
@@ -137,7 +136,7 @@
                   <tr *ngFor="let schedule of filteredSchedules" [class.row-due]="isDueSoon(schedule)">
                     <td>{{ schedule.amount | cfCurrency }}</td>
                     <td>{{ schedule.frequency }}</td>
-                    <td>{{ schedule.next_run_on | date }}</td>
+                    <td>{{ schedule.next_run_on | cfDate }}</td>
                     <td>
                       <span class="status-pill" [class.status-pill--due]="isDueSoon(schedule)">{{ schedule.status }}</span>
                     </td>

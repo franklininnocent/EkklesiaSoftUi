@@ -25,7 +25,7 @@
   <ol class="aa-live__list" *ngIf="stream.liveEvents().length">
     <li *ngFor="let event of stream.liveEvents()">
       <strong>{{ liveTelemetryLabel(event) }}</strong>
-      <span class="aa-live__time">{{ event.occurred_at | date: 'short' }}</span>
+      <span class="aa-live__time">{{ event.occurred_at | cfDate: 'datetime' }}</span>
     </li>
   </ol>
 </app-section-card>

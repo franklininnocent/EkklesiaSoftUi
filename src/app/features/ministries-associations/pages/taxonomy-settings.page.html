@@ -4,15 +4,39 @@
     subtitle="Set up categories, types, and leadership positions used across organizations."
   ></app-page-header>
 
-  <div class="cf-nav-cluster">
-    <app-ministries-sub-nav></app-ministries-sub-nav>
+  <div class="ministries-settings-chrome">
+    <div
+      class="ministries-settings-chrome__nav-row"
+      role="navigation"
+      aria-label="Ministries navigation"
+    >
+      <div class="ministries-settings-chrome__primary-group" aria-label="Ministries sections">
+        <app-ministries-sub-nav></app-ministries-sub-nav>
+      </div>
 
-    <app-tab-strip
-      ariaLabel="Taxonomy settings"
-      [tabs]="tabStripItems"
-      [activeId]="activeTab"
-      (tabChange)="onTabChange($event)"
-    ></app-tab-strip>
+      <span class="ministries-settings-chrome__nav-separator" aria-hidden="true"></span>
+
+      <div
+        class="ministries-settings-chrome__secondary-group"
+        role="tablist"
+        aria-label="Taxonomy settings"
+      >
+        <button
+          type="button"
+          *ngFor="let tab of tabs"
+          class="ministries-settings-chrome__secondary-link"
+          [class.ministries-settings-chrome__secondary-link--active]="activeTab === tab"
+          role="tab"
+          [id]="tabId(tab)"
+          [attr.aria-selected]="activeTab === tab"
+          [attr.aria-controls]="panelId(tab)"
+          [attr.tabindex]="activeTab === tab ? 0 : -1"
+          (click)="onTabChange(tab)"
+        >
+          {{ tabLabels[tab] }}
+        </button>
+      </div>
+    </div>
   </div>
 
   <div

@@ -19,6 +19,7 @@ import {
   ParticipantSourceKind,
   SacramentParticipantDraft,
 } from '../../../models/sacrament-definition.model';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-participant-source-control',
@@ -301,11 +302,7 @@ export class ParticipantSourceControlComponent implements OnChanges, OnDestroy {
       return trimmed;
     }
 
-    return parsed.toLocaleDateString(undefined, {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    });
+    return cfFormatDate(parsed) || trimmed;
   }
 
   formatMemberGender(value?: string | null): string {

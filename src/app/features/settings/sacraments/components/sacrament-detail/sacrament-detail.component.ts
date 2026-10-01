@@ -1,5 +1,5 @@
 import { Component, OnDestroy, OnInit, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { SacramentService } from '../../services/sacrament.service';
@@ -24,6 +24,8 @@ import { mapProjectionToCertificateData } from '../../certificates/mappers/certi
 import { mapLiveSacramentToCertificateData } from '../../certificates/mappers/live-sacrament.mapper';
 import { liturgicalTerminology } from '../../certificates/terminology/en.catalog';
 import { SacramentalCertificateComponent } from '../../certificates/layout/sacramental-certificate.component';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import { CfLoadingContainerComponent } from '@shared/components/cf-loading-container/cf-loading-container.component';
 
 const SACRAMENT_VIEW_TYPE_CODES = new Set([
   'BAPTISM',
@@ -54,10 +56,10 @@ const SACRAMENT_VIEW_TYPE_CODES = new Set([
     PageHeaderComponent,
     CfEmptyStateComponent,
     SacramentalCertificateComponent,
+    CfLoadingContainerComponent,
   ],
   templateUrl: './sacrament-detail.component.html',
   styleUrl: './sacrament-detail.component.scss',
-  providers: [DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SacramentDetailComponent implements OnInit, OnDestroy {
@@ -98,7 +100,6 @@ export class SacramentDetailComponent implements OnInit, OnDestroy {
     private toastService: ToastService,
     private router: Router,
     private route: ActivatedRoute,
-    private datePipe: DatePipe,
     private store: Store<AppState>,
     private tenantService: TenantService,
     private authService: AuthService,
@@ -250,12 +251,12 @@ export class SacramentDetailComponent implements OnInit, OnDestroy {
 
   formatDate(date: string | Date | null | undefined): string {
     if (!date) return '';
-    return this.datePipe.transform(date, 'MMMM d, yyyy') || '';
+    return cfFormatDate(date) || '';
   }
 
   formatDateTime(date: string | Date | null | undefined): string {
     if (!date) return '—';
-    return this.datePipe.transform(date, 'dd MMM yyyy, hh:mm a') || '—';
+    return cfFormatDate(date, 'datetime') || '—';
   }
 
   formatHistoryVersion(item: SacramentCertificateDownloadHistoryItem): string {

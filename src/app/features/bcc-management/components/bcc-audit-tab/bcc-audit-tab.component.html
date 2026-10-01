@@ -1,7 +1,6 @@
 <div class="bcc-audit">
   <div class="cf-loading-block" *ngIf="loading" role="status">
-    <p class="cf-loading-block__label">Loading audit…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading audit…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
   </div>
   <div class="cf-inline-alert" *ngIf="loadError && !loading" role="alert">
     <p>{{ loadError }}</p>
@@ -27,7 +26,7 @@
             <td>{{ row.actor_name || 'System' }}</td>
             <td>
               <time *ngIf="row.created_at; else noWhen" [attr.datetime]="row.created_at">
-                {{ row.created_at | date: 'medium' }}
+                {{ row.created_at | cfDate: 'datetime' }}
               </time>
               <ng-template #noWhen>—</ng-template>
             </td>

@@ -21,8 +21,12 @@ export type { StewardshipWorkspaceId };
   imports: [CommonModule, RouterModule],
   template: `
     <div class="stewardship-shell">
-      <div class="stewardship-shell__chrome cf-nav-cluster">
-        <nav class="cf-workspace-nav stewardship-shell__workspaces" aria-label="Stewardship workspaces">
+      <div class="cf-panel stewardship-shell__chrome-panel cf-nav-cluster">
+        <p class="stewardship-shell__zone" id="stewardship-workspace-zone">
+          {{ activeWorkspaceZone() }}
+        </p>
+
+        <nav class="cf-workspace-nav stewardship-shell__workspaces" aria-labelledby="stewardship-workspace-zone">
           <button
             type="button"
             *ngFor="let workspace of workspaces"
@@ -36,21 +40,26 @@ export type { StewardshipWorkspaceId };
           </button>
         </nav>
 
-        <nav
-          class="cf-workspace-subnav stewardship-shell__tasks"
+        <div
+          class="stewardship-shell__subnav-wrap"
           *ngIf="currentWorkspaceLinks().length"
-          [attr.aria-label]="activeWorkspaceLabel() + ' tasks'"
         >
-          <a
-            *ngFor="let link of currentWorkspaceLinks()"
-            [routerLink]="link.path"
-            routerLinkActive="cf-workspace-subnav__link--active"
-            [routerLinkActiveOptions]="{ exact: link.exact ?? false }"
-            class="cf-workspace-subnav__link"
+          <nav
+            class="cf-workspace-subnav stewardship-shell__tasks"
+            [attr.aria-label]="activeWorkspaceLabel() + ' navigation'"
           >
-            {{ link.label }}
-          </a>
-        </nav>
+            <a
+              *ngFor="let link of currentWorkspaceLinks()"
+              [routerLink]="link.path"
+              routerLinkActive="cf-workspace-subnav__link--active"
+              [routerLinkActiveOptions]="{ exact: link.exact ?? false }"
+              class="cf-workspace-subnav__link"
+              [attr.title]="link.description || link.label"
+            >
+              {{ link.label }}
+            </a>
+          </nav>
+        </div>
       </div>
 
       <div class="stewardship-shell__content">
@@ -58,48 +67,13 @@ export type { StewardshipWorkspaceId };
       </div>
     </div>
   `,
-  styleUrls: ['../../styles/stewardship-action-icons.scss'],
-  styles: [`
-    .stewardship-shell {
-      display: grid;
-      gap: var(--cf-space-2);
-      margin-top: var(--cf-space-2);
-    }
-
-    .stewardship-shell__chrome {
-      min-width: 0;
-    }
-
-    .stewardship-shell__workspaces {
-      grid-template-columns: repeat(4, minmax(0, 1fr));
-    }
-
-    .stewardship-shell__workspaces .cf-workspace-nav__tab {
-      min-height: var(--cf-touch-target);
-      padding: 0.4rem 0.5rem;
-    }
-
-    .stewardship-shell__workspaces .cf-workspace-nav__tab span {
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .stewardship-shell__tasks {
-      flex-wrap: nowrap;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      scrollbar-width: thin;
-      padding-bottom: 0.1rem;
-    }
-
-    .stewardship-shell__tasks .cf-workspace-subnav__link {
-      flex-shrink: 0;
-    }
-
-    .stewardship-shell__content { min-height: 0; }
-    .stewardship-shell__content ::ng-deep .cf-page { padding-top: 0; }
-  `]
+  styleUrls: [
+    '../../styles/stewardship-action-icons.scss',
+    '../../styles/stewardship-dashboard-shared.scss',
+    '../../styles/stewardship-module-baseline.scss',
+    '../../styles/stewardship-portfolio-shared.scss',
+    './stewardship-workspace-shell.component.scss',
+  ],
 })
 export class StewardshipWorkspaceShellComponent {
   private readonly router = inject(Router);
@@ -129,6 +103,10 @@ export class StewardshipWorkspaceShellComponent {
 
   activeWorkspaceLabel(): string {
     return this.workspaces.find((workspace) => workspace.id === this.activeWorkspace())?.label ?? 'Stewardship';
+  }
+
+  activeWorkspaceZone(): string {
+    return this.workspaces.find((workspace) => workspace.id === this.activeWorkspace())?.zone ?? 'Stewardship';
   }
 
   goToWorkspace(workspace: StewardshipWorkspace): void {

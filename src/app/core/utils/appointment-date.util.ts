@@ -1,3 +1,5 @@
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+
 export interface AppointmentDateSource {
   effective_date?: string | null;
   appointed_date?: string | null;
@@ -26,15 +28,5 @@ export function formatAppointmentDate(value?: string | null): string {
   if (!value) {
     return '—';
   }
-
-  const parsed = new Date(value.includes('T') ? value : `${value}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) {
-    return '—';
-  }
-
-  return parsed.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  });
+  return cfFormatDate(value) || '—';
 }

@@ -22,7 +22,6 @@ import {
   BccOverview,
   BccTab,
 } from '../../models/bcc.model';
-import { BccGrowthMeasure, BccGrowthPanelComponent } from '../dashboard/bcc-growth-panel.component';
 import {
   BccOverviewChartComponent,
   BccOverviewChartSlice,
@@ -75,7 +74,6 @@ const GENDER_COLORS: Record<string, string> = {
     RouterLink,
     LoadingSkeletonComponent,
     CfEmptyStateComponent,
-    BccGrowthPanelComponent,
     BccOverviewChartComponent,
   ],
   templateUrl: './bcc-overview-tab.component.html',
@@ -95,7 +93,6 @@ export class BccOverviewTabComponent implements OnChanges {
   loadError: string | null = null;
   overview: BccOverview | null = null;
   currentLeaders: BccLeaderRow[] = [];
-  growthMeasure: BccGrowthMeasure = 'people';
 
   ngOnChanges(changes: SimpleChanges): void {
     if (changes['bccId'] && this.bccId) {
@@ -113,18 +110,6 @@ export class BccOverviewTabComponent implements OnChanges {
         const data = (res.data as BccOverview) ?? null;
         if (data) {
           data.attention = data.attention ?? [];
-          data.data_quality = data.data_quality ?? {
-            complete_count: 0,
-            incomplete_count: 0,
-            total: data.total_members ?? 0,
-            definition: 'Complete means gender and date of birth are recorded.',
-          };
-          data.growth = data.growth ?? {
-            period: '',
-            insufficient_history: true,
-            members: [],
-            families: [],
-          };
         }
         this.overview = data;
         this.loading = false;
@@ -143,6 +128,23 @@ export class BccOverviewTabComponent implements OnChanges {
 
   go(tab: BccTab, query?: Record<string, string>): void {
     this.navigate.emit({ tab, query });
+  }
+
+  primaryLeaderName(overview: BccOverview): string {
+    if (!overview.leadership.has_primary) {
+      return 'Attention';
+    }
+
+    return this.primaryLeader?.member_name?.trim() || overview.leadership.primary_leader || 'Primary assigned';
+  }
+
+  primaryLeaderPhone(): string | null {
+    const leader = this.primaryLeader;
+    return leader ? this.leaderContactPhone(leader) : null;
+  }
+
+  private get primaryLeader(): BccLeaderRow | null {
+    return this.currentLeaders.find((leader) => leader.role === 'leader') ?? null;
   }
 
   leaderDesignation(leader: BccLeaderRow): string {
@@ -196,11 +198,6 @@ export class BccOverviewTabComponent implements OnChanges {
     });
   }
 
-  onGrowthMeasure(measure: BccGrowthMeasure): void {
-    this.growthMeasure = measure;
-    this.cdr.markForCheck();
-  }
-
   activeRatio(overview: BccOverview): string {
     if (!overview.total_members) {
       return '0%';
@@ -251,15 +248,6 @@ export class BccOverviewTabComponent implements OnChanges {
     if (lifeBits.length) {
       const sentence = lifeBits.join(', ').replace(/, ([^,]*)$/, ', and $1');
       parts.push(`${sentence[0].toUpperCase()}${sentence.slice(1)}.`);
-    }
-
-    const incomplete = overview.data_quality?.incomplete_count ?? 0;
-    if (incomplete > 0) {
-      parts.push(
-        `Demographic information is incomplete for ${incomplete} ${
-          incomplete === 1 ? 'member' : 'members'
-        }.`
-      );
     }
 
     return parts.join(' ');
@@ -438,13 +426,6 @@ export class BccOverviewTabComponent implements OnChanges {
       return 0;
     }
     return Math.round((this.genderKnownTotal(overview) / overview.total_members) * 1000) / 10;
-  }
-
-  completenessPercent(overview: BccOverview): number {
-    if (!overview.data_quality?.total) {
-      return 0;
-    }
-    return Math.round((overview.data_quality.complete_count / overview.data_quality.total) * 1000) / 10;
   }
 
   lifeStageSummary(overview: BccOverview): string {

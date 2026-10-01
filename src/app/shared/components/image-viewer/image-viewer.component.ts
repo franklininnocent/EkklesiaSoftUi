@@ -14,6 +14,7 @@ import {
   inject,
 } from '@angular/core';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import {
   clampScale,
   fitScale,
@@ -25,7 +26,7 @@ import {
 @Component({
   selector: 'app-image-viewer',
   standalone: true,
-  imports: [CommonModule, ModalShellComponent],
+  imports: [CommonModule, ModalShellComponent, CfBrandLoaderComponent],
   templateUrl: './image-viewer.component.html',
   styleUrl: './image-viewer.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

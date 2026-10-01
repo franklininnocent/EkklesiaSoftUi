@@ -28,8 +28,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading users…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading users…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
@@ -39,7 +38,7 @@
 
   <ng-container *ngIf="!error && (!loading || allUsers.length)">
     <div class="cf-panel users__panel" *ngIf="users.length">
-      <app-data-table>
+      <app-data-table [loading]="loading" loadingLabel="Loading users…">
         <thead>
           <tr>
             <th

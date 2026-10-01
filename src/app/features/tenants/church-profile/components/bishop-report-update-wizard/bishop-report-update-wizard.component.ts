@@ -17,6 +17,7 @@ import { ModalShellComponent } from '@shared/components';
 import { BishopPhotoControlComponent, BishopPhotoControlState } from '@shared/components/bishop-photo-control/bishop-photo-control.component';
 import { ChurchBishopUpdateService } from '@core/services/church';
 import { ToastService } from '@core/services';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import {
   BishopUpdateRequestItem,
   BishopUpdateRequestType,
@@ -32,7 +33,8 @@ interface RequestTypeOption {
 @Component({
   selector: 'app-bishop-report-update-wizard',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent, BishopPhotoControlComponent],
+  imports: [
+    CfDatePipe,CommonModule, ReactiveFormsModule, ModalShellComponent, BishopPhotoControlComponent],
   templateUrl: './bishop-report-update-wizard.component.html',
   styleUrl: './bishop-report-update-wizard.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

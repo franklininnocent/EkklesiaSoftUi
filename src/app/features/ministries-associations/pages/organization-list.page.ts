@@ -11,6 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
 import { PaginationComponent } from '@shared/components/pagination/pagination.component';
@@ -22,6 +23,7 @@ import { PageHeaderComponent } from '@shared/components/page-header/page-header.
 import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { StatusBadgeComponent } from '@shared/components/status-badge/status-badge.component';
+import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { MinistriesSubNavComponent } from '../components/ministries-sub-nav/ministries-sub-nav.component';
 import {
   Organization,
@@ -36,10 +38,21 @@ type OrganizationStatusFilter = '' | 'active' | 'inactive';
 type SortBy =
   | 'name'
   | 'code'
+  | 'category_name'
+  | 'type_name'
   | 'established_date'
   | 'status'
   | 'created_at'
   | 'active_member_count';
+
+const TABLE_SORT_COLUMNS: SortBy[] = [
+  'name',
+  'code',
+  'category_name',
+  'type_name',
+  'active_member_count',
+  'status',
+];
 
 @Component({
   selector: 'app-organization-list-page',
@@ -48,6 +61,7 @@ type SortBy =
     CommonModule,
     FormsModule,
     RouterModule,
+    CfActionIconComponent,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
     PaginationComponent,
@@ -57,6 +71,7 @@ type SortBy =
     DataTableComponent,
     StatusBadgeComponent,
     MinistriesSubNavComponent,
+    SortableDirective,
   ],
   templateUrl: './organization-list.page.html',
   styleUrl: './organization-list.page.scss',
@@ -158,6 +173,17 @@ export class OrganizationListPageComponent implements OnInit, OnDestroy {
     this.loadOrganizations();
   }
 
+  onSort(event: SortEvent): void {
+    if (!TABLE_SORT_COLUMNS.includes(event.column as SortBy)) {
+      return;
+    }
+    this.sortBy = event.column as SortBy;
+    this.sortDir = event.direction ?? 'asc';
+    this.currentPage = 1;
+    this.syncSortSearchFields();
+    this.loadOrganizations();
+  }
+
   openOrganization(organization: Organization): void {
     void this.router.navigate(['/ministries', organization.id]);
   }
@@ -181,6 +207,7 @@ export class OrganizationListPageComponent implements OnInit, OnDestroy {
     this.sortBy = ((values['sortBy'] as SortBy) || 'created_at') as SortBy;
     this.sortDir = ((values['sortDir'] as 'asc' | 'desc') || 'desc') as 'asc' | 'desc';
     this.currentPage = 1;
+    this.syncSortSearchFields();
     this.loadOrganizations();
     this.showFilters = false;
     this.cdr.markForCheck();
@@ -231,6 +258,8 @@ export class OrganizationListPageComponent implements OnInit, OnDestroy {
         options: [
           { value: 'name', label: 'Name' },
           { value: 'code', label: 'Code' },
+          { value: 'category_name', label: 'Category' },
+          { value: 'type_name', label: 'Type' },
           { value: 'established_date', label: 'Established date' },
           { value: 'status', label: 'Status' },
           { value: 'created_at', label: 'Date added' },
@@ -249,6 +278,17 @@ export class OrganizationListPageComponent implements OnInit, OnDestroy {
         value: this.sortDir,
       },
     ];
+  }
+
+  private syncSortSearchFields(): void {
+    const sortByField = this.searchFields.find((f) => f.key === 'sortBy');
+    const sortDirField = this.searchFields.find((f) => f.key === 'sortDir');
+    if (sortByField) {
+      sortByField.value = this.sortBy;
+    }
+    if (sortDirField) {
+      sortDirField.value = this.sortDir;
+    }
   }
 
   private refreshCategoryOptions(): void {

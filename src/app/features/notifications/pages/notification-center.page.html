@@ -49,8 +49,7 @@
   >
     @if (loading()) {
       <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-        <p class="cf-loading-block__label">Loading notifications…</p>
-        <app-loading-skeleton type="list" [rows]="6"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading notifications…" type="list" [rows]="6"></app-loading-skeleton>
       </div>
     } @else if (error()) {
       <div class="cf-inline-alert cf-panel" role="alert">

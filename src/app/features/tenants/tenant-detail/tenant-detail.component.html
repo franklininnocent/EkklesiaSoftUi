@@ -299,7 +299,9 @@
 
         <ng-container *ngIf="canViewSubscriptionAuditHistory">
         <h3 class="tenant-detail__subheading">Subscription history</h3>
-        <div *ngIf="auditsLoading" class="cf-loading-block"><p>Loading history…</p></div>
+        <div *ngIf="auditsLoading" class="cf-loading-block">
+          <app-cf-brand-loader size="section" label="Loading history…" />
+        </div>
         <div *ngIf="auditsError" class="cf-inline-alert" role="alert">
           <p>{{ auditsError }}</p>
           <button type="button" class="cf-btn cf-btn--sm" (click)="loadSubscriptionAudits(true)">Retry</button>

@@ -6,10 +6,7 @@
   (closeRequested)="onCancel()"
 >
   <!-- Loading State -->
-  <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading...</p>
-  </div>
+  <app-cf-loading-container *ngIf="loading" label="Loading…" />
 
   <!-- Form -->
   <form *ngIf="!loading" class="sacrament-form" (ngSubmit)="onSave()">

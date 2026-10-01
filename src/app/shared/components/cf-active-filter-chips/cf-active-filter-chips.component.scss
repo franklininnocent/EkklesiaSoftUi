@@ -1,0 +1,94 @@
+.cf-active-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.625rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+:host.cf-active-filters--embedded .cf-active-filters {
+  margin-top: 0;
+}
+
+.cf-active-filters__label {
+  flex: 0 0 auto;
+  font-size: var(--cf-text-meta, var(--cf-text-sm));
+  line-height: 1.35;
+  color: var(--cf-color-text-muted, var(--cf-muted));
+  white-space: nowrap;
+}
+
+.cf-active-filters__list {
+  display: flex;
+  flex: 1 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.375rem;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cf-active-filter-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: min(100%, 28rem);
+  border: 1px solid var(--cf-panel-border, var(--cf-slate-200));
+  border-radius: var(--cf-radius-pill, 999px);
+  background: var(--cf-panel-bg, #fff);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, 0.04);
+}
+
+.cf-active-filter-chip__body {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.2rem 0.35rem;
+  padding: 0.2rem 0.15rem 0.2rem 0.65rem;
+  min-width: 0;
+  font-size: var(--cf-text-sm, 0.8125rem);
+  line-height: 1.35;
+}
+
+.cf-active-filter-chip__name {
+  font-weight: 600;
+  color: var(--cf-slate-700, var(--cf-color-text-secondary));
+  white-space: nowrap;
+}
+
+.cf-active-filter-chip__value {
+  color: var(--cf-slate-900, var(--cf-color-text-primary));
+  word-break: break-word;
+}
+
+.cf-active-filter-chip__remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0.1rem 0.15rem 0.1rem 0;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--cf-muted, var(--cf-slate-500));
+  cursor: pointer;
+
+  &:hover {
+    background: var(--cf-slate-100);
+    color: var(--cf-slate-800);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cf-primary, var(--cf-indigo-600));
+    outline-offset: 1px;
+  }
+}
+
+.cf-active-filters__clear-all {
+  flex-shrink: 0;
+}

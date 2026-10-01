@@ -8,7 +8,6 @@ import { ReceiptPrintService } from '../services/receipt-print.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { AuthService } from '@core/services/auth.service';
 import { BCCService } from '@core/services/bcc.service';
-import { ChurchCurrencyService } from '@core/services/church-currency.service';
 
 describe('TodaysCollectionsComponent', () => {
   let fixture: ComponentFixture<TodaysCollectionsComponent>;
@@ -64,6 +63,7 @@ describe('TodaysCollectionsComponent', () => {
           provide: DonationsService,
           useValue: {
             getPayments,
+            getDashboardSummary: jest.fn().mockReturnValue(of({ success: true, data: {} })),
             getProjects: jest.fn().mockReturnValue(of({ success: true, data: [] })),
             ledgerMutated$,
             reversePayment: jest.fn(),
@@ -78,8 +78,7 @@ describe('TodaysCollectionsComponent', () => {
             hasPermission: jest.fn((permission: string) => permission === 'donations.view' || permission === 'donations.collect')
           }
         },
-        { provide: BCCService, useValue: { getBCCs: jest.fn().mockReturnValue(of({ data: [] })) } },
-        { provide: ChurchCurrencyService, useValue: { currencyCode: () => 'INR' } }
+        { provide: BCCService, useValue: { getBCCs: jest.fn().mockReturnValue(of({ data: [] })) } }
       ]
     }).compileComponents();
 
@@ -95,7 +94,7 @@ describe('TodaysCollectionsComponent', () => {
       per_page: '20'
     }));
     expect(fixture.nativeElement.textContent).toContain("Today's Collections");
-    expect(fixture.nativeElement.textContent).toContain('1 payment');
+    expect(fixture.nativeElement.querySelector('.cf-decision-strip')).toBeFalsy();
     expect(component.totals.collected_gross).toBe(40);
     expect(component.payments.length).toBe(1);
   });
@@ -171,5 +170,16 @@ describe('TodaysCollectionsComponent', () => {
       collection_date: '2026-09-20'
     }));
     expect(getPayments.mock.calls[0][0].today_only).toBeUndefined();
+  });
+
+  it('load with completion focus requests dashboard summary', () => {
+    const getDashboardSummary = jest.fn().mockReturnValue(of({
+      success: true,
+      data: { period_collections: { current_month_collected: 500 } }
+    }));
+    (TestBed.inject(DonationsService) as unknown as { getDashboardSummary: jest.Mock }).getDashboardSummary = getDashboardSummary;
+    component.kpiFocus = 'completion';
+    component.load();
+    expect(getDashboardSummary).toHaveBeenCalled();
   });
 });

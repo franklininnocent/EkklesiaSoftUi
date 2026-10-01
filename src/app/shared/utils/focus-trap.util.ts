@@ -27,11 +27,16 @@ export function getFocusableElements(container: HTMLElement): HTMLElement[] {
     });
 }
 
+export interface TrapFocusOptions {
+  /** When false, attach the Tab cycle without moving focus (used when a nested overlay closes). */
+  focusFirst?: boolean;
+}
+
 /**
  * Trap focus within a container
  * Returns a cleanup function
  */
-export function trapFocus(container: HTMLElement): () => void {
+export function trapFocus(container: HTMLElement, options?: TrapFocusOptions): () => void {
   const focusableElements = getFocusableElements(container);
   const noopCleanup = (): void => {
     return;
@@ -44,8 +49,9 @@ export function trapFocus(container: HTMLElement): () => void {
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
 
-  // Focus the first element
-  firstElement.focus();
+  if (options?.focusFirst !== false) {
+    firstElement.focus();
+  }
 
   const handleKeyDown = (event: KeyboardEvent): void => {
     if (event.key !== 'Tab') {

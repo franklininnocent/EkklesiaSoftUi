@@ -27,6 +27,7 @@ import {
   UpdateMembershipStatusPayload,
 } from '../../models/ministries.model';
 import { MinistriesApiService } from '../../services/ministries-api.service';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 const EXIT_STATUSES: MembershipStatus[] = [
   'exited',
@@ -182,11 +183,7 @@ export class MembershipStatusModalComponent implements OnInit, OnDestroy {
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(date) || '—';
   }
 
   private applyExitDateValidators(): void {

@@ -1,0 +1,152 @@
+<section class="member-celebrations cf-page">
+  <app-page-header
+    title="Member celebrations"
+    [subtitle]="pageSubtitle"
+  >
+    <app-list-toolbar
+      searchPlaceholder="Search by name or family"
+      [searchValue]="searchTerm"
+      [filterCount]="getActiveFilterCount()"
+      (searchChange)="onListSearchChange($event)"
+      (filtersOpened)="openAdvancedSearch()"
+    >
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        (click)="loadItems()"
+        [disabled]="loading"
+        aria-label="Refresh"
+        title="Refresh"
+      >
+        <app-cf-action-icon name="refresh" />
+      </button>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <div class="member-celebrations__toolbar">
+    <div class="member-celebrations__tabs" role="tablist" aria-label="Celebration type">
+      <button
+        *ngFor="let tab of tabs"
+        type="button"
+        class="member-celebrations__tab"
+        role="tab"
+        [class.member-celebrations__tab--active]="activeTab === tab.id"
+        [attr.aria-selected]="activeTab === tab.id"
+        (click)="selectTab(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
+
+    <div
+      class="member-celebrations__chips"
+      *ngIf="getActiveFilters().length > 0"
+      role="region"
+      aria-label="Active filters"
+    >
+      <span class="cf-meta member-celebrations__chips-label">Active filters</span>
+      <div class="member-celebrations__chip-list">
+        <span class="cf-badge cf-badge--info" *ngFor="let filter of getActiveFilters()">
+          {{ filter.label }}: {{ filter.displayValue }}
+          <button
+            type="button"
+            class="member-celebrations__chip-remove"
+            (click)="removeFilter(filter, $event)"
+            [attr.aria-label]="'Remove filter: ' + filter.label"
+          >
+            ×
+          </button>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="cf-loading-block cf-panel" *ngIf="loading && !loaded" role="status" aria-busy="true">
+    <app-loading-skeleton label="Loading celebrations…" type="table" [rows]="5" [columns]="5" />
+  </div>
+
+  <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
+    <p>{{ error }}</p>
+    <button *ngIf="!forbidden" type="button" class="cf-btn cf-btn-primary" (click)="loadItems()">Try again</button>
+  </div>
+
+  <ng-container *ngIf="loaded && !error">
+    <app-cf-empty-state
+      *ngIf="items.length === 0"
+      [title]="emptyStateTitle"
+      description="Try adjusting search or filters, or check again next week."
+    />
+
+    <div class="cf-panel member-celebrations__panel" *ngIf="items.length">
+      <app-data-table [clickableRows]="true" [loading]="loading" loadingLabel="Loading celebrations…">
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              [appSortable]="'event_date'"
+              [direction]="headerSortColumn === 'event_date' ? headerSortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Date
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'name'"
+              [direction]="headerSortColumn === 'name' ? headerSortDirection : null"
+              (sort)="onSort($event)"
+            >
+              {{ activeTab === 'birthdays' ? 'Member' : 'Couple' }}
+            </th>
+            <th scope="col">Detail</th>
+            <th
+              scope="col"
+              [appSortable]="'family_name'"
+              [direction]="headerSortColumn === 'family_name' ? headerSortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Family
+            </th>
+            <th
+              scope="col"
+              [appSortable]="'bcc_name'"
+              [direction]="headerSortColumn === 'bcc_name' ? headerSortDirection : null"
+              (sort)="onSort($event)"
+            >
+              BCC
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let item of items" (click)="openFamily(item)">
+            <td>
+              <span class="member-celebrations__day">{{ item.day_label }}</span>
+              {{ item.date_label }}
+            </td>
+            <td>{{ item.name }}</td>
+            <td>{{ item.detail }}</td>
+            <td>{{ item.family_name || '—' }}</td>
+            <td>{{ item.bcc_name || '—' }}</td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <app-pagination
+        [currentPage]="currentPage"
+        [totalItems]="totalRecords"
+        [pageSize]="perPage"
+        [pageSizeOptions]="perPageOptions"
+        (pageChange)="onPageChange($event)"
+        (pageSizeChange)="onPerPageChange($event)"
+      />
+    </div>
+  </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showAdvancedSearch"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showAdvancedSearch = false"
+  />
+</section>

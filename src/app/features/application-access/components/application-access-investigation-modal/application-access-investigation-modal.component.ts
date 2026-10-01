@@ -37,6 +37,7 @@ import {
   sessionStatusTone,
 } from '../../utils/application-access-labels.util';
 import { summarizeTimelineEvents } from '../../utils/application-access-timeline.util';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 type PendingAction =
   | { type: 'revoke'; session: ApplicationAccessSession }
@@ -46,6 +47,7 @@ type PendingAction =
   selector: 'app-application-access-investigation-modal',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     ModalShellComponent,
     DataTableComponent,

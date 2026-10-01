@@ -1,0 +1,11 @@
+@use '../styles/stewardship-split-layout.scss';
+
+.cf-split-form-actions {
+  justify-content: flex-end;
+}
+
+.stewardship-table-panel__empty {
+  margin: 0;
+  padding: 0 var(--cf-panel-pad) var(--cf-space-3);
+  text-align: center;
+}

@@ -14,7 +14,7 @@ import { DonationsReportsWorkbenchComponent } from './reports/donations-reports-
   standalone: true,
   imports: [CommonModule, RouterModule, DonationsReportsWorkbenchComponent],
   template: `
-    <section class="reports cf-page">
+    <section class="reports cf-page cf-financial-dashboard">
       <app-donations-reports-workbench
         [canExport]="canExportReports"
         [advancedReports]="advancedReports"

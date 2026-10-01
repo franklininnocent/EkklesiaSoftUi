@@ -1,4 +1,4 @@
-<div class="cld-backdrop" *ngIf="open" (click)="requestClose()" aria-hidden="true"></div>
+<div class="cld-backdrop" *ngIf="open" [style.z-index]="overlayZIndex" (click)="requestClose()" aria-hidden="true"></div>
 
 <section
   class="cld"
@@ -6,6 +6,7 @@
   role="dialog"
   aria-modal="true"
   aria-label="Leader profile details"
+  [style.z-index]="overlayZIndex"
 >
   <header class="cld__header">
     <div class="cld__header-copy">
@@ -22,8 +23,7 @@
 
   <div class="cld__body">
     <div class="cld__loading" *ngIf="loading">
-      <div class="cld__spinner" aria-hidden="true"></div>
-      <p>Loading leader details…</p>
+      <app-cf-brand-loader size="section" label="Loading leader details…" />
     </div>
 
     <p class="cld__notice" *ngIf="loadError">{{ loadError }}</p>

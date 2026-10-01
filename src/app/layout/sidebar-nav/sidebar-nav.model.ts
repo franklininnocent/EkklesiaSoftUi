@@ -24,6 +24,11 @@ export interface SidebarNavNode {
   id: string;
   label: string;
   route?: string;
+  /**
+   * Prefix used to keep this item active on sibling routes.
+   * The click target remains `route`.
+   */
+  activePath?: string;
   exact?: boolean;
   icon?: SidebarNavIconId;
   menuId?: NavMenuId;

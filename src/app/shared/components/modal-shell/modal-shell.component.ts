@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import {
   ChangeDetectionStrategy,
+  ChangeDetectorRef,
   Component,
   ElementRef,
   EventEmitter,
@@ -10,12 +11,17 @@ import {
   Output,
   ViewChild,
   AfterViewInit,
+  inject,
 } from '@angular/core';
+import { Subscription } from 'rxjs';
 import {
   restoreActiveElement,
   saveActiveElement,
   trapFocus,
 } from '@shared/utils/focus-trap.util';
+import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
+import { CfOverlayHandle, CfOverlayStackService } from '@core/services/cf-overlay-stack.service';
 
 export type ModalShellSize = 'xs' | 'sm' | 'md' | 'lg' | 'xl' | 'full';
 export type ModalShellLayout = 'dialog' | 'media';
@@ -36,15 +42,15 @@ export type ModalShellLayout = 'dialog' | 'media';
 @Component({
   selector: 'app-modal-shell',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CfActionIconComponent, CfBrandLoaderComponent],
   templateUrl: './modal-shell.component.html',
   styleUrl: './modal-shell.component.scss',
   changeDetection: ChangeDetectionStrategy.Eager,
 })
 export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   private static idCounter = 0;
-  private static openCount = 0;
-  private static readonly openStack: ModalShellComponent[] = [];
+  private readonly overlayStack = inject(CfOverlayStackService);
+  private readonly cdr = inject(ChangeDetectorRef);
 
   /** Dialog title, rendered as the modal's accessible `<h2>` heading. */
   @Input() title = '';
@@ -62,6 +68,9 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
    * across the app's modals.
    */
   @Input() isSubmitting = false;
+  /** Initial body fetch — shows brand loader in the dialog body. */
+  @Input() loading = false;
+  @Input() loadingLabel = 'Loading';
   /** Accessible label for the close ("X") button. */
   @Input() closeAriaLabel = 'Close';
   /**
@@ -95,7 +104,10 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly generatedDescId = `cf-modal-desc-${ModalShellComponent.idCounter}`;
   private previousActiveElement: HTMLElement | null = null;
   private focusTrapCleanup: (() => void) | null = null;
-  private previousBodyOverflow = '';
+  private overlayHandle: CfOverlayHandle | null = null;
+  private overlayTopSub: Subscription | null = null;
+  overlayZIndex: number | null = null;
+  overlayTop = true;
 
   get resolvedTitleId(): string {
     return this.titleId || this.generatedTitleId;
@@ -108,43 +120,49 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
   ngOnInit(): void {
     this.previousActiveElement = saveActiveElement();
     document.addEventListener('keydown', this.handleKeyDown);
-    ModalShellComponent.openStack.push(this);
-    ModalShellComponent.openCount += 1;
-    if (ModalShellComponent.openCount === 1) {
-      this.previousBodyOverflow = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-    }
+    this.overlayHandle = this.overlayStack.push(
+      this.nested ? 'confirm' : 'modal',
+      () => this.closeRequested.emit(),
+      {
+        nested: this.nested,
+        canClose: () => !this.isSubmitting,
+      }
+    );
+    this.overlayZIndex = this.overlayHandle.zIndex;
+    this.overlayTop = this.overlayHandle.isTop();
+    this.overlayTopSub = this.overlayStack.topId$.subscribe(() => {
+      const wasTop = this.overlayTop;
+      this.overlayTop = this.overlayHandle?.isTop() ?? true;
+      if (wasTop !== this.overlayTop) {
+        this.syncFocusTrap(!this.overlayTop);
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   ngAfterViewInit(): void {
-    if (this.dialogRef?.nativeElement) {
-      this.focusTrapCleanup = trapFocus(this.dialogRef.nativeElement);
-    }
+    this.syncFocusTrap(true);
   }
 
   ngOnDestroy(): void {
     document.removeEventListener('keydown', this.handleKeyDown);
-    const stackIndex = ModalShellComponent.openStack.indexOf(this);
-    if (stackIndex >= 0) {
-      ModalShellComponent.openStack.splice(stackIndex, 1);
-    }
+    this.overlayTopSub?.unsubscribe();
+    this.overlayTopSub = null;
     this.focusTrapCleanup?.();
     this.focusTrapCleanup = null;
+    this.overlayHandle?.release();
+    this.overlayHandle = null;
     restoreActiveElement(this.previousActiveElement);
-    ModalShellComponent.openCount = Math.max(0, ModalShellComponent.openCount - 1);
-    if (ModalShellComponent.openCount === 0) {
-      document.body.style.overflow = this.previousBodyOverflow;
-    }
   }
 
   onBackdropClick(): void {
-    if (!this.isSubmitting) {
+    if (this.overlayTop && !this.isSubmitting) {
       this.closeRequested.emit();
     }
   }
 
   onCloseClick(): void {
-    if (!this.isSubmitting) {
+    if (this.overlayTop && !this.isSubmitting) {
       this.closeRequested.emit();
     }
   }
@@ -154,8 +172,7 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
       return;
     }
 
-    const top = ModalShellComponent.openStack[ModalShellComponent.openStack.length - 1];
-    if (top !== this) {
+    if (!this.overlayHandle?.isTop()) {
       return;
     }
 
@@ -163,4 +180,13 @@ export class ModalShellComponent implements OnInit, AfterViewInit, OnDestroy {
     event.stopImmediatePropagation();
     this.closeRequested.emit();
   };
+
+  private syncFocusTrap(focusFirst: boolean): void {
+    this.focusTrapCleanup?.();
+    this.focusTrapCleanup = null;
+    if (!this.overlayTop || !this.dialogRef?.nativeElement) {
+      return;
+    }
+    this.focusTrapCleanup = trapFocus(this.dialogRef.nativeElement, { focusFirst });
+  }
 }

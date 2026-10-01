@@ -14,6 +14,7 @@ import {
   MarriageTransitionPayload,
   FamilyTransitionHistoryRecord
 } from '../models/family.model';
+import { FamilyDashboardSummary } from '@features/family-management/models/family-dashboard.model';
 
 @Injectable({
   providedIn: 'root'
@@ -46,6 +47,12 @@ export class FamilyService {
     if (filters.missing_sacrament) params = params.set('missing_sacrament', filters.missing_sacrament);
     if (filters.progression) params = params.set('progression', filters.progression);
     if (filters.city) params = params.set('city', filters.city);
+    if (filters.city_exact) params = params.set('city_exact', filters.city_exact);
+    if (filters.missing) params = params.set('missing', filters.missing);
+    if (filters.size_band) params = params.set('size_band', filters.size_band);
+    if (filters.household) params = params.set('household', filters.household);
+    if (filters.created_from) params = params.set('created_from', filters.created_from);
+    if (filters.created_to) params = params.set('created_to', filters.created_to);
     if (filters.sort_by) params = params.set('sort_by', filters.sort_by);
     if (filters.sort_order) params = params.set('sort_order', filters.sort_order);
     if (filters.per_page) params = params.set('per_page', filters.per_page.toString());
@@ -87,6 +94,28 @@ export class FamilyService {
    */
   getStatistics(): Observable<ApiResponse<FamilyStatistics>> {
     return this.http.get<ApiResponse<FamilyStatistics>>(`${this.apiUrl}/statistics`, this.buildTenantCountryHeaders());
+  }
+
+  getDashboard(params: {
+    bcc_id?: string;
+    status?: string;
+    period?: string;
+    from?: string;
+    to?: string;
+    refresh?: boolean;
+  } = {}): Observable<ApiResponse<FamilyDashboardSummary>> {
+    let httpParams = new HttpParams();
+    if (params.bcc_id) httpParams = httpParams.set('bcc_id', params.bcc_id);
+    if (params.status) httpParams = httpParams.set('status', params.status);
+    if (params.period) httpParams = httpParams.set('period', params.period);
+    if (params.from) httpParams = httpParams.set('from', params.from);
+    if (params.to) httpParams = httpParams.set('to', params.to);
+    if (params.refresh) httpParams = httpParams.set('refresh', '1');
+
+    return this.http.get<ApiResponse<FamilyDashboardSummary>>(`${this.apiUrl}/dashboard`, {
+      params: httpParams,
+      ...this.buildTenantCountryHeaders(),
+    });
   }
 
   /**

@@ -40,6 +40,7 @@ import {
   todayIsoDate,
 } from '../utils/organization-form.util';
 import { ministriesLink } from '../utils/ministries-links';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type SocialLinkKey = keyof OrganizationSocialLinks;
 
@@ -306,10 +307,7 @@ export class OrganizationDetailPageComponent implements OnInit, OnDestroy {
   }
 
   private formatDisplayDate(date: Date): string {
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = date.toLocaleDateString('en-GB', { month: 'short' });
-    const year = date.getFullYear();
-    return `${day} ${month} ${year}`;
+    return cfFormatDate(date) || '—';
   }
 
   socialLinks(

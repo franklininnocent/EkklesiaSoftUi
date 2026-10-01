@@ -87,21 +87,6 @@ export class MainLayoutComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // #region agent log
-    fetch('http://127.0.0.1:7631/ingest/5401a346-7001-4033-9c37-4ee605985cd9', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'ae66ec' },
-      body: JSON.stringify({
-        sessionId: 'ae66ec',
-        runId: 'pre-fix',
-        hypothesisId: 'C',
-        location: 'main-layout.component.ts:ngOnInit',
-        message: 'MainLayout ngOnInit',
-        data: { href: location.href, authenticated: this.authService.isAuthenticated() },
-        timestamp: Date.now(),
-      }),
-    }).catch(() => {});
-    // #endregion
     // Soft refresh of profile on layout entry. loadUserFailure no longer wipes the
     // session on transient errors, so this is safe after post-login navigation.
     if (this.authService.isAuthenticated()) {

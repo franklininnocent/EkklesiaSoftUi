@@ -9,14 +9,15 @@ import { takeUntil } from 'rxjs/operators';
 import { AppState } from '@core/store';
 import * as AuthActions from '@core/store/auth/auth.actions';
 import { selectAuthLoading, selectAuthError } from '@core/store/auth/auth.selectors';
-
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 @Component({
   selector: 'app-register',
   standalone: true,
   imports: [
     CommonModule,
     ReactiveFormsModule,
-    RouterModule
+    RouterModule,
+    CfBusyLabelComponent,
   ],
   templateUrl: './register.component.html',
   styleUrl: './register.component.scss',

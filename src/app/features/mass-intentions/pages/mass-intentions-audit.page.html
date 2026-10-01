@@ -1,0 +1,135 @@
+<section class="mass-audit-page cf-page">
+  <app-page-header
+    title="Audit log"
+    subtitle="Who changed mass intentions, Masses, and schedules"
+    [backLink]="dashboardBackLink"
+    [backLabel]="dashboardBackLabel"
+  />
+
+  <div class="mass-audit-page__toolbar-wrap">
+  <app-list-toolbar
+    searchPlaceholder="Search events (e.g. schedule.applied)"
+    [searchValue]="eventFilter()"
+    [filterCount]="drawerFilterCount()"
+    (searchChange)="onEventFilterChange($event)"
+    (filtersOpened)="openFilters()"
+  >
+    @if (getActiveFilters().length) {
+      <div class="mass-audit-page__toolbar-filters" role="region" aria-label="Active filters">
+        @for (filter of getActiveFilters(); track filter.key) {
+          <span class="cf-badge cf-badge--info mass-audit-page__chip">
+            {{ filter.label }}: {{ filter.displayValue }}
+            <button
+              type="button"
+              class="mass-audit-page__chip-remove"
+              (click)="removeFilter(filter)"
+              [attr.aria-label]="'Remove filter: ' + filter.label"
+            >
+              ×
+            </button>
+          </span>
+        }
+        <button type="button" class="cf-btn cf-btn--sm cf-btn-ghost" (click)="clearAllFilters()">Clear all</button>
+      </div>
+    }
+  </app-list-toolbar>
+  </div>
+
+  @if (loading() && !loaded()) {
+    <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+      <app-loading-skeleton label="Loading audit log…" type="table" [rows]="6" [columns]="2" />
+    </div>
+  } @else if (loadError()) {
+    <div class="cf-inline-alert cf-panel" role="alert">
+      <p>{{ loadError() }}</p>
+      <button type="button" class="cf-btn cf-btn-primary" (click)="reload()">Try again</button>
+    </div>
+  } @else if (rows().length === 0) {
+    <app-cf-empty-state
+      title="No audit entries"
+      [description]="
+        getActiveFilters().length ? 'Try a different filter.' : 'Changes will appear here as your parish uses mass intentions.'
+      "
+    >
+      @if (getActiveFilters().length) {
+        <button type="button" class="cf-btn" (click)="clearAllFilters()">Clear filters</button>
+      }
+    </app-cf-empty-state>
+  } @else {
+    <div class="cf-panel mass-audit-page__panel">
+      <p class="mass-audit-page__summary cf-meta" role="status">{{ resultsSummary() }}</p>
+
+      <app-data-table [ariaBusy]="loading()">
+        <table class="cf-data-table mass-audit-page__table">
+          <thead>
+            <tr>
+              <th scope="col">Entry</th>
+              <th scope="col" class="mass-audit-page__related-head">Related</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr>
+                <td class="mass-audit-page__entry">
+                  <div class="mass-audit-page__row-line">
+                    @if (formatWhen(row.created_at); as when) {
+                      <time class="mass-audit-page__when" [attr.datetime]="row.created_at ?? undefined">
+                        <span class="mass-audit-page__when-date">{{ when.date }}</span>
+                        @if (when.time) {
+                          <span class="mass-audit-page__when-sep" aria-hidden="true">·</span>
+                          <span class="mass-audit-page__when-time cf-meta">{{ when.time }}</span>
+                        }
+                      </time>
+                    } @else {
+                      <span class="cf-meta">—</span>
+                    }
+                    <span class="mass-audit-page__dot" aria-hidden="true">·</span>
+                    <app-status-badge
+                      class="mass-audit-page__category"
+                      [label]="eventCategory(row.event_type)"
+                      [tone]="eventCategoryTone(row.event_type)"
+                    />
+                    <span class="mass-audit-page__event-label">{{ eventLabel(row.event_type) }}</span>
+                    <span class="mass-audit-page__event-code cf-meta">{{ row.event_type }}</span>
+                  </div>
+                </td>
+                <td class="mass-audit-page__related">
+                  @if (relatedLink(row); as link) {
+                    <a
+                      class="cf-link mass-audit-page__related-link"
+                      [routerLink]="link.routerLink"
+                      [queryParams]="link.queryParams"
+                    >
+                      {{ link.label }}
+                    </a>
+                  } @else {
+                    <span class="cf-meta">—</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </app-data-table>
+
+      @if (totalItems() > pageSize) {
+        <app-pagination
+          [currentPage]="currentPage()"
+          [pageSize]="pageSize"
+          [totalItems]="totalItems()"
+          [showPageSizeSelector]="false"
+          (pageChange)="goToPage($event)"
+        />
+      }
+    </div>
+  }
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFiltersPanel()"
+    (search)="onFiltersApply($event)"
+    (clear)="onFiltersClear()"
+    (close)="showFiltersPanel.set(false)"
+  />
+</section>

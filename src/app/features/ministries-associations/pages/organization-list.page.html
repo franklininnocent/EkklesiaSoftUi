@@ -22,8 +22,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading organizations…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="7"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading organizations…" type="table" [rows]="5" [columns]="7"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="loaded">
@@ -46,12 +45,54 @@
       <app-data-table [clickableRows]="true">
         <thead>
           <tr>
-            <th scope="col">Name</th>
-            <th scope="col">Code</th>
-            <th scope="col">Category</th>
-            <th scope="col">Type</th>
-            <th scope="col">Active members</th>
-            <th scope="col">Status</th>
+            <th
+              scope="col"
+              appSortable="name"
+              [direction]="sortBy === 'name' ? sortDir : null"
+              (sort)="onSort($event)"
+            >
+              Name
+            </th>
+            <th
+              scope="col"
+              appSortable="code"
+              [direction]="sortBy === 'code' ? sortDir : null"
+              (sort)="onSort($event)"
+            >
+              Code
+            </th>
+            <th
+              scope="col"
+              appSortable="category_name"
+              [direction]="sortBy === 'category_name' ? sortDir : null"
+              (sort)="onSort($event)"
+            >
+              Category
+            </th>
+            <th
+              scope="col"
+              appSortable="type_name"
+              [direction]="sortBy === 'type_name' ? sortDir : null"
+              (sort)="onSort($event)"
+            >
+              Type
+            </th>
+            <th
+              scope="col"
+              appSortable="active_member_count"
+              [direction]="sortBy === 'active_member_count' ? sortDir : null"
+              (sort)="onSort($event)"
+            >
+              Active members
+            </th>
+            <th
+              scope="col"
+              appSortable="status"
+              [direction]="sortBy === 'status' ? sortDir : null"
+              (sort)="onSort($event)"
+            >
+              Status
+            </th>
             <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
           </tr>
         </thead>
@@ -70,8 +111,16 @@
             <td>
               <app-status-badge [label]="statusLabel(organization.status)" [tone]="statusTone(organization.status)"></app-status-badge>
             </td>
-            <td class="cf-table__actions-cell">
-              <span class="organization-list__view">View</span>
+            <td class="cf-table__actions-cell" (click)="$event.stopPropagation()">
+              <button
+                type="button"
+                class="cf-btn cf-btn-icon cf-btn--sm"
+                (click)="openOrganization(organization)"
+                [attr.aria-label]="'View ' + organization.name"
+                [attr.title]="'View ' + organization.name"
+              >
+                <app-cf-action-icon name="eye" />
+              </button>
             </td>
           </tr>
         </tbody>

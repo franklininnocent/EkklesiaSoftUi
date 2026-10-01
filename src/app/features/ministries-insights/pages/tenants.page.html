@@ -79,7 +79,7 @@
         <td>{{ row.active_users_count }}</td>
         <td>{{ row.window_actions }}</td>
         <td><app-status-badge [label]="statusLabel(row.usage_trend)" [tone]="toneForStatus(row.usage_trend)"></app-status-badge></td>
-        <td>{{ row.last_activity_at ? (row.last_activity_at | date: 'short') : '—' }}</td>
+        <td>{{ row.last_activity_at ? (row.last_activity_at | cfDate: 'datetime') : '—' }}</td>
       </tr>
     </tbody>
   </app-data-table>

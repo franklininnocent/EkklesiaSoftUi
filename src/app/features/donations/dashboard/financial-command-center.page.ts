@@ -17,6 +17,7 @@ import { FocAnalyticsCenterComponent } from './components/foc-analytics-center/f
 import { FocSatellitesGridComponent } from './components/foc-satellites-grid/foc-satellites-grid.component';
 import { FocRollupPanelComponent } from './components/foc-rollup-panel/foc-rollup-panel.component';
 import { FocExpenseModalComponent, FocExpenseFormValue, FocExpenseSubmitPayload } from './components/foc-expense-modal/foc-expense-modal.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import { ParishExpenseRecord } from '../models/donation.model';
 
 @Component({
@@ -30,7 +31,8 @@ import { ParishExpenseRecord } from '../models/donation.model';
     FocAnalyticsCenterComponent,
     FocSatellitesGridComponent,
     FocRollupPanelComponent,
-    FocExpenseModalComponent
+    FocExpenseModalComponent,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './financial-command-center.page.html',
   styleUrls: ['./financial-command-center.page.scss'],

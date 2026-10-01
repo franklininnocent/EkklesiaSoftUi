@@ -1,4 +1,4 @@
-import { BillingInterval, PricingType, TaxBreakdown } from './subscription-admin.models';
+import { BillingInterval, PricingType, PublicPlanCard, TaxBreakdown } from './subscription-admin.models';
 
 export type UsageLevel = 'ok' | 'notice' | 'warning' | 'critical' | 'at_limit' | 'over_limit';
 
@@ -48,12 +48,71 @@ export interface SubmitUpgradeRequestPayload {
 }
 
 export interface TenantPlanSummary {
+  id?: number | null;
   code: string | null;
   key: string | null;
   name: string | null;
   pricing_type: PricingType | string | null;
   is_legacy: boolean;
   version_number: number | null;
+}
+
+export type ComparisonPrimaryAction = 'current' | 'request' | 'quote';
+
+export interface CurrentPlanIdentity {
+  matched: boolean;
+  source: 'tenant_subscription' | 'tenant_plan_key' | 'unmatched' | string;
+  id: number | null;
+  code: string | null;
+  key: string | null;
+  name: string | null;
+  pricing_type: PricingType | string | null;
+  is_legacy: boolean;
+  status: string | null;
+  is_public: boolean;
+  is_archived: boolean;
+  listed_in_catalog: boolean;
+  version_id: number | null;
+  version_number: number | null;
+  subscription_status: string | null;
+  subscription_ends_at: string | null;
+  is_lifetime: boolean;
+}
+
+export interface TenantPlanComparison {
+  current_plan: CurrentPlanIdentity;
+  current_plan_listed: boolean;
+  plans: PublicPlanCard[];
+}
+
+export interface TenantSubscriptionOverview {
+  plan: TenantPlanSummary | null;
+  lifecycle: {
+    status?: string;
+    access_mode?: string;
+    allows_gated_access?: boolean;
+    grace_ends_at?: string | null;
+    days_until_end?: number | null;
+    grace_period_days?: number;
+    subscription_ends_at?: string | null;
+    trial_ends_at?: string | null;
+    subscription_suspended_at?: string | null;
+    [key: string]: unknown;
+  };
+  terms: {
+    billing_interval: BillingInterval;
+    currency_code: string;
+    contracted_price: string | null;
+    tax_label: string;
+    tax: TaxBreakdown | null;
+    version_number: number | null;
+    starts_at: string | null;
+  } | null;
+  pending_change: { plan_code: string | null; plan_name: string | null; scheduled_for: string | null } | null;
+  entitlements: { code: string; name: string; category: string; enabled: boolean; is_core: boolean }[];
+  usage: UsageRow[];
+  engine_mode: string;
+  comparison?: TenantPlanComparison;
 }
 
 export interface TenantSubscriptionOverview {

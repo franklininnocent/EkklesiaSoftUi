@@ -67,8 +67,7 @@
               [disabled]="state.busy"
               [attr.aria-busy]="state.busy"
             >
-              <span *ngIf="state.busy" class="cf-spinner" aria-hidden="true"></span>
-              Sign In
+              <app-cf-busy-label [busy]="state.busy" busyLabel="Signing in">Sign In</app-cf-busy-label>
             </button>
           </ng-container>
         </form>
@@ -110,8 +109,7 @@
             [disabled]="recoveryLoading"
             [attr.aria-busy]="recoveryLoading"
           >
-            <span *ngIf="recoveryLoading" class="cf-spinner" aria-hidden="true"></span>
-            Submit Request
+            <app-cf-busy-label [busy]="recoveryLoading" busyLabel="Submitting">Submit Request</app-cf-busy-label>
           </button>
 
           <div class="auth-footer">

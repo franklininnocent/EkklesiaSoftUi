@@ -1,0 +1,78 @@
+.member-celebrations__toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.member-celebrations__tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.member-celebrations__tab {
+  border: 1px solid var(--cf-border-subtle, #d8dee8);
+  background: var(--cf-surface-raised, #fff);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font: inherit;
+  cursor: pointer;
+}
+
+.member-celebrations__tab--active {
+  border-color: var(--cf-brand-600, #1f6b4f);
+  background: color-mix(in srgb, var(--cf-brand-600, #1f6b4f) 12%, white);
+  font-weight: 600;
+}
+
+.member-celebrations__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem 0.75rem;
+  margin-left: auto;
+  text-align: right;
+}
+
+.member-celebrations__chips-label {
+  flex-shrink: 0;
+}
+
+.member-celebrations__chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.member-celebrations__chip-remove {
+  border: 0;
+  background: transparent;
+  margin-left: 0.25rem;
+  padding: 0 0.2rem;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+}
+
+.member-celebrations__day {
+  display: inline-block;
+  min-width: 2.25rem;
+  font-weight: 600;
+  margin-right: 0.35rem;
+}
+
+.member-celebrations__panel {
+  margin-top: 0.5rem;
+  --cf-table-cell-y: 0.28rem;
+  --cf-table-header-cell-y: 0.32rem;
+}
+
+:host ::ng-deep .member-celebrations__panel .cf-table {
+  line-height: 1.25;
+}

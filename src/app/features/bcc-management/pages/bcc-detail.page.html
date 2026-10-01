@@ -1,13 +1,12 @@
 <section class="bcc-detail cf-page">
   <div class="cf-loading-block cf-panel" *ngIf="loading" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-loading-block__label">Loading BCC…</p>
-    <app-loading-skeleton type="card" [rows]="2" [columns]="4"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading BCC…" type="card" [rows]="2" [columns]="4"></app-loading-skeleton>
     <app-loading-skeleton type="card" [rows]="1" [columns]="5"></app-loading-skeleton>
   </div>
 
   <div class="cf-inline-alert cf-panel" *ngIf="!loading && loadError" role="alert">
     <p>{{ loadError }}</p>
-    <a routerLink="/bccs" class="cf-btn">Back to dashboard</a>
+    <a routerLink="/bccs/list" class="cf-btn">Back to BCC list</a>
     <button type="button" class="cf-btn cf-btn-primary" (click)="bcc && load(bcc.id)">Try again</button>
   </div>
 
@@ -118,7 +117,7 @@
             </svg>
             <div class="bcc-detail__fact-body">
               <dt>Created</dt>
-              <dd>{{ bcc.created_at | date: 'mediumDate' }}</dd>
+              <dd>{{ bcc.created_at | cfDate }}</dd>
             </div>
           </div>
 
@@ -138,7 +137,7 @@
             </svg>
             <div class="bcc-detail__fact-body">
               <dt>Last updated</dt>
-              <dd>{{ bcc.updated_at | date: 'mediumDate' }}, {{ bcc.updated_at | date: 'shortTime' }}</dd>
+              <dd>{{ bcc.updated_at | cfDate: 'datetime' }}</dd>
             </div>
           </div>
         </dl>

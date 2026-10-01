@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, ViewChild, ElementRef, AfterViewChecked, HostListener, inject } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { SacramentService } from '../../services/sacrament.service';
@@ -34,11 +34,15 @@ import { CorrectSacramentDialogComponent } from '../shared/correct-sacrament-dia
 import { HttpErrorResponse } from '@angular/common/http';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-read-only.directive';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 
 @Component({
   selector: 'app-sacrament-list',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     RouterLink,
@@ -56,10 +60,10 @@ import { DisableWhenReadOnlyDirective } from '@shared/directives/disable-when-re
     VoidSacramentDialogComponent,
     CorrectSacramentDialogComponent,
     DisableWhenReadOnlyDirective,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './sacrament-list.component.html',
   styleUrl: './sacrament-list.component.scss',
-  providers: [DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class SacramentListComponent implements OnInit, OnDestroy, AfterViewChecked {
@@ -145,7 +149,6 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
     private router: Router,
     private route: ActivatedRoute,
     private store: Store<AppState>,
-    private datePipe: DatePipe,
     private cdr: ChangeDetectorRef,
     private authService: AuthService,
     private definitionService: SacramentDefinitionService
@@ -1257,7 +1260,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
         key: 'date_from',
         label: 'Date From',
         value: this.dateFrom,
-        displayValue: this.datePipe.transform(this.dateFrom, 'MMM d, y') || this.dateFrom
+        displayValue: cfFormatDate(this.dateFrom) || this.dateFrom
       });
     }
 
@@ -1266,7 +1269,7 @@ export class SacramentListComponent implements OnInit, OnDestroy, AfterViewCheck
         key: 'date_to',
         label: 'Date To',
         value: this.dateTo,
-        displayValue: this.datePipe.transform(this.dateTo, 'MMM d, y') || this.dateTo
+        displayValue: cfFormatDate(this.dateTo) || this.dateTo
       });
     }
 

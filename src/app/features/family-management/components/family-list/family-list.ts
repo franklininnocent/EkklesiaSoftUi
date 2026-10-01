@@ -4,7 +4,6 @@ import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angul
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, debounceTime, takeUntil, distinctUntilChanged, filter, map } from 'rxjs';
 import { ToastService } from '@core/services/toast.service';
-import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { AuthService } from '@core/services/auth.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
 import { FamilyService } from '../../../../core/services/family.service';
@@ -51,7 +50,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
   private cdr = inject(ChangeDetectorRef);
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly supportSessions = inject(SupportSessionService);
-  private readonly confirmationDialog = inject(ConfirmationDialogService);
 
   families: Family[] = [];
   bccs: BCC[] = [];
@@ -95,12 +93,12 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       progression: [''],
       city: [''],
       sort_by: ['family_code'],
-      sort_order: ['asc']
+      sort_order: ['asc'],
+      missing: [''],
+      size_band: [''],
+      household: [''],
+      city_exact: [''],
     });
-  }
-
-  get isTenantAdmin(): boolean {
-    return this.authService.isTenantAdmin();
   }
 
   get hasActiveFiltersOrSearch(): boolean {
@@ -165,7 +163,22 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     const missingSacrament = params.get('missing_sacrament') ?? '';
     const progression = params.get('progression') ?? '';
     const bccId = params.get('bcc_id') ?? '';
+    const status = params.get('status') ?? '';
+    const search = params.get('search') ?? '';
+    const missing = params.get('missing') ?? '';
+    const sizeBand = params.get('size_band') ?? '';
+    const household = params.get('household') ?? '';
+    const cityExact = params.get('city_exact') ?? '';
+    const sortBy = params.get('sort_by') ?? '';
+    const sortOrder = params.get('sort_order') ?? '';
     let changed = false;
+
+    const patchIf = (key: string, value: string) => {
+      if (this.filterForm.get(key)?.value !== value) {
+        this.filterForm.patchValue({ [key]: value });
+        changed = true;
+      }
+    };
 
     if (this.filterForm.get('missing_sacrament')?.value !== missingSacrament) {
       this.filterForm.patchValue({
@@ -183,14 +196,39 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       changed = true;
     }
 
-    if (bccId && this.filterForm.get('bcc_id')?.value !== bccId) {
-      this.filterForm.patchValue({ bcc_id: bccId });
+    patchIf('bcc_id', bccId);
+    patchIf('status', status);
+    patchIf('missing', missing);
+    patchIf('size_band', sizeBand);
+    patchIf('household', household);
+    patchIf('city_exact', cityExact);
+    if (search && this.searchTerm !== search) {
+      this.searchTerm = search;
+      this.filterForm.patchValue({ search });
       changed = true;
+    }
+    if (sortBy) {
+      patchIf('sort_by', sortBy);
+    }
+    if (sortOrder) {
+      patchIf('sort_order', sortOrder);
     }
 
     const field = this.searchFields.find((row) => row.key === 'bcc_id');
     if (field && bccId) {
       field.value = bccId;
+    }
+
+    if (params.get('create') === '1') {
+      queueMicrotask(() => {
+        this.createFamily();
+        void this.router.navigate([], {
+          relativeTo: this.route,
+          queryParams: { create: null },
+          queryParamsHandling: 'merge',
+          replaceUrl: true,
+        });
+      });
     }
 
     if (changed) {
@@ -338,6 +376,10 @@ export class FamilyListComponent implements OnInit, OnDestroy {
         : formValue.progression;
     }
     if (formValue.city) filters.city = Array.isArray(formValue.city) ? formValue.city[0] : formValue.city;
+    if (formValue.city_exact) filters.city_exact = Array.isArray(formValue.city_exact) ? formValue.city_exact[0] : formValue.city_exact;
+    if (formValue.missing) filters.missing = Array.isArray(formValue.missing) ? formValue.missing[0] : formValue.missing;
+    if (formValue.size_band) filters.size_band = Array.isArray(formValue.size_band) ? formValue.size_band[0] : formValue.size_band;
+    if (formValue.household) filters.household = Array.isArray(formValue.household) ? formValue.household[0] : formValue.household;
     if (formValue.sort_by) filters.sort_by = Array.isArray(formValue.sort_by) ? formValue.sort_by[0] : formValue.sort_by;
     if (formValue.sort_order) filters.sort_order = Array.isArray(formValue.sort_order) ? formValue.sort_order[0] : formValue.sort_order;
 
@@ -422,7 +464,7 @@ export class FamilyListComponent implements OnInit, OnDestroy {
         key: 'bcc_id',
         label: 'BCC',
         value: values.bcc_id,
-        displayValue: bcc?.name || String(values.bcc_id)
+        displayValue: values.bcc_id === 'unassigned' ? 'Unassigned' : (bcc?.name || String(values.bcc_id))
       });
     }
 
@@ -450,6 +492,60 @@ export class FamilyListComponent implements OnInit, OnDestroy {
         label: 'City',
         value: values.city,
         displayValue: values.city
+      });
+    }
+
+    if (values.city_exact) {
+      filters.push({
+        key: 'city_exact',
+        label: 'City',
+        value: values.city_exact,
+        displayValue: values.city_exact === 'not_recorded' ? 'City not recorded' : values.city_exact,
+      });
+    }
+
+    if (values.missing) {
+      const missingLabels: Record<string, string> = {
+        head: 'Missing active family head',
+        contact: 'Missing contact number',
+        address: 'Missing address',
+        members: 'No members',
+      };
+      filters.push({
+        key: 'missing',
+        label: 'Family data',
+        value: values.missing,
+        displayValue: missingLabels[values.missing] || values.missing,
+      });
+    }
+
+    if (values.size_band) {
+      const sizeLabels: Record<string, string> = {
+        '1': '1 member',
+        '2': '2 members',
+        '3_4': '3–4 members',
+        '5_6': '5–6 members',
+        '7_plus': '7+ members',
+      };
+      filters.push({
+        key: 'size_band',
+        label: 'Family size',
+        value: values.size_band,
+        displayValue: sizeLabels[values.size_band] || values.size_band,
+      });
+    }
+
+    if (values.household) {
+      const householdLabels: Record<string, string> = {
+        under_18: 'Have children or teenagers',
+        seniors: 'Have seniors',
+        multiple_adults: 'Two or more adults',
+      };
+      filters.push({
+        key: 'household',
+        label: 'Household',
+        value: values.household,
+        displayValue: householdLabels[values.household] || values.household,
       });
     }
 
@@ -482,6 +578,10 @@ export class FamilyListComponent implements OnInit, OnDestroy {
       missing_sacrament: '',
       progression: '',
       city: '',
+      city_exact: '',
+      missing: '',
+      size_band: '',
+      household: '',
       sort_by: 'family_code',
       sort_order: 'asc'
     });
@@ -554,57 +654,6 @@ export class FamilyListComponent implements OnInit, OnDestroy {
     }
     this.selectedFamily = null;
     this.showForm = true;
-  }
-
-  deleteFamily(family: Family): void {
-    if (this.isReadOnly()) {
-      this.toastService.warning('Read-only mode: renew subscription to delete families.', 'Read-only');
-      return;
-    }
-    if (!this.isTenantAdmin) {
-      this.toastService.error('Only Tenant Administrators can delete families.', 'Permission Denied', 5000);
-      return;
-    }
-
-    const familyName = family.family_name || family.family_code || 'this family';
-    const memberCount = family.members?.length || 0;
-    const warningMessage = memberCount > 0
-      ? `Are you sure you want to delete ${familyName}? This will also delete ${memberCount} member(s) associated with this family. This action cannot be undone.`
-      : `Are you sure you want to delete ${familyName}? This action cannot be undone.`;
-
-    this.confirmationDialog.confirm({
-      title: 'Delete Family',
-      message: warningMessage,
-      confirmText: 'Confirm Delete',
-      variant: 'danger',
-    }).pipe(
-      filter((result) => result.confirmed),
-      takeUntil(this.destroy$),
-    ).subscribe(() => {
-    this.loading = true;
-    this.cdr.markForCheck();
-
-    this.familyService.deleteFamily(family.id)
-      .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.toastService.success('Family deleted successfully', 'Success', 4000);
-            this.loadFamilies();
-          } else {
-            this.toastService.error(response.message || 'Failed to delete family', 'Error', 5000);
-          }
-          this.loading = false;
-          this.cdr.markForCheck();
-        },
-        error: (err) => {
-          console.error('Error deleting family:', err);
-          this.toastService.error(err.error?.message || 'Failed to delete family', 'Error', 6000);
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      });
-    });
   }
 
   onFormSave(_family: Family): void {

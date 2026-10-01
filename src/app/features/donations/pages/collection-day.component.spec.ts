@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { of, Subject } from 'rxjs';
 import { CollectionDayComponent } from './collection-day.component';
 import { FamilyService } from '@core/services/family.service';
@@ -74,15 +74,16 @@ describe('CollectionDayComponent', () => {
 
   it('renders the command header hierarchy', () => {
     const text = fixture.nativeElement.textContent;
-    expect(text).toContain('Collection Operations Center');
-    expect(text).toContain('Real-time contribution collection and payment processing workspace');
+    expect(text).not.toContain('Collection Operations Center');
+    expect(text).not.toContain('Real-time contribution collection and payment processing workspace');
     expect(text).toContain('Session Active');
     expect(text).toContain('Operator');
     expect(text).toContain('Test Operator');
     expect(text).toContain('Collection Date');
     expect(fixture.nativeElement.querySelector('[aria-label="Quick Actions"]')).toBeTruthy();
-    expect(text).toContain('Export');
-    expect(text).toContain('Exit Workspace');
+    expect(fixture.nativeElement.querySelector('[aria-label="Export"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[aria-label="Exit Workspace"]')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('[aria-label="Refresh session"]')).toBeTruthy();
   });
 
   it('requires family, payer, and amount before submit', () => {
@@ -149,11 +150,23 @@ describe('CollectionDayComponent', () => {
     expect(component.familiesProcessedToday).toBe(4);
     expect(component.todayPayments.length).toBe(1);
 
-    const link = fixture.nativeElement.querySelector('a.coc-kpi--link');
-    expect(link).toBeTruthy();
-    expect(link.getAttribute('href')).toContain('/donations/today-collections');
-    expect(link.getAttribute('aria-label')).toBe("View Today's Collections");
-    expect(fixture.nativeElement.querySelectorAll('a.coc-kpi--link').length).toBe(1);
+    const buttons = fixture.nativeElement.querySelectorAll('button.coc-kpi--link');
+    expect(buttons.length).toBe(6);
+    const hrefs = component.kpiCards.map((card) => component.kpiHref(card));
+    expect(hrefs.some((href) => href === '/donations/today-collections')).toBe(true);
+    expect(hrefs.some((href) => href.includes('focus=amount'))).toBe(true);
+    expect(hrefs.some((href) => href.includes('/donations/dues') && href.includes('overdue_only=1'))).toBe(true);
+    expect(hrefs.some((href) => href.includes('focus=families'))).toBe(true);
+    expect(hrefs.some((href) => href.includes('focus=average'))).toBe(true);
+    expect(hrefs.some((href) => href.includes('focus=completion'))).toBe(true);
+    expect(buttons[0].getAttribute('aria-label')).toBe("View Today's Collections");
+
+    const router = TestBed.inject(Router);
+    const navigateByUrlSpy = jest.spyOn(router, 'navigateByUrl').mockResolvedValue(true);
+    const totalCollected = component.kpiCards.find((card) => card.label === 'Total Collected');
+    expect(totalCollected?.href).toBe('/donations/today-collections');
+    component.navigateKpi(totalCollected!);
+    expect(navigateByUrlSpy).toHaveBeenCalledWith('/donations/today-collections?focus=amount');
   });
 
   it('refreshes session when the donations ledger mutates (e.g. Quick Collect)', () => {

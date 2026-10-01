@@ -4,7 +4,7 @@
   (closeRequested)="onCancel()"
 >
   <div class="handover-leadership-modal__body cf-loading-block" *ngIf="loading" role="status" aria-live="polite">
-    <p class="cf-loading-block__label">Loading handover options…</p>
+    <app-cf-brand-loader size="section" label="Loading handover options…" />
   </div>
 
   <div class="cf-inline-alert" *ngIf="!loading && loadError" role="alert">

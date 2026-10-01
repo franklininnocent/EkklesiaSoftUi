@@ -81,7 +81,7 @@
         </div>
         <div class="diocesan-bishop-panel__fact" *ngIf="leadership.last_verified_at">
           <dt>Last verified</dt>
-          <dd>{{ leadership.last_verified_at | date:'longDate' }}</dd>
+          <dd>{{ leadership.last_verified_at | cfDate }}</dd>
         </div>
       </dl>
 
@@ -96,7 +96,7 @@
           <h3>{{ ordinary.bishop_name }}</h3>
           <p class="diocesan-bishop-panel__title">{{ ordinaryDisplayTitle(ordinary) }}</p>
           <p class="diocesan-bishop-panel__meta" *ngIf="ordinary.effective_date">
-            Since {{ ordinary.effective_date | date:'longDate' }}
+            Since {{ ordinary.effective_date | cfDate }}
           </p>
         </div>
       </div>
@@ -133,7 +133,7 @@
             <div>
               <strong>{{ auxiliary.bishop_name }}</strong>
               <span>{{ formatRole(auxiliary.canonical_role) }}</span>
-              <span *ngIf="auxiliary.effective_date">Since {{ auxiliary.effective_date | date:'mediumDate' }}</span>
+              <span *ngIf="auxiliary.effective_date">Since {{ auxiliary.effective_date | cfDate }}</span>
             </div>
           </li>
         </ul>
@@ -183,7 +183,7 @@
           <tbody>
             <tr *ngFor="let item of requests">
               <td [attr.data-label]="'Submitted'">
-                {{ submissionDate(item) ? (submissionDate(item) | date:'mediumDate') : '—' }}
+                {{ submissionDate(item) ? (submissionDate(item) | cfDate) : '—' }}
               </td>
               <td [attr.data-label]="'Suggested bishop'">{{ proposedBishopName(item) }}</td>
               <td [attr.data-label]="'Reason / type'">{{ formatType(item.request_type) }}</td>
@@ -266,7 +266,7 @@
       <dl class="diocesan-bishop-panel__detail-list">
         <div>
           <dt>Submitted</dt>
-          <dd>{{ submissionDate(item) ? (submissionDate(item) | date:'medium') : '—' }}</dd>
+          <dd>{{ submissionDate(item) ? (submissionDate(item) | cfDate:'datetime') : '—' }}</dd>
         </div>
         <div>
           <dt>Suggested bishop</dt>

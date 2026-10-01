@@ -31,7 +31,9 @@ import {
   getMembershipStatusClass,
   getMembershipStatusLabel
 } from '../../utils/family-hierarchy.util';
+import { SacramentMasonryDirective } from '../../directives/sacrament-masonry.directive';
 import { MemberSacramentDetailComponent } from '../family-member-detail-panel/member-sacrament-detail.component';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-family-head-profile-block',
@@ -41,6 +43,7 @@ import { MemberSacramentDetailComponent } from '../family-member-detail-panel/me
     EditIconButtonComponent,
     SectionCollapseToggleComponent,
     MemberSacramentDetailComponent,
+    SacramentMasonryDirective,
     ImageViewerComponent
   ],
   templateUrl: './family-head-profile-block.component.html',
@@ -176,9 +179,7 @@ export class FamilyHeadProfileBlockComponent implements AfterViewInit {
     if (!date) return '—';
     try {
       const d = new Date(date);
-      return isNaN(d.getTime())
-        ? '—'
-        : d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+      return isNaN(d.getTime()) ? '—' : cfFormatDate(d) || '—';
     } catch {
       return '—';
     }

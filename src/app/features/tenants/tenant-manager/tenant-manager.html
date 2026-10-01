@@ -91,8 +91,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading tenants…</p>
-    <app-loading-skeleton type="table" [rows]="8" [columns]="7"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading tenants…" type="table" [rows]="8" [columns]="7"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error() && !loading()" class="cf-inline-alert cf-panel" role="alert">
@@ -117,7 +116,7 @@
       *ngIf="currentView() === 'table' && tenants().length > 0"
       [class.tenant-manager__panel--loading]="loading()"
     >
-      <app-data-table [clickableRows]="true" [ariaBusy]="loading()">
+      <app-data-table [clickableRows]="true" [loading]="loading()" loadingLabel="Loading tenants…">
         <thead>
           <tr>
             <th scope="col" class="tenant-manager__checkbox-col">

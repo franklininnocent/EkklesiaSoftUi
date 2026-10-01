@@ -126,8 +126,7 @@
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="cf-loading-block__label">Loading access windows…</p>
-        <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading access windows…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
       </div>
 
       <app-cf-empty-state
@@ -157,7 +156,7 @@
               <app-status-badge [label]="row.status" [tone]="statusTone(row.status)"></app-status-badge>
             </td>
             <td>
-              {{ row.starts_at | date: 'short' }} → {{ row.ends_at | date: 'short' }}
+              {{ row.starts_at | cfDate: 'datetime' }} → {{ row.ends_at | cfDate: 'datetime' }}
             </td>
             <td>
               {{ row.sessions_used }}{{ row.max_sessions ? (' / ' + row.max_sessions) : '' }}

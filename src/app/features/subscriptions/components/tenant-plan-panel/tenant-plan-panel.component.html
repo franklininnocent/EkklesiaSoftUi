@@ -1,7 +1,6 @@
 <div class="sa-stack" *ngIf="can.usage">
   <div *ngIf="loading && !data" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-loading-block__label">Loading plan…</p>
-    <app-loading-skeleton type="card" [rows]="3"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading plan…" type="card" [rows]="3"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
@@ -20,7 +19,7 @@
           <p class="sa-muted" *ngIf="data.terms as t">
             {{ intervalLabel(t.billing_interval) }}
             <ng-container *ngIf="t.contracted_price !== null"> · {{ t.contracted_price | cfCurrency: t.currency_code }} agreed</ng-container>
-            <ng-container *ngIf="t.starts_at"> · since {{ t.starts_at | date: 'mediumDate' }}</ng-container>
+            <ng-container *ngIf="t.starts_at"> · since {{ t.starts_at | cfDate }}</ng-container>
           </p>
           <p class="sa-muted" *ngIf="data.plan?.is_legacy">This church is on an older plan kept for existing customers.</p>
         </div>
@@ -30,7 +29,7 @@
       <div class="cf-inline-alert" *ngIf="data.pending_change as p" role="status">
         <div>
           <strong>Scheduled change</strong>
-          <p>Moves to {{ p.plan_name }} on {{ p.scheduled_for | date: 'medium' }}.</p>
+          <p>Moves to {{ p.plan_name }} on {{ p.scheduled_for | cfDate: 'datetime' }}.</p>
         </div>
         <button *ngIf="can.tenants" type="button" class="cf-btn" (click)="cancelPending()">Cancel change</button>
       </div>
@@ -70,7 +69,7 @@
             <strong>{{ o.feature_name || o.feature_code }}</strong> · {{ overrideLabel(o) }}
             <div class="sa-muted">
               {{ o.reason }}
-              <ng-container *ngIf="o.effective_until"> · until {{ o.effective_until | date: 'mediumDate' }}</ng-container>
+              <ng-container *ngIf="o.effective_until"> · until {{ o.effective_until | cfDate }}</ng-container>
             </div>
           </div>
           <button *ngIf="can.overrides" type="button" class="cf-btn cf-btn-danger" (click)="revoke(o)">End</button>
@@ -82,8 +81,8 @@
         <ul>
           <li *ngFor="let o of pastOverrides" class="sa-muted">
             {{ o.feature_name || o.feature_code }} · {{ overrideLabel(o) }}
-            <ng-container *ngIf="o.revoked_at"> · ended {{ o.revoked_at | date: 'mediumDate' }}<ng-container *ngIf="o.revoke_reason"> ({{ o.revoke_reason }})</ng-container></ng-container>
-            <ng-container *ngIf="!o.revoked_at && o.effective_until"> · expired {{ o.effective_until | date: 'mediumDate' }}</ng-container>
+            <ng-container *ngIf="o.revoked_at"> · ended {{ o.revoked_at | cfDate }}<ng-container *ngIf="o.revoke_reason"> ({{ o.revoke_reason }})</ng-container></ng-container>
+            <ng-container *ngIf="!o.revoked_at && o.effective_until"> · expired {{ o.effective_until | cfDate }}</ng-container>
           </li>
         </ul>
       </details>
@@ -96,7 +95,7 @@
           <li *ngFor="let h of data.history">
             <strong>{{ h.plan_name }}</strong> v{{ h.version_number }} · {{ h.record_status | titlecase }}
             <span class="sa-muted">
-              · {{ (h.starts_at || h.scheduled_for || h.created_at) | date: 'mediumDate' }}
+              · {{ (h.starts_at || h.scheduled_for || h.created_at) | cfDate }}
               <ng-container *ngIf="h.reason"> · {{ h.reason }}</ng-container>
             </span>
           </li>

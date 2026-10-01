@@ -18,7 +18,7 @@ describe('appointment-date.util', () => {
   });
 
   it('formats readable dates and handles missing values', () => {
-    expect(formatAppointmentDate('2018-01-01')).toBe('Jan 1, 2018');
+    expect(formatAppointmentDate('2018-01-01')).toBe('1 Jan 2018');
     expect(formatAppointmentDate(null)).toBe('—');
   });
 });

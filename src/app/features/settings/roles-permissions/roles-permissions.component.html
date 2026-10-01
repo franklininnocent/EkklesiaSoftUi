@@ -145,8 +145,7 @@
 
       <!-- Loading State -->
       <div *ngIf="loadingRoles" class="loading-container">
-        <div class="loading-spinner"></div>
-        <p>Loading roles...</p>
+        <app-cf-brand-loader size="section" label="Loading roles and permissions" [showLabel]="true" />
       </div>
 
       <!-- Error State -->
@@ -469,8 +468,7 @@
 
       <!-- Loading State -->
       <div *ngIf="loadingPermissions" class="loading-container">
-        <div class="loading-spinner"></div>
-        <p>Loading permissions...</p>
+        <app-cf-brand-loader size="section" label="Loading roles and permissions" [showLabel]="true" />
       </div>
 
       <!-- Error State -->
@@ -721,8 +719,7 @@
 
           <!-- Loading State -->
           <div class="loading-state" *ngIf="loadingRoles">
-            <div class="loading-spinner"></div>
-            <p>Loading roles...</p>
+            <app-cf-brand-loader size="section" label="Loading roles and permissions" [showLabel]="true" />
           </div>
         </div>
 
@@ -758,8 +755,7 @@
       </section>
 
       <div *ngIf="loadingTenantUsers" class="loading-container">
-        <div class="loading-spinner"></div>
-        <p>Loading users...</p>
+        <app-cf-brand-loader size="section" label="Loading roles and permissions" [showLabel]="true" />
       </div>
 
       <div *ngIf="tenantUsersError && !loadingTenantUsers" class="error-container">

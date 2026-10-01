@@ -40,6 +40,19 @@
   letter-spacing: 0.04em;
 }
 
+.bcc-overview__kpi-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.bcc-overview__kpi-head .bcc-overview__kpi-hint {
+  flex: 0 0 auto;
+  text-align: right;
+}
+
 .bcc-overview__kpi-value {
   font-size: 1.45rem;
   line-height: 1.15;
@@ -63,6 +76,14 @@
   font-size: 0.78rem;
 }
 
+.bcc-overview__kpi-phone {
+  color: var(--cf-slate-800);
+  font-size: 0.85rem;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+
 .bcc-overview__glance {
   margin: 0;
 }
@@ -79,25 +100,11 @@
   gap: 0.85rem;
   align-content: start;
   min-width: 0;
-}
-
-.bcc-overview__panel--full {
-  grid-column: 1 / -1;
-  width: 100%;
-}
-
-.bcc-overview__panel--nested {
-  grid-column: auto;
   height: 100%;
 }
 
-.bcc-overview__pair {
-  grid-column: span 6;
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-  min-width: 0;
-  align-items: stretch;
+.bcc-overview__panel--third {
+  grid-column: span 4;
 }
 
 .bcc-overview__section-head {
@@ -152,35 +159,6 @@
 
 .bcc-overview__gender-summary .bcc-overview__metric {
   font-size: 1.1rem;
-}
-
-.bcc-overview__child-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.65rem;
-}
-
-.bcc-overview__child-card {
-  display: grid;
-  gap: 0.25rem;
-  text-align: left;
-  padding: 0.75rem;
-  border: 1px solid var(--cf-panel-border);
-  border-radius: var(--cf-radius-sm);
-  background: var(--cf-slate-50);
-  cursor: pointer;
-  color: inherit;
-
-  strong {
-    font-size: 1.35rem;
-    font-variant-numeric: tabular-nums;
-  }
-}
-
-.bcc-overview__child-card:hover,
-.bcc-overview__child-card:focus-visible {
-  border-color: var(--cf-primary);
-  outline: none;
 }
 
 .bcc-overview__leader-list {
@@ -245,18 +223,9 @@
   color: var(--cf-amber);
 }
 
-.bcc-overview__completeness {
-  margin: 0;
-  color: var(--cf-slate-800);
-}
-
-.bcc-overview__trend {
-  display: block;
-}
-
 @media (max-width: 1024px) {
   .bcc-overview__panel,
-  .bcc-overview__pair {
+  .bcc-overview__panel--third {
     grid-column: span 12;
   }
 
@@ -265,16 +234,9 @@
   }
 }
 
-@media (max-width: 768px) {
-  .bcc-overview__pair {
-    grid-template-columns: 1fr;
-  }
-}
-
 @media (max-width: 640px) {
   .bcc-overview__stat-row,
-  .bcc-overview__gender-summary,
-  .bcc-overview__child-grid {
+  .bcc-overview__gender-summary {
     grid-template-columns: 1fr;
   }
 

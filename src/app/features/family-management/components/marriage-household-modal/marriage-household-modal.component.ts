@@ -15,6 +15,8 @@ import { BCCService } from '@core/services/bcc.service';
 import { FamilyService } from '@core/services/family.service';
 import { BCC, Family, FamilyMember } from '@core/models/family.model';
 import { ModalShellComponent } from '@shared/components';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
+import { CfFamilyPickerLabelPipe } from '@shared/pipes/cf-family-picker-label.pipe';
 
 function createTransitionId(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -28,7 +30,7 @@ type MarriageOutcome = 'new_household' | 'join_existing';
 @Component({
   selector: 'app-marriage-household-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent],
+  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent, CfBrandLoaderComponent, CfFamilyPickerLabelPipe],
   templateUrl: './marriage-household-modal.component.html',
   styleUrl: './marriage-household-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

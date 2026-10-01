@@ -31,6 +31,7 @@ import { LinkParishionerModalComponent } from '../components/link-parishioner-mo
 import { MinistriesSubNavComponent } from '../components/ministries-sub-nav/ministries-sub-nav.component';
 import { GuestMember, GuestType } from '../models/ministries.model';
 import { MinistriesApiService } from '../services/ministries-api.service';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type LinkedFilter = '' | 'linked' | 'unlinked';
 
@@ -157,11 +158,7 @@ export class GuestMemberListPageComponent implements OnInit, OnDestroy {
       return value;
     }
 
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(date) || '—';
   }
 
   rowActions(guest: GuestMember): ActionBarItem[] {

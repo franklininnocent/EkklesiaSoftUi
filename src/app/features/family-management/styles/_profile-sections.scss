@@ -316,10 +316,47 @@
   }
 }
 
+.sacrament-masonry {
+  container-type: inline-size;
+  container-name: sacrament-masonry;
+}
+
 .sacrament-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 10px;
+  align-items: start;
+  grid-auto-rows: auto;
+
+  > * {
+    align-self: start;
+    min-width: 0;
+    height: auto;
+  }
+
+  // 1px tracks let each card span only its content height. The directive
+  // turns this on after the first measurement so cards are never clipped
+  // to a single track before layout runs.
+  &--masonry {
+    row-gap: 0;
+    grid-auto-rows: 1px;
+
+    > * {
+      margin-bottom: 10px;
+    }
+  }
+}
+
+@container sacrament-masonry (min-width: 640px) {
+  .sacrament-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container sacrament-masonry (min-width: 960px) {
+  .sacrament-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 .gap-chips {

@@ -1,5 +1,6 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { CfBrandLoaderComponent } from '../cf-brand-loader/cf-brand-loader.component';
 
 /**
  * DataTable
@@ -14,7 +15,7 @@ import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
 @Component({
   selector: 'app-data-table',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CfBrandLoaderComponent],
   templateUrl: './data-table.component.html',
   styleUrl: './data-table.component.scss',
   changeDetection: ChangeDetectionStrategy.Eager,
@@ -24,4 +25,7 @@ export class DataTableComponent {
   @Input() clickableRows = false;
   /** Reflected as `aria-busy` on the `<table>` while data is refreshing. */
   @Input() ariaBusy = false;
+  /** When true, shows brand loader overlay while keeping table chrome visible. */
+  @Input() loading = false;
+  @Input() loadingLabel = 'Loading';
 }

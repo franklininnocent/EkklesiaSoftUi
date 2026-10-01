@@ -26,10 +26,7 @@
     </ng-container>
   </app-page-header>
 
-  <div *ngIf="loading" class="loading-container">
-    <div class="spinner"></div>
-    <p>Loading sacrament details…</p>
-  </div>
+  <app-cf-loading-container *ngIf="loading" label="Loading sacrament details…" />
 
   <div *ngIf="!loading && sacrament" class="detail-content">
     <div

@@ -38,11 +38,13 @@ import {
 } from '../models/ministries-insights.model';
 import { AuthService } from '@core/services/auth.service';
 import { insightsFeatureLabel, insightsStatusLabel } from '../utils/insights-labels';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-ministries-insights-analytics-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     RouterModule,
     AdvancedSearchPanelComponent,

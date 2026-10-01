@@ -31,4 +31,6 @@ export class PageHeaderComponent {
   @Input() backLabel = 'Back';
   @Input() statusLabel?: string;
   @Input() statusTone: StatusBadgeTone = 'neutral';
+  /** Optional count shown beside the title (e.g. active filter count). */
+  @Input() titleMetaCount?: number | null;
 }

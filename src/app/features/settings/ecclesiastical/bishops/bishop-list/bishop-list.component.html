@@ -159,7 +159,7 @@
             <span [class]="getTenureBadgeClass(bishop)">{{ getTenureLabel(bishop) }}</span>
           </td>
           <td>
-            {{ bishop.ordained_bishop_date ? (bishop.ordained_bishop_date | date: 'MMM d, y') : 'N/A' }}
+            {{ bishop.ordained_bishop_date ? (bishop.ordained_bishop_date | cfDate) : 'N/A' }}
           </td>
           <td class="actions-cell">
             <button (click)="onViewBishop(bishop)" class="action-btn view" title="View Details">

@@ -3,8 +3,7 @@
 
   <ng-container *ngIf="can.usage">
     <div *ngIf="loading && !overview" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
-      <p class="cf-loading-block__label">Loading overview…</p>
-      <app-loading-skeleton type="card" [rows]="1"></app-loading-skeleton>
+      <app-loading-skeleton label="Loading overview…" type="card" [rows]="1"></app-loading-skeleton>
       <app-loading-skeleton type="table" [rows]="4" [columns]="3"></app-loading-skeleton>
     </div>
 

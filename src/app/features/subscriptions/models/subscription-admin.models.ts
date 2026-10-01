@@ -272,6 +272,15 @@ export interface PublicPlanCard {
   features?: { code: string; name: string; category: string }[];
   limits?: { code: string; name: string; unit: string | null; value: number | null; unlimited: boolean }[];
   display_order?: number;
+  version_number?: number | null;
+  id?: number;
+  is_current?: boolean;
+  listed_in_catalog?: boolean;
+  using_subscribed_version?: boolean;
+  primary_action?: 'current' | 'request' | 'quote';
+  subscription_status?: string | null;
+  subscription_ends_at?: string | null;
+  is_lifetime?: boolean;
 }
 
 export interface SubscriptionOverview {

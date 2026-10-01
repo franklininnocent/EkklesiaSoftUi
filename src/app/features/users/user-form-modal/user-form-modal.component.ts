@@ -7,6 +7,7 @@ import { RolesService } from '@core/services/roles.service';
 import { ToastService } from '@core/services/toast.service';
 import { AuthService } from '@core/services/auth.service';
 import { PhoneInputComponent, ModalShellComponent, ImageViewerComponent, CfMediaUploadComponent } from '@shared/components';
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 import { Subject, of } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap, takeUntil, tap, catchError, finalize } from 'rxjs/operators';
 import { trapFocus, restoreActiveElement } from '@shared/utils/focus-trap.util';
@@ -26,7 +27,7 @@ import {
 @Component({
   selector: 'app-user-form-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, PhoneInputComponent, ModalShellComponent, ImageViewerComponent, CfMediaUploadComponent],
+  imports: [CommonModule, FormsModule, PhoneInputComponent, ModalShellComponent, ImageViewerComponent, CfMediaUploadComponent, CfBusyLabelComponent],
   templateUrl: './user-form-modal.component.html',
   styleUrl: './user-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

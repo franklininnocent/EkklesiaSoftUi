@@ -1,6 +1,5 @@
 import { CommonModule } from '@angular/common';
 import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
-import { FormArray, FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { NavigationEnd, Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { filter, Subscription } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
@@ -16,95 +15,74 @@ import {
   StewardshipConfirmDialogComponent,
   StewardshipConfirmResult
 } from '../components/stewardship-confirm-dialog/stewardship-confirm-dialog.component';
-import { localDateOnly, requiresGatewayReference } from '../utils/local-date-only';
+import { localDateOnly } from '../utils/local-date-only';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import {
+  AdvancedSearchPanelComponent,
+  SearchField,
+} from '@shared/components/advanced-search-panel/advanced-search-panel.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { SortableDirective, SortDirection, SortEvent } from '@shared/directives/sortable.directive';
+
+type PaymentSortColumn = 'payment_number' | 'payer_name' | 'payment_date' | 'method' | 'status' | 'amount';
+
 @Component({
   selector: 'app-donations-payments',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, FinancialActivityTimelineComponent, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent, CfCurrencyPipe, CfActionIconComponent],
+  imports: [
+    CfDatePipe, CommonModule, RouterModule, FinancialActivityTimelineComponent, CfEmptyStateComponent, CfIconActionButtonComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent, CfCurrencyPipe, CfActionIconComponent, PageHeaderComponent, ListToolbarComponent, AdvancedSearchPanelComponent, DataTableComponent, SortableDirective],
+  styleUrls: ['../styles/stewardship-dashboard-shared.scss'],
   template: `
-    <section class="payments cf-page">
-      <header class="cf-hero">
-        <h1>Payment Register</h1>
-        <p>Review today's collections and reprint receipts in one click.</p>
-      </header>
-
-      <div class="payments-loading cf-panel" *ngIf="!paymentsLoaded" role="status" aria-live="polite" aria-busy="true">
-        <p class="payments-loading__label">Loading payments…</p>
-        <app-loading-skeleton type="table" [rows]="6" [columns]="6"></app-loading-skeleton>
-      </div>
-
-      <ng-container *ngIf="paymentsLoaded">
-      <div class="cf-decision-strip" role="region" aria-label="Suggested next step">
-        <div class="cf-decision-strip__copy">
-          <strong *ngIf="!paidFrom && !paidTo">{{ todayCount }} payment{{ todayCount === 1 ? '' : 's' }} today · {{ todayTotal | cfCurrency }} collected</strong>
-          <strong *ngIf="paidFrom || paidTo">Payments from {{ paidFrom || 'any date' }} through {{ paidTo || 'any date' }}</strong>
-          <span>{{ decisionHint }}</span>
-        </div>
-        <div class="cf-decision-strip__actions">
+    <section class="payments cf-page cf-financial-dashboard">
+      <app-page-header
+        title="Payment Register"
+        subtitle="Review today's collections and reprint receipts in one click."
+      >
+        <app-list-toolbar
+          [showSearch]="false"
+          [filterCount]="tableSearch.trim() ? 1 : 0"
+          (filtersOpened)="showFilters = true"
+        >
           <button
-          aria-label="Collect Payment"
-          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
-          <app-cf-action-icon name="collect-payment" />
+            type="button"
+            class="cf-btn cf-btn-icon cf-btn-primary"
+            (click)="openQuickCollect()"
+            aria-label="Collect Payment"
+            title="Collect Payment"
+          >
+            <app-cf-action-icon name="collect-payment" />
           </button>
           <a routerLink="/donations/collection-day" class="cf-btn cf-btn-icon" aria-label="Collection Day" title="Collection Day">
             <app-cf-action-icon name="calendar-check" />
           </a>
+        </app-list-toolbar>
+      </app-page-header>
+
+      <div
+        class="dashboard-active-filters"
+        *ngIf="tableSearch.trim()"
+        role="region"
+        aria-label="Active filters"
+      >
+        <span class="cf-meta">Active filters</span>
+        <div class="dashboard-active-filters__list">
+          <span class="cf-badge cf-badge--info">
+            Search: {{ tableSearch.trim() }}
+            <button type="button" class="dashboard-active-filters__remove" (click)="clearTableSearch()" aria-label="Remove search filter">×</button>
+          </span>
         </div>
+        <button type="button" class="cf-btn cf-btn--sm" (click)="clearTableSearch()">Clear all</button>
       </div>
 
-      <details class="cf-disclosure manual-entry" role="group" *ngIf="canCollectPayments">
-        <summary class="cf-disclosure__trigger">
-          <strong>Manual payment entry</strong>
-          <span>Advanced — use Quick Collect for most collections</span>
-        </summary>
-        <div class="cf-disclosure__body">
-      <form [formGroup]="paymentForm" (ngSubmit)="submit()" class="manual-entry-form">
-        <div class="payment-form cf-form-grid">
-          <input formControlName="payer_name" placeholder="Payer name" />
-          <input formControlName="amount" type="number" placeholder="Amount" />
-          <select formControlName="method">
-            <option value="cash">Cash</option>
-            <option value="bank_transfer">Bank Transfer</option>
-            <option value="cheque">Cheque</option>
-            <option value="online_placeholder">Online</option>
-          </select>
-          <input formControlName="gateway_reference" placeholder="Cheque / transfer reference" *ngIf="needsReference" />
-          <input formControlName="payment_date" type="date" />
-          <button
-          aria-label="Add Allocation"
-          title="Add Allocation" type="button" class="cf-btn cf-btn-icon" (click)="addAllocation()">
-          <app-cf-action-icon name="plus" />
-          </button>
-          <button
-          aria-label="Add"
-          title="Add" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="paymentForm.invalid || saving">
-          <app-cf-action-icon name="plus" />
-          </button>
-        </div>
+      <div class="cf-loading-block cf-panel" *ngIf="!paymentsLoaded" role="status" aria-live="polite" aria-busy="true">
+        <app-loading-skeleton label="Loading payments…" type="table" [rows]="6" [columns]="6"></app-loading-skeleton>
+      </div>
 
-        <div formArrayName="allocations" class="allocations cf-panel" *ngIf="allocations.length">
-          <div *ngFor="let allocation of allocations.controls; let i = index" [formGroupName]="i" class="allocation-row cf-form-grid">
-            <select formControlName="allocatable_type">
-              <option value="due">Due</option>
-              <option value="project_installment">Project Installment</option>
-              <option value="project">Project</option>
-              <option value="donation">Donation</option>
-              <option value="fund">Fund</option>
-              <option value="plan">Plan</option>
-            </select>
-            <input formControlName="allocatable_id" placeholder="Target UUID" />
-            <input formControlName="amount" type="number" placeholder="Amount" />
-            <button type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="removeAllocation(i)" aria-label="Remove" title="Remove">
-              <app-cf-action-icon name="trash" />
-            </button>
-          </div>
-        </div>
-      </form>
-        </div>
-      </details>
-
+      <ng-container *ngIf="paymentsLoaded">
       <p *ngIf="!canCollectPayments" class="cf-state cf-state--error">
         You do not have permission to collect payments.
       </p>
@@ -119,20 +97,34 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
         title="Payment Activity"
       ></app-financial-activity-timeline>
 
-      <div class="cf-filters cf-panel" *ngIf="payments.length">
-        <input type="search" [(ngModel)]="tableSearch" (ngModelChange)="onTableSearchChange()" placeholder="Filter by payer, receipt #, method…" />
-      </div>
+      <div class="cf-panel stewardship-table-panel" *ngIf="payments.length">
+        <header class="stewardship-panel-head" *ngIf="displayPayments.length">
+          <div class="stewardship-panel-head__copy">
+            <h2 class="cf-section-title">Payments</h2>
+            <p class="cf-meta">{{ displayPayments.length }} of {{ payments.length }} on this page</p>
+          </div>
+        </header>
 
-      <table *ngIf="displayPayments.length" class="table cf-table">
-        <thead><tr><th>No</th><th>Payer</th><th>Date</th><th>Method</th><th>Status</th><th>Amount</th><th class="cf-table__actions-col" aria-label="Actions"></th></tr></thead>
+      <app-data-table *ngIf="displayPayments.length">
+        <thead>
+          <tr>
+            <th scope="col" appSortable="payment_number" [direction]="sortColumn === 'payment_number' ? sortDirection : null" (sort)="onSort($event)">No</th>
+            <th scope="col" appSortable="payer_name" [direction]="sortColumn === 'payer_name' ? sortDirection : null" (sort)="onSort($event)">Payer</th>
+            <th scope="col" appSortable="payment_date" [direction]="sortColumn === 'payment_date' ? sortDirection : null" (sort)="onSort($event)">Date</th>
+            <th scope="col" appSortable="method" [direction]="sortColumn === 'method' ? sortDirection : null" (sort)="onSort($event)">Method</th>
+            <th scope="col" appSortable="status" [direction]="sortColumn === 'status' ? sortDirection : null" (sort)="onSort($event)">Status</th>
+            <th scope="col" class="cf-table__num" appSortable="amount" [direction]="sortColumn === 'amount' ? sortDirection : null" (sort)="onSort($event)">Amount</th>
+            <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
         <tbody>
           <tr *ngFor="let payment of displayPayments; trackBy: trackPayment">
             <td>{{ payment.payment_number }}</td>
             <td>{{ payment.is_anonymous ? 'Anonymous' : payment.payer_name }}</td>
-            <td>{{ payment.payment_date | date }}</td>
+            <td>{{ payment.payment_date | cfDate }}</td>
             <td>{{ payment.method }}</td>
             <td>{{ payment.status }}</td>
-            <td>{{ payment.amount | cfCurrency }}</td>
+            <td class="cf-table__num">{{ payment.amount | cfCurrency }}</td>
             <td class="cf-table__actions-cell">
               <div class="cf-row-actions">
                 <app-cf-icon-action-button
@@ -167,7 +159,12 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
             </td>
           </tr>
         </tbody>
-      </table>
+      </app-data-table>
+
+      <p *ngIf="payments.length && !displayPayments.length" class="cf-meta stewardship-table-panel__empty">
+        No payments match your search. Try another term or clear filters.
+      </p>
+      </div>
 
       <app-cf-empty-state
         *ngIf="!paymentsLoadError && !payments.length"
@@ -185,9 +182,7 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
         </a>
       </app-cf-empty-state>
 
-      <p *ngIf="payments.length && !displayPayments.length" class="cf-state">No payments match your filter.</p>
-
-      <div class="payments-load-error cf-panel" *ngIf="paymentsLoadError" role="alert">
+      <div class="cf-inline-alert cf-panel" *ngIf="paymentsLoadError" role="alert">
         <p class="payments-load-error__text">{{ paymentsLoadError }}</p>
         <button
           aria-label="Try again"
@@ -211,23 +206,20 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
         (cancelled)="closeAction()"
         (confirmed)="confirmAction($event)"
       ></app-stewardship-confirm-dialog>
+
+      <app-advanced-search-panel
+        mode="sidepanel"
+        [fields]="searchFields"
+        [isExpanded]="showFilters"
+        (search)="onAdvancedSearch($event)"
+        (clear)="onClearAdvancedSearch()"
+        (close)="showFilters = false"
+      ></app-advanced-search-panel>
     </section>
   `,
   styles: [`
-    .payments-loading { display: grid; gap: 0.75rem; padding: 1rem; }
-    .payments-loading__label { margin: 0; font-size: 0.88rem; color: var(--cf-muted); }
-    .payments-load-error {
-      display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem;
-      padding: 1rem; border-color: #fecaca; background: var(--cf-critical-soft);
-    }
-    .payments-load-error__text { margin: 0; color: var(--cf-critical); font-size: 0.9rem; }
-    .manual-entry { margin-bottom: 0.85rem; }
-    .manual-entry summary { list-style: none; }
-    .manual-entry summary::-webkit-details-marker { display: none; }
-    .payment-form { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); margin-bottom: 0; }
-    .allocations { display: grid; gap: 0.45rem; margin-top: 0.65rem; }
-    .allocation-row { grid-template-columns: 150px 1fr 140px 100px; }
-    .cf-row-actions { display: flex; flex-wrap: wrap; gap: 0.35rem; align-items: center; }
+    .stewardship-panel-head__copy { display: grid; gap: 0.08rem; }
+    .stewardship-table-panel__empty { margin: 0; padding: 0 var(--cf-panel-pad) var(--cf-space-3); text-align: center; }
   `]
 })
 export class DonationsPaymentsComponent implements OnInit, OnDestroy {
@@ -237,10 +229,14 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
   paymentsLoadError: string | null = null;
   private loadPaymentsSeq = 0;
   private routerSub?: Subscription;
+  private ledgerSub?: Subscription;
   private skipNextNavReload = true;
   tableSearch = '';
+  showFilters = false;
+  searchFields: SearchField[] = [];
+  sortColumn: PaymentSortColumn = 'payment_date';
+  sortDirection: SortDirection = 'desc';
   selectedPaymentId: string | null = null;
-  saving = false;
   message = '';
   canCollectPayments = false;
   canReverse = false;
@@ -249,17 +245,7 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
   actionSaving = false;
   actionError: string | null = null;
 
-  paymentForm = this.fb.group({
-    payer_name: ['', Validators.required],
-    amount: [null as number | null, [Validators.required, Validators.min(0.01)]],
-    method: ['cash', Validators.required],
-    gateway_reference: [''],
-    payment_date: [localDateOnly(), Validators.required],
-    allocations: this.fb.array([])
-  });
-
   constructor(
-    private fb: FormBuilder,
     private donationsService: DonationsService,
     private authService: AuthService,
     private quickCollectService: QuickCollectService,
@@ -273,7 +259,9 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     this.canCollectPayments = this.authService.hasPermission('donations.collect');
     this.canReverse = this.authService.hasPermission('donations.reverse');
     this.canRefund = this.authService.hasPermission('donations.refund');
+    this.initSearchFields();
     this.load();
+    this.ledgerSub = this.donationsService.ledgerMutated$.subscribe(() => this.load());
     this.routerSub = this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe((e) => {
       if (!e.urlAfterRedirects.includes('/donations/payments')) {
         return;
@@ -288,34 +276,11 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.routerSub?.unsubscribe();
-  }
-
-  get allocations(): FormArray {
-    return this.paymentForm.get('allocations') as FormArray;
-  }
-
-  addAllocation(): void {
-    this.allocations.push(this.fb.group({
-      allocatable_type: ['due', Validators.required],
-      allocatable_id: ['', Validators.required],
-      amount: [null as number | null, [Validators.required, Validators.min(0.01)]]
-    }));
-  }
-
-  removeAllocation(index: number): void {
-    this.allocations.removeAt(index);
+    this.ledgerSub?.unsubscribe();
   }
 
   openQuickCollect(): void {
     this.quickCollectService.open();
-  }
-
-  get needsReference(): boolean {
-    return requiresGatewayReference(this.paymentForm.get('method')?.value || '');
-  }
-
-  get todayIso(): string {
-    return localDateOnly();
   }
 
   get paidFrom(): string | null {
@@ -326,32 +291,67 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     return this.route.snapshot.queryParamMap.get('paid_to');
   }
 
-  get todayPayments(): DonationPayment[] {
-    return this.payments.filter((payment) => (payment.payment_date || '').slice(0, 10) === this.todayIso);
-  }
-
-  get todayCount(): number {
-    return this.todayPayments.length;
-  }
-
-  get todayTotal(): number {
-    return this.todayPayments.reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-  }
-
-  get decisionHint(): string {
-    if (this.todayCount > 0) {
-      return 'Verify totals match your cash count, then use the view icon to open receipts as needed.';
-    }
-    return 'Use Collection Day mode for fast keyboard entry during services.';
-  }
-
   trackPayment(_index: number, payment: DonationPayment): string {
     return payment.id;
+  }
+
+  onSort(event: SortEvent): void {
+    const allowed: PaymentSortColumn[] = [
+      'payment_number',
+      'payer_name',
+      'payment_date',
+      'method',
+      'status',
+      'amount',
+    ];
+    if (!allowed.includes(event.column as PaymentSortColumn)) {
+      return;
+    }
+    this.sortColumn = event.column as PaymentSortColumn;
+    this.sortDirection = event.direction ?? 'desc';
+    this.load();
   }
 
   onTableSearchChange(): void {
     this.syncDisplayPayments();
     this.cdr.markForCheck();
+  }
+
+  onAdvancedSearch(values: { [key: string]: unknown }): void {
+    this.tableSearch = String(values['search'] ?? '').trim();
+    this.showFilters = false;
+    this.syncSearchFieldValues();
+    this.onTableSearchChange();
+  }
+
+  onClearAdvancedSearch(): void {
+    this.clearTableSearch();
+    this.showFilters = false;
+  }
+
+  clearTableSearch(): void {
+    this.tableSearch = '';
+    this.syncSearchFieldValues();
+    this.onTableSearchChange();
+  }
+
+  private initSearchFields(): void {
+    this.searchFields = [
+      {
+        key: 'search',
+        label: 'Payer, receipt #, or method',
+        type: 'text',
+        placeholder: 'Filter payments…',
+        value: this.tableSearch.trim() || undefined,
+      },
+    ];
+  }
+
+  private syncSearchFieldValues(): void {
+    const field = this.searchFields.find((f) => f.key === 'search');
+    if (field) {
+      field.value = this.tableSearch.trim() || undefined;
+    }
   }
 
   private syncDisplayPayments(): void {
@@ -385,6 +385,8 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     if (this.paidFrom || this.paidTo) {
       filters['per_page'] = '100';
     }
+    filters['sort'] = this.sortColumn;
+    filters['direction'] = this.sortDirection || 'desc';
     this.donationsService.getPayments(filters).subscribe({
       next: (res) => {
         if (seq !== this.loadPaymentsSeq) {
@@ -469,44 +471,4 @@ export class DonationsPaymentsComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  submit(): void {
-    if (this.paymentForm.invalid) {
-      return;
-    }
-    const raw = this.paymentForm.getRawValue();
-    if (requiresGatewayReference(raw.method || '') && !String(raw.gateway_reference || '').trim()) {
-      this.message = 'Cheque and bank transfer payments need a reference number.';
-      return;
-    }
-
-    this.saving = true;
-    this.message = '';
-    const allocations = (raw.allocations ?? []).filter((a: any) => Number(a.amount) > 0);
-    const payload: Record<string, unknown> = {
-      payer_name: raw.payer_name,
-      amount: raw.amount,
-      method: raw.method,
-      payment_date: raw.payment_date,
-      allocations
-    };
-    if (requiresGatewayReference(raw.method || '')) {
-      payload['gateway_reference'] = String(raw.gateway_reference).trim();
-    }
-
-    this.donationsService.createPayment(payload).subscribe({
-      next: () => {
-        this.saving = false;
-        this.message = 'Payment saved successfully.';
-        this.paymentForm.patchValue({ payer_name: '', amount: null, gateway_reference: '' });
-        this.allocations.clear();
-        this.load();
-        this.cdr.markForCheck();
-      },
-      error: () => {
-        this.saving = false;
-        this.message = 'Failed to save payment.';
-        this.cdr.markForCheck();
-      }
-    });
-  }
 }

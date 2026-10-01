@@ -36,6 +36,7 @@ import {
   SacramentDashboardProgressionKey,
 } from './sacrament-dashboard-progression-radial-chart.component';
 import { SacramentDashboardMarriageCanonicalRadialChartComponent } from './sacrament-dashboard-marriage-canonical-radial-chart.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 type PeriodPreset = 'ytd' | 'month' | 'last12' | 'all';
 
@@ -43,6 +44,7 @@ type PeriodPreset = 'ytd' | 'month' | 'last12' | 'all';
   selector: 'app-sacraments-dashboard',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     RouterModule,
     PageHeaderComponent,
@@ -357,13 +359,13 @@ export class SacramentsDashboardComponent implements OnInit {
   }
 
   openFamilies(): void {
-    void this.router.navigate(['/families'], {
+    void this.router.navigate(['/families/list'], {
       queryParams: this.selectedBccId ? { bcc_id: this.selectedBccId } : {},
     });
   }
 
   openFamiliesMissing(sacramentCode: string): void {
-    void this.router.navigate(['/families'], {
+    void this.router.navigate(['/families/list'], {
       queryParams: {
         missing_sacrament: sacramentCode,
         ...(this.selectedBccId ? { bcc_id: this.selectedBccId } : {}),
@@ -372,7 +374,7 @@ export class SacramentsDashboardComponent implements OnInit {
   }
 
   openMembersProgression(progression: SacramentDashboardProgressionKey): void {
-    void this.router.navigate(['/members'], {
+    void this.router.navigate(['/members/list'], {
       queryParams: {
         progression,
         ...(this.selectedBccId ? { bcc_id: this.selectedBccId } : {}),

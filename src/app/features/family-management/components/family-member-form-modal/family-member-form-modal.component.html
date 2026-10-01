@@ -122,6 +122,20 @@
             <option value="divorced">Divorced</option>
           </select>
         </div>
+        <div class="cf-split-field" *ngIf="showMarriageDate">
+          <label for="member_marriage_date">Marriage date <span class="cf-split-optional">optional</span></label>
+          <input
+            type="date"
+            id="member_marriage_date"
+            formControlName="marriage_date"
+            [attr.max]="todayIsoDate"
+            [class.cf-split-field__control--invalid]="isFieldInvalid('marriage_date')"
+          />
+          <p class="cf-split-field__error" *ngIf="isFieldInvalid('marriage_date')">{{ getErrorMessage('marriage_date') }}</p>
+          <p class="cf-split-field__hint" *ngIf="member?.marriage_date_conflict">
+            This date is different on the linked spouse or in the parish marriage register. Saving needs confirmation so neither date is changed by mistake.
+          </p>
+        </div>
       </div>
     </section>
 

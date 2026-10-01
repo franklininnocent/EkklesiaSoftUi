@@ -1,7 +1,7 @@
 <section class="members-list cf-page">
   <app-page-header
-    title="Members"
-    subtitle="View and manage all family members and heads"
+    title="Member directory"
+    subtitle="Search, filter, and manage all family members and heads"
   >
     <app-list-toolbar
       searchPlaceholder="Search by name, phone, email…"
@@ -44,8 +44,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading members…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading members…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
   </div>
 
   <div *ngIf="error && !loading" class="cf-inline-alert cf-panel" role="alert">
@@ -55,7 +54,7 @@
 
   <ng-container *ngIf="loaded && !error">
     <div class="cf-panel members-list__panel" *ngIf="members.length">
-      <app-data-table [clickableRows]="true">
+      <app-data-table [clickableRows]="true" [loading]="loading" loadingLabel="Loading members…">
         <thead>
           <tr>
             <th

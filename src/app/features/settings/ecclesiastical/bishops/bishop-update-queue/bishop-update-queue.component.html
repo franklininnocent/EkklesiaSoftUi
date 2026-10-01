@@ -43,7 +43,7 @@
               class="queue-row"
               [class.active]="selected?.request?.id === item.id"
               (click)="openReview(item)">
-              <td>{{ item.submitted_at | date:'mediumDate' }}</td>
+              <td>{{ item.submitted_at | cfDate }}</td>
               <td>{{ item.tenant?.name || ('Tenant #' + item.tenant_id) }}</td>
               <td>{{ proposedName(item) }}</td>
               <td>{{ formatType(item.request_type) }}</td>

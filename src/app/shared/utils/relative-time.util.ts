@@ -1,3 +1,4 @@
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 /**
  * Human-readable relative time for inbox timestamps (browser local timezone).
  */
@@ -28,7 +29,7 @@ export function formatRelativeTime(iso: string | null | undefined): string {
   if (diffDay < 7) {
     return `${diffDay}d ago`;
   }
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return cfFormatDate(date) || '';
 }
 
 export function inboxDateGroup(iso: string): 'today' | 'yesterday' | 'older' {

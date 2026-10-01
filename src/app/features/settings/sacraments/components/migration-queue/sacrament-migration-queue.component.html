@@ -112,8 +112,7 @@
     aria-live="polite"
     aria-busy="true"
   >
-    <p class="cf-loading-block__label">Loading names…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading names…" type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
   </div>
 
   <section class="cf-panel migration-queue__queue" *ngIf="queueLoaded && !queueError">

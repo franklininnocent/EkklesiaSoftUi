@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { of } from 'rxjs';
+import { of, EMPTY } from 'rxjs';
 import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { EntitlementService } from '@core/services/entitlement.service';
 import { DonationDashboardSummary } from '../models/donation.model';
@@ -80,7 +80,8 @@ describe('DonationsDashboardComponent', () => {
           provide: DonationsService,
           useValue: {
             getDashboardSummary: jest.fn().mockReturnValue(of({ success: true, data: summary })),
-            getExecutiveReportSummary: jest.fn().mockReturnValue(of(null))
+            getExecutiveReportSummary: jest.fn().mockReturnValue(of(null)),
+            ledgerMutated$: EMPTY,
           }
         },
         { provide: QuickCollectService, useValue: { open: jest.fn() } },
@@ -110,6 +111,8 @@ describe('DonationsDashboardComponent', () => {
     expect(text).toContain('Outstanding contributions');
     expect(text).toContain('Overdue');
     expect(text).toContain('Family participation');
+    expect(fixture.nativeElement.querySelector('.dashboard-kpi--participation')).toBeTruthy();
+    expect(fixture.nativeElement.querySelector('.dashboard-kpi--participation')).toBeTruthy();
     expect(text).not.toContain('Net Position');
     expect(text).not.toContain('Financial Health Score');
     expect(text).not.toContain('Inactive families');

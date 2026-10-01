@@ -1,0 +1,37 @@
+.mass-celebrations-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-space-2);
+  margin-bottom: var(--cf-space-3);
+  padding-bottom: var(--cf-space-2);
+  border-bottom: 1px solid var(--cf-panel-border);
+}
+
+.mass-celebrations-toolbar__title {
+  margin: 0;
+  flex: 0 0 auto;
+  font-size: var(--cf-text-page-title, 1.35rem);
+  font-weight: var(--cf-font-weight-page-title, 700);
+  line-height: var(--cf-leading-page-title, 1.2);
+  color: var(--cf-color-text-primary, var(--cf-slate-900));
+  letter-spacing: -0.01em;
+}
+
+.mass-celebrations-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--cf-space-2);
+  margin-left: auto;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 48rem) {
+  .mass-celebrations-toolbar__actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

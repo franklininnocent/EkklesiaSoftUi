@@ -47,7 +47,7 @@
       <tbody>
         <ng-container *ngFor="let e of entries">
           <tr>
-            <td>{{ e.created_at | date: 'medium' }}</td>
+            <td>{{ e.created_at | cfDate: 'datetime' }}</td>
             <td>{{ describe(e) }}</td>
             <td class="sa-muted">{{ entityLabel(e) }}</td>
             <td class="sa-muted">{{ e.actor_role || 'System' }}<ng-container *ngIf="e.actor_id"> #{{ e.actor_id }}</ng-container></td>

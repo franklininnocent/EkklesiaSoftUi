@@ -21,6 +21,7 @@ import {
 import { Subject, takeUntil } from 'rxjs';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { FormFieldComponent } from '@shared/components/form-field/form-field.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import {
   CreateGuestMemberPayload,
   GuestMember,
@@ -43,7 +44,13 @@ function phoneOrEmailRequired(group: AbstractControl): ValidationErrors | null {
 @Component({
   selector: 'app-guest-member-form-modal',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, ModalShellComponent, FormFieldComponent],
+  imports: [
+    CommonModule,
+    ReactiveFormsModule,
+    ModalShellComponent,
+    FormFieldComponent,
+    CfBrandLoaderComponent,
+  ],
   templateUrl: './guest-member-form-modal.component.html',
   styleUrl: './guest-member-form-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

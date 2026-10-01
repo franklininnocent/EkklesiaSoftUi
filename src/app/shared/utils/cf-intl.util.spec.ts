@@ -50,8 +50,8 @@ describe('cf-intl.util', () => {
     it('keeps date-only values on their calendar day in any timezone', () => {
       const parsed = cfParseDate('2026-09-25');
       expect([parsed?.getFullYear(), parsed?.getMonth(), parsed?.getDate()]).toEqual([2026, 8, 25]);
-      expect(cfFormatDate('2026-09-25')).toBe('Sep 25, 2026');
-      expect(cfFormatDate('2026-01-01')).toBe('Jan 1, 2026');
+      expect(cfFormatDate('2026-09-25')).toBe('25 Sep 2026');
+      expect(cfFormatDate('2026-01-01')).toBe('1 Jan 2026');
     });
 
     it('rejects impossible calendar dates', () => {
@@ -59,12 +59,11 @@ describe('cf-intl.util', () => {
       expect(cfFormatDate('2026-02-30')).toBe('');
     });
 
-    it('formats instants in the viewer timezone', () => {
-      const instant = '2026-09-25T03:30:00Z';
-      const expected = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-        .format(new Date(instant));
-      expect(cfFormatDate(instant, 'date')).toBe(expected);
-      expect(cfFormatDate(instant, 'time')).toMatch(/^\d{1,2}:\d{2}\s[AP]M$/);
+    it('formats instants using local wall time without changing the instant', () => {
+      const instant = '2026-09-30 09:59:00';
+      expect(cfFormatDate(instant, 'date')).toBe('30 Sep 2026');
+      expect(cfFormatDate(instant, 'datetime')).toBe('30 Sep 2026, 9:59 AM');
+      expect(cfFormatDate(instant, 'time')).toBe('9:59 AM');
     });
 
     it('parses Laravel/SQL timestamps and microsecond fractions', () => {
@@ -83,19 +82,26 @@ describe('cf-intl.util', () => {
     });
 
     it('accepts Date objects and returns empty for missing or invalid input', () => {
-      expect(cfFormatDate(new Date(2026, 0, 5))).toBe('Jan 5, 2026');
+      expect(cfFormatDate(new Date(2026, 0, 5))).toBe('5 Jan 2026');
       expect(cfFormatDate(null)).toBe('');
       expect(cfFormatDate('')).toBe('');
       expect(cfFormatDate('not a date')).toBe('');
       expect(cfFormatDate(new Date('invalid'))).toBe('');
     });
 
-    it('falls back to the default locale for an invalid locale tag', () => {
-      expect(cfFormatDate('2026-09-25', 'date', 'not_a_locale!')).toBe('Sep 25, 2026');
+    it('does not use locale for month names or date order', () => {
+      expect(cfFormatDate('2026-09-25', 'date', 'not_a_locale!')).toBe('25 Sep 2026');
+      expect(cfFormatDate('2026-09-25', 'date', 'en-IN')).toBe('25 Sep 2026');
     });
 
-    it('honours an explicit locale', () => {
-      expect(cfFormatDate('2026-09-25', 'date', 'en-IN')).toBe('25 Sept 2026');
+    it('aliases datetimeDayFirst to the standard datetime format', () => {
+      expect(cfFormatDate('2026-09-30 09:59:00', 'datetimeDayFirst')).toBe('30 Sep 2026, 9:59 AM');
+      expect(cfFormatDate('2026-09-30 21:59:00', 'datetime')).toBe('30 Sep 2026, 9:59 PM');
+    });
+
+    it('formats weekday and month-year labels from the same source of truth', () => {
+      expect(cfFormatDate('2026-09-30', 'weekdayDate')).toBe('Wednesday, 30 Sep 2026');
+      expect(cfFormatDate('2026-09-30', 'monthYear')).toBe('Sep 2026');
     });
   });
 });

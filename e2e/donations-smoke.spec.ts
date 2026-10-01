@@ -17,7 +17,7 @@ test.describe('Donations smoke', () => {
     await context.close();
   });
 
-  test('tenant admin can open payment register with decision strip', async ({ browser }) => {
+  test('tenant admin can open payment register', async ({ browser }) => {
     test.skip(!tenantAdminState, 'Tenant admin storage state not provided');
     const context = await browser.newContext({ storageState: tenantAdminState });
     const page = await context.newPage();
@@ -25,7 +25,7 @@ test.describe('Donations smoke', () => {
     await page.goto('/donations/payments');
     await expect(page).toHaveURL(/\/donations\/payments/);
     await expect(page.getByRole('heading', { name: 'Payment Register' })).toBeVisible();
-    await expect(page.getByRole('region', { name: 'Suggested next step' })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Payment summary' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Collect Payment' })).toBeVisible();
 
     await context.close();

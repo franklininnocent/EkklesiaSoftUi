@@ -13,6 +13,7 @@ import { ToastService } from '@core/services';
 import { AuthService } from '@core/services/auth.service';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import {
   EcclesiasticalAuditChangeLine,
   formatEcclesiasticalAuditChanges,
@@ -21,7 +22,8 @@ import {
 @Component({
   selector: 'app-bishop-audit-tab',
   standalone: true,
-  imports: [CommonModule, CfEmptyStateComponent, LoadingSkeletonComponent],
+  imports: [
+    CfDatePipe,CommonModule, CfEmptyStateComponent, LoadingSkeletonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="bishop-audit-tab">
@@ -38,7 +40,7 @@ import {
         </thead>
         <tbody>
           <tr *ngFor="let entry of entries">
-            <td>{{ entry.created_at | date:'medium' }}</td>
+            <td>{{ entry.created_at | cfDate:'datetime' }}</td>
             <td>{{ entry.action || entry.event || '—' }}</td>
             <td>{{ entry.user_name || entry.performed_by || '—' }}</td>
             <td>

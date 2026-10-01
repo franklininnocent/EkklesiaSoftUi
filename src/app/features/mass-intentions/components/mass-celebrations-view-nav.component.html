@@ -1,0 +1,98 @@
+<nav class="mass-view-nav" aria-label="Masses calendar navigation">
+  <div class="mass-view-nav__row">
+    <div
+      class="cf-dashboard-command-bar__view-toggle mass-view-nav__view-toggle"
+      role="group"
+      aria-label="Choose how to browse Masses"
+    >
+      @if (view() === 'list') {
+        <span class="active" aria-current="page">List</span>
+        <a
+          [routerLink]="['/mass-intentions/masses/week']"
+          [queryParams]="weekSwitchParams()"
+          title="Sunday through Saturday, one week at a time"
+        >
+          Week
+        </a>
+      } @else {
+        <a
+          [routerLink]="['/mass-intentions/masses']"
+          [queryParams]="listSwitchFromWeekParams()"
+          title="Table of Masses for one month at a time"
+        >
+          List
+        </a>
+        <span class="active" aria-current="page">Week</span>
+      }
+    </div>
+
+    @if (canScheduleMass()) {
+      <a
+        routerLink="/mass-intentions/masses/schedule"
+        class="cf-dashboard-command-bar__action mass-view-nav__schedule"
+        title="Set regular Sunday and weekday Mass times"
+      >
+        <app-cf-action-icon name="calendar-clock" />
+        Edit schedule
+      </a>
+    }
+
+    <span class="mass-view-nav__sep" aria-hidden="true"></span>
+
+    <span class="mass-view-nav__period-title" role="status" aria-live="polite">{{ periodLabel() }}</span>
+
+    <div class="mass-view-nav__stepper" role="group" [attr.aria-label]="periodNavAriaLabel()">
+      <button
+        type="button"
+        class="mass-view-nav__stepper-btn"
+        (click)="goPrev()"
+        [attr.aria-label]="prevLabel()"
+        [title]="prevLabel()"
+      >
+        <app-cf-action-icon name="arrow-left" />
+      </button>
+      <button
+        type="button"
+        class="mass-view-nav__stepper-btn mass-view-nav__stepper-btn--current"
+        (click)="goToCurrentPeriod()"
+        [disabled]="isCurrentPeriod()"
+        [attr.aria-label]="resetLabel()"
+        [title]="isCurrentPeriod() ? 'You are already on the current period' : resetLabel()"
+      >
+        {{ resetLabel() }}
+      </button>
+      <button
+        type="button"
+        class="mass-view-nav__stepper-btn"
+        (click)="goNext()"
+        [attr.aria-label]="nextLabel()"
+        [title]="nextLabel()"
+      >
+        <app-cf-action-icon name="arrow-right" />
+      </button>
+    </div>
+
+    <div class="mass-view-nav__jump-field">
+      <label class="mass-view-nav__jump-label" [attr.for]="jumpFieldId()">{{ jumpControlLabel() }}</label>
+      @if (view() === 'list') {
+        <input
+          [id]="jumpFieldId()"
+          type="month"
+          class="mass-view-nav__jump-control"
+          [value]="pickerValue()"
+          (change)="onPickerChange($any($event.target).value)"
+          [attr.aria-label]="jumpInputAriaLabel()"
+        />
+      } @else {
+        <input
+          [id]="jumpFieldId()"
+          type="date"
+          class="mass-view-nav__jump-control"
+          [value]="pickerValue()"
+          (change)="onPickerChange($any($event.target).value)"
+          [attr.aria-label]="jumpInputAriaLabel()"
+        />
+      }
+    </div>
+  </div>
+</nav>

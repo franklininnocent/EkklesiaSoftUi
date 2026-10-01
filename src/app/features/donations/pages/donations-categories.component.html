@@ -1,4 +1,4 @@
-<section class="categories-page cf-page cf-split-page">
+<section class="categories-page cf-page cf-split-page cf-financial-dashboard">
   <app-page-header
     title="Offering Categories"
     subtitle="Define gift types for voluntary collections — create and manage categories side by side.">
@@ -15,8 +15,7 @@
   </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!categoriesLoaded" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-split-loading__label">Loading offering categories…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading offering categories…" type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="categoriesLoaded">

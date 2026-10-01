@@ -30,6 +30,7 @@ import {
 import { SubscriptionAdminService, subscriptionErrorMessage } from '../../services/subscription-admin.service';
 import { subscriptionAdminCapabilities } from '../../services/subscription-admin-access';
 import { ChangePlanDialogComponent } from '../change-plan-dialog/change-plan-dialog.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 const NUMERIC_TYPES = new Set(['LIMIT', 'QUOTA', 'USAGE']);
 const MODE_LABELS: Record<OverrideMode, string> = {
@@ -57,6 +58,7 @@ interface GrantForm {
   selector: 'app-tenant-plan-panel',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     LoadingSkeletonComponent,

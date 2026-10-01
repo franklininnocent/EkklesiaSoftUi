@@ -10,7 +10,7 @@ import { ToastService } from '@core/services/toast.service';
 describe('QuickCollectDrawerComponent', () => {
   let component: QuickCollectDrawerComponent;
   let quickCollectService: QuickCollectService;
-  let donationsService: jest.Mocked<Pick<DonationsService, 'createPayment' | 'getFunds' | 'getPayments' | 'getFamilyFinancialProfile' | 'getReceiptPreview' | 'getUpiIntent'>>;
+  let donationsService: jest.Mocked<Pick<DonationsService, 'createPayment' | 'getFunds' | 'getPayments' | 'getFamilyFinancialProfile' | 'getCollectContext' | 'getReceiptPreview' | 'getUpiIntent'>>;
 
   beforeEach(async () => {
     donationsService = {
@@ -18,6 +18,19 @@ describe('QuickCollectDrawerComponent', () => {
       getFunds: jest.fn().mockReturnValue(of({ success: true, data: [{ id: 'fund-1', name: 'Monthly Dues', code: 'DUES' }] })),
       getPayments: jest.fn().mockReturnValue(of({ success: true, data: { data: [] } })),
       getFamilyFinancialProfile: jest.fn().mockReturnValue(of({ success: true, data: null })),
+      getCollectContext: jest.fn().mockReturnValue(of({
+        success: true,
+        data: {
+          family: null,
+          project: null,
+          suggested_allocation: null,
+          collectible_amount: 0,
+          payment_date: '2026-10-01',
+          currency_code: 'USD',
+          can_collect: true,
+          overpayment_becomes_credit: true,
+        }
+      })),
       getReceiptPreview: jest.fn(),
       getUpiIntent: jest.fn()
     };
@@ -201,5 +214,80 @@ describe('QuickCollectDrawerComponent', () => {
     expect(donationsService.createPayment).toHaveBeenCalledWith(expect.objectContaining({
       allocations: [{ allocatable_type: 'due', allocatable_id: 'due-1', amount: 100 }]
     }));
+  });
+
+  it('prefills family, due, and collectible amount from authoritative collect-context', () => {
+    const familyService = TestBed.inject(FamilyService) as any;
+    familyService.getFamily.mockReturnValue(of({
+      data: { id: 'f1', family_name: 'Smith Family', family_code: 'FAM001', head_of_family: 'John Smith' }
+    }));
+    donationsService.getFamilyFinancialProfile.mockReturnValue(of({
+      success: true,
+      data: {
+        family_id: 'f1',
+        totals: { pending_due: 5000, total_paid: 0 },
+        mandatory_contributions: { collect_allocation_dues: [] }
+      }
+    } as any));
+    donationsService.getCollectContext.mockReturnValue(of({
+      success: true,
+      data: {
+        family: { id: 'f1', family_name: 'Smith Family', family_code: 'FAM001', head_of_family: 'John Smith' },
+        project: null,
+        suggested_allocation: {
+          allocatable_type: 'due',
+          allocatable_id: 'due-9',
+          label: 'Monthly Contribution',
+          collectible_amount: 5000
+        },
+        collectible_amount: 5000,
+        payment_date: '2026-10-01',
+        currency_code: 'USD',
+        can_collect: true,
+        overpayment_becomes_credit: true
+      }
+    }));
+
+    quickCollectService.open({ familyId: 'f1', dueId: 'due-9' });
+
+    expect(component.isOpen).toBe(true);
+    expect(component.selectedFamily?.id).toBe('f1');
+    expect(component.selectedAllocation?.allocatable_id).toBe('due-9');
+    expect(component.amount).toBe(5000);
+    expect(component.paymentDate).toBe('2026-10-01');
+    expect(component.contextHint).toContain('change family, amount, category, date, or method');
+  });
+
+  it('lets the user change family after row prefill and drops the original due', () => {
+    const familyService = TestBed.inject(FamilyService) as any;
+    familyService.getFamily.mockReturnValue(of({
+      data: { id: 'f1', family_name: 'Smith Family', family_code: 'FAM001', head_of_family: 'John Smith' }
+    }));
+    donationsService.getFamilyFinancialProfile.mockReturnValue(of({
+      success: true,
+      data: {
+        family_id: 'f1',
+        totals: { pending_due: 5000, total_paid: 0 },
+        mandatory_contributions: { collect_allocation_dues: [] }
+      }
+    } as any));
+
+    quickCollectService.open({ familyId: 'f1', dueId: 'due-9' });
+    expect(component.launchContext?.dueId).toBe('due-9');
+
+    component.selectFamily({
+      id: 'f2',
+      family_name: 'Other Family',
+      family_code: 'FAM002',
+      head_of_family: 'Jane Other'
+    } as any);
+
+    expect(component.launchContext?.familyId).toBe('f2');
+    expect(component.launchContext?.dueId).toBeUndefined();
+    expect(component.selectedFamily?.id).toBe('f2');
+  });
+
+  afterEach(() => {
+    component.close();
   });
 });

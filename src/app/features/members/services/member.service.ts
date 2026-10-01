@@ -12,6 +12,10 @@ export interface MemberCelebrationItem {
   date_label: string;
   detail: string;
   event_date: string;
+  family_name?: string | null;
+  family_code?: string | null;
+  bcc_id?: string | null;
+  bcc_name?: string | null;
 }
 
 export interface MemberCelebrationsResponse {
@@ -25,6 +29,33 @@ export interface MemberCelebrationsResponse {
   anniversaries: MemberCelebrationItem[];
 }
 
+export type MemberCelebrationListType = 'birthdays' | 'anniversaries';
+
+export interface MemberCelebrationsListFilters {
+  type: MemberCelebrationListType;
+  from?: string;
+  to?: string;
+  search?: string;
+  bcc_id?: string;
+  event_date?: string;
+  event_date_from?: string;
+  event_date_to?: string;
+  sort_by?: 'event_date' | 'name' | 'family_name' | 'bcc_name';
+  sort_order?: 'asc' | 'desc';
+  per_page?: number;
+  page?: number;
+}
+
+export interface MemberCelebrationsListResponse extends PaginatedResponse<MemberCelebrationItem> {
+  window: {
+    start: string;
+    end: string;
+    label: string;
+    timezone: string;
+  };
+  type: MemberCelebrationListType;
+}
+
 export interface MemberFilters {
   search?: string;
   status?: string;
@@ -35,6 +66,12 @@ export interface MemberFilters {
     | 'baptized_without_confirmation'
     | 'female_unmarried_over_18'
     | 'male_unmarried_over_23';
+  age_band?: string;
+  family_status?: string;
+  gender?: string;
+  missing?: string;
+  occupation?: string;
+  education?: string;
   sort_by?: string;
   sort_order?: 'asc' | 'desc';
   per_page?: number;
@@ -70,6 +107,42 @@ export class MemberService {
     );
   }
 
+  /** Paginated birthdays or anniversaries for the parish week or an explicit from/to range (server-side). */
+  getCelebrationsList(
+    filters: MemberCelebrationsListFilters
+  ): Observable<MemberCelebrationsListResponse> {
+    let params = new HttpParams()
+      .set('type', filters.type)
+      .set('sort_by', filters.sort_by || 'event_date')
+      .set('sort_order', filters.sort_order || 'asc')
+      .set('per_page', (filters.per_page || 20).toString())
+      .set('page', (filters.page || 1).toString());
+
+    if (filters.from) {
+      params = params.set('from', filters.from);
+    }
+    if (filters.to) {
+      params = params.set('to', filters.to);
+    }
+    if (filters.search) {
+      params = params.set('search', filters.search);
+    }
+    if (filters.bcc_id) {
+      params = params.set('bcc_id', filters.bcc_id);
+    }
+    if (filters.event_date_from && filters.event_date_to) {
+      params = params.set('event_date_from', filters.event_date_from);
+      params = params.set('event_date_to', filters.event_date_to);
+    } else if (filters.event_date) {
+      params = params.set('event_date', filters.event_date);
+    }
+
+    return this.http.get<MemberCelebrationsListResponse>(
+      `${this.apiUrl}/celebrations/list`,
+      { params, ...this.buildTenantCountryHeaders() }
+    );
+  }
+
   /**
    * Get paginated list of all members across families
    */
@@ -87,6 +160,12 @@ export class MemberService {
       params = params.set('is_head', isHeadValue);
     }
     if (filters.progression) params = params.set('progression', filters.progression);
+    if (filters.age_band) params = params.set('age_band', filters.age_band);
+    if (filters.family_status) params = params.set('family_status', filters.family_status);
+    if (filters.gender) params = params.set('gender', filters.gender);
+    if (filters.missing) params = params.set('missing', filters.missing);
+    if (filters.occupation) params = params.set('occupation', filters.occupation);
+    if (filters.education) params = params.set('education', filters.education);
     params = params.set('sort_by', filters.sort_by || 'name');
     params = params.set('sort_order', filters.sort_order || 'asc');
     // Always set per_page and page to ensure pagination works

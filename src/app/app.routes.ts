@@ -12,9 +12,6 @@ import { massIntentionsGuard } from '@core/guards/mass-intentions.guard';
 import { massIntentionsUrlGuard } from '@core/guards/mass-intentions-url.guard';
 import { entitlementGuard } from '@core/guards/entitlement.guard';
 import { MainLayoutComponent } from './layout/main-layout/main-layout.component';
-import { FamilyListComponent } from './features/family-management/components/family-list/family-list';
-import { FamilyDetail } from './features/family-management/components/family-detail/family-detail';
-import { FamilyBreadcrumbResolver } from './features/family-management/resolvers/family-breadcrumb.resolver';
 import { bccGuard } from './core/guards/bcc.guard';
 import { supportGuard } from './core/guards/support.guard';
 import { parishResourceGuard } from './core/guards/parish-resource.guard';
@@ -28,6 +25,11 @@ export const routes: Routes = [
   {
     path: 'auth',
     loadChildren: () => import('./features/auth/auth.routes').then(m => m.AUTH_ROUTES)
+  },
+  {
+    path: 'loader-demo',
+    loadComponent: () =>
+      import('./shared/pages/loader-demo/loader-demo.page').then((m) => m.LoaderDemoPageComponent),
   },
   {
     path: 'verify/certificate/:token',
@@ -116,13 +118,8 @@ export const routes: Routes = [
       {
         path: 'families',
         canActivate: [parishResourceGuard],
-        component: FamilyListComponent
-      },
-      {
-        path: 'families/:id',
-        canActivate: [parishResourceGuard],
-        component: FamilyDetail,
-        resolve: { breadcrumbLabel: FamilyBreadcrumbResolver }
+        loadChildren: () =>
+          import('./features/family-management/family.routes').then((m) => m.FAMILY_ROUTES),
       },
       {
         path: 'bccs',
@@ -203,12 +200,13 @@ export const routes: Routes = [
       },
       {
         path: 'families',
-        component: FamilyListComponent
+        loadChildren: () =>
+          import('./features/family-management/family.routes').then((m) => m.FAMILY_ROUTES),
       },
       {
-        path: 'families/:id',
-        component: FamilyDetail,
-        resolve: { breadcrumbLabel: FamilyBreadcrumbResolver }
+        path: 'members',
+        canActivate: [parishResourceGuard],
+        loadChildren: () => import('./features/members/members.routes').then((m) => m.MEMBERS_ROUTES),
       },
       {
         path: 'bccs',

@@ -1,7 +1,6 @@
 <div class="bcc-history">
   <div class="cf-loading-block" *ngIf="loading" role="status">
-    <p class="cf-loading-block__label">Loading membership history…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading membership history…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
   </div>
   <div class="cf-inline-alert" *ngIf="loadError && !loading" role="alert">
     <p>{{ loadError }}</p>

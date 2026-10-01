@@ -4,7 +4,7 @@
   (closeRequested)="onCancel()"
 >
   <div class="cf-loading-block" *ngIf="loading" role="status" aria-live="polite">
-    <p class="cf-loading-block__label">Loading guest…</p>
+    <app-cf-brand-loader size="section" label="Loading guest…" />
   </div>
 
   <div class="cf-inline-alert" *ngIf="loadError" role="alert">

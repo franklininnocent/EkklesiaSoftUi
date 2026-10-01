@@ -1,5 +1,5 @@
 import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
-import { CommonModule, DatePipe } from '@angular/common';
+import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
@@ -19,6 +19,13 @@ import { AdvancedSearchPanelComponent, SearchField, ActiveFilter } from '@shared
 import { SortableDirective, SortEvent } from '@shared/directives/sortable.directive';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { ImageViewerComponent } from '@shared/components/image-viewer/image-viewer.component';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import {
+  MEMBER_AGE_BAND_ORDER,
+  isMemberAgeBandKey,
+  memberAgeBandFilterLabel,
+} from '../../utils/member-age-groups.util';
+import { MemberAgeBandKey } from '../../models/member-dashboard.model';
 
 @Component({
   selector: 'app-member-list',
@@ -40,7 +47,6 @@ import { ImageViewerComponent } from '@shared/components/image-viewer/image-view
   ],
   templateUrl: './member-list.component.html',
   styleUrls: ['./member-list.component.scss'],
-  providers: [DatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MemberListComponent implements OnInit, OnDestroy {
@@ -66,6 +72,12 @@ export class MemberListComponent implements OnInit, OnDestroy {
   selectedStatus = '';
   selectedBccId = '';
   selectedProgression: MemberFilters['progression'] | '' = '';
+  selectedAgeBand: MemberAgeBandKey | '' = '';
+  selectedFamilyStatus = '';
+  selectedGender = '';
+  selectedMissing = '';
+  selectedOccupation = '';
+  selectedEducation = '';
   showHeadOnly = false;
   
   // Sorting state — default to member name ascending (API); header indicator only after user clicks
@@ -105,9 +117,6 @@ export class MemberListComponent implements OnInit, OnDestroy {
   private brokenAvatarIds = new Set<string>();
   loadingDetail = false;
 
-  // Expose DatePipe for template
-  datePipe = new DatePipe('en-US');
-
   constructor(
     private memberService: MemberService,
     private bccService: BCCService,
@@ -127,11 +136,33 @@ export class MemberListComponent implements OnInit, OnDestroy {
 
   private applyQueryParams(params: import('@angular/router').ParamMap): void {
     const progression = this.parseProgressionFilter(params.get('progression'));
+    const ageBand = this.parseAgeBandFilter(params.get('age_band'));
+    const status = params.get('status') ?? '';
+    const familyStatus = params.get('family_status') ?? '';
     const bccId = params.get('bcc_id') ?? '';
+    const gender = params.get('gender') ?? '';
+    const missing = params.get('missing') ?? '';
+    const occupation = params.get('occupation') ?? '';
+    const education = params.get('education') ?? '';
     let changed = false;
 
     if (this.selectedProgression !== progression) {
       this.selectedProgression = progression;
+      changed = true;
+    }
+
+    if (this.selectedAgeBand !== ageBand) {
+      this.selectedAgeBand = ageBand;
+      changed = true;
+    }
+
+    if (status && this.selectedStatus !== status) {
+      this.selectedStatus = status;
+      changed = true;
+    }
+
+    if (familyStatus && this.selectedFamilyStatus !== familyStatus) {
+      this.selectedFamilyStatus = familyStatus;
       changed = true;
     }
 
@@ -140,10 +171,32 @@ export class MemberListComponent implements OnInit, OnDestroy {
       changed = true;
     }
 
+    if (gender && this.selectedGender !== gender) {
+      this.selectedGender = gender;
+      changed = true;
+    }
+
+    if (missing && this.selectedMissing !== missing) {
+      this.selectedMissing = missing;
+      changed = true;
+    }
+
+    if (occupation && this.selectedOccupation !== occupation) {
+      this.selectedOccupation = occupation;
+      changed = true;
+    }
+
+    if (education && this.selectedEducation !== education) {
+      this.selectedEducation = education;
+      changed = true;
+    }
+
     const bccField = this.searchFields.find((field) => field.key === 'bcc_id');
     if (bccField && bccId) {
       bccField.value = bccId;
     }
+
+    this.syncSearchFieldsWithFilters();
 
     if (changed) {
       this.currentPage = 1;
@@ -163,6 +216,10 @@ export class MemberListComponent implements OnInit, OnDestroy {
       default:
         return '';
     }
+  }
+
+  private parseAgeBandFilter(value: string | null): MemberAgeBandKey | '' {
+    return isMemberAgeBandKey(value) ? value : '';
   }
 
   /**
@@ -198,6 +255,17 @@ export class MemberListComponent implements OnInit, OnDestroy {
         group: 'Household',
         placeholder: 'Family Heads Only',
         value: this.showHeadOnly
+      },
+      {
+        key: 'age_band',
+        label: 'Age group',
+        type: 'select',
+        group: 'Membership',
+        options: MEMBER_AGE_BAND_ORDER.map((key) => ({
+          value: key,
+          label: memberAgeBandFilterLabel(key),
+        })),
+        value: this.selectedAgeBand
       }
     ];
   }
@@ -245,6 +313,12 @@ export class MemberListComponent implements OnInit, OnDestroy {
       status: this.selectedStatus || undefined,
       bcc_id: this.selectedBccId || undefined,
       progression: this.selectedProgression || undefined,
+      age_band: this.selectedAgeBand || undefined,
+      family_status: this.selectedFamilyStatus || undefined,
+      gender: this.selectedGender || undefined,
+      missing: this.selectedMissing || undefined,
+      occupation: this.selectedOccupation || undefined,
+      education: this.selectedEducation || undefined,
       is_head: this.showHeadOnly ? 'true' : undefined,
       sort_by: this.sortColumn,
       sort_order: this.sortDirection,
@@ -336,6 +410,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
     this.selectedStatus = searchValues['status'] || '';
     this.selectedBccId = searchValues['bcc_id'] || '';
     this.showHeadOnly = searchValues['is_head'] === true || searchValues['is_head'] === 'true';
+    this.selectedAgeBand = isMemberAgeBandKey(searchValues['age_band']) ? searchValues['age_band'] : '';
     
     // Update search fields to reflect current filter state
     this.syncSearchFieldsWithFilters();
@@ -352,6 +427,12 @@ export class MemberListComponent implements OnInit, OnDestroy {
     this.selectedStatus = '';
     this.selectedBccId = '';
     this.showHeadOnly = false;
+    this.selectedAgeBand = '';
+    this.selectedFamilyStatus = '';
+    this.selectedGender = '';
+    this.selectedMissing = '';
+    this.selectedOccupation = '';
+    this.selectedEducation = '';
     this.searchTerm = '';
     this.searchFields.forEach(field => {
       field.value = undefined;
@@ -377,6 +458,11 @@ export class MemberListComponent implements OnInit, OnDestroy {
     const isHeadField = this.searchFields.find(f => f.key === 'is_head');
     if (isHeadField) {
       isHeadField.value = this.showHeadOnly || undefined;
+    }
+
+    const ageField = this.searchFields.find(f => f.key === 'age_band');
+    if (ageField) {
+      ageField.value = this.selectedAgeBand || undefined;
     }
   }
 
@@ -423,6 +509,77 @@ export class MemberListComponent implements OnInit, OnDestroy {
       });
     }
 
+    if (this.selectedAgeBand) {
+      filters.push({
+        key: 'age_band',
+        label: 'Age group',
+        value: this.selectedAgeBand,
+        displayValue: memberAgeBandFilterLabel(this.selectedAgeBand),
+      });
+    }
+
+    if (this.selectedFamilyStatus) {
+      filters.push({
+        key: 'family_status',
+        label: 'Family status',
+        value: this.selectedFamilyStatus,
+        displayValue: this.selectedFamilyStatus.charAt(0).toUpperCase() + this.selectedFamilyStatus.slice(1),
+      });
+    }
+
+    if (this.selectedGender) {
+      const genderLabels: Record<string, string> = {
+        male: 'Male',
+        female: 'Female',
+        other: 'Other',
+        unknown: 'Gender not recorded',
+      };
+      filters.push({
+        key: 'gender',
+        label: 'Gender',
+        value: this.selectedGender,
+        displayValue: genderLabels[this.selectedGender] || this.selectedGender,
+      });
+    }
+
+    if (this.selectedMissing) {
+      const missingLabels: Record<string, string> = {
+        dob: 'Missing date of birth',
+        gender: 'Missing gender',
+        relationship: 'Missing relationship',
+      };
+      filters.push({
+        key: 'missing',
+        label: 'Member data',
+        value: this.selectedMissing,
+        displayValue: missingLabels[this.selectedMissing] || this.selectedMissing,
+      });
+    }
+
+    if (this.selectedOccupation) {
+      filters.push({
+        key: 'occupation',
+        label: 'Occupation',
+        value: this.selectedOccupation,
+        displayValue: this.selectedOccupation === 'not_specified' || this.selectedOccupation === 'not_recorded'
+          ? 'Not Recorded'
+          : this.selectedOccupation,
+      });
+    }
+
+    if (this.selectedEducation) {
+      filters.push({
+        key: 'education',
+        label: 'Education',
+        value: this.selectedEducation,
+        displayValue: this.selectedEducation === 'not_specified'
+          ? 'Not recorded'
+          : this.selectedEducation === 'other'
+            ? 'Other recorded'
+            : this.selectedEducation,
+      });
+    }
+
     return filters;
   }
 
@@ -456,6 +613,18 @@ export class MemberListComponent implements OnInit, OnDestroy {
       this.showHeadOnly = false;
     } else if (filter.key === 'progression') {
       this.selectedProgression = '';
+    } else if (filter.key === 'age_band') {
+      this.selectedAgeBand = '';
+    } else if (filter.key === 'family_status') {
+      this.selectedFamilyStatus = '';
+    } else if (filter.key === 'gender') {
+      this.selectedGender = '';
+    } else if (filter.key === 'missing') {
+      this.selectedMissing = '';
+    } else if (filter.key === 'occupation') {
+      this.selectedOccupation = '';
+    } else if (filter.key === 'education') {
+      this.selectedEducation = '';
     }
 
     // Update search field value
@@ -478,6 +647,12 @@ export class MemberListComponent implements OnInit, OnDestroy {
     this.selectedStatus = '';
     this.selectedBccId = '';
     this.selectedProgression = '';
+    this.selectedAgeBand = '';
+    this.selectedFamilyStatus = '';
+    this.selectedGender = '';
+    this.selectedMissing = '';
+    this.selectedOccupation = '';
+    this.selectedEducation = '';
     this.showHeadOnly = false;
     this.searchTerm = '';
     this.searchFields.forEach(field => {
@@ -700,7 +875,7 @@ export class MemberListComponent implements OnInit, OnDestroy {
    */
   formatDate(date: string | null | undefined): string {
     if (!date) return 'N/A';
-    return this.datePipe.transform(date, 'MMM d, y') || date;
+    return cfFormatDate(date) || 'N/A';
   }
 
   /**

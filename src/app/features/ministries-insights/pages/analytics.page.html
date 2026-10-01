@@ -451,7 +451,7 @@
               </thead>
               <tbody>
                 <tr *ngFor="let row of auditRows">
-                  <td>{{ row.occurred_at | date: 'medium' }}</td>
+                  <td>{{ row.occurred_at | cfDate: 'datetime' }}</td>
                   <td>
                     <a *ngIf="row.tenant" class="insights-analytics__link" [routerLink]="['/platform/ministries/tenants', row.tenant.id]">{{ row.tenant.name }}</a>
                     <span *ngIf="!row.tenant">—</span>
@@ -490,7 +490,7 @@
               </thead>
               <tbody>
                 <tr *ngFor="let g of governanceItems">
-                  <td>{{ g.occurred_at | date: 'medium' }}</td>
+                  <td>{{ g.occurred_at | cfDate: 'datetime' }}</td>
                   <td>
                     <a *ngIf="g.tenant" class="insights-analytics__link" [routerLink]="['/platform/ministries/tenants', g.tenant.id]">{{ g.tenant.name }}</a>
                   </td>

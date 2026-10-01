@@ -48,8 +48,44 @@ describe('sidebar-nav.util', () => {
 
     it('prefers canonical families over donations cross-link', () => {
       const activation = resolveNavActivation(forest, '/families');
-      expect(activation.activeId).toBe('families');
-      expect(activation.ancestorIds.size).toBe(0);
+      expect(activation.activeId).toBe('families-dashboard');
+      expect(activation.ancestorIds.has('families')).toBe(true);
+      expect(activation.ancestorIds.has('donations')).toBe(false);
+    });
+
+    it('activates Family List for list and detail routes', () => {
+      const list = resolveNavActivation(forest, '/families/list');
+      expect(list.activeId).toBe('families-list');
+      expect(list.ancestorIds.has('families')).toBe(true);
+
+      const detail = resolveNavActivation(forest, '/families/11111111-1111-1111-1111-111111111111');
+      expect(detail.activeId).toBe('families-list');
+      expect(detail.ancestorIds.has('families')).toBe(true);
+    });
+
+    it('activates Members under Families', () => {
+      const activation = resolveNavActivation(forest, '/members/list');
+      expect(activation.activeId).toBe('members');
+      expect(activation.ancestorIds.has('families')).toBe(true);
+      expect(activation.ancestorIds.has('donations')).toBe(false);
+    });
+
+    it('activates Birthdays and Wedding Anniversaries under Families by tab query', () => {
+      const birthdays = resolveNavActivation(forest, '/members/celebrations?tab=birthdays');
+      expect(birthdays.activeId).toBe('member-birthdays');
+      expect(birthdays.ancestorIds.has('families')).toBe(true);
+
+      const anniversaries = resolveNavActivation(forest, '/members/celebrations?tab=anniversaries');
+      expect(anniversaries.activeId).toBe('member-anniversaries');
+      expect(anniversaries.ancestorIds.has('families')).toBe(true);
+    });
+
+    it('keeps BCCs active on the list, audit, and detail routes', () => {
+      expect(resolveNavActivation(forest, '/bccs/list').activeId).toBe('bccs');
+      expect(resolveNavActivation(forest, '/bccs/audit').activeId).toBe('bccs');
+      expect(
+        resolveNavActivation(forest, '/bccs/11111111-1111-1111-1111-111111111111').activeId
+      ).toBe('bccs');
     });
 
     it('uses longest match for settings child routes', () => {
@@ -83,6 +119,8 @@ describe('sidebar-nav.util', () => {
 
     it('keeps the sacrament register inactive on the dashboard', () => {
       const activation = resolveNavActivation(forest, '/sacraments');
+      expect(activation.activeId).toBe('sacraments-dashboard');
+      expect(activation.ancestorIds.has('sacraments')).toBe(true);
       expect(activation.activeId).not.toBe('sacraments-register');
       expect(activation.ancestorIds.has('sacraments-register')).toBe(false);
     });
@@ -199,7 +237,7 @@ describe('sidebar-nav.util', () => {
       const forest = flattenForest(buildAppSidebarSections());
       const siblings = findSiblingIds(forest, null, 'donations');
       expect(siblings).toContain('families');
-      expect(siblings).toContain('members');
+      expect(siblings).not.toContain('members');
       expect(siblings).not.toContain('donations');
     });
 

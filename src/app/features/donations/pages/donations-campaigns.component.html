@@ -1,0 +1,493 @@
+<section class="campaigns-page cf-page cf-financial-dashboard" [attr.aria-busy]="!campaignsLoaded">
+  <app-page-header
+    [title]="pageTitle"
+    [subtitle]="pageSubtitle"
+    [titleMetaCount]="activeFilterCount || null"
+  >
+    <app-list-toolbar
+      *ngIf="campaignsLoaded && !campaignsLoadError"
+      class="campaigns-page__header-toolbar"
+      searchPlaceholder="Search by name, code, or type…"
+      [searchValue]="tableSearch"
+      [filterCount]="activeFilterCount"
+      [showFilters]="true"
+      (searchChange)="onTableSearchChange($event)"
+      (filtersOpened)="showFilters = true"
+    >
+      <button
+        *ngIf="canManage"
+        type="button"
+        toolbarAfterFilters
+        class="cf-btn cf-btn-primary campaigns-page__create"
+        (click)="openCreateForm()"
+      >
+        Create campaign
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        aria-label="Collect Payment"
+        title="Collect Payment"
+        (click)="openQuickCollect()"
+      >
+        <app-cf-action-icon name="collect-payment" />
+      </button>
+      <a
+        routerLink="/donations/projects"
+        class="cf-btn cf-btn-icon"
+        aria-label="View projects"
+        title="View projects"
+      >
+        <app-cf-action-icon name="layout-grid" />
+      </a>
+    </app-list-toolbar>
+
+    <div pageHeaderBelow *ngIf="activeFilterChips.length" class="campaigns-page__active-filters">
+      <app-stewardship-active-filter-chips
+        [chips]="activeFilterChips"
+        [showClearAll]="false"
+        [embedded]="true"
+        (remove)="onActiveFilterChipRemove($event)"
+        (clearAll)="clearAllFilters()"
+      ></app-stewardship-active-filter-chips>
+    </div>
+  </app-page-header>
+
+  <p *ngIf="createError" class="cf-inline-alert cf-panel" role="alert">{{ createError }}</p>
+
+  <app-modal-shell
+    *ngIf="showForm && canManage"
+    title="Create Campaign"
+    size="sm"
+    headerVariant="compact"
+    bodyPadding="none"
+    closeAriaLabel="Close campaign form"
+    [isSubmitting]="saving"
+    (closeRequested)="closeCreateForm()"
+  >
+    <form [formGroup]="campaignForm" (ngSubmit)="saveCampaign()" class="cf-split-form-body" novalidate>
+      <p class="cf-meta">Set a target and schedule for a time-bound appeal. Required fields are marked with *.</p>
+      <section class="cf-split-section" aria-labelledby="campaign-section-details">
+        <h3 id="campaign-section-details" class="cf-split-section__title">Campaign details</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field cf-split-field--full">
+            <label for="campaign-name">Campaign name <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input id="campaign-name" formControlName="name" placeholder="e.g., Roof Repair Drive" autocomplete="off" aria-required="true" />
+          </div>
+          <div class="cf-split-field">
+            <label for="campaign-code">Code <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input id="campaign-code" formControlName="code" placeholder="e.g., ROOF-26" autocomplete="off" aria-required="true" />
+          </div>
+          <div class="cf-split-field">
+            <label for="campaign-type">Campaign type</label>
+            <select id="campaign-type" formControlName="campaign_type">
+              <option value="general">General</option>
+              <option value="building">Building</option>
+              <option value="charity">Charity</option>
+              <option value="event">Event</option>
+            </select>
+          </div>
+          <div class="cf-split-field cf-split-field--full">
+            <label for="campaign-description">Description <span class="cf-split-optional">optional</span></label>
+            <textarea id="campaign-description" formControlName="description" rows="2" placeholder="Short summary for your team"></textarea>
+          </div>
+          <div class="cf-split-field">
+            <label for="campaign-target">Target amount <span class="cf-split-optional">optional</span></label>
+            <div class="cf-amount-input">
+              <span class="cf-amount-input__prefix" aria-hidden="true">{{ currencySymbol }}</span>
+              <input id="campaign-target" formControlName="target_amount" type="number" min="0" step="0.01" placeholder="Overall goal" />
+            </div>
+          </div>
+          <div class="cf-split-field">
+            <label for="campaign-start">Start date</label>
+            <input id="campaign-start" formControlName="start_date" type="date" />
+          </div>
+          <div class="cf-split-field">
+            <label for="campaign-end">End date</label>
+            <input id="campaign-end" formControlName="end_date" type="date" />
+          </div>
+        </div>
+      </section>
+      <div class="cf-split-form-actions">
+        <button
+          type="submit"
+          class="cf-btn cf-btn-icon cf-btn-primary"
+          aria-label="Save campaign"
+          title="Save campaign"
+          [disabled]="campaignForm.invalid || saving"
+        >
+          <app-cf-action-icon name="save" />
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          aria-label="Cancel"
+          title="Cancel"
+          [disabled]="saving"
+          (click)="closeCreateForm()"
+        >
+          <app-cf-action-icon name="x" />
+        </button>
+      </div>
+    </form>
+  </app-modal-shell>
+
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="!campaignsLoaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <app-loading-skeleton label="Loading campaigns…" type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="campaignsLoaded && campaignsLoadError" role="alert">
+    <p>{{ campaignsLoadError }}</p>
+    <button
+      type="button"
+      class="cf-btn cf-btn-icon cf-btn-primary"
+      aria-label="Try again"
+      title="Try again"
+      (click)="loadCampaigns()"
+    >
+      <app-cf-action-icon name="refresh" />
+    </button>
+  </div>
+
+  <ng-container *ngIf="campaignsLoaded && !campaignsLoadError">
+    <div class="cf-panel stewardship-table-panel" *ngIf="campaigns.length">
+      <app-data-table [ariaBusy]="dashboardLoading">
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              appSortable="name"
+              [direction]="sortColumn === 'name' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Campaign
+            </th>
+            <th scope="col">Type</th>
+            <th
+              scope="col"
+              appSortable="start_date"
+              [direction]="sortColumn === 'start_date' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Start
+            </th>
+            <th
+              scope="col"
+              appSortable="end_date"
+              [direction]="sortColumn === 'end_date' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              End
+            </th>
+            <th scope="col" class="cf-table__num">Progress</th>
+            <th scope="col">Status</th>
+            <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let campaign of sortedCampaigns; trackBy: trackCampaign"
+            [class.campaigns-table__row--attention]="isCampaignAtRisk(campaign)"
+          >
+            <td>
+              <button
+                type="button"
+                class="cf-btn-link campaigns-table__name"
+                (click)="viewCampaign(campaign)"
+              >
+                {{ campaign.name }}
+              </button>
+              <span class="cf-meta campaigns-table__code">{{ campaign.code }}</span>
+              <span class="cf-meta campaigns-table__desc" *ngIf="campaign.description">{{ campaign.description }}</span>
+            </td>
+            <td>{{ campaignTypeLabel(campaign.campaign_type) }}</td>
+            <td>{{ campaign.start_date ? (campaign.start_date | cfDate) : '—' }}</td>
+            <td>
+              <ng-container *ngIf="campaign.end_date; else noEndDate">
+                <span [class.campaigns-table__urgent]="isDeadlineUrgent(campaign)">
+                  <ng-container *ngIf="campaignEndedByDate(campaign); else endDateFormatted">Ended</ng-container>
+                  <ng-template #endDateFormatted>{{ campaign.end_date | cfDate }}</ng-template>
+                </span>
+              </ng-container>
+              <ng-template #noEndDate>—</ng-template>
+            </td>
+            <td class="cf-table__num">
+              <ng-container *ngIf="hasFundingTarget(campaign); else noTargetProgress">
+                <div
+                  class="campaigns-progress"
+                  role="progressbar"
+                  [attr.aria-valuenow]="progressPercent(campaign)"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  [attr.aria-label]="campaign.name + ' funding progress'"
+                >
+                  <span class="campaigns-progress__amounts">
+                    {{ campaign.raised_amount | cfCurrency : null : 0 }}
+                    <span class="campaigns-progress__sep">/</span>
+                    {{ campaign.target_amount | cfCurrency : null : 0 }}
+                  </span>
+                  <div class="campaigns-progress__track">
+                    <div
+                      class="campaigns-progress__bar"
+                      [class.campaigns-progress__bar--risk]="isCampaignAtRisk(campaign)"
+                    >
+                      <span [style.width.%]="progressPercent(campaign)"></span>
+                    </div>
+                    <span class="campaigns-progress__pct">{{ progressPercent(campaign) }}%</span>
+                  </div>
+                </div>
+              </ng-container>
+              <ng-template #noTargetProgress>
+                <span class="cf-meta campaigns-progress__no-target">
+                  {{ campaign.raised_amount | cfCurrency : null : 0 }}
+                  <span class="campaigns-progress__sep">·</span>
+                  No target
+                </span>
+              </ng-template>
+            </td>
+            <td>
+              <app-status-badge [label]="statusLabel(campaign)" [tone]="statusTone(campaign)"></app-status-badge>
+            </td>
+            <td class="cf-table__actions-cell">
+              <div class="cf-row-actions">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon cf-btn--sm"
+                  aria-label="Collect Payment"
+                  title="Collect Payment"
+                  (click)="openQuickCollect(campaign); $event.stopPropagation()"
+                >
+                  <app-cf-action-icon name="collect-payment" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <div *ngIf="!filteredCampaigns.length" class="campaigns-table-empty">
+        <app-cf-empty-state
+          icon="◇"
+          title="No campaigns match your filters"
+          description="Try another search term or clear filters to see all campaigns."
+        >
+          <button
+            type="button"
+            class="cf-btn cf-btn-primary"
+            (click)="clearAllFilters()"
+          >
+            Clear filters
+          </button>
+        </app-cf-empty-state>
+      </div>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!campaigns.length"
+      icon="◆"
+      title="No fundraising campaigns yet"
+      description="Create a time-bound appeal for building funds, charity events, or special collections."
+    >
+      <button
+        *ngIf="canManage"
+        type="button"
+        class="cf-btn cf-btn-primary"
+        (click)="openCreateForm()"
+      >
+        Create campaign
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        aria-label="Collect Payment"
+        title="Collect Payment"
+        (click)="openQuickCollect()"
+      >
+        <app-cf-action-icon name="collect-payment" />
+      </button>
+    </app-cf-empty-state>
+
+    <app-modal-shell
+      *ngIf="selectedCampaign as campaign"
+      class="campaign-detail-shell"
+      [title]="campaign.name"
+      size="lg"
+      headerVariant="compact"
+      bodyPadding="none"
+      closeAriaLabel="Close campaign details"
+      (closeRequested)="closeCampaignDetail()"
+    >
+      <div class="cf-split-form-body campaign-detail-modal">
+        <div class="cf-split-identity">
+          <p class="cf-split-identity__meta">
+            {{ campaign.code }}
+            <span class="cf-split-identity__sep" aria-hidden="true">·</span>
+            {{ campaignTypeLabel(campaign.campaign_type) }}
+            <ng-container *ngIf="campaign.fund?.name">
+              <span class="cf-split-identity__sep" aria-hidden="true">·</span>
+              {{ campaign.fund?.name }}
+            </ng-container>
+          </p>
+          <app-status-badge [label]="statusLabel(campaign)" [tone]="statusTone(campaign)"></app-status-badge>
+        </div>
+
+        <section class="campaign-detail-modal__summary" aria-labelledby="campaign-detail-summary-heading">
+          <h3 id="campaign-detail-summary-heading" class="sr-only">Campaign summary</h3>
+          <div class="cf-attention-callout" *ngIf="isCampaignAtRisk(campaign)">
+            <p>
+              {{ campaignGap(campaign) | cfCurrency }} still needed
+              <span *ngIf="hasFundingTarget(campaign)"> · {{ progressPercent(campaign) }}% funded</span>
+            </p>
+          </div>
+          <div class="campaign-detail-modal__metrics">
+            <div class="campaign-detail-modal__group">
+              <p class="campaign-detail-modal__group-label" id="campaign-detail-funding">Funding</p>
+              <div class="campaign-detail-modal__group-body">
+                <dl class="campaign-detail-modal__stats" aria-labelledby="campaign-detail-funding">
+                  <div class="campaign-detail-modal__stat campaign-detail-modal__stat--collected">
+                    <dt>Collected</dt>
+                    <dd>{{ fundingCollected(campaign) | cfCurrency }}</dd>
+                  </div>
+                  <div class="campaign-detail-modal__stat">
+                    <dt>Target</dt>
+                    <dd>{{ hasFundingTarget(campaign) ? (fundingTarget(campaign) | cfCurrency) : '—' }}</dd>
+                  </div>
+                  <div
+                    class="campaign-detail-modal__stat campaign-detail-modal__stat--outstanding"
+                    [class.campaign-detail-modal__stat--risk]="isCampaignAtRisk(campaign)"
+                  >
+                    <dt>Outstanding</dt>
+                    <dd>{{ hasFundingTarget(campaign) ? (fundingOutstanding(campaign) | cfCurrency) : '—' }}</dd>
+                  </div>
+                </dl>
+                <div
+                  class="campaign-detail-modal__progress"
+                  *ngIf="hasFundingTarget(campaign)"
+                  role="progressbar"
+                  [attr.aria-valuenow]="progressPercent(campaign)"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  [attr.aria-label]="campaign.name + ' funding progress'"
+                >
+                  <div class="campaign-detail-modal__progress-label">
+                    <span>Progress</span>
+                    <strong>{{ progressPercent(campaign) }}%</strong>
+                  </div>
+                  <div class="campaigns-progress__bar" [class.campaigns-progress__bar--risk]="isCampaignAtRisk(campaign)">
+                    <span [style.width.%]="progressPercent(campaign)"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="campaign-detail-modal__group">
+              <p class="campaign-detail-modal__group-label" id="campaign-detail-schedule">Schedule</p>
+              <dl class="campaign-detail-modal__stats" aria-labelledby="campaign-detail-schedule">
+                <div class="campaign-detail-modal__stat">
+                  <dt>Start</dt>
+                  <dd>{{ campaign.start_date ? (campaign.start_date | cfDate) : '—' }}</dd>
+                </div>
+                <div class="campaign-detail-modal__stat">
+                  <dt>End</dt>
+                  <dd>{{ campaign.end_date ? (campaign.end_date | cfDate) : '—' }}</dd>
+                </div>
+                <div
+                  class="campaign-detail-modal__stat"
+                  [class.campaign-detail-modal__stat--urgent]="isDeadlineUrgent(campaign)"
+                  [class.campaign-detail-modal__stat--risk]="campaignEndedByDate(campaign) && campaign.status === 'active'"
+                >
+                  <dt>Time left</dt>
+                  <dd>{{ remainingLabel(campaign) }}</dd>
+                </div>
+              </dl>
+            </div>
+
+            <div
+              class="campaign-detail-modal__group campaign-detail-modal__group--families"
+              *ngIf="showFamilyBreakdown"
+            >
+              <p class="campaign-detail-modal__group-label" id="campaign-detail-families">Families</p>
+              <dl class="campaign-detail-modal__stats" aria-labelledby="campaign-detail-families">
+                <div class="campaign-detail-modal__stat">
+                  <dt>Enrolled</dt>
+                  <dd>{{ dashboard?.families?.enrolled }}</dd>
+                </div>
+                <div class="campaign-detail-modal__stat">
+                  <dt>Completed</dt>
+                  <dd>{{ dashboard?.families?.completed }}</dd>
+                </div>
+                <div class="campaign-detail-modal__stat">
+                  <dt>Partial</dt>
+                  <dd>{{ dashboard?.families?.partial }}</dd>
+                </div>
+                <div class="campaign-detail-modal__stat">
+                  <dt>Exempt</dt>
+                  <dd>{{ dashboard?.families?.exempt }}</dd>
+                </div>
+              </dl>
+            </div>
+          </div>
+          <p *ngIf="campaign.description" class="campaign-detail-modal__description">{{ campaign.description }}</p>
+          <p *ngIf="dashboardLoadError" class="cf-state cf-state--error" role="alert">{{ dashboardLoadError }}</p>
+          <p *ngIf="familyLoadError" class="cf-state cf-state--error" role="alert">{{ familyLoadError }}</p>
+          <section
+            class="campaign-detail-modal__families"
+            *ngIf="familyRows.length || familyLoading"
+            aria-labelledby="campaign-detail-family-progress"
+          >
+            <h3 id="campaign-detail-family-progress" class="campaign-detail-modal__group-label">Family balances</h3>
+            <p *ngIf="familyLoading" class="cf-meta">Loading family balances…</p>
+            <app-data-table *ngIf="familyRows.length" class="cf-table campaign-detail-modal__family-table">
+              <thead>
+                <tr>
+                  <th scope="col">Family</th>
+                  <th scope="col" class="cf-table__num">Outstanding</th>
+                  <th scope="col" class="cf-table__actions-col"><span class="sr-only">Payment</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let row of familyRows; trackBy: trackFamilyRow">
+                  <td [attr.title]="familyProgressLabel(row)">{{ familyProgressLabel(row) }}</td>
+                  <td class="cf-table__num">{{ row.outstanding_amount | cfCurrency }}</td>
+                  <td class="cf-table__actions-cell">
+                    <div class="cf-row-actions">
+                      <button
+                        type="button"
+                        class="cf-btn cf-btn-icon cf-btn-primary cf-btn--sm"
+                        [attr.aria-label]="'Collect payment for ' + familyProgressLabel(row)"
+                        title="Collect Payment"
+                        (click)="collectForFamily(row); $event.stopPropagation()"
+                      >
+                        <app-cf-action-icon name="collect-payment" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </app-data-table>
+          </section>
+        </section>
+      </div>
+
+      <div modalFooter>
+        <button type="button" class="cf-btn cf-btn-primary" (click)="openQuickCollect(campaign)">Collect payment</button>
+        <button type="button" class="cf-btn cf-btn-ghost" (click)="closeCampaignDetail()">Done</button>
+      </div>
+    </app-modal-shell>
+  </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</section>

@@ -1,0 +1,201 @@
+<section class="donors cf-page cf-financial-dashboard" [attr.aria-busy]="!donorsLoaded">
+  <app-page-header
+    title="Donors & Supporters"
+    subtitle="Know who gives — thank them, reach them, and link gifts to families."
+  >
+    <app-list-toolbar
+      [showSearch]="false"
+      [filterCount]="activeFilterCount"
+      (filtersOpened)="showFilters = true"
+    >
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon cf-btn-primary"
+        (click)="openQuickCollect()"
+        aria-label="Collect Payment"
+        title="Collect Payment"
+      >
+        <app-cf-action-icon name="collect-payment" />
+      </button>
+      <a routerLink="/donations/register" class="cf-btn cf-btn-icon" aria-label="Record offering" title="Record offering">
+        <app-cf-action-icon name="book-open" />
+      </a>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        *ngIf="canManage"
+        (click)="openAddDonor()"
+        aria-label="Add donor"
+        title="Add donor"
+      >
+        <app-cf-action-icon name="users" />
+      </button>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <app-modal-shell
+    *ngIf="showForm && canManage"
+    title="Add donor"
+    size="sm"
+    headerVariant="compact"
+    bodyPadding="none"
+    closeAriaLabel="Close add donor"
+    [isSubmitting]="saving"
+    (closeRequested)="closeAddDonor()"
+  >
+    <form class="cf-split-form-body" [formGroup]="form" (ngSubmit)="save()" novalidate>
+      <p class="cf-meta">
+        For walk-in, external, or organizational supporters.
+      </p>
+      <section class="cf-split-section" aria-labelledby="donor-add-section-details">
+        <h3 id="donor-add-section-details" class="cf-split-section__title">Donor details</h3>
+        <div class="cf-split-grid">
+          <div class="cf-split-field cf-split-field--full">
+            <label for="donor-add-name">Donor name <span class="cf-split-req" aria-hidden="true">*</span></label>
+            <input id="donor-add-name" formControlName="name" autocomplete="name" required aria-required="true" />
+          </div>
+          <div class="cf-split-field">
+            <label for="donor-add-email">Email <span class="cf-split-optional">optional</span></label>
+            <input id="donor-add-email" type="email" formControlName="email" autocomplete="email" />
+          </div>
+          <div class="cf-split-field">
+            <label for="donor-add-phone">Phone <span class="cf-split-optional">optional</span></label>
+            <input id="donor-add-phone" type="tel" formControlName="phone" autocomplete="tel" />
+          </div>
+          <div class="cf-split-field cf-split-field--full">
+            <label for="donor-add-type">Donor type</label>
+            <select id="donor-add-type" formControlName="donor_type">
+              <option value="external">External supporter</option>
+              <option value="individual">Individual</option>
+              <option value="family">Family-linked</option>
+              <option value="organization">Organization</option>
+            </select>
+          </div>
+        </div>
+      </section>
+      <div class="cf-split-form-actions">
+        <button
+          type="submit"
+          class="cf-btn cf-btn-icon cf-btn-primary"
+          [disabled]="form.invalid || saving"
+          aria-label="Save donor"
+          title="Save donor"
+        >
+          <app-cf-action-icon name="save" />
+        </button>
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          (click)="closeAddDonor()"
+          [disabled]="saving"
+          aria-label="Cancel"
+          title="Cancel"
+        >
+          <app-cf-action-icon name="x" />
+        </button>
+      </div>
+    </form>
+  </app-modal-shell>
+
+  <app-stewardship-active-filter-chips
+    *ngIf="activeFilterChips.length"
+    [chips]="activeFilterChips"
+    (remove)="clearSearchFilter()"
+    (clearAll)="clearSearchFilter()"
+  ></app-stewardship-active-filter-chips>
+
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="!donorsLoaded"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <app-loading-skeleton label="Loading donors…" type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
+  </div>
+
+  <div class="cf-inline-alert cf-panel" *ngIf="donorsLoaded && donorsLoadError" role="alert">
+    <p>{{ donorsLoadError }}</p>
+    <button type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="load()" aria-label="Try again" title="Try again">
+      <app-cf-action-icon name="refresh" />
+    </button>
+  </div>
+
+  <ng-container *ngIf="donorsLoaded && !donorsLoadError">
+    <div class="cf-panel stewardship-table-panel" *ngIf="donors.length">
+      <app-data-table *ngIf="filteredDonors.length">
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              appSortable="name"
+              [direction]="sortColumn === 'name' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Name
+            </th>
+            <th
+              scope="col"
+              appSortable="donor_type"
+              [direction]="sortColumn === 'donor_type' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Type
+            </th>
+            <th
+              scope="col"
+              appSortable="contact"
+              [direction]="sortColumn === 'contact' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Contact
+            </th>
+            <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let donor of filteredDonors; trackBy: trackDonor">
+            <td><strong>{{ donor.name }}</strong></td>
+            <td>{{ donorTypeLabel(donor.donor_type) }}</td>
+            <td>
+              <span *ngIf="donor.email">{{ donor.email }}</span>
+              <span *ngIf="donor.email && donor.phone"> · </span>
+              <span *ngIf="donor.phone">{{ donor.phone }}</span>
+              <span *ngIf="!donor.email && !donor.phone" class="cf-meta">No contact info</span>
+            </td>
+            <td class="cf-table__actions-cell">
+              <a *ngIf="donor.family_id" [routerLink]="['/families', donor.family_id]" class="cf-link">View family</a>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <p *ngIf="!filteredDonors.length" class="cf-meta stewardship-table-panel__empty">
+        No donors match your search. Try another term or clear filters.
+      </p>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!donors.length"
+      icon="♡"
+      title="No donors recorded yet"
+      description="Donors are created automatically when you collect offerings — or add supporters manually here."
+    >
+      <button type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()" aria-label="Collect Payment" title="Collect Payment">
+        <app-cf-action-icon name="collect-payment" />
+      </button>
+      <button type="button" class="cf-btn cf-btn-icon" *ngIf="canManage" (click)="openAddDonor()" aria-label="Add donor" title="Add donor">
+        <app-cf-action-icon name="users" />
+      </button>
+    </app-cf-empty-state>
+  </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</section>

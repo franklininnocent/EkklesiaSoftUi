@@ -1,4 +1,4 @@
-<div class="clw-backdrop" *ngIf="open" (click)="requestClose()" aria-hidden="true"></div>
+<div class="clw-backdrop" *ngIf="open" [style.z-index]="overlayZIndex" (click)="requestClose()" aria-hidden="true"></div>
 
 <section
   class="clw"
@@ -6,6 +6,7 @@
   role="dialog"
   aria-modal="true"
   [attr.aria-label]="pageTitle"
+  [style.z-index]="overlayZIndex"
 >
   <ng-container>
     <header class="clw__header">

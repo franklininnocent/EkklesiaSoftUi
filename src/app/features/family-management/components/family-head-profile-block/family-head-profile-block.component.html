@@ -212,15 +212,17 @@
           (toggled)="toggleSacraments.emit()"
         />
       </div>
-      <div class="sacrament-grid" *ngIf="sacramentsExpanded">
-        <app-member-sacrament-detail
-          *ngFor="let sacramentType of sacramentTypesDisplay; trackBy: trackSacramentType"
-          [member]="member"
-          [sacramentType]="sacramentType"
-          [registerRecord]="registerRecordForType(sacramentType)"
-          [canViewRegister]="canViewRegisterSacraments"
-          (editSacrament)="onSacramentEdit($event)"
-        />
+      <div class="sacrament-masonry" *ngIf="sacramentsExpanded">
+        <div class="sacrament-grid" appSacramentMasonry>
+          <app-member-sacrament-detail
+            *ngFor="let sacramentType of sacramentTypesDisplay; trackBy: trackSacramentType"
+            [member]="member"
+            [sacramentType]="sacramentType"
+            [registerRecord]="registerRecordForType(sacramentType)"
+            [canViewRegister]="canViewRegisterSacraments"
+            (editSacrament)="onSacramentEdit($event)"
+          />
+        </div>
       </div>
     </section>
   </div>

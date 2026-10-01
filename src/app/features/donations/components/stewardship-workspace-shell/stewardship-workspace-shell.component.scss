@@ -1,0 +1,71 @@
+.stewardship-shell {
+  display: grid;
+  gap: var(--cf-space-3);
+  margin-top: var(--cf-space-2);
+}
+
+.stewardship-shell__chrome-panel {
+  display: grid;
+  gap: var(--cf-space-3);
+  padding: var(--cf-space-3);
+  min-width: 0;
+}
+
+.stewardship-shell__zone {
+  margin: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--cf-muted);
+}
+
+.stewardship-shell__workspaces {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (min-width: 720px) {
+  .stewardship-shell__workspaces {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.stewardship-shell__workspaces .cf-workspace-nav__tab {
+  min-height: var(--cf-touch-target);
+  padding: 0.55rem 0.65rem;
+}
+
+.stewardship-shell__workspaces .cf-workspace-nav__tab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stewardship-shell__subnav-wrap {
+  display: grid;
+  gap: var(--cf-space-2);
+  padding-top: var(--cf-space-2);
+  border-top: 1px solid var(--cf-panel-border);
+  min-width: 0;
+}
+
+.stewardship-shell__tasks {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-bottom: 0.1rem;
+}
+
+.stewardship-shell__tasks .cf-workspace-subnav__link {
+  flex-shrink: 0;
+}
+
+.stewardship-shell__content {
+  min-width: 0;
+  min-height: 0;
+}
+
+.stewardship-shell__content ::ng-deep .cf-page {
+  padding-top: 0;
+}

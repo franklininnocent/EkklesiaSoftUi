@@ -73,8 +73,7 @@
           aria-live="polite"
           aria-busy="true"
         >
-          <p class="cf-loading-block__label">Searching tenants…</p>
-          <app-loading-skeleton type="card" [rows]="3"></app-loading-skeleton>
+          <app-loading-skeleton label="Searching tenants…" type="card" [rows]="3"></app-loading-skeleton>
         </div>
 
         <app-cf-empty-state
@@ -177,7 +176,7 @@
               <select id="start-approval-request" formControlName="approval_request_id">
                 <option value="">Select approved request…</option>
                 <option *ngFor="let req of approvedForStart" [value]="req.id">
-                  {{ req.reason_code }} · expires {{ req.expires_at | date: 'short' }}
+                  {{ req.reason_code }} · expires {{ req.expires_at | cfDate: 'datetime' }}
                 </option>
               </select>
             </app-form-field>
@@ -250,8 +249,7 @@
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="cf-loading-block__label">Loading active sessions…</p>
-        <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading active sessions…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
       </div>
 
       <app-cf-empty-state
@@ -281,7 +279,7 @@
               <app-status-badge [label]="row.mode" [tone]="modeTone(row.mode)"></app-status-badge>
             </td>
             <td>{{ row.reason_code }}</td>
-            <td>{{ row.expires_at | date: 'medium' }}</td>
+            <td>{{ row.expires_at | cfDate: 'datetime' }}</td>
             <td *ngIf="canForceEnd" class="cf-table__actions-cell">
               <button type="button" class="cf-btn cf-btn-danger" (click)="forceEnd(row)">Force end</button>
             </td>
@@ -319,8 +317,7 @@
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="cf-loading-block__label">Loading history…</p>
-        <app-loading-skeleton type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading history…" type="table" [rows]="5" [columns]="5"></app-loading-skeleton>
       </div>
       <app-cf-empty-state
         *ngIf="!loadingHistory && !historyRows.length"
@@ -349,7 +346,7 @@
               <app-status-badge [label]="row.status" [tone]="statusTone(row.status)"></app-status-badge>
             </td>
             <td>{{ row.reason_code }}</td>
-            <td>{{ row.started_at | date: 'medium' }}</td>
+            <td>{{ row.started_at | cfDate: 'datetime' }}</td>
           </tr>
         </tbody>
       </app-data-table>
@@ -448,8 +445,7 @@
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="cf-loading-block__label">Loading approvals…</p>
-        <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading approvals…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
       </div>
 
       <app-data-table *ngIf="approvalRows.length" [ariaBusy]="loadingApprovals">
@@ -471,7 +467,7 @@
             </td>
             <td>{{ row.reason_code }}</td>
             <td>{{ row.requester?.email || ('#' + row.requester_user_id) }}</td>
-            <td>{{ row.expires_at | date: 'short' }}</td>
+            <td>{{ row.expires_at | cfDate: 'datetime' }}</td>
             <td class="cf-table__actions-cell">
               <div class="support-center__row-actions" role="group" aria-label="Approval actions">
                 <button
@@ -681,8 +677,7 @@
           aria-live="polite"
           aria-busy="true"
         >
-          <p class="cf-loading-block__label">Loading grants…</p>
-          <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+          <app-loading-skeleton label="Loading grants…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
         </div>
         <app-cf-empty-state
           *ngIf="!loadingGrants && !grantRows.length && hasActiveGrantFilters"
@@ -732,9 +727,9 @@
                 {{ row.sessions_used }}{{ row.max_sessions ? (' / ' + row.max_sessions) : '' }}
               </td>
               <td class="grants-page__window-cell">
-                <span>{{ row.starts_at | date: 'short' }}</span>
+                <span>{{ row.starts_at | cfDate: 'datetime' }}</span>
                 <span class="grants-page__window-arrow">→</span>
-                <span>{{ row.ends_at | date: 'short' }}</span>
+                <span>{{ row.ends_at | cfDate: 'datetime' }}</span>
               </td>
               <td *ngIf="canManageGrants" class="cf-table__actions-cell">
                 <button
@@ -795,8 +790,7 @@
           aria-live="polite"
           aria-busy="true"
         >
-          <p class="cf-loading-block__label">Loading events…</p>
-          <app-loading-skeleton type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
+          <app-loading-skeleton label="Loading events…" type="table" [rows]="5" [columns]="4"></app-loading-skeleton>
         </div>
         <app-cf-empty-state
           *ngIf="!loadingAudit && !auditRows.length"
@@ -817,7 +811,7 @@
               <td><strong>{{ row.event_type }} · {{ row.action || '—' }}</strong></td>
               <td>{{ row.module || '—' }} · {{ row.page || '—' }}</td>
               <td>#{{ row.effective_tenant_id }}</td>
-              <td>{{ row.created_at | date: 'medium' }}</td>
+              <td>{{ row.created_at | cfDate: 'datetime' }}</td>
             </tr>
           </tbody>
         </app-data-table>
@@ -844,7 +838,11 @@
       <div class="cf-inline-alert" *ngIf="!canManageSettings" role="alert">
         <p>You do not have permission to change support configuration.</p>
       </div>
-      <p class="cf-state" *ngIf="canManageSettings && loadingSettings">Loading settings…</p>
+      <app-cf-brand-loader
+        *ngIf="canManageSettings && loadingSettings"
+        size="section"
+        label="Loading settings…"
+      />
 
       <form
         *ngIf="canManageSettings && !loadingSettings"

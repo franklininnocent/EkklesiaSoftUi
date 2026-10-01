@@ -6,6 +6,7 @@ import { filter, Subscription, switchMap } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfFamilyPickerLabelPipe } from '@shared/pipes/cf-family-picker-label.pipe';
 import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 import { ToastService } from '@core/services/toast.service';
 import { FamilyService } from '@core/services/family.service';
@@ -28,7 +29,7 @@ interface ApiErrorBody {
 @Component({
   selector: 'app-donations-plans',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent, EditIconButtonComponent],
+  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent, EditIconButtonComponent, CfFamilyPickerLabelPipe],
   templateUrl: './donations-plans.component.html',
   styleUrl: './donations-plans.component.scss'
 })

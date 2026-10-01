@@ -10,10 +10,28 @@ import { refreshStewardshipView } from '../utils/stewardship-view.util';
 import { localDateOnly } from '../utils/local-date-only';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { StewardshipTablePanelComponent } from '../components/stewardship-table-panel/stewardship-table-panel.component';
 @Component({
   selector: 'app-donations-expenses',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, PageHeaderComponent, ModalShellComponent, CfCurrencyPipe, CfActionIconComponent],
+  imports: [
+    CfDatePipe,
+    CommonModule,
+    FormsModule,
+    RouterModule,
+    PageHeaderComponent,
+    ModalShellComponent,
+    CfCurrencyPipe,
+    CfActionIconComponent,
+    CfEmptyStateComponent,
+    DataTableComponent,
+    LoadingSkeletonComponent,
+    StewardshipTablePanelComponent,
+  ],
   templateUrl: './donations-expenses.component.html',
   styleUrl: './donations-expenses.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush

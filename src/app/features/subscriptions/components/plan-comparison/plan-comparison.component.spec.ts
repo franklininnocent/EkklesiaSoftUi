@@ -68,4 +68,41 @@ describe('PlanComparisonComponent', () => {
     expect(fixture.nativeElement.textContent).toContain('Includes what you asked about');
     expect(fixture.nativeElement.textContent).toContain('Request sent');
   });
+
+  it('highlights a quote-priced current plan as Your Current Plan and does not offer a quote', () => {
+    const enterpriseCurrent = plans.map((p) =>
+      p.code === 'ENTERPRISE'
+        ? { ...p, is_current: true, primary_action: 'current' as const, is_lifetime: true, subscription_status: 'LIFETIME', subscription_ends_at: null }
+        : { ...p, is_current: false, primary_action: p.pricing_type === 'CUSTOM' ? ('quote' as const) : ('request' as const) },
+    );
+    const fixture = create({ plans: enterpriseCurrent, selectable: true });
+    const current = fixture.nativeElement.querySelector('[data-plan="ENTERPRISE"]') as HTMLElement;
+    expect(current.getAttribute('data-current')).toBe('true');
+    expect(current.textContent).toContain('Your Current Plan');
+    expect(current.textContent).toContain('Lifetime');
+    expect(current.textContent).toContain('No end date');
+    expect(current.querySelector('button')).toBeNull();
+    expect(current.textContent).not.toContain('Ask for a quote');
+
+    const starter = fixture.nativeElement.querySelector('[data-plan="STARTER"]') as HTMLElement;
+    expect(starter.getAttribute('data-current')).toBeNull();
+    expect(starter.textContent).toContain('Request this plan');
+  });
+
+  it('does not treat a different display name as the current plan without a backend flag', () => {
+    const renamed = [
+      plan('STANDARD', 1, ['CONTRIBUTIONS'], { name: 'Enterprise', is_current: false, primary_action: 'request' }),
+      plan('ENTERPRISE', 2, ['CONTRIBUTIONS'], {
+        name: 'Enterprise Gold',
+        pricing_type: 'CUSTOM',
+        is_current: true,
+        primary_action: 'current',
+        is_lifetime: true,
+      }),
+    ];
+    const fixture = create({ plans: renamed, currentCode: null, selectable: true });
+    expect(fixture.nativeElement.querySelector('[data-plan="ENTERPRISE"]')?.textContent).toContain('Your Current Plan');
+    expect(fixture.nativeElement.querySelector('[data-plan="STANDARD"]')?.textContent).not.toContain('Your Current Plan');
+    expect(fixture.nativeElement.querySelector('[data-plan="STANDARD"] button')?.textContent).toContain('Request this plan');
+  });
 });

@@ -21,6 +21,7 @@ import { PaginationComponent } from '@shared/components/pagination/pagination.co
 import { cfFormatDate } from '@shared/utils/cf-intl.util';
 import { FormsModule } from '@angular/forms';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { SortableDirective, SortDirection, SortEvent } from '@shared/directives/sortable.directive';
@@ -33,6 +34,7 @@ import { donationReportExportFormatShortLabelForRow } from './donation-report-ex
 import { DonationsService } from '../../services/donations.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
 import { BCCService } from '@core/services/bcc.service';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import {
   DonationsReportsFilterDrawerComponent,
   DonationsReportsFilterDraft,
@@ -42,6 +44,7 @@ import {
   selector: 'app-donations-reports-workbench',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     RouterLink,
@@ -51,6 +54,7 @@ import {
     SortableDirective,
     PaginationComponent,
     DonationsReportsFilterDrawerComponent,
+    CfBrandLoaderComponent,
   ],
   template: `
     <div class="reports-layout">
@@ -100,7 +104,7 @@ import {
       </header>
 
       <div *ngIf="catalogLoading" class="cf-loading-block" role="status" aria-busy="true">
-        Loading available reports…
+        <app-cf-brand-loader size="section" label="Loading available reports…" />
       </div>
 
       <app-cf-empty-state
@@ -214,7 +218,7 @@ import {
       </div>
 
       <div *ngIf="previewLoading" class="cf-loading-block" role="status" aria-busy="true">
-        <p class="cf-loading-block__label">Loading report…</p>
+        <app-cf-brand-loader size="section" label="Loading report…" />
       </div>
 
       <div *ngIf="previewError" class="cf-inline-alert" role="alert">
@@ -314,7 +318,7 @@ import {
 
       <div class="exports-panel__body" #exportsViewport role="region" aria-label="Export history list">
         <div *ngIf="exportsLoading && !exports.length" class="cf-loading-block" role="status" aria-busy="true">
-          <p class="cf-loading-block__label">Loading exports…</p>
+          <app-cf-brand-loader size="section" label="Loading exports…" />
         </div>
 
         <app-cf-empty-state
@@ -331,7 +335,7 @@ import {
             <p class="exports-list__sub">
               <span *ngIf="report.requested_by_name">{{ report.requested_by_name }}</span>
               <time class="exports-list__time" [dateTime]="report.created_at">
-                {{ report.created_at | date: 'medium' }}
+                {{ report.created_at | cfDate: 'datetime' }}
               </time>
             </p>
           </li>
@@ -1348,6 +1352,9 @@ export class DonationsReportsWorkbenchComponent implements OnInit, OnChanges, Af
   formatCell(columnKey: string, value: unknown): string {
     if (value === null || value === undefined) {
       return '—';
+    }
+    if (/_at$/.test(columnKey) && (typeof value === 'string' || value instanceof Date)) {
+      return cfFormatDate(value, 'datetime') || String(value);
     }
     if (this.isDateColumn(columnKey) && (typeof value === 'string' || value instanceof Date)) {
       const formatted = cfFormatDate(value);

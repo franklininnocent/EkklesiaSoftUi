@@ -9,11 +9,13 @@ import {
 import { BCC } from '../../../../core/models/family.model';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-bcc-detail-modal',
   standalone: true,
-  imports: [CommonModule, ModalShellComponent, StatusBadgeComponent],
+  imports: [
+    CfDatePipe,CommonModule, ModalShellComponent, StatusBadgeComponent],
   templateUrl: './bcc-detail-modal.component.html',
   styleUrl: './bcc-detail-modal.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

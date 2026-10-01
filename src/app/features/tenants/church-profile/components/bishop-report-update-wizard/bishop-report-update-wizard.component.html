@@ -153,7 +153,7 @@
         </div>
         <div *ngIf="form.controls.effective_date.value">
           <dt>Effective date</dt>
-          <dd>{{ form.controls.effective_date.value | date:'longDate' }}</dd>
+          <dd>{{ form.controls.effective_date.value | cfDate }}</dd>
         </div>
         <div *ngIf="form.controls.end_reason.value">
           <dt>Previous bishop</dt>

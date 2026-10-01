@@ -49,6 +49,23 @@
   line-height: 1;
 }
 
+.cf-list-toolbar__after-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-toolbar-gap);
+}
+
+.cf-list-toolbar__after-filters .cf-btn,
+.cf-list-toolbar__after-filters .cf-btn-primary,
+.cf-list-toolbar__after-filters a.cf-btn {
+  box-sizing: border-box;
+  min-height: var(--cf-control-height);
+  padding: var(--cf-control-pad-y) var(--cf-btn-pad-x);
+  font-size: var(--cf-text-base);
+  line-height: 1.25;
+}
+
 .cf-list-toolbar__primary {
   display: flex;
   flex-wrap: wrap;

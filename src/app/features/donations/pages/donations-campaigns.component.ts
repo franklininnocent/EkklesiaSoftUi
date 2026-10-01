@@ -1,17 +1,42 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
-import { NavigationEnd, Router, RouterModule } from '@angular/router';
-import { Subscription } from 'rxjs';
-import { filter } from 'rxjs/operators';
+import { Router, RouterModule } from '@angular/router';
+import { finalize } from 'rxjs/operators';
+import { AuthService } from '@core/services/auth.service';
+import { ChurchCurrencyService } from '@core/services/church-currency.service';
+import {
+  AdvancedSearchPanelComponent,
+  SearchField,
+} from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
-import { DonationProject } from '../models/donation.model';
-import { FinancialActivityTimelineComponent } from '../components/financial-activity-timeline/financial-activity-timeline.component';
+import { DonationProject, ProjectDashboard, ProjectFamilyProgressRow } from '../models/donation.model';
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolbar.component';
+import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/loading-skeleton.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StatusBadgeComponent, StatusBadgeTone } from '@shared/components/status-badge/status-badge.component';
+import {
+  StewardshipActiveFilterChipsComponent,
+  StewardshipFilterChip,
+} from '../components/stewardship-active-filter-chips/stewardship-active-filter-chips.component';
+import { SortableDirective, SortDirection, SortEvent } from '@shared/directives/sortable.directive';
+import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/stewardship-view.util';
+import { localDateOnly } from '../utils/local-date-only';
+import { formatFamilyHeadWithCode } from '@shared/utils/family-display.util';
+
+type CampaignSortColumn = 'name' | 'start_date' | 'end_date';
+type CampaignStatusFilter = '' | 'active' | 'draft' | 'completed' | 'cancelled';
+type CampaignScheduleFilter = '' | 'upcoming' | 'in_progress' | 'ended';
+
 @Component({
   selector: 'app-donations-campaigns',
   standalone: true,
@@ -20,244 +45,273 @@ import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-acti
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
-    FinancialActivityTimelineComponent,
     CfEmptyStateComponent,
     ModalShellComponent,
+    PageHeaderComponent,
+    ListToolbarComponent,
     CfCurrencyPipe,
-    CfActionIconComponent],
-  template: `
-    <section class="campaigns-page cf-page">
-      <header class="cf-hero">
-        <h1>Fundraising Campaigns</h1>
-        <p>Time-bound drives — see progress, spot gaps, and act before deadlines.</p>
-      </header>
-
-      <div class="cf-decision-strip" role="region" aria-label="Suggested next step" *ngIf="!loading && campaigns.length">
-        <div class="cf-decision-strip__copy">
-          <strong>{{ activeCampaignCount }} active · {{ fundingGap | cfCurrency }} still to raise</strong>
-          <span>{{ campaignDecisionHint }}</span>
-        </div>
-        <div class="cf-decision-strip__actions">
-          <button
-          aria-label="Collect Payment"
-          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
-          <app-cf-action-icon name="collect-payment" />
-          </button>
-          <button
-            type="button"
-            class="cf-btn cf-btn-icon"
-            (click)="toggleForm()"
-            [attr.aria-label]="showForm ? 'Close setup' : 'New campaign'"
-            [attr.title]="showForm ? 'Close setup' : 'New campaign'"
-          >
-            <app-cf-action-icon [name]="showForm ? 'x' : 'plus'" />
-          </button>
-        </div>
-      </div>
-
-      <app-modal-shell
-        *ngIf="showForm"
-        title="Set up a Campaign"
-        size="sm"
-        headerVariant="compact"
-        bodyPadding="none"
-        closeAriaLabel="Close campaign setup"
-        [isSubmitting]="saving"
-        (closeRequested)="toggleForm()"
-      >
-        <form [formGroup]="campaignForm" (ngSubmit)="saveCampaign()" class="cf-split-form-body" novalidate>
-          <section class="cf-split-section" aria-labelledby="campaign-section-details">
-            <h3 id="campaign-section-details" class="cf-split-section__title">Campaign details</h3>
-            <div class="cf-split-grid">
-              <div class="cf-split-field cf-split-field--full">
-                <label for="campaign-name">Campaign name <span class="cf-split-req" aria-hidden="true">*</span></label>
-                <input id="campaign-name" formControlName="name" placeholder="Campaign name" autocomplete="off" aria-required="true" />
-              </div>
-              <div class="cf-split-field">
-                <label for="campaign-code">Code <span class="cf-split-req" aria-hidden="true">*</span></label>
-                <input id="campaign-code" formControlName="code" placeholder="Code" autocomplete="off" aria-required="true" />
-              </div>
-              <div class="cf-split-field">
-                <label for="campaign-type">Campaign type</label>
-                <select id="campaign-type" formControlName="campaign_type">
-                  <option value="general">General</option>
-                  <option value="building">Building</option>
-                  <option value="charity">Charity</option>
-                  <option value="event">Event</option>
-                </select>
-              </div>
-              <div class="cf-split-field">
-                <label for="campaign-target">Target amount</label>
-                <input id="campaign-target" formControlName="target_amount" type="number" placeholder="Target amount" />
-              </div>
-              <div class="cf-split-field">
-                <label for="campaign-start">Start date</label>
-                <input id="campaign-start" formControlName="start_date" type="date" />
-              </div>
-              <div class="cf-split-field">
-                <label for="campaign-end">End date</label>
-                <input id="campaign-end" formControlName="end_date" type="date" />
-              </div>
-            </div>
-          </section>
-
-          <div class="cf-split-form-actions">
-            <button
-          aria-label="Save"
-          title="Save" type="submit" class="cf-btn cf-btn-icon cf-btn-primary" [disabled]="campaignForm.invalid || saving">
-          <app-cf-action-icon name="save" />
-            </button>
-            <button type="button" class="cf-btn cf-btn-icon" (click)="toggleForm()" [disabled]="saving" aria-label="Cancel" title="Cancel"><app-cf-action-icon name="x" /></button>
-          </div>
-        </form>
-      </app-modal-shell>
-
-      <p *ngIf="loading" class="cf-state">Loading campaigns…</p>
-      <p *ngIf="error" class="cf-state cf-state--error">{{ error }}</p>
-
-      <div class="cf-filters cf-panel" *ngIf="!loading && campaigns.length">
-        <input type="search" [(ngModel)]="tableSearch" placeholder="Search campaigns…" />
-      </div>
-
-      <div class="campaign-grid cf-card-grid" *ngIf="!loading && filteredCampaigns.length">
-        <article
-          class="campaign-card cf-card"
-          *ngFor="let campaign of filteredCampaigns"
-          [class.campaign-card--active]="selectedCampaignId === campaign.id"
-          [class.campaign-card--attention]="isCampaignAtRisk(campaign)"
-          [class.cf-card--active]="selectedCampaignId === campaign.id"
-          (click)="selectCampaign(campaign)"
-        >
-          <div class="campaign-top">
-            <strong>{{ campaign.name }}</strong>
-            <span class="campaign-badge" [class.campaign-badge--attention]="isCampaignAtRisk(campaign)">
-              {{ campaign.collection_percentage || 0 }}%
-            </span>
-          </div>
-          <p>{{ campaign.code }} · {{ campaign.status }}</p>
-          <p>{{ campaign.raised_amount | cfCurrency }} of {{ campaign.target_amount | cfCurrency }}</p>
-          <p *ngIf="daysRemaining(campaign) !== null" class="campaign-deadline">
-            {{ daysRemaining(campaign)! <= 0 ? 'Ended' : daysRemaining(campaign) + ' days left' }}
-          </p>
-          <div class="cf-progress"><span [style.width.%]="campaign.collection_percentage || 0"></span></div>
-        </article>
-      </div>
-
-      <p *ngIf="!loading && campaigns.length && !filteredCampaigns.length" class="cf-state">No campaigns match your search.</p>
-
-      <section class="campaign-detail cf-panel" *ngIf="selectedCampaign as campaign">
-        <header>
-          <h2>{{ campaign.name }}</h2>
-          <div class="detail-actions">
-            <button
-          aria-label="Collect Payment"
-          title="Collect Payment" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="openQuickCollect()">
-          <app-cf-action-icon name="collect-payment" />
-            </button>
-            <button type="button" class="cf-btn cf-btn-icon" (click)="selectedCampaignId = null" aria-label="Close" title="Close"><app-cf-action-icon name="x" /></button>
-          </div>
-        </header>
-        <div class="cf-attention-callout" *ngIf="isCampaignAtRisk(campaign)">
-          <p>{{ campaignGap(campaign) | cfCurrency }} still needed · {{ campaign.collection_percentage || 0 }}% funded.</p>
-        </div>
-        <app-financial-activity-timeline
-          subjectType="campaign"
-          [subjectId]="campaign.id"
-          title="Campaign Activity"
-        ></app-financial-activity-timeline>
-      </section>
-
-      <app-cf-empty-state
-        *ngIf="!loading && !campaigns.length && !error"
-        icon="◆"
-        title="No campaigns running"
-        description="Launch a time-bound drive for building funds, charity events, or special appeals."
-      >
-        <button
-          aria-label="Add"
-          title="Add" type="button" class="cf-btn cf-btn-icon cf-btn-primary" (click)="toggleForm()">
-          <app-cf-action-icon name="plus" />
-        </button>
-        <button
-          aria-label="Collect Payment"
-          title="Collect Payment" type="button" class="cf-btn cf-btn-icon" (click)="openQuickCollect()">
-          <app-cf-action-icon name="collect-payment" />
-        </button>
-      </app-cf-empty-state>
-    </section>
-  `,
-  styles: [`
-    @use '../styles/stewardship-split-layout.scss';
-
-    .cf-split-form-actions { justify-content: flex-end; }
-    .campaign-top { display: flex; justify-content: space-between; gap: 0.5rem; align-items: flex-start; }
-    .campaign-badge { padding: 0.15rem 0.45rem; border-radius: 999px; background: var(--cf-forest-soft); color: var(--cf-forest); font-size: 0.78rem; }
-    .campaign-badge--attention { background: var(--cf-amber-soft); color: var(--cf-amber); }
-    .campaign-deadline { margin: 0.25rem 0 0; color: var(--cf-muted); font-size: 0.82rem; }
-    .campaign-card--attention { border-color: var(--cf-amber); }
-    .campaign-detail header { display: flex; justify-content: space-between; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
-    .detail-actions { display: flex; gap: 0.45rem; }
-    .campaign-detail h2 { margin: 0; font-size: 1.05rem; }
-    .cf-progress { margin-top: 0.5rem; }
-  `]
+    CfDatePipe,
+    CfActionIconComponent,
+    LoadingSkeletonComponent,
+    DataTableComponent,
+    StatusBadgeComponent,
+    StewardshipActiveFilterChipsComponent,
+    AdvancedSearchPanelComponent,
+    SortableDirective,
+  ],
+  templateUrl: './donations-campaigns.component.html',
+  styleUrls: ['./donations-campaigns.component.scss', '../styles/stewardship-dashboard-shared.scss'],
 })
-export class DonationsCampaignsComponent implements OnInit, OnDestroy {
+export class DonationsCampaignsComponent implements OnInit {
+  private readonly churchCurrency = inject(ChurchCurrencyService);
+  private readonly destroyRef = inject(DestroyRef);
+
   campaigns: DonationProject[] = [];
   tableSearch = '';
+  statusFilter: CampaignStatusFilter = '';
+  scheduleFilter: CampaignScheduleFilter = '';
+  typeFilter = '';
   selectedCampaignId: string | null = null;
+  dashboard: ProjectDashboard | null = null;
+  dashboardLoading = false;
+  dashboardLoadError: string | null = null;
+  familyRows: ProjectFamilyProgressRow[] = [];
+  familyLoading = false;
+  familyLoadError: string | null = null;
   showForm = false;
-  loading = false;
+  showFilters = false;
+  campaignsLoaded = false;
   saving = false;
-  error: string | null = null;
-  private routerSub?: Subscription;
-  private skipNextNavReload = true;
+  campaignsLoadError: string | null = null;
+  createError: string | null = null;
+  canManage = false;
+  searchFields: SearchField[] = [];
+  sortColumn: CampaignSortColumn = 'name';
+  sortDirection: SortDirection = 'asc';
+
+  readonly pageTitle = 'Fundraising Campaigns';
+  readonly pageSubtitle =
+    'Time-bound appeals — track progress toward goals, spot gaps, and collect gifts before deadlines.';
 
   readonly campaignForm = this.fb.group({
     name: ['', Validators.required],
     code: ['', Validators.required],
     campaign_type: ['general'],
+    description: [''],
     target_amount: [0, [Validators.min(0)]],
     start_date: [''],
     end_date: [''],
-    status: ['active']
+    status: ['active'],
   });
 
   constructor(
     private readonly donationsService: DonationsService,
     private readonly fb: FormBuilder,
     private readonly quickCollectService: QuickCollectService,
+    private readonly authService: AuthService,
     private readonly router: Router,
     private readonly cdr: ChangeDetectorRef
   ) {}
 
-  get activeCampaignCount(): number {
-    return this.campaigns.filter((campaign) => campaign.status === 'active').length;
+  get currencySymbol(): string {
+    return this.churchCurrency.currencySymbol() ?? '';
   }
 
-  get fundingGap(): number {
-    return this.campaigns.reduce((sum, campaign) => sum + this.campaignGap(campaign), 0);
-  }
-
-  get campaignDecisionHint(): string {
-    const atRisk = this.campaigns.filter((campaign) => this.isCampaignAtRisk(campaign)).length;
-    if (atRisk > 0) {
-      return `${atRisk} campaign${atRisk === 1 ? '' : 's'} below 50% or nearing deadline — prioritize outreach.`;
+  get activeFilterCount(): number {
+    let count = 0;
+    if (this.tableSearch.trim()) {
+      count++;
     }
-    return 'Select a campaign card to review activity and collect gifts.';
+    if (this.statusFilter) {
+      count++;
+    }
+    if (this.scheduleFilter) {
+      count++;
+    }
+    if (this.typeFilter) {
+      count++;
+    }
+    return count;
+  }
+
+  get activeFilterChips(): StewardshipFilterChip[] {
+    const chips: StewardshipFilterChip[] = [];
+    if (this.tableSearch.trim()) {
+      chips.push({ key: 'search', label: `Search: ${this.tableSearch.trim()}` });
+    }
+    if (this.statusFilter) {
+      chips.push({ key: 'status', label: `Status: ${this.statusFilterDisplay(this.statusFilter)}` });
+    }
+    if (this.scheduleFilter) {
+      chips.push({ key: 'schedule', label: `Schedule: ${this.scheduleFilterLabel(this.scheduleFilter)}` });
+    }
+    if (this.typeFilter) {
+      chips.push({ key: 'type', label: `Type: ${this.campaignTypeLabel(this.typeFilter)}` });
+    }
+    return chips;
   }
 
   get filteredCampaigns(): DonationProject[] {
     const query = this.tableSearch.trim().toLowerCase();
-    if (!query) {
-      return this.campaigns;
+    return this.campaigns.filter((campaign) => {
+      if (query) {
+        const haystack = [campaign.name, campaign.code, campaign.campaign_type, campaign.status, campaign.description]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        if (!haystack.includes(query)) {
+          return false;
+        }
+      }
+      if (this.statusFilter && campaign.status !== this.statusFilter) {
+        return false;
+      }
+      if (this.typeFilter && campaign.campaign_type !== this.typeFilter) {
+        return false;
+      }
+      if (this.scheduleFilter === 'upcoming' && !this.isUpcoming(campaign)) {
+        return false;
+      }
+      if (this.scheduleFilter === 'in_progress' && !this.isInProgress(campaign)) {
+        return false;
+      }
+      if (this.scheduleFilter === 'ended' && !this.isEndedByDate(campaign) && campaign.status !== 'completed' && campaign.status !== 'cancelled') {
+        return false;
+      }
+      return true;
+    });
+  }
+
+  get sortedCampaigns(): DonationProject[] {
+    const rows = [...this.filteredCampaigns];
+    rows.sort((a, b) => {
+      const dir = this.sortDirection === 'asc' ? 1 : -1;
+      if (this.sortColumn === 'name') {
+        return dir * (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' });
+      }
+      const aDate = a[this.sortColumn] || '';
+      const bDate = b[this.sortColumn] || '';
+      if (!aDate && !bDate) {
+        return 0;
+      }
+      if (!aDate) {
+        return 1;
+      }
+      if (!bDate) {
+        return -1;
+      }
+      return dir * aDate.localeCompare(bDate);
+    });
+    return rows;
+  }
+
+  get selectedCampaign(): DonationProject | null {
+    if (!this.selectedCampaignId) {
+      return null;
     }
-    return this.campaigns.filter((campaign) =>
-      [campaign.name, campaign.code, campaign.campaign_type, campaign.status].join(' ').toLowerCase().includes(query)
-    );
+    return this.campaigns.find((campaign) => campaign.id === this.selectedCampaignId) ?? null;
+  }
+
+  ngOnInit(): void {
+    this.canManage = this.authService.hasPermission('donations.manage');
+    this.initSearchFields();
+    this.loadCampaigns();
+    this.donationsService.ledgerMutated$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(() => this.refreshAfterLedgerChange());
+    setupStewardshipRouteReload(this.router, this.destroyRef, '/donations/campaigns', () => this.loadCampaigns());
+  }
+
+  trackCampaign(_index: number, campaign: DonationProject): string {
+    return campaign.id;
+  }
+
+  onTableSearchChange(value: string): void {
+    this.tableSearch = value;
+    this.syncSearchFieldValues();
+    this.cdr.markForCheck();
+  }
+
+  onSort(event: SortEvent): void {
+    this.sortColumn = event.column as CampaignSortColumn;
+    this.sortDirection = event.direction;
+    this.cdr.markForCheck();
+  }
+
+  onAdvancedSearch(values: Record<string, unknown>): void {
+    this.tableSearch = String(values['search'] ?? '').trim();
+    this.statusFilter = (values['status'] as CampaignStatusFilter) || '';
+    this.scheduleFilter = (values['schedule'] as CampaignScheduleFilter) || '';
+    this.typeFilter = String(values['campaign_type'] ?? '');
+    this.showFilters = false;
+    this.syncSearchFieldValues();
+    this.cdr.markForCheck();
+  }
+
+  onClearAdvancedSearch(): void {
+    this.clearAllFilters();
+    this.showFilters = false;
+  }
+
+  onActiveFilterChipRemove(chip: StewardshipFilterChip): void {
+    if (chip.key === 'search') {
+      this.tableSearch = '';
+    } else if (chip.key === 'status') {
+      this.statusFilter = '';
+    } else if (chip.key === 'schedule') {
+      this.scheduleFilter = '';
+    } else if (chip.key === 'type') {
+      this.typeFilter = '';
+    }
+    this.syncSearchFieldValues();
+    this.cdr.markForCheck();
+  }
+
+  clearAllFilters(): void {
+    this.tableSearch = '';
+    this.statusFilter = '';
+    this.scheduleFilter = '';
+    this.typeFilter = '';
+    this.syncSearchFieldValues();
+    this.cdr.markForCheck();
+  }
+
+  openCreateForm(): void {
+    this.createError = null;
+    this.campaignForm.reset({
+      campaign_type: 'general',
+      description: '',
+      target_amount: 0,
+      status: 'active',
+      start_date: '',
+      end_date: '',
+    });
+    this.showForm = true;
+  }
+
+  closeCreateForm(): void {
+    this.showForm = false;
+    this.createError = null;
   }
 
   campaignGap(campaign: DonationProject): number {
     return Math.max(Number(campaign.target_amount || 0) - Number(campaign.raised_amount || 0), 0);
+  }
+
+  hasFundingTarget(campaign: DonationProject): boolean {
+    return Number(campaign.target_amount || 0) > 0;
+  }
+
+  progressPercent(campaign: DonationProject): number {
+    if (!this.hasFundingTarget(campaign)) {
+      return 0;
+    }
+    if (campaign.collection_percentage != null) {
+      return Math.min(100, Math.round(campaign.collection_percentage));
+    }
+    const target = Number(campaign.target_amount || 0);
+    const raised = Number(campaign.raised_amount || 0);
+    return target > 0 ? Math.min(100, Math.round((raised / target) * 100)) : 0;
   }
 
   isCampaignAtRisk(campaign: DonationProject): boolean {
@@ -265,8 +319,8 @@ export class DonationsCampaignsComponent implements OnInit, OnDestroy {
       return false;
     }
     const days = this.daysRemaining(campaign);
-    const lowProgress = (campaign.collection_percentage ?? 0) < 50;
-    return lowProgress || (days !== null && days <= 14);
+    const lowProgress = this.hasFundingTarget(campaign) && this.progressPercent(campaign) < 50;
+    return lowProgress || (days !== null && days <= 14 && days >= 0);
   }
 
   daysRemaining(campaign: DonationProject): number | null {
@@ -278,59 +332,239 @@ export class DonationsCampaignsComponent implements OnInit, OnDestroy {
     return Math.ceil((end - now) / (1000 * 60 * 60 * 24));
   }
 
-  openQuickCollect(): void {
-    this.quickCollectService.open();
+  campaignEndedByDate(campaign: DonationProject): boolean {
+    return this.isEndedByDate(campaign);
   }
 
-  get selectedCampaign(): DonationProject | null {
-    if (!this.selectedCampaignId) {
-      return null;
+  isDeadlineUrgent(campaign: DonationProject): boolean {
+    const days = this.daysRemaining(campaign);
+    return days !== null && days > 0 && days <= 14;
+  }
+
+  remainingLabel(campaign: DonationProject): string {
+    if (!campaign.end_date) {
+      return '—';
     }
-    return this.campaigns.find((campaign) => campaign.id === this.selectedCampaignId) ?? null;
+    if (this.campaignEndedByDate(campaign)) {
+      return 'Ended';
+    }
+    const days = this.daysRemaining(campaign);
+    if (days === null || days <= 0) {
+      return 'Ends today';
+    }
+    return days === 1 ? '1 day left' : `${days} days left`;
   }
 
-  selectCampaign(campaign: DonationProject): void {
-    this.selectedCampaignId = campaign.id;
+  campaignTypeLabel(type?: string | null): string {
+    const labels: Record<string, string> = {
+      general: 'General',
+      building: 'Building',
+      charity: 'Charity',
+      event: 'Event',
+    };
+    return labels[type ?? ''] ?? 'General';
   }
 
-  ngOnInit(): void {
-    this.loadCampaigns();
-    this.routerSub = this.router.events.pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd)).subscribe((e) => {
-      if (!e.urlAfterRedirects.includes('/donations/campaigns')) {
-        return;
+  statusLabel(campaign: DonationProject): string {
+    const status = campaign.status;
+    if (status === 'active') {
+      if (this.isUpcoming(campaign)) {
+        return 'Upcoming';
       }
-      if (this.skipNextNavReload) {
-        this.skipNextNavReload = false;
-        return;
+      if (this.isEndedByDate(campaign)) {
+        return 'Ended';
       }
-      this.loadCampaigns();
+      return 'Active';
+    }
+    if (status === 'draft') {
+      return 'Draft';
+    }
+    if (status === 'completed') {
+      return 'Completed';
+    }
+    if (status === 'cancelled') {
+      return 'Cancelled';
+    }
+    return status;
+  }
+
+  statusTone(campaign: DonationProject): StatusBadgeTone {
+    if (campaign.status === 'active') {
+      if (this.isCampaignAtRisk(campaign)) {
+        return 'warning';
+      }
+      if (this.isUpcoming(campaign)) {
+        return 'info';
+      }
+      return 'success';
+    }
+    if (campaign.status === 'completed') {
+      return 'info';
+    }
+    if (campaign.status === 'cancelled') {
+      return 'neutral';
+    }
+    return 'neutral';
+  }
+
+  openQuickCollect(campaign?: { id: string } | null): void {
+    const projectId = campaign?.id ?? this.selectedCampaignId ?? undefined;
+    this.quickCollectService.open(projectId ? { projectId, campaignId: projectId } : {});
+  }
+
+  collectForFamily(row: ProjectFamilyProgressRow): void {
+    const campaignId = this.selectedCampaignId ?? undefined;
+    this.quickCollectService.open({
+      familyId: row.family_id,
+      projectId: campaignId,
+      campaignId,
     });
   }
 
-  ngOnDestroy(): void {
-    this.routerSub?.unsubscribe();
+  familyProgressLabel(row: ProjectFamilyProgressRow): string {
+    return formatFamilyHeadWithCode(row);
   }
 
-  toggleForm(): void {
-    this.showForm = !this.showForm;
+  trackFamilyRow(_index: number, row: ProjectFamilyProgressRow): string {
+    return row.family_id;
+  }
+
+  fundingTarget(campaign: DonationProject): number {
+    return Number(this.dashboard?.totals.overall_target ?? campaign.target_amount ?? 0);
+  }
+
+  fundingCollected(campaign: DonationProject): number {
+    return Number(this.dashboard?.totals.collected ?? campaign.raised_amount ?? 0);
+  }
+
+  get showFamilyBreakdown(): boolean {
+    const progress = this.dashboard?.family_progress ?? [];
+    if (progress.length > 0) {
+      return true;
+    }
+    const families = this.dashboard?.families;
+    if (!families) {
+      return false;
+    }
+    return families.completed > 0 || families.partial > 0 || families.exempt > 0;
+  }
+
+  fundingOutstanding(campaign: DonationProject): number {
+    if (this.dashboard) {
+      return Number(this.dashboard.totals.outstanding ?? 0);
+    }
+    return this.campaignGap(campaign);
+  }
+
+  viewCampaign(campaign: DonationProject): void {
+    if (this.selectedCampaignId === campaign.id && this.dashboard) {
+      return;
+    }
+    this.selectedCampaignId = campaign.id;
+    this.dashboard = null;
+    this.dashboardLoadError = null;
+    this.familyRows = [];
+    this.familyLoadError = null;
+    this.loadSelectedDashboard(campaign.id, true);
+    this.loadFamilyProgress(campaign.id);
+  }
+
+  private refreshAfterLedgerChange(): void {
+    this.donationsService
+      .getCampaigns()
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: (res) => {
+          this.campaigns = res.data ?? [];
+          refreshStewardshipView(this.cdr);
+        },
+      });
+
+    if (this.selectedCampaignId) {
+      this.loadSelectedDashboard(this.selectedCampaignId, false);
+      this.loadFamilyProgress(this.selectedCampaignId);
+    }
+  }
+
+  private loadSelectedDashboard(campaignId: string, showLoader: boolean): void {
+    this.dashboardLoadError = null;
+    this.dashboardLoading = showLoader;
+    refreshStewardshipView(this.cdr);
+    this.donationsService
+      .getCampaignDashboard(campaignId)
+      .pipe(
+        finalize(() => {
+          this.dashboardLoading = false;
+          refreshStewardshipView(this.cdr);
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          if (this.selectedCampaignId === campaignId) {
+            this.dashboard = res.data;
+          }
+        },
+        error: () => {
+          if (this.selectedCampaignId === campaignId) {
+            this.dashboardLoadError = 'Unable to load campaign summary. Please try again.';
+          }
+        },
+      });
+  }
+
+  closeCampaignDetail(): void {
+    this.selectedCampaignId = null;
+    this.dashboard = null;
+    this.dashboardLoadError = null;
+    this.familyRows = [];
+    this.familyLoadError = null;
+  }
+
+  private loadFamilyProgress(campaignId: string): void {
+    this.familyLoading = true;
+    this.familyLoadError = null;
+    this.donationsService
+      .getProjectFamilyProgress(campaignId, { per_page: 50, sort: 'outstanding_amount', direction: 'desc' })
+      .pipe(finalize(() => {
+        this.familyLoading = false;
+        refreshStewardshipView(this.cdr);
+      }))
+      .subscribe({
+        next: (res) => {
+          if (this.selectedCampaignId === campaignId) {
+            this.familyRows = res.data?.data ?? [];
+          }
+        },
+        error: () => {
+          if (this.selectedCampaignId === campaignId) {
+            this.familyLoadError = 'Unable to load family balances for this campaign.';
+          }
+        },
+      });
   }
 
   loadCampaigns(): void {
-    this.loading = true;
-    this.error = null;
-    this.cdr.detectChanges();
-    this.donationsService.getCampaigns().subscribe({
-      next: (res) => {
-        this.campaigns = res.data ?? [];
-        this.loading = false;
-        this.cdr.detectChanges();
-      },
-      error: (err: { message?: string }) => {
-        this.error = err?.message || 'Failed to load campaigns.';
-        this.loading = false;
-        this.cdr.detectChanges();
-      }
-    });
+    this.campaignsLoaded = false;
+    this.campaignsLoadError = null;
+    refreshStewardshipView(this.cdr);
+    this.donationsService
+      .getCampaigns()
+      .pipe(
+        takeUntilDestroyed(this.destroyRef),
+        finalize(() => {
+          this.campaignsLoaded = true;
+          refreshStewardshipView(this.cdr);
+        })
+      )
+      .subscribe({
+        next: (res) => {
+          this.campaigns = res.data ?? [];
+        },
+        error: (err: HttpErrorResponse) => {
+          this.campaignsLoadError =
+            err.error?.message || err.message || 'Unable to load campaigns. Please check your connection and try again.';
+        },
+      });
   }
 
   saveCampaign(): void {
@@ -339,19 +573,131 @@ export class DonationsCampaignsComponent implements OnInit, OnDestroy {
     }
 
     this.saving = true;
+    this.createError = null;
     this.donationsService.createCampaign(this.campaignForm.getRawValue()).subscribe({
       next: () => {
         this.saving = false;
         this.showForm = false;
-        this.campaignForm.reset({ campaign_type: 'general', target_amount: 0, status: 'active' });
+        this.campaignForm.reset({
+          campaign_type: 'general',
+          description: '',
+          target_amount: 0,
+          status: 'active',
+        });
         this.loadCampaigns();
         this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.saving = false;
-        this.error = 'Unable to create campaign.';
+        this.createError = err.error?.message || 'Unable to create campaign.';
         this.cdr.detectChanges();
-      }
+      },
     });
+  }
+
+  private initSearchFields(): void {
+    this.searchFields = [
+      {
+        key: 'search',
+        label: 'Search',
+        type: 'text',
+        placeholder: 'Name, code, or description…',
+        value: this.tableSearch.trim() || undefined,
+      },
+      {
+        key: 'status',
+        label: 'Status',
+        type: 'select',
+        value: this.statusFilter || undefined,
+        options: [
+          { label: 'Any status', value: '' },
+          { label: 'Active', value: 'active' },
+          { label: 'Draft', value: 'draft' },
+          { label: 'Completed', value: 'completed' },
+          { label: 'Cancelled', value: 'cancelled' },
+        ],
+      },
+      {
+        key: 'schedule',
+        label: 'Schedule',
+        type: 'select',
+        value: this.scheduleFilter || undefined,
+        options: [
+          { label: 'Any schedule', value: '' },
+          { label: 'Upcoming (not started)', value: 'upcoming' },
+          { label: 'In progress', value: 'in_progress' },
+          { label: 'Ended', value: 'ended' },
+        ],
+      },
+      {
+        key: 'campaign_type',
+        label: 'Campaign type',
+        type: 'select',
+        value: this.typeFilter || undefined,
+        options: [
+          { label: 'Any type', value: '' },
+          { label: 'General', value: 'general' },
+          { label: 'Building', value: 'building' },
+          { label: 'Charity', value: 'charity' },
+          { label: 'Event', value: 'event' },
+        ],
+      },
+    ];
+  }
+
+  private syncSearchFieldValues(): void {
+    const set = (key: string, value: string | undefined) => {
+      const field = this.searchFields.find((f) => f.key === key);
+      if (field) {
+        field.value = value;
+      }
+    };
+    set('search', this.tableSearch.trim() || undefined);
+    set('status', this.statusFilter || undefined);
+    set('schedule', this.scheduleFilter || undefined);
+    set('campaign_type', this.typeFilter || undefined);
+  }
+
+  private statusFilterDisplay(value: CampaignStatusFilter): string {
+    const labels: Record<string, string> = {
+      active: 'Active',
+      draft: 'Draft',
+      completed: 'Completed',
+      cancelled: 'Cancelled',
+    };
+    return labels[value] || value;
+  }
+
+  private scheduleFilterLabel(value: CampaignScheduleFilter): string {
+    const labels: Record<string, string> = {
+      upcoming: 'Upcoming',
+      in_progress: 'In progress',
+      ended: 'Ended',
+    };
+    return labels[value] || value;
+  }
+
+  private isUpcoming(campaign: DonationProject): boolean {
+    if (!campaign.start_date) {
+      return false;
+    }
+    return campaign.start_date > localDateOnly();
+  }
+
+  private isEndedByDate(campaign: DonationProject): boolean {
+    if (!campaign.end_date) {
+      return false;
+    }
+    return campaign.end_date < localDateOnly();
+  }
+
+  private isInProgress(campaign: DonationProject): boolean {
+    if (campaign.status !== 'active') {
+      return false;
+    }
+    const today = localDateOnly();
+    const afterStart = !campaign.start_date || campaign.start_date <= today;
+    const beforeEnd = !campaign.end_date || campaign.end_date >= today;
+    return afterStart && beforeEnd;
   }
 }

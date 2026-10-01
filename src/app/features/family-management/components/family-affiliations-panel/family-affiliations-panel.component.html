@@ -34,8 +34,7 @@
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="family-affiliations__loading-label">Loading affiliations…</p>
-        <app-loading-skeleton type="list" [rows]="3"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading affiliations…" type="list" [rows]="3"></app-loading-skeleton>
       </div>
 
       <div class="family-affiliations__error" *ngIf="loadError" role="alert">

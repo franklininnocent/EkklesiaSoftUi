@@ -10,64 +10,91 @@ import {
 import { DonationsService } from '../services/donations.service';
 import { DonationApproval } from '../models/donation.model';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
+import { DataTableComponent } from '@shared/components/data-table/data-table.component';
+import { StewardshipTablePanelComponent } from '../components/stewardship-table-panel/stewardship-table-panel.component';
 
 @Component({
   selector: 'app-donations-approvals',
   standalone: true,
-  imports: [CommonModule, CfEmptyStateComponent, LoadingSkeletonComponent, StewardshipConfirmDialogComponent, CfActionIconComponent],
+  imports: [
+    CfDatePipe,
+    CommonModule,
+    CfEmptyStateComponent,
+    LoadingSkeletonComponent,
+    StewardshipConfirmDialogComponent,
+    CfActionIconComponent,
+    PageHeaderComponent,
+    DataTableComponent,
+    StewardshipTablePanelComponent,
+  ],
   template: `
-    <section class="approvals cf-page">
-      <header class="cf-hero">
-        <h1>Approvals</h1>
-        <p>Review refund requests. Approving a refund returns money on the family books.</p>
-      </header>
+    <section class="approvals cf-page cf-financial-dashboard">
+      <app-page-header
+        title="Approvals"
+        subtitle="Review refund requests. Approving a refund returns money on the family books."
+      ></app-page-header>
 
       <p *ngIf="!canApprove" class="cf-state cf-state--error">
         You do not have permission to approve refunds.
       </p>
 
       <ng-container *ngIf="canApprove">
-        <div *ngIf="!loaded" class="cf-panel" role="status" aria-live="polite">
-          <p class="cf-meta">Loading approvals…</p>
-          <app-loading-skeleton type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
+        <div *ngIf="!loaded" class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+          <app-loading-skeleton label="Loading approvals…" type="table" [rows]="4" [columns]="5"></app-loading-skeleton>
         </div>
 
-        <p *ngIf="loaded && loadError" class="cf-state cf-state--error">{{ loadError }}</p>
+        <p *ngIf="loaded && loadError" class="cf-inline-alert cf-panel" role="alert">{{ loadError }}</p>
         <p *ngIf="message" class="cf-state cf-state--success">{{ message }}</p>
 
-        <table *ngIf="loaded && !loadError && approvals.length" class="table cf-table">
-          <thead>
-            <tr>
-              <th>Requested</th>
-              <th>Action</th>
-              <th>Status</th>
-              <th>Reason</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let approval of approvals">
-              <td>{{ approval.created_at | date:'medium' }}</td>
-              <td>{{ approval.action }}</td>
-              <td>{{ approval.status }}</td>
-              <td>{{ approval.reason || '—' }}</td>
-              <td>
-                <ng-container *ngIf="approval.status === 'pending'">
-                  <button
-          aria-label="Approve"
-          title="Approve" type="button" class="cf-btn cf-btn-icon cf-btn-primary cf-btn--sm" (click)="openDecision(approval, 'approved')">
-          <app-cf-action-icon name="check" />
-                  </button>
-                  <button
-          aria-label="Decline"
-          title="Decline" type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="openDecision(approval, 'rejected')">
-          <app-cf-action-icon name="x-circle" />
-                  </button>
-                </ng-container>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <app-stewardship-table-panel
+          *ngIf="loaded && !loadError && approvals.length"
+          title="Refund approvals"
+          [meta]="approvals.length + ' request' + (approvals.length === 1 ? '' : 's')"
+        >
+          <app-data-table>
+            <thead>
+              <tr>
+                <th scope="col">Requested</th>
+                <th scope="col">Action</th>
+                <th scope="col">Status</th>
+                <th scope="col">Reason</th>
+                <th scope="col" class="cf-table__actions-col"><span class="sr-only">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let approval of approvals">
+                <td>{{ approval.created_at | cfDate:'datetime' }}</td>
+                <td>{{ approval.action }}</td>
+                <td>{{ approval.status }}</td>
+                <td>{{ approval.reason || '—' }}</td>
+                <td class="cf-table__actions-cell">
+                  <div class="cf-row-actions" *ngIf="approval.status === 'pending'">
+                    <button
+                      aria-label="Approve"
+                      title="Approve"
+                      type="button"
+                      class="cf-btn cf-btn-icon cf-btn-primary cf-btn--sm"
+                      (click)="openDecision(approval, 'approved')"
+                    >
+                      <app-cf-action-icon name="check" />
+                    </button>
+                    <button
+                      aria-label="Decline"
+                      title="Decline"
+                      type="button"
+                      class="cf-btn cf-btn-icon cf-btn--sm"
+                      (click)="openDecision(approval, 'rejected')"
+                    >
+                      <app-cf-action-icon name="x-circle" />
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </app-data-table>
+        </app-stewardship-table-panel>
 
         <app-cf-empty-state
           *ngIf="loaded && !loadError && !approvals.length"

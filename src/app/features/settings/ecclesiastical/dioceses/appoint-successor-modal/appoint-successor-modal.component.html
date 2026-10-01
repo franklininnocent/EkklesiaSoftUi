@@ -12,7 +12,7 @@
   <div class="appoint-successor-modal__current" *ngIf="currentOrdinary as ordinary">
     <span class="appoint-successor-modal__label">Current Bishop</span>
     <strong>{{ ordinary.bishop_name }}</strong>
-    <span *ngIf="ordinary.effective_date"> · since {{ ordinary.effective_date | date:'mediumDate' }}</span>
+    <span *ngIf="ordinary.effective_date"> · since {{ ordinary.effective_date | cfDate }}</span>
   </div>
 
   <form [formGroup]="form" (ngSubmit)="onSubmit()" class="appoint-successor-modal__form">

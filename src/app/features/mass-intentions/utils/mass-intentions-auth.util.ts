@@ -16,3 +16,15 @@ export function canConfigureMassIntentions(auth: AuthService): boolean {
 export function canExportMassRegister(auth: AuthService): boolean {
   return auth.hasTenantPermission('mass.intentions.register.export');
 }
+
+export function canScheduleMasses(auth: AuthService): boolean {
+  return auth.hasTenantPermission('mass.intentions.schedule');
+}
+
+export function canFulfilMasses(auth: AuthService): boolean {
+  return auth.hasTenantPermission('mass.intentions.fulfil');
+}
+
+export function canViewMassOfferings(auth: AuthService): boolean {
+  return auth.hasTenantPermission('mass.intentions.offerings.view');
+}

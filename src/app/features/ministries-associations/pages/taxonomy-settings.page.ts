@@ -4,7 +4,6 @@ import { ActivatedRoute } from '@angular/router';
 import { Subject, takeUntil } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
-import { TabStripComponent, TabStripItem } from '@shared/components/tab-strip/tab-strip.component';
 import {
   TaxonomyCrudPanelComponent,
   TaxonomyKind,
@@ -17,7 +16,6 @@ import { MinistriesSubNavComponent } from '../components/ministries-sub-nav/mini
   imports: [
     CommonModule,
     PageHeaderComponent,
-    TabStripComponent,
     TaxonomyCrudPanelComponent,
     MinistriesSubNavComponent,
   ],
@@ -49,15 +47,6 @@ export class TaxonomySettingsPageComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
-  }
-
-  get tabStripItems(): TabStripItem[] {
-    return this.tabs.map((tab) => ({
-      id: tab,
-      label: this.tabLabels[tab],
-      domId: this.tabId(tab),
-      ariaControls: this.panelId(tab),
-    }));
   }
 
   tabId(tab: TaxonomyKind): string {

@@ -15,6 +15,8 @@ import {
 import { AuthService } from '@core/services/auth.service';
 import { OpsSupportTicketDetail } from '../models/support-ops-ticket.model';
 import { SupportOpsTicketService } from '../services/support-ops-ticket.service';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type LifecycleAction = 'resolve' | 'close' | 'reopen';
 
@@ -22,6 +24,7 @@ type LifecycleAction = 'resolve' | 'close' | 'reopen';
   selector: 'app-support-ops-ticket-detail-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     ReactiveFormsModule,
     RouterModule,
@@ -460,7 +463,7 @@ export class SupportOpsTicketDetailPage implements OnInit {
       return 'SLA at risk — respond or resolve soon.';
     }
     if (sla.resolution_due_at) {
-      return `Resolution due ${new Date(sla.resolution_due_at).toLocaleString()}`;
+      return `Resolution due ${cfFormatDate(sla.resolution_due_at, 'datetime')}`;
     }
     return null;
   }

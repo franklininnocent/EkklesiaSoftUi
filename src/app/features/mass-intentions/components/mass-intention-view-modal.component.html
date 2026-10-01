@@ -21,12 +21,7 @@
           }
           <p class="cf-split-identity__meta">{{ scheduledDay(r) }}</p>
         </div>
-        <div class="mass-intention-view-modal__status" [attr.title]="statusLabel(r)">
-          @if (r.status === 'open') {
-            <span aria-hidden="true"><app-cf-action-icon name="book-open" /></span>
-          } @else if (r.status === 'closed') {
-            <span aria-hidden="true"><app-cf-action-icon name="check" /></span>
-          }
+        <div class="mass-intention-view-modal__status">
           <app-status-badge [label]="statusLabel(r)" [tone]="statusTone(r)" />
         </div>
       </div>
@@ -37,6 +32,10 @@
           <div class="cf-split-field">
             <dt>Intention type</dt>
             <dd>{{ intentionTypeLabel(r) }}</dd>
+          </div>
+          <div class="cf-split-field">
+            <dt>Mass</dt>
+            <dd>{{ massLabel(r) }}</dd>
           </div>
           <div class="cf-split-field">
             <dt>Scheduled day</dt>
@@ -79,6 +78,30 @@
         </section>
       }
 
+      @if (assignmentHistory().length > 1) {
+        <section class="cf-split-section" aria-labelledby="mass-intention-view-section-mass-history">
+          <h3 id="mass-intention-view-section-mass-history" class="cf-split-section__title">Mass history</h3>
+          <ul class="mass-intention-view-modal__history">
+            @for (row of assignmentHistory(); track row.assignment_id) {
+              <li>{{ assignmentLabel(row) }}</li>
+            }
+          </ul>
+        </section>
+      }
+
+      @if (auditHistory().length) {
+        <section class="cf-split-section" aria-labelledby="mass-intention-view-section-audit">
+          <h3 id="mass-intention-view-section-audit" class="cf-split-section__title">Office log</h3>
+          <ul class="mass-intention-view-modal__history">
+            @for (row of auditHistory(); track row.id) {
+              <li>
+                <time [attr.datetime]="row.created_at ?? undefined">{{ auditLabel(row) }}</time>
+              </li>
+            }
+          </ul>
+        </section>
+      }
+
       @if (r.notes) {
         <section class="cf-split-section" aria-labelledby="mass-intention-view-section-notes">
           <h3 id="mass-intention-view-section-notes" class="cf-split-section__title">Office note</h3>
@@ -101,6 +124,9 @@
         <button type="button" class="cf-btn" (click)="closeIntention()" [disabled]="closing()">
           Close intention
         </button>
+      }
+      @if (r.status === 'open' && canMove(r)) {
+        <button type="button" class="cf-btn" (click)="moveRequested.emit(r)">Move to another Mass</button>
       }
       @if (r.status === 'open' && canEdit()) {
         <button

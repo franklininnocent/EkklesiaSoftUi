@@ -1,4 +1,4 @@
-<section class="settings-page cf-page cf-split-page">
+<section class="settings-page cf-page cf-split-page cf-financial-dashboard">
   <app-page-header
     title="Stewardship Settings"
     subtitle="Receipts, UPI collection, tax acknowledgements, and AI outreach — configure once.">
@@ -12,8 +12,7 @@
   </app-page-header>
 
   <div class="cf-split-loading cf-split-card" *ngIf="!settingsLoaded" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-split-loading__label">Loading stewardship settings…</p>
-    <app-loading-skeleton type="table" [rows]="4" [columns]="2"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading stewardship settings…" type="table" [rows]="4" [columns]="2"></app-loading-skeleton>
   </div>
 
   <ng-container *ngIf="settingsLoaded">

@@ -19,6 +19,10 @@
     z-index: var(--cf-z-modal-nested);
   }
 
+  &--covered {
+    pointer-events: none;
+  }
+
   &--media {
     background: rgba(15, 23, 42, 0.72);
     align-items: center;
@@ -98,27 +102,14 @@
       line-height: 1.4;
     }
 
-    /*
-     * Matches .cf-split-card__close exactly (bordered cf-btn pill, not the
-     * default borderless icon square) — see Add Category reference header.
-     */
-    .cf-modal-shell__close {
-      width: auto;
-      height: auto;
-      min-height: var(--cf-control-height);
-      margin: 0;
-      padding: 0.25rem 0.55rem;
-      border: 1px solid var(--cf-panel-border);
-      border-radius: var(--cf-radius-sm);
-      background: var(--cf-panel-bg);
-      color: var(--cf-slate-900);
-
-      &:hover:not(:disabled) {
-        background: var(--cf-slate-50);
-        color: var(--cf-slate-900);
-      }
-    }
   }
+}
+
+/* Compact header close — same classes as Offering Categories (.cf-btn.cf-btn-icon). */
+.cf-modal-shell__close--compact {
+  flex-shrink: 0;
+  padding: 0.25rem 0.55rem;
+  margin: 0;
 }
 
 .cf-modal-shell__heading {
@@ -173,6 +164,11 @@
     opacity: 0.6;
     cursor: not-allowed;
   }
+
+  app-cf-action-icon .cf-action-icon {
+    width: var(--cf-icon-md);
+    height: var(--cf-icon-md);
+  }
 }
 
 .cf-modal-shell__body {
@@ -205,7 +201,7 @@
   border-top: 1px solid var(--cf-panel-border);
   background: var(--cf-panel-bg);
 
-  &:empty {
+  &:not(:has(*)) {
     display: none;
     padding: 0;
     border-top: 0;

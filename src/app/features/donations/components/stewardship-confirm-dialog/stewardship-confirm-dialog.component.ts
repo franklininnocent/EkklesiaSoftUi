@@ -1,6 +1,7 @@
 import { CommonModule } from '@angular/common';
 import { Component, EventEmitter, Input, Output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 
 export interface StewardshipConfirmResult {
   reason: string;
@@ -10,7 +11,7 @@ export interface StewardshipConfirmResult {
 @Component({
   selector: 'app-stewardship-confirm-dialog',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, CfBrandLoaderComponent],
   template: `
     <div class="cf-dialog-backdrop" (click)="onCancel()">
       <div
@@ -65,7 +66,7 @@ export interface StewardshipConfirmResult {
             [disabled]="!canConfirm"
             (click)="onConfirm()"
           >
-            <span *ngIf="saving" class="cf-spinner" aria-hidden="true"></span>
+            <app-cf-brand-loader *ngIf="saving" size="button" label="Working" [showLabel]="false" />
             {{ saving ? 'Working…' : confirmLabel }}
           </button>
         </div>

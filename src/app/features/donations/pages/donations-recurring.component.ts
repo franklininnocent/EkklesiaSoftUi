@@ -12,10 +12,12 @@ import { refreshStewardshipView, setupStewardshipRouteReload } from '../utils/st
 import { localDateOnly } from '../utils/local-date-only';
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 @Component({
   selector: 'app-donations-recurring',
   standalone: true,
-  imports: [CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent],
+  imports: [
+    CfDatePipe,CommonModule, FormsModule, ReactiveFormsModule, RouterModule, CfEmptyStateComponent, LoadingSkeletonComponent, PageHeaderComponent, CfCurrencyPipe, CfActionIconComponent],
   templateUrl: './donations-recurring.component.html',
   styleUrl: './donations-recurring.component.scss'
 })

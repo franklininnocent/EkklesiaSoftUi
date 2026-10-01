@@ -8,7 +8,6 @@ import { AuthService } from '../../../../core/services/auth.service';
 import { ToastService } from '@core/services/toast.service';
 import { SubscriptionAccessService } from '@core/services/subscription-access.service';
 import { SupportSessionService } from '@features/support-center/services/support-session.service';
-import { ConfirmationDialogService } from '@core/services/confirmation-dialog.service';
 
 describe('FamilyListComponent (list + stats)', () => {
   const routerStub = { navigate: jest.fn() };
@@ -18,10 +17,24 @@ describe('FamilyListComponent (list + stats)', () => {
     queryParams: of({})
   };
 
-  const configure = () => {
+  const sampleFamily = {
+    id: '1',
+    family_code: 'FAM-001',
+    family_name: 'Smith',
+    head_of_family: 'John Smith',
+    status: 'active',
+    members: [],
+  };
+
+  const configure = (options?: { families?: unknown[] }) => {
     const mockFamilyService = {
       getStatistics: jest.fn(() => of({ success: true, data: { total_families: 10 } })),
-      getFamilies: jest.fn(() => of({ data: [], current_page: 1, last_page: 1, total: 0 }))
+      getFamilies: jest.fn(() => of({
+        data: options?.families ?? [],
+        current_page: 1,
+        last_page: 1,
+        total: (options?.families ?? []).length,
+      })),
     };
     const mockBccService = { getBCCs: jest.fn(() => of({ data: [] })) };
 
@@ -36,14 +49,13 @@ describe('FamilyListComponent (list + stats)', () => {
           provide: AuthService,
           useValue: {
             hasParishContext: jest.fn(() => true),
-            isTenantAdmin: jest.fn(() => false),
+            isTenantAdmin: jest.fn(() => true),
             hasPermission: jest.fn(() => true),
           },
         },
         { provide: ToastService, useValue: { success: jest.fn(), error: jest.fn(), warning: jest.fn() } },
         { provide: SubscriptionAccessService, useValue: { isReadOnly: jest.fn(() => false) } },
         { provide: SupportSessionService, useValue: { session$: of(null), sessionId: null } },
-        { provide: ConfirmationDialogService, useValue: { confirm: jest.fn().mockResolvedValue(true) } },
       ]
     });
 
@@ -89,5 +101,18 @@ describe('FamilyListComponent (list + stats)', () => {
     expect(event.stopPropagation).toHaveBeenCalled();
     expect(component.photoViewer?.src).toBe('https://example.com/john.jpg');
     expect(component.photoViewer?.title).toBe('John Smith');
+  });
+
+  it('does not render an Actions column on the family list', () => {
+    configure({ families: [sampleFamily] });
+    const fixture = TestBed.createComponent(FamilyListComponent);
+    fixture.detectChanges();
+
+    const headers = Array.from(fixture.nativeElement.querySelectorAll('th') as NodeListOf<HTMLElement>)
+      .map((th) => th.textContent?.replace(/\s+/g, ' ').trim());
+    expect(headers).not.toContain('Actions');
+    expect(fixture.nativeElement.querySelector('.cf-table__actions-col')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.cf-row-actions')).toBeNull();
+    expect(fixture.nativeElement.querySelector('[aria-label="Delete family"]')).toBeNull();
   });
 });

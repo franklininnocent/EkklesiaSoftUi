@@ -1,0 +1,66 @@
+@use './mass-celebrations-toolbar';
+
+.mass-celebrations-page__add {
+  flex-shrink: 0;
+}
+
+.mass-celebrations-page__chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-space-2);
+  margin-bottom: var(--cf-space-3);
+}
+
+.mass-celebrations-page__chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--cf-space-1);
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.mass-celebrations-page__chip-remove {
+  margin-left: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0 0.1rem;
+}
+
+.mass-celebrations-page__panel {
+  display: grid;
+  gap: var(--cf-space-3);
+  padding: var(--cf-space-3);
+}
+
+.mass-celebrations-page__summary {
+  margin: 0;
+}
+
+.mass-celebrations-page__day-time {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--cf-space-2);
+}
+
+.mass-celebrations-page__next-badge {
+  font-size: var(--cf-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.mass-celebrations-page__row--next {
+  background: var(--cf-indigo-soft);
+  box-shadow: inset 3px 0 0 var(--cf-primary);
+}
+
+.mass-celebrations-page__row--next:hover {
+  background: color-mix(in srgb, var(--cf-indigo-soft) 85%, var(--cf-panel-bg));
+}
+

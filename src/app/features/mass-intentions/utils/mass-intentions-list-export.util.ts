@@ -3,6 +3,7 @@ import {
   formatMassIntentionScheduledDay,
   massIntentionBeneficiaryIdentification,
   massIntentionListDescription,
+  massIntentionListMass,
   massIntentionListType,
 } from './mass-intention-list-display';
 import { massIntentionStageLabel } from './mass-intention-status-display';
@@ -89,7 +90,7 @@ export function printMassIntentionsList(
         ? `${escape(row.beneficiary_name ?? '')}<br /><span style="color:#64748b;font-size:10px;">${escape(identification)}</span>`
         : escape(row.beneficiary_name ?? '');
       return `<tr>
-        <td>${escape(formatMassIntentionScheduledDay(row.requested_date))}</td>
+        <td>${escape(massIntentionListMass(row))}</td>
         <td>${forCell}</td>
         <td>${escape(massIntentionListType(row))}</td>
         <td class="desc">${escape(description)}</td>
@@ -120,7 +121,7 @@ export function printMassIntentionsList(
   <table>
     <thead>
       <tr>
-        <th>Scheduled day</th>
+        <th>Mass</th>
         <th>For</th>
         <th>Intention</th>
         <th>Description</th>

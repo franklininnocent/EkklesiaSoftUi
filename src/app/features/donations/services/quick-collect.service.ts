@@ -11,6 +11,19 @@ export interface QuickCollectRecentFamily {
   head_of_family?: string;
 }
 
+/**
+ * Launch context for Collect Payment. IDs are hints for prefill only —
+ * the backend collect-context and payment APIs remain authoritative.
+ */
+export interface QuickCollectLaunchContext {
+  familyId?: string;
+  projectId?: string;
+  campaignId?: string;
+  dueId?: string;
+  installmentId?: string;
+  memberId?: string;
+}
+
 const RECENT_KEY = 'qc_recent_families';
 const KEEP_OPEN_KEY = 'qc_keep_open';
 const DEFAULT_METHOD_KEY = 'qc_default_method';
@@ -20,26 +33,20 @@ const MAX_RECENT = 6;
 export class QuickCollectService {
   private readonly subscriptionAccess = inject(SubscriptionAccessService);
   private readonly toast = inject(ToastService);
-  private readonly openSubject = new Subject<void>();
-  private readonly openForFamilySubject = new Subject<string>();
+  private readonly openSubject = new Subject<QuickCollectLaunchContext>();
 
   readonly open$ = this.openSubject.asObservable();
-  readonly openForFamily$ = this.openForFamilySubject.asObservable();
 
-  open(): void {
+  open(context: QuickCollectLaunchContext = {}): void {
     if (this.subscriptionAccess.isReadOnly()) {
       this.toast.warning('Read-only mode: renew subscription to collect payments.', 'Read-only');
       return;
     }
-    this.openSubject.next();
+    this.openSubject.next({ ...context });
   }
 
-  openForFamily(familyId: string): void {
-    if (this.subscriptionAccess.isReadOnly()) {
-      this.toast.warning('Read-only mode: renew subscription to collect payments.', 'Read-only');
-      return;
-    }
-    this.openForFamilySubject.next(familyId);
+  openForFamily(familyId: string, extra: Omit<QuickCollectLaunchContext, 'familyId'> = {}): void {
+    this.open({ ...extra, familyId });
   }
 
   getRecentFamilies(): QuickCollectRecentFamily[] {

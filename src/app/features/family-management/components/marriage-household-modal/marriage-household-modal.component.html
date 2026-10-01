@@ -89,7 +89,7 @@
           <span>Destination family <abbr title="required">*</abbr></span>
           <select formControlName="target_family_id">
             <option value="">Select family…</option>
-            <option *ngFor="let family of otherFamilies" [value]="family.id">{{ family.family_name }}</option>
+            <option *ngFor="let family of otherFamilies" [value]="family.id">{{ family | cfFamilyPickerLabel }}</option>
           </select>
         </label>
 
@@ -139,7 +139,7 @@
       </dl>
     </ng-container>
 
-    <p class="marriage-household-modal__muted" *ngIf="familiesLoading">Loading families…</p>
+    <app-cf-brand-loader *ngIf="familiesLoading" size="inline" label="Loading families…" />
     <p class="marriage-household-modal__error" *ngIf="formError" role="alert">{{ formError }}</p>
   </form>
 

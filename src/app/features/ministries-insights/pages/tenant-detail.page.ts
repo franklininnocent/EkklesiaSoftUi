@@ -21,11 +21,13 @@ import {
   MinistriesInsightsWindowDays,
 } from '../models/ministries-insights.model';
 import { insightsFeatureLabel, insightsStatusLabel } from '../utils/insights-labels';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-ministries-insights-tenant-detail-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     RouterModule,
     CfEmptyStateComponent,

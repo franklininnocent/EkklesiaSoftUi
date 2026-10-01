@@ -1,0 +1,204 @@
+<section class="mass-reports-page cf-page mass-reports-page--compact">
+  <app-page-header
+    title="Reports"
+    [titleLevel]="3"
+    [backLink]="dashboardBackLink"
+    [backLabel]="dashboardBackLabel"
+  />
+
+  <div class="cf-panel mass-reports-page__shell">
+    <div class="mass-reports-page__chrome" role="region" aria-labelledby="mass-reports-chrome-label">
+      <span id="mass-reports-chrome-label" class="sr-only">Report controls</span>
+
+      <nav class="mass-reports-page__tabs" aria-label="Report type">
+        @for (tab of visibleTabs(); track tab.id) {
+          <button
+            type="button"
+            class="cf-workspace-subnav__link mass-reports-page__tab"
+            [class.cf-workspace-subnav__link--active]="activeTab() === tab.id"
+            [attr.aria-current]="activeTab() === tab.id ? 'page' : null"
+            [attr.title]="tab.id === activeTab() ? tabBlurb() : null"
+            (click)="selectTab(tab.id)"
+          >
+            {{ tab.label }}
+          </button>
+        }
+      </nav>
+
+      <div class="mass-reports-page__chrome-end">
+        <app-list-toolbar
+          class="mass-reports-page__search"
+          searchPlaceholder="Filter rows…"
+          [searchValue]="reportSearch()"
+          [showFilters]="false"
+          [filterCount]="0"
+          (searchChange)="reportSearch.set($event)"
+        />
+        <p class="mass-reports-page__meta cf-meta" role="status" aria-live="polite">
+          {{ resultsSummary() }}
+        </p>
+        <div class="mass-reports-page__actions">
+          <button type="button" class="cf-btn cf-btn-icon cf-btn--sm" (click)="print()" aria-label="Print" title="Print">
+            <app-cf-action-icon name="print" />
+          </button>
+          @if (canSeeOfferings()) {
+            <button
+              type="button"
+              class="cf-btn cf-btn-icon cf-btn--sm"
+              (click)="downloadLedgerBridge()"
+              aria-label="Donations ledger export"
+              title="Donations ledger export"
+            >
+              <app-cf-action-icon name="download" />
+            </button>
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="mass-reports-page__body">
+      @if (loading()) {
+        <div class="mass-reports-page__loading" role="status" aria-live="polite" aria-busy="true">
+          <app-loading-skeleton type="table" [rows]="6" [columns]="4" />
+        </div>
+      } @else if (filteredRowCount() === 0) {
+        <app-cf-empty-state
+          class="mass-reports-page__empty"
+          [title]="totalRowCount() === 0 ? 'No rows in this report' : 'No matches'"
+          [description]="
+            totalRowCount() === 0
+              ? 'There is nothing to show for this report right now.'
+              : 'Try a different search term.'
+          "
+        >
+          @if (reportSearch().trim()) {
+            <button type="button" class="cf-btn cf-btn--sm" (click)="reportSearch.set('')">Clear search</button>
+          }
+        </app-cf-empty-state>
+      } @else {
+        <app-data-table [ariaBusy]="loading()">
+          @switch (activeTab()) {
+            @case ('canonical') {
+              <table class="cf-data-table mass-reports-page__table">
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Intention</th>
+                    <th scope="col">Day asked</th>
+                    <th scope="col">Said</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of filteredCanonical(); track row.request_id) {
+                    <tr>
+                      <td class="mass-reports-page__name">{{ row.beneficiary_name }}</td>
+                      <td class="mass-reports-page__text" [attr.title]="row.intention_text">{{ row.intention_text }}</td>
+                      <td>{{ row.requested_date || '—' }}</td>
+                      <td>{{ row.progress }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+            @case ('mass-list') {
+              <table class="cf-data-table mass-reports-page__table">
+                <thead>
+                  <tr>
+                    <th scope="col">Day and time</th>
+                    <th scope="col">Place</th>
+                    <th scope="col">Priest</th>
+                    <th scope="col">Intentions</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of filteredMassList(); track row.celebration_id) {
+                    <tr>
+                      <td>{{ formatMassDayTime(row.celebrated_on, row.celebrated_at) }}</td>
+                      <td>{{ row.place || '—' }}</td>
+                      <td>{{ row.celebrant_name || '—' }}</td>
+                      <td class="mass-reports-page__num">{{ row.intention_count }}</td>
+                      <td>
+                        <app-status-badge [label]="massStatusLabel(row.status)" [tone]="massStatusTone(row.status)" />
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+            @case ('still-to-say') {
+              <table class="cf-data-table mass-reports-page__table">
+                <thead>
+                  <tr>
+                    <th scope="col">Name</th>
+                    <th scope="col">Intention</th>
+                    <th scope="col">Mass #</th>
+                    <th scope="col">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of filteredStillToSay(); track row.obligation_id) {
+                    <tr>
+                      <td class="mass-reports-page__name">{{ row.beneficiary_name }}</td>
+                      <td class="mass-reports-page__text" [attr.title]="row.intention_text">{{ row.intention_text }}</td>
+                      <td class="mass-reports-page__num">{{ row.sequence }}</td>
+                      <td>{{ row.status }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+            @case ('offerings') {
+              <table class="cf-data-table mass-reports-page__table mass-reports-page__table--money">
+                <thead>
+                  <tr>
+                    <th scope="col">Date</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Receipt</th>
+                    <th scope="col">Method</th>
+                    <th scope="col" class="mass-reports-page__amount-head">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of filteredOfferings(); track row.receipt_number) {
+                    <tr>
+                      <td>{{ row.received_on }}</td>
+                      <td class="mass-reports-page__name">{{ row.beneficiary_name }}</td>
+                      <td>{{ row.receipt_number }}</td>
+                      <td>{{ row.payment_method }}</td>
+                      <td class="mass-reports-page__amount">{{ row.amount | cfCurrency }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+            @case ('masses-said') {
+              <table class="cf-data-table mass-reports-page__table">
+                <thead>
+                  <tr>
+                    <th scope="col">Said on</th>
+                    <th scope="col">Mass day</th>
+                    <th scope="col">Name</th>
+                    <th scope="col">Intention</th>
+                    <th scope="col">Priest</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (row of filteredMassesSaid(); track row.said_on + row.sequence) {
+                    <tr>
+                      <td>{{ row.said_on }}</td>
+                      <td>{{ row.mass_day || '—' }}</td>
+                      <td class="mass-reports-page__name">{{ row.beneficiary_name }}</td>
+                      <td class="mass-reports-page__text" [attr.title]="row.intention_text">{{ row.intention_text }}</td>
+                      <td>{{ row.celebrant || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            }
+          }
+        </app-data-table>
+      }
+    </div>
+  </div>
+</section>

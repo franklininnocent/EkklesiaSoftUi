@@ -22,11 +22,14 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
 import { BishopReportUpdateWizardComponent } from '../bishop-report-update-wizard/bishop-report-update-wizard.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-diocesan-bishop-panel',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     CfEmptyStateComponent,
     LoadingSkeletonComponent,
@@ -289,11 +292,7 @@ export class DiocesanBishopPanelComponent implements OnInit {
       return '—';
     }
     const reviewer = item.reviewer?.name ?? 'Ekklesia Admin';
-    return `${reviewer} · ${new Date(item.reviewed_at).toLocaleDateString('en-GB', {
-      day: 'numeric',
-      month: 'short',
-      year: 'numeric',
-    })}`;
+    return `${reviewer} · ${cfFormatDate(item.reviewed_at) || item.reviewed_at}`;
   }
 
   submissionDate(item: BishopUpdateRequestItem): string | null {

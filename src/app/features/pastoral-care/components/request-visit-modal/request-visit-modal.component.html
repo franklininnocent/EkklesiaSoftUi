@@ -55,8 +55,8 @@
 
   <ng-container modalFooter>
     <button type="button" class="cf-btn" (click)="onCancel()" [disabled]="saving">Cancel</button>
-    <button type="button" class="cf-btn cf-btn-primary" (click)="submit()" [disabled]="saving">
-      {{ saving ? 'Saving…' : 'Request visit' }}
+    <button type="button" class="cf-btn cf-btn-primary" (click)="submit()" [disabled]="saving" [attr.aria-busy]="saving">
+      <app-cf-busy-label [busy]="saving" busyLabel="Saving">Request visit</app-cf-busy-label>
     </button>
   </ng-container>
 </app-modal-shell>

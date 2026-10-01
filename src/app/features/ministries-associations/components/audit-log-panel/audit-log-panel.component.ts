@@ -22,6 +22,7 @@ import { ListToolbarComponent } from '@shared/components/list-toolbar/list-toolb
 import { DataTableComponent } from '@shared/components/data-table/data-table.component';
 import { MinistriesAuditLogEntry } from '../../models/ministries.model';
 import { MinistriesApiService } from '../../services/ministries-api.service';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-audit-log-panel',
@@ -201,13 +202,7 @@ export class AuditLogPanelComponent implements OnInit, OnChanges, OnDestroy {
     if (Number.isNaN(date.getTime())) {
       return value;
     }
-    return date.toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: 'numeric',
-      minute: '2-digit',
-    });
+    return cfFormatDate(date, 'datetime') || value;
   }
 
   private initSearchFields(): void {

@@ -1,0 +1,106 @@
+<section class="mass-temp-page cf-page">
+  <app-page-header
+    title="Temporary schedules"
+    subtitle="Short date ranges that replace the regular weekly Mass times"
+    [backLink]="['/mass-intentions/masses/schedule']"
+    backLabel="Regular schedule"
+  />
+
+  <div class="mass-temp-page__layout">
+    <div class="mass-temp-page__list-column">
+      <div class="mass-temp-page__list-head">
+        @if (!loading() && items().length) {
+          <p class="mass-temp-page__summary cf-meta" role="status">
+            {{ items().length }} {{ items().length === 1 ? 'schedule' : 'schedules' }}
+          </p>
+        }
+        <label class="mass-temp-page__filter">
+          <input type="checkbox" [checked]="showInactive()" (change)="toggleShowInactive($event)" />
+          <span>Show ended schedules</span>
+        </label>
+      </div>
+
+      @if (loading()) {
+        <div class="cf-loading-block cf-panel" role="status" aria-live="polite" aria-busy="true">
+          <app-loading-skeleton label="Loading temporary schedules…" type="table" [rows]="3" [columns]="3" />
+        </div>
+      } @else if (items().length === 0) {
+        <app-cf-empty-state
+          title="No temporary schedules"
+          description="Create one for a vacation schedule or seasonal change."
+        />
+      } @else {
+        <div class="cf-panel mass-temp-page__list-panel">
+          <ul class="mass-temp-page__list">
+            @for (row of items(); track row.schedule.id) {
+              <li class="mass-temp-page__row">
+                <a
+                  class="mass-temp-page__primary"
+                  [routerLink]="['/mass-intentions/masses/temporaries', row.schedule.id]"
+                >
+                  <span class="mass-temp-page__name">{{ row.schedule.name }}</span>
+                  <span class="mass-temp-page__range cf-meta">{{ dateRangeLabel(row) }}</span>
+                </a>
+                <div class="mass-temp-page__status">
+                  <app-status-badge [label]="statusLabel(row)" [tone]="statusTone(row)" />
+                </div>
+                <div class="mass-temp-page__actions">
+                  <div class="cf-row-actions">
+                    <a
+                      [routerLink]="['/mass-intentions/masses/temporaries', row.schedule.id]"
+                      class="cf-btn cf-btn-icon cf-btn--sm"
+                      aria-label="Edit Mass times"
+                      title="Edit Mass times"
+                    >
+                      <app-cf-action-icon name="pencil" />
+                    </a>
+                    @if (row.schedule.status === 'active') {
+                      <button
+                        type="button"
+                        class="cf-btn cf-btn-icon cf-btn--sm mass-temp-page__end-btn"
+                        (click)="inactivate(row.schedule.id)"
+                        aria-label="End this temporary schedule"
+                        title="End this temporary schedule"
+                      >
+                        <app-cf-action-icon name="pause" />
+                      </button>
+                    }
+                  </div>
+                </div>
+              </li>
+            }
+          </ul>
+        </div>
+      }
+    </div>
+
+    <form class="cf-panel mass-temp-page__create" [formGroup]="createForm" (ngSubmit)="create()">
+      <h2 class="cf-split-section__title">New temporary schedule</h2>
+      <div class="cf-split-field">
+        <label for="temp-name">Name</label>
+        <input id="temp-name" type="text" formControlName="name" />
+      </div>
+      <div class="cf-split-field">
+        <label for="temp-coverage">Coverage</label>
+        <select id="temp-coverage" formControlName="coverage_mode">
+          <option value="full_week">Every day in the date range</option>
+          <option value="selected_weekdays">Only selected weekdays</option>
+        </select>
+      </div>
+      @if (createForm.controls.coverage_mode.value === 'selected_weekdays') {
+        <fieldset class="mass-temp-page__weekdays">
+          <legend class="cf-meta">Weekdays</legend>
+          @for (day of weekdayOptions; track day.value) {
+            <label class="mass-temp-page__weekday">
+              <input type="checkbox" [value]="day.value" (change)="toggleWeekday(day.value, $event)" />
+              {{ day.label }}
+            </label>
+          }
+        </fieldset>
+      }
+      <button type="submit" class="cf-btn cf-btn-primary" [disabled]="createForm.invalid || creating()">
+        {{ creating() ? 'Creating…' : 'Create and edit times' }}
+      </button>
+    </form>
+  </div>
+</section>

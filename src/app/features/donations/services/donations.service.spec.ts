@@ -163,4 +163,19 @@ describe('DonationsService', () => {
       expect(req.request.headers.get('Idempotency-Key')).toBeTruthy();
       req.flush({ success: true, message: 'reversed' });
     });
+
+    it('loads authoritative collect context', () => {
+      service.getCollectContext({ family_id: 'fam-1', due_id: 'due-1' }).subscribe((response) => {
+        expect(response.data.collectible_amount).toBe(5000);
+      });
+
+      const req = httpMock.expectOne(
+        `${environment.apiUrl}/tenant/donations/payments/collect-context?family_id=fam-1&due_id=due-1`
+      );
+      expect(req.request.method).toBe('GET');
+      req.flush({
+        success: true,
+        data: { collectible_amount: 5000, suggested_allocation: { allocatable_id: 'due-1' } }
+      });
+    });
   });

@@ -16,8 +16,8 @@ function bccDetailMatcher(segments: UrlSegment[]): UrlMatchResult | null {
 export const BCC_ROUTES: Routes = [
   {
     path: '',
-    loadComponent: () =>
-      import('./pages/bcc-dashboard.page').then((m) => m.BccDashboardPageComponent),
+    pathMatch: 'full',
+    redirectTo: 'list',
   },
   {
     path: 'list',

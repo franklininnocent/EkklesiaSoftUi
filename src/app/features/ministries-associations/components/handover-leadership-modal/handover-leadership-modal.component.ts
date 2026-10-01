@@ -28,6 +28,7 @@ import {
 } from '../../models/ministries.model';
 import { MinistriesApiService } from '../../services/ministries-api.service';
 import { LeadershipMemberPickerComponent } from '../leadership-member-picker/leadership-member-picker.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
 
 type HandoverExitReason = Exclude<LeadershipExitReason, 'census_cascade'>;
 
@@ -40,6 +41,7 @@ type HandoverExitReason = Exclude<LeadershipExitReason, 'census_cascade'>;
     LeadershipMemberPickerComponent,
     ModalShellComponent,
     FormFieldComponent,
+    CfBrandLoaderComponent,
   ],
   templateUrl: './handover-leadership-modal.component.html',
   styleUrl: './handover-leadership-modal.component.scss',

@@ -4,11 +4,13 @@ import { SectionCardComponent } from '@shared/components/section-card/section-ca
 import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empty-state.component';
 import { ApplicationAccessStreamService } from '../../services/application-access-stream.service';
 import { liveTelemetryLabel } from '../../utils/application-access-live-labels.util';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-application-access-live-feed',
   standalone: true,
-  imports: [CommonModule, SectionCardComponent, CfEmptyStateComponent],
+  imports: [
+    CfDatePipe,CommonModule, SectionCardComponent, CfEmptyStateComponent],
   templateUrl: './application-access-live-feed.component.html',
   styleUrl: './application-access-live-feed.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,

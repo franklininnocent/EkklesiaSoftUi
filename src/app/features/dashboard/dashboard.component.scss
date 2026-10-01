@@ -14,6 +14,18 @@
   --cd-indigo-soft: var(--cf-indigo-soft, #e0e7ff);
   --cd-amber: var(--cf-amber, #b45309);
   --cd-amber-soft: var(--cf-amber-soft, #fef3c7);
+  --cd-info: var(--cf-info, #075985);
+  --cd-info-soft: var(--cf-info-soft, #e0f2fe);
+  --cd-violet: #5b21b6;
+  --cd-violet-soft: #ede9fe;
+  --cd-stew-teal: #0f766e;
+  --cd-stew-teal-soft: #ccfbf1;
+  --cd-stew-violet: #6d28d9;
+  --cd-stew-violet-soft: #f3e8ff;
+  --cd-stew-gold: #a16207;
+  --cd-stew-gold-soft: #fef9c3;
+  --cd-stew-sky: #0369a1;
+  --cd-stew-sky-soft: #e0f2fe;
   --cd-critical: var(--cf-critical, #b91c1c);
   --cd-critical-soft: var(--cf-critical-soft, #fee2e2);
   --cd-radius: var(--cf-radius, 10px);
@@ -210,6 +222,10 @@
 
 .cd-tab {
   appearance: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
   border: 0;
   background: transparent;
   padding: 0.75rem 1.125rem;
@@ -233,9 +249,76 @@
   }
 }
 
+.cd-tab__hint {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--cd-slate-500);
+}
+
 .cd-tab--active {
   color: var(--cd-forest);
   border-bottom-color: var(--cd-forest);
+  font-weight: 600;
+
+  .cd-tab__hint {
+    color: var(--cd-forest);
+    font-weight: 500;
+  }
+}
+
+.cd-ops-followup {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--cd-amber) 35%, var(--cd-amber-soft));
+  border-radius: var(--cd-radius);
+  background: var(--cd-amber-soft);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--cd-amber) 14%, var(--cd-amber-soft));
+    border-color: color-mix(in srgb, var(--cd-amber) 42%, var(--cd-amber-soft));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cd-indigo);
+    outline-offset: 2px;
+  }
+}
+
+.cd-ops-followup__count {
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--cd-critical);
+}
+
+.cd-ops-followup__copy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.cd-ops-followup__label {
+  font-weight: 600;
+}
+
+.cd-ops-followup__amount {
+  color: var(--cd-slate-600);
+  font-size: 0.875rem;
+}
+
+.cd-ops-followup__action {
+  color: var(--cd-indigo);
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 
@@ -283,6 +366,24 @@
   height: 100%;
 }
 
+.cd-overview__people-chart {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+}
+
+.cd-overview__chart-title {
+  margin: 0 0 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--cd-text-muted, #64748b);
+}
+
+.cd-overview__chart-caption {
+  margin: -0.25rem 0 0.65rem;
+  font-size: 0.75rem;
+  color: var(--cd-text-muted, #64748b);
+}
+
 .cd-overview__health {
   border-color: var(--cd-forest);
   box-shadow: var(--cd-shadow), inset 3px 0 0 var(--cd-forest);
@@ -298,6 +399,258 @@
 
 .cd-ministries__grid--overview {
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+// ─── Parish snapshot cards (v3) ─────────────────────────────
+.cd-snapshot-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: var(--cd-gap-lg);
+}
+
+.cd-snapshot-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.875rem;
+  align-items: flex-start;
+  min-height: 6.75rem;
+  padding: 1rem 1.125rem 1.125rem;
+  border: 1px solid var(--cd-slate-200);
+  border-radius: 12px;
+  background: #fff;
+  box-shadow: var(--cd-shadow);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--cd-snapshot-accent, var(--cd-indigo));
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      155deg,
+      transparent 40%,
+      var(--cd-snapshot-soft, var(--cd-indigo-soft)) 100%
+    );
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  &:hover {
+    border-color: color-mix(in srgb, var(--cd-snapshot-accent, var(--cd-indigo)) 35%, var(--cd-slate-200));
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--cd-snapshot-accent, var(--cd-indigo)) 12%, transparent);
+    transform: translateY(-2px);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cd-snapshot-accent, var(--cd-indigo));
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: border-color 0.15s ease, box-shadow 0.2s ease;
+
+    &:hover {
+      transform: none;
+    }
+  }
+}
+
+.cd-snapshot-card__icon {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  border-radius: 10px;
+  background: var(--cd-snapshot-soft, var(--cd-indigo-soft));
+  color: var(--cd-snapshot-accent, var(--cd-indigo));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--cd-snapshot-accent, var(--cd-indigo)) 12%, transparent);
+
+  svg {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+}
+
+.cd-snapshot-card__body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.cd-snapshot-card__label {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--cd-slate-500);
+  line-height: 1.3;
+}
+
+.cd-snapshot-card__value {
+  font-size: clamp(1.375rem, 2.2vw, 1.75rem);
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--cd-slate-900);
+}
+
+.cd-snapshot-card__value--money {
+  font-size: clamp(1.125rem, 2vw, 1.5rem);
+  letter-spacing: -0.02em;
+}
+
+.cd-snapshot-card__value--split {
+  display: flex;
+  align-items: baseline;
+  gap: 0.25rem;
+  flex-wrap: wrap;
+}
+
+.cd-snapshot-card__value-sep {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--cd-slate-400);
+}
+
+.cd-snapshot-card__context {
+  font-size: 0.75rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--cd-slate-600);
+}
+
+.cd-snapshot-card--families {
+  --cd-snapshot-accent: var(--cd-indigo);
+  --cd-snapshot-soft: var(--cd-indigo-soft);
+}
+
+.cd-snapshot-card--members {
+  --cd-snapshot-accent: var(--cd-info);
+  --cd-snapshot-soft: var(--cd-info-soft);
+}
+
+.cd-snapshot-card--life-groups {
+  --cd-snapshot-accent: var(--cd-forest);
+  --cd-snapshot-soft: var(--cd-forest-soft);
+}
+
+.cd-snapshot-card--ministries {
+  --cd-snapshot-accent: var(--cd-amber);
+  --cd-snapshot-soft: var(--cd-amber-soft);
+}
+
+.cd-snapshot-card--sacraments {
+  --cd-snapshot-accent: var(--cd-violet);
+  --cd-snapshot-soft: var(--cd-violet-soft);
+}
+
+.cd-snapshot-card--collections {
+  --cd-snapshot-accent: var(--cd-forest);
+  --cd-snapshot-soft: var(--cd-forest-soft);
+
+  &::before {
+    background: linear-gradient(90deg, var(--cd-forest) 0%, #2d6a4f 100%);
+  }
+
+  .cd-snapshot-card__value--money {
+    color: var(--cd-forest);
+  }
+}
+
+.cd-snapshot-card--overdue {
+  --cd-snapshot-accent: var(--cd-critical);
+  --cd-snapshot-soft: var(--cd-critical-soft);
+
+  &::before {
+    background: linear-gradient(90deg, var(--cd-critical) 0%, #dc2626 100%);
+  }
+
+  .cd-snapshot-card__value--money {
+    color: var(--cd-critical);
+  }
+}
+
+.cd-overview__worship {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--cd-gap);
+  margin-bottom: var(--cd-gap-lg);
+}
+
+.cd-attention {
+  margin-bottom: var(--cd-gap-lg);
+}
+
+.cd-attention__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.cd-attention__btn {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.625rem 0;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: var(--cd-indigo);
+  font-weight: 600;
+  cursor: pointer;
+
+  &:hover {
+    text-decoration: underline;
+  }
+}
+
+.cd-quick-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: var(--cd-gap-lg);
+}
+
+.cd-quick-actions__btn {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--cd-slate-200);
+  border-radius: var(--cd-radius);
+  background: #fff;
+  font-weight: 600;
+  color: var(--cd-indigo);
+  cursor: pointer;
+
+  &:hover {
+    border-color: var(--cd-indigo);
+    background: var(--cd-indigo-soft);
+  }
 }
 
 // ─── Operations workspace (v2.0 Phase 3) ───────────────────
@@ -351,8 +704,8 @@
 }
 
 .cd-ops__stewardship {
-  border-color: var(--cd-amber);
-  box-shadow: var(--cd-shadow), inset 3px 0 0 var(--cd-amber);
+  --cd-card-accent: var(--cd-amber);
+  --cd-card-soft: var(--cd-amber-soft);
 }
 
 // ─── Hero KPIs ─────────────────────────────────────────────
@@ -364,19 +717,22 @@
 }
 
 .cd-kpi {
+  --cd-card-accent: var(--cd-slate-400);
+  --cd-card-soft: var(--cd-slate-100);
   position: relative;
   min-width: 0;
-  padding: 1rem 1rem 1.625rem;
+  padding: 0.7rem 0.8rem;
   border-radius: var(--cd-radius);
-  border: 1px solid var(--cd-slate-200);
-  background: #fff;
+  border: 1px solid color-mix(in srgb, var(--cd-card-accent) 28%, var(--cd-card-soft));
+  border-left: 4px solid var(--cd-card-accent);
+  background: var(--cd-card-soft);
   box-shadow: var(--cd-shadow);
   overflow: hidden;
 
-  &--forest { border-top: 3px solid var(--cd-forest); }
-  &--indigo { border-top: 3px solid var(--cd-indigo); }
-  &--amber { border-top: 3px solid var(--cd-amber); }
-  &--slate { border-top: 3px solid var(--cd-slate-700); }
+  &--forest { --cd-card-accent: var(--cd-forest); --cd-card-soft: var(--cd-forest-soft); }
+  &--indigo { --cd-card-accent: var(--cd-indigo); --cd-card-soft: var(--cd-indigo-soft); }
+  &--amber { --cd-card-accent: var(--cd-amber); --cd-card-soft: var(--cd-amber-soft); }
+  &--slate { --cd-card-accent: var(--cd-slate-700); --cd-card-soft: var(--cd-slate-100); }
 }
 
 .cd-kpi__head {
@@ -420,6 +776,7 @@
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.02em;
+  color: var(--cd-card-accent);
   word-break: break-word;
 }
 
@@ -454,14 +811,22 @@
 }
 
 .cd-panel {
+  --cd-card-accent: var(--cd-slate-300);
+  --cd-card-soft: var(--cd-slate-50);
   min-width: 0;
   display: flex;
   flex-direction: column;
-  background: var(--cf-panel-bg, #fff);
-  border: 1px solid var(--cd-slate-200);
+  background: var(--cd-card-soft);
+  border: 1px solid color-mix(in srgb, var(--cd-card-accent) 28%, var(--cd-card-soft));
+  border-left: 4px solid var(--cd-card-accent);
   border-radius: var(--cd-radius);
   box-shadow: var(--cd-shadow);
-  padding: 1rem 1.125rem;
+  padding: 0.75rem 0.875rem;
+
+  &--pastoral { --cd-card-accent: var(--cd-info); --cd-card-soft: var(--cd-info-soft); }
+  &--workflow { --cd-card-accent: var(--cd-indigo); --cd-card-soft: var(--cd-indigo-soft); }
+  &--birthdays { --cd-card-accent: var(--cd-forest); --cd-card-soft: var(--cd-forest-soft); }
+  &--anniversaries { --cd-card-accent: var(--cd-amber); --cd-card-soft: var(--cd-amber-soft); }
 }
 
 .cd-panel__head {
@@ -1024,6 +1389,158 @@
   max-width: 100%;
 }
 
+// ─── Executive financial snapshot ──────────────────────────
+.cd-overview__columns {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 2.5rem;
+  align-items: start;
+}
+
+.cd-overview__column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.cd-overview__columns:has(.cd-overview__column:nth-child(2) .cd-overview__block)::before {
+  content: "";
+  position: absolute;
+  top: 0.15rem;
+  bottom: 0.5rem;
+  left: 50%;
+  width: 1px;
+  background: var(--cd-slate-300);
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.cd-overview__block {
+  min-width: 0;
+}
+
+.cd-exec-block,
+.cd-financial-snapshot {
+  margin-bottom: 0.875rem;
+}
+
+.cd-financial-snapshot__context {
+  margin: 0 0 0.5rem;
+  font-size: 0.75rem;
+  color: var(--cd-slate-500);
+}
+
+.cd-financial-snapshot__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.25rem, 1fr));
+  gap: 0.5rem;
+}
+
+.cd-exec-block {
+  --cd-card-accent: var(--cd-slate-500);
+  --cd-card-soft: var(--cd-slate-100);
+
+  &[data-exec-block='people'],
+  &[data-exec-block='mass-intentions'] {
+    --cd-card-accent: var(--cd-indigo);
+    --cd-card-soft: var(--cd-indigo-soft);
+  }
+
+  &[data-exec-block='community'] {
+    --cd-card-accent: var(--cd-forest);
+    --cd-card-soft: var(--cd-forest-soft);
+  }
+
+  &[data-exec-block='finance'] {
+    --cd-card-accent: var(--cd-stew-teal);
+    --cd-card-soft: var(--cd-stew-teal-soft);
+  }
+
+  &[data-exec-block='ministry'],
+  &[data-exec-block='pastoral'] {
+    --cd-card-accent: var(--cd-amber);
+    --cd-card-soft: var(--cd-amber-soft);
+  }
+
+  &[data-exec-block='sacraments'],
+  &[data-exec-block='worship'] {
+    --cd-card-accent: var(--cd-info);
+    --cd-card-soft: var(--cd-info-soft);
+  }
+}
+
+.cd-financial-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.125rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--cd-card-accent) 28%, var(--cd-card-soft));
+  border-left: 4px solid var(--cd-card-accent);
+  border-radius: var(--cd-radius);
+  background: var(--cd-card-soft);
+  box-shadow: var(--cd-shadow);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--cf-duration-fast, 150ms) var(--cf-easing-standard, ease),
+    border-color var(--cf-duration-fast, 150ms) var(--cf-easing-standard, ease);
+
+  &:hover {
+    background: color-mix(in srgb, var(--cd-card-accent) 14%, var(--cd-card-soft));
+    border-color: color-mix(in srgb, var(--cd-card-accent) 42%, var(--cd-card-soft));
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--cd-indigo);
+    outline-offset: 2px;
+  }
+
+  &--forest,
+  &--collected { --cd-card-accent: var(--cd-forest); --cd-card-soft: var(--cd-forest-soft); }
+  &--indigo,
+  &--comparison { --cd-card-accent: var(--cd-indigo); --cd-card-soft: var(--cd-indigo-soft); }
+  &--amber,
+  &--outstanding { --cd-card-accent: var(--cd-amber); --cd-card-soft: var(--cd-amber-soft); }
+  &--critical,
+  &--overdue { --cd-card-accent: var(--cd-critical); --cd-card-soft: var(--cd-critical-soft); }
+  &--info,
+  &--participation { --cd-card-accent: var(--cd-info); --cd-card-soft: var(--cd-info-soft); }
+  &--slate { --cd-card-accent: var(--cd-slate-700); --cd-card-soft: var(--cd-slate-100); }
+
+  &--stew-teal { --cd-card-accent: var(--cd-stew-teal); --cd-card-soft: var(--cd-stew-teal-soft); }
+  &--stew-violet { --cd-card-accent: var(--cd-stew-violet); --cd-card-soft: var(--cd-stew-violet-soft); }
+  &--stew-gold { --cd-card-accent: var(--cd-stew-gold); --cd-card-soft: var(--cd-stew-gold-soft); }
+  &--stew-sky { --cd-card-accent: var(--cd-stew-sky); --cd-card-soft: var(--cd-stew-sky-soft); }
+}
+
+.cd-financial-metric__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--cd-slate-500);
+}
+
+.cd-financial-metric__value {
+  font-size: 1.0625rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--cd-card-accent);
+  word-break: break-word;
+}
+
+.cd-financial-metric__hint,
+.cd-financial-metric__meta,
+.cd-financial-metric__compare {
+  font-size: 0.6875rem;
+  line-height: 1.3;
+  color: var(--cd-slate-500);
+}
+
+.cd-financial-metric__compare.is-up { color: var(--cd-forest); }
+.cd-financial-metric__compare.is-down { color: var(--cd-critical); }
+
 // ─── Giving Hub ────────────────────────────────────────────
 .cd-giving-summary {
   display: grid;
@@ -1207,8 +1724,8 @@
   min-width: 0;
 
   &.is-urgent {
-    border-color: #fecaca;
-    background: var(--cd-critical-soft);
+    border-color: color-mix(in srgb, var(--cd-critical) 28%, var(--cd-slate-200));
+    background: color-mix(in srgb, var(--cd-critical-soft) 70%, #fff);
   }
 }
 
@@ -1707,8 +2224,19 @@
     padding: 0.7rem 0.75rem;
   }
 
+  .cd-overview__columns {
+    grid-template-columns: 1fr;
+  }
+
+  .cd-overview__columns::before {
+    display: none;
+  }
+
   .cd-registry,
+  .cd-snapshot-grid,
+  .cd-overview__columns,
   .cd-hero,
+  .cd-overview__worship,
   .cd-overview__primary,
   .cd-ops__today,
   .cd-ops__care,

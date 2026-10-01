@@ -29,6 +29,7 @@ import { MigrateTenantsDialogComponent } from '../../components/migrate-tenants-
 import { PlanTenantsPanelComponent } from '../../components/plan-tenants-panel/plan-tenants-panel.component';
 import { VersionReviewDialogComponent } from '../../components/version-review-dialog/version-review-dialog.component';
 import { isSubscriptionAdminLayoutV2 } from '../../config/subscription-admin-layout.config';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 type EditorTab = 'details' | 'versions' | 'pricing' | 'features' | 'churches';
 
@@ -54,6 +55,7 @@ interface TermsForm {
   selector: 'app-plan-editor-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     FormsModule,
     RouterModule,

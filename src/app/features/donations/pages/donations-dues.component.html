@@ -1,0 +1,344 @@
+<section class="donations-dues cf-page cf-financial-dashboard" [attr.aria-busy]="loading">
+  <app-page-header
+    title="Outstanding Contributions"
+    subtitle="Parish-wide collectable balances and overdue follow-up — filter the list, then collect or remind."
+  >
+    <app-list-toolbar
+      [showSearch]="false"
+      [filterCount]="activeFilterCount"
+      (filtersOpened)="showFilters = true"
+    >
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        *ngIf="canManage && overdueCount"
+        (click)="queueBulkWhatsApp()"
+        [disabled]="whatsAppQueueing"
+        aria-label="WhatsApp all overdue"
+        title="WhatsApp all overdue"
+      >
+        <app-cf-action-icon name="message-circle" />
+      </button>
+      <ng-container *appIfFeature="'CONTRIBUTION_PLANS'">
+        <button
+          type="button"
+          class="cf-btn cf-btn-icon"
+          *ngIf="canManage"
+          (click)="generateScheduled()"
+          aria-label="Catch up auto plans"
+          title="Catch up auto plans"
+        >
+          <app-cf-action-icon name="refresh" />
+        </button>
+      </ng-container>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon cf-btn-primary"
+        (click)="openQuickCollect()"
+        aria-label="Collect Payment"
+        title="Collect Payment"
+      >
+        <app-cf-action-icon name="collect-payment" />
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        (click)="reload()"
+        aria-label="Refresh"
+        title="Refresh"
+      >
+        <app-cf-action-icon name="refresh" />
+      </button>
+    </app-list-toolbar>
+  </app-page-header>
+
+  <app-stewardship-active-filter-chips
+    *ngIf="activeFilterChips.length"
+    [chips]="activeFilterChips"
+    (remove)="onActiveFilterChipRemove($event)"
+    (clearAll)="clearAllFilters()"
+  ></app-stewardship-active-filter-chips>
+
+  <div
+    class="cf-kpi-strip donations-dues__kpi-strip"
+    *ngIf="!loading || snapshot"
+    aria-label="Outstanding summary"
+  >
+    <ng-container *ngIf="snapshot as snap">
+      <article
+        class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--outstanding"
+        title="Total collectable open balances for the parish."
+      >
+        <span class="dashboard-kpi-outstanding__head">
+          <span class="dashboard-kpi-outstanding__icon" aria-hidden="true">
+            <app-cf-action-icon name="clipboard-list" />
+          </span>
+          <span class="cf-kpi-card__label dashboard-kpi-outstanding__label">Outstanding contributions</span>
+        </span>
+        <strong class="cf-kpi-card__value dashboard-kpi-outstanding__value">
+          {{ snap.outstanding_contributions | cfCurrency }}
+        </strong>
+        <span class="dashboard-kpi-outstanding__hint">Parish-wide collectable balances</span>
+        <span class="dues-kpi__footer">
+          <span class="dashboard-badge cf-health--attention">Collectable</span>
+        </span>
+      </article>
+
+      <article
+        class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--overdue"
+        title="Open contribution dues past their due date."
+      >
+        <span class="dashboard-kpi-overdue__head">
+          <span class="dashboard-kpi-overdue__icon" aria-hidden="true">
+            <app-cf-action-icon name="calendar-clock" />
+          </span>
+          <span class="cf-kpi-card__label dashboard-kpi-overdue__label">Overdue</span>
+        </span>
+        <strong class="cf-kpi-card__value dashboard-kpi-overdue__value">{{ snap.overdue_amount | cfCurrency }}</strong>
+        <span class="dashboard-kpi-overdue__hint">Past due date</span>
+        <span class="dues-kpi__footer">
+          <span class="dashboard-badge cf-health--risk">Overdue</span>
+          <span class="dashboard-kpi-overdue__meta cf-meta">{{ familyCountLabel(snap.overdue_families) }}</span>
+        </span>
+      </article>
+    </ng-container>
+
+    <article
+      class="cf-kpi-card--executive dashboard-kpi dashboard-kpi--list-scope"
+      *ngIf="!loading"
+      title="Totals for the filtered list on this page."
+    >
+      <span class="dashboard-kpi-list__head">
+        <span class="dashboard-kpi-list__icon" aria-hidden="true">
+          <app-cf-action-icon name="clipboard-list" />
+        </span>
+        <span class="cf-kpi-card__label dashboard-kpi-list__label">In this list</span>
+      </span>
+      <strong class="cf-kpi-card__value dashboard-kpi-list__value">{{ outstandingTotal | cfCurrency }}</strong>
+      <span class="dues-kpi__details">
+        <span class="dashboard-kpi-list__hint">
+          {{ duesListTotal | number }} {{ duesListTotal === 1 ? 'item' : 'items' }}
+          <ng-container *ngIf="duesListTotal > dues.length"> · {{ dues.length }} on this page</ng-container>
+          <ng-container *ngIf="overdueCount"> · {{ overdueCount }} overdue on page</ng-container>
+        </span>
+        <span class="cf-meta dashboard-kpi-list__hint" *ngIf="showFamilyHeadline">
+          {{ overdueFamilyCountFromApi }} {{ overdueFamilyCountFromApi === 1 ? 'family' : 'families' }} overdue (filtered)
+        </span>
+        <span
+          class="cf-meta dashboard-kpi-list__hint"
+          *ngIf="!showFamilyHeadline && overdueFamilyIds.length"
+        >
+          {{ overdueFamilyIds.length }} {{ overdueFamilyIds.length === 1 ? 'family' : 'families' }} on this page
+        </span>
+      </span>
+    </article>
+  </div>
+
+  <p *ngIf="error" class="cf-inline-alert cf-panel" role="alert">{{ error }}</p>
+
+  <div
+    class="cf-loading-block cf-panel"
+    *ngIf="loading"
+    role="status"
+    aria-live="polite"
+    aria-busy="true"
+  >
+    <app-loading-skeleton label="Loading outstanding contributions…" type="table" [rows]="6" [columns]="7"></app-loading-skeleton>
+  </div>
+
+  <ng-container *ngIf="!loading">
+    <div class="cf-panel donations-dues__panel" *ngIf="dues.length">
+      <header class="donations-dues__panel-head">
+        <div class="donations-dues__panel-head-copy">
+          <h2 class="cf-section-title">Contribution dues</h2>
+          <p class="cf-meta">
+            Families and plans with open balances matching your filters.
+            <ng-container *ngIf="tableSearch.trim()"> Text search applies on this page only.</ng-container>
+          </p>
+        </div>
+      </header>
+
+      <app-data-table *ngIf="filteredDues.length">
+        <thead>
+          <tr>
+            <th
+              scope="col"
+              appSortable="family_name"
+              [direction]="sortColumn === 'family_name' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Family
+            </th>
+            <th
+              scope="col"
+              appSortable="plan_name"
+              [direction]="sortColumn === 'plan_name' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Plan
+            </th>
+            <th
+              scope="col"
+              appSortable="period_label"
+              [direction]="sortColumn === 'period_label' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Period
+            </th>
+            <th
+              scope="col"
+              appSortable="due_date"
+              [direction]="sortColumn === 'due_date' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Due date
+            </th>
+            <th
+              scope="col"
+              class="cf-table__num"
+              appSortable="outstanding"
+              [direction]="sortColumn === 'outstanding' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Outstanding
+            </th>
+            <th
+              scope="col"
+              appSortable="status"
+              [direction]="sortColumn === 'status' ? sortDirection : null"
+              (sort)="onSort($event)"
+            >
+              Status
+            </th>
+            <th scope="col" class="cf-table__actions-col">
+              <span class="sr-only">Actions</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let due of filteredDues; trackBy: trackDue">
+            <td class="cf-table__cell--truncate" [attr.title]="familyName(due)">
+              <div class="donations-dues__stack">
+                <a
+                  *ngIf="due.family_id"
+                  [routerLink]="['/families', due.family_id]"
+                  class="cf-link"
+                >
+                  <strong>{{ familyName(due) }}</strong>
+                </a>
+                <strong *ngIf="!due.family_id">{{ familyName(due) }}</strong>
+                <span class="cf-meta donations-dues__cell-meta" *ngIf="familyCode(due)">{{ familyCode(due) }}</span>
+              </div>
+            </td>
+            <td class="cf-table__cell--truncate" [attr.title]="planName(due)">
+              <div class="donations-dues__stack">
+                <strong>{{ planName(due) }}</strong>
+                <span class="cf-meta donations-dues__cell-meta" *ngIf="due.plan?.code">{{ due.plan?.code }}</span>
+              </div>
+            </td>
+            <td class="donations-dues__nowrap">{{ due.period_label || '—' }}</td>
+            <td class="donations-dues__nowrap">{{ due.due_date | cfDate }}</td>
+            <td class="cf-table__num">
+              {{ outstandingForDue(due) | cfCurrency }}
+            </td>
+            <td>
+              <app-status-badge [label]="dueStatusLabel(due)" [tone]="dueStatusTone(due)"></app-status-badge>
+            </td>
+            <td
+              class="cf-table__actions-cell"
+              (click)="$event.stopPropagation()"
+              (keydown)="$event.stopPropagation()"
+            >
+              <div class="cf-row-actions">
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon cf-btn-primary cf-btn--sm"
+                  *ngIf="due.family_id"
+                  (click)="collectForDue(due)"
+                  aria-label="Collect payment for {{ familyName(due) }}"
+                  title="Collect"
+                >
+                  <app-cf-action-icon name="collect-payment" />
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon cf-btn--sm"
+                  (click)="remind(due)"
+                  aria-label="Send reminder for {{ familyName(due) }}"
+                  title="Remind"
+                >
+                  <app-cf-action-icon name="message-circle" />
+                </button>
+                <button
+                  type="button"
+                  class="cf-btn cf-btn-icon cf-btn--sm"
+                  *ngIf="canManage && (due.status === 'pending' || due.status === 'partially_paid')"
+                  (click)="waive(due)"
+                  aria-label="Waive due for {{ familyName(due) }}"
+                  title="Waive"
+                >
+                  <app-cf-action-icon name="badge-minus" />
+                </button>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </app-data-table>
+
+      <p *ngIf="!filteredDues.length" class="donations-dues__table-empty cf-meta">
+        No dues on this page match your search. Try another term or clear filters.
+      </p>
+
+      <app-pagination
+        *ngIf="duesListTotal > perPage"
+        [currentPage]="page"
+        [pageSize]="perPage"
+        [totalItems]="duesListTotal"
+        [pageSizeOptions]="perPageOptions"
+        [showPageSizeSelector]="true"
+        [showPageInfo]="true"
+        (pageChange)="goToPage($event)"
+        (pageSizeChange)="onPageSizeChange($event)"
+      ></app-pagination>
+    </div>
+
+    <app-cf-empty-state
+      *ngIf="!dues.length"
+      icon="✓"
+      title="All caught up"
+      description="No outstanding contributions match your filters. Families are up to date — or try clearing filters to see paid history."
+    >
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon cf-btn-primary"
+        (click)="openQuickCollect()"
+        aria-label="Collect Payment"
+        title="Collect Payment"
+      >
+        <app-cf-action-icon name="collect-payment" />
+      </button>
+      <button
+        type="button"
+        class="cf-btn cf-btn-icon"
+        *ngIf="activeFilterCount"
+        (click)="clearAllFilters()"
+        aria-label="Clear filters"
+        title="Clear filters"
+      >
+        <app-cf-action-icon name="filter" />
+      </button>
+      <a routerLink="/families/list" class="cf-btn cf-btn-icon" aria-label="Browse Families" title="Browse Families">
+        <app-cf-action-icon name="users" />
+      </a>
+    </app-cf-empty-state>
+  </ng-container>
+
+  <app-advanced-search-panel
+    mode="sidepanel"
+    [fields]="searchFields"
+    [isExpanded]="showFilters"
+    (search)="onAdvancedSearch($event)"
+    (clear)="onClearAdvancedSearch()"
+    (close)="showFilters = false"
+  ></app-advanced-search-panel>
+</section>

@@ -8,10 +8,7 @@
   (closeRequested)="onCancel()"
 >
   <div *ngIf="loading" class="cf-split-form-body sacrament-modal-form">
-    <div class="sacrament-modal-loading">
-      <div class="sacrament-modal-loading__spinner" aria-hidden="true"></div>
-      <p>Loading...</p>
-    </div>
+    <app-cf-brand-loader size="section" label="Loading…" />
     <div class="cf-split-form-actions">
       <button type="button" class="cf-btn cf-btn-primary" disabled>
         {{ isCorrectionMode ? 'Save correction' : (isEditMode ? 'Save changes' : 'Add Sacrament') }}
@@ -397,13 +394,14 @@
                   (ngModelChange)="onFamilyChange()"
                   name="family_id"
                   [items]="families"
-                  bindLabel="family_name"
+                  bindLabel="pickerLabel"
                   bindValue="id"
                   [loading]="loadingFamilies"
                   [disabled]="loadingFamilies"
                   placeholder="Search and select a family…"
                   [clearable]="true"
                   [searchable]="true"
+                  [searchFn]="searchFamilyPicker"
                   class="cf-split-select"
                 >
                   <ng-template ng-label-tmp let-item="item">

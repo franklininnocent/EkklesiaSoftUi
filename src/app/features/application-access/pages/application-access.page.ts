@@ -40,6 +40,7 @@ import {
   buildApplicationAccessListParams,
   countActiveApplicationAccessFilters,
 } from '../utils/application-access-filters.util';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 import {
   authorizationResultLabel,
   authorizationResultTone,
@@ -59,6 +60,7 @@ interface KpiTile {
   selector: 'app-application-access-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     PageHeaderComponent,
     CfEmptyStateComponent,

@@ -11,6 +11,7 @@ import { LoadingSkeletonComponent } from '@shared/components/loading-skeleton/lo
 import { TaxConfigurationPayload, TaxPreviewBreakdown } from '../../models/subscription-admin.models';
 import { SubscriptionAdminService, subscriptionErrorMessage } from '../../services/subscription-admin.service';
 import { subscriptionAdminCapabilities } from '../../services/subscription-admin-access';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 interface TaxForm {
   label: string;
@@ -219,7 +220,7 @@ export class SubscriptionTaxPage implements OnInit, OnDestroy {
     const by = this.payload?.updated_by;
     if (!at && !by?.updated_at) return null;
     const parts: string[] = [];
-    if (at) parts.push(`Settings saved ${new Date(at).toLocaleString()}`);
+    if (at) parts.push(`Settings saved ${cfFormatDate(at, 'datetime')}`);
     if (by?.actor_role) parts.push(`Last policy change by ${by.actor_role}`);
     return parts.join(' · ');
   }

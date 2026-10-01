@@ -28,11 +28,13 @@ import {
   MinistriesInsightsOrgRow,
 } from '../models/ministries-insights.model';
 import { insightsStatusLabel } from '../utils/insights-labels';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
 
 @Component({
   selector: 'app-ministries-insights-organizations-page',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule,
     RouterModule,
     AdvancedSearchPanelComponent,

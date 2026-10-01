@@ -29,7 +29,7 @@ describe('CfCurrencyPipe / CfDatePipe', () => {
     expect(el.querySelector('.amount')?.textContent).toBe('₹1,500.50');
     expect(el.querySelector('.whole')?.textContent).toBe('₹1,501');
     expect(el.querySelector('.missing')?.textContent).toBe('');
-    expect(el.querySelector('.date')?.textContent).toBe('Sep 25, 2026');
+    expect(el.querySelector('.date')?.textContent).toBe('25 Sep 2026');
 
     fixture.componentInstance.amount = null;
     fixture.componentInstance.currency = 'USD';
@@ -44,6 +44,6 @@ describe('CfCurrencyPipe / CfDatePipe', () => {
     const pipe = TestBed.inject(CfCurrencyPipe);
     expect(pipe.transform(99, 'USD')).toBe('$99.00');
     expect(pipe.transform(99, undefined)).toBe('');
-    expect(TestBed.inject(CfDatePipe).transform('2026-01-05')).toBe('Jan 5, 2026');
+    expect(TestBed.inject(CfDatePipe).transform('2026-01-05')).toBe('5 Jan 2026');
   });
 });

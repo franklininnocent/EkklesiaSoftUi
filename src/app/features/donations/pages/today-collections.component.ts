@@ -1,9 +1,10 @@
 import { CommonModule } from '@angular/common';
 import { HttpErrorResponse } from '@angular/common/http';
-import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, OnDestroy, OnInit, inject } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { debounceTime, distinctUntilChanged, Subject, Subscription } from 'rxjs';
+import { catchError, debounceTime, distinctUntilChanged, forkJoin, of, skip, Subject, Subscription } from 'rxjs';
 import { AuthService } from '@core/services/auth.service';
 import { BCCService } from '@core/services/bcc.service';
 import {
@@ -23,6 +24,10 @@ import { SortableDirective, SortDirection, SortEvent } from '@shared/directives/
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
 import {
+  StewardshipActiveFilterChipsComponent,
+  StewardshipFilterChip,
+} from '../components/stewardship-active-filter-chips/stewardship-active-filter-chips.component';
+import {
   StewardshipConfirmDialogComponent,
   StewardshipConfirmResult
 } from '../components/stewardship-confirm-dialog/stewardship-confirm-dialog.component';
@@ -30,6 +35,9 @@ import { DonationPayment, DonationPaymentListMeta, DonationProject } from '../mo
 import { DonationsService } from '../services/donations.service';
 import { QuickCollectService } from '../services/quick-collect.service';
 import { ReceiptPrintService } from '../services/receipt-print.service';
+
+type KpiFocus = '' | 'amount' | 'families' | 'average' | 'completion';
+const KPI_FOCUS_VALUES: KpiFocus[] = ['amount', 'families', 'average', 'completion'];
 
 @Component({
   selector: 'app-today-collections',
@@ -48,12 +56,13 @@ import { ReceiptPrintService } from '../services/receipt-print.service';
     CfIconActionButtonComponent,
     LoadingSkeletonComponent,
     StewardshipConfirmDialogComponent,
+    StewardshipActiveFilterChipsComponent,
     CfCurrencyPipe,
     CfActionIconComponent,
     SortableDirective
   ],
   template: `
-    <section class="today-collections cf-page">
+    <section class="today-collections cf-page cf-financial-dashboard">
       <app-page-header
         title="Today's Collections"
         [subtitle]="pageSubtitle"
@@ -91,54 +100,12 @@ import { ReceiptPrintService } from '../services/receipt-print.service';
         You don't have permission to view today's collections. Ask your parish administrator to grant Access Donations.
       </p>
 
-      <div
-        class="today-collections__chips"
+      <app-stewardship-active-filter-chips
         *ngIf="canView && getActiveFilters().length"
-        role="region"
-        aria-label="Active filters"
-      >
-        <span class="cf-meta">Active filters</span>
-        <div class="today-collections__chip-list">
-          <span class="cf-badge cf-badge--info" *ngFor="let filter of getActiveFilters()">
-            {{ filter.label }}: {{ filter.displayValue }}
-            <button
-              type="button"
-              class="today-collections__chip-remove"
-              (click)="removeFilter(filter)"
-              [attr.aria-label]="'Remove filter: ' + filter.label"
-            >
-              ×
-            </button>
-          </span>
-        </div>
-        <button
-          type="button"
-          class="cf-btn cf-btn-icon cf-btn--sm"
-          (click)="clearAllFilters()"
-          aria-label="Clear all filters"
-          title="Clear all filters"
-        >
-          <app-cf-action-icon name="filter" />
-        </button>
-      </div>
-
-      <div
-        class="cf-decision-strip"
-        role="region"
-        aria-label="Today's collection totals"
-        *ngIf="canView && loaded && !loadError"
-      >
-        <div class="cf-decision-strip__copy">
-          <strong>{{ totals.payment_count }} payment{{ totals.payment_count === 1 ? '' : 's' }}</strong>
-          <span>
-            Collected {{ totals.collected_gross | cfCurrency }}
-            · Refunded {{ totals.refunded_total | cfCurrency }}
-            · Net {{ totals.net_collected | cfCurrency }}
-            · {{ totals.families_count }} {{ totals.families_count === 1 ? 'family' : 'families' }}
-            · {{ dateCaption }}
-          </span>
-        </div>
-      </div>
+        [chips]="todayCollectionFilterChips"
+        (remove)="onTodayCollectionFilterChipRemove($event)"
+        (clearAll)="clearAllFilters()"
+      ></app-stewardship-active-filter-chips>
 
       <div
         class="cf-loading-block cf-panel"
@@ -147,8 +114,7 @@ import { ReceiptPrintService } from '../services/receipt-print.service';
         aria-live="polite"
         aria-busy="true"
       >
-        <p class="cf-loading-block__label">Loading today's collections…</p>
-        <app-loading-skeleton type="table" [rows]="6" [columns]="8"></app-loading-skeleton>
+        <app-loading-skeleton label="Loading today's collections…" type="table" [rows]="6" [columns]="8"></app-loading-skeleton>
       </div>
 
       <div class="cf-inline-alert cf-panel" *ngIf="canView && loaded && loadError" role="alert">
@@ -317,30 +283,6 @@ import { ReceiptPrintService } from '../services/receipt-print.service';
     </section>
   `,
   styles: [`
-    .today-collections__chips {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-      gap: var(--cf-space-2);
-    }
-    .today-collections__chip-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--cf-space-1);
-      align-items: center;
-      flex: 1;
-      min-width: 0;
-    }
-    .today-collections__chip-remove {
-      margin-left: 0.25rem;
-      border: 0;
-      background: transparent;
-      color: inherit;
-      cursor: pointer;
-      font-size: 1rem;
-      line-height: 1;
-      padding: 0 0.1rem;
-    }
     .today-collections__panel--refreshing {
       opacity: 0.72;
       pointer-events: none;
@@ -360,6 +302,7 @@ import { ReceiptPrintService } from '../services/receipt-print.service';
   `]
 })
 export class TodaysCollectionsComponent implements OnInit, OnDestroy {
+  private readonly destroyRef = inject(DestroyRef);
   payments: DonationPayment[] = [];
   search = '';
   status = '';
@@ -388,8 +331,11 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
   actionError: string | null = null;
   bccOptions: Array<{ value: string; label: string }> = [];
   projectOptions: Array<{ value: string; label: string }> = [];
+  kpiFocus: KpiFocus = '';
+  monthCollectedForCompletion: number | null = null;
 
   private loadSeq = 0;
+  private queryHadExplicitSort = false;
   private searchChanges$ = new Subject<string>();
   private searchSub?: Subscription;
   private ledgerSub?: Subscription;
@@ -412,6 +358,13 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
     this.canRefund = this.authService.hasPermission('donations.refund');
     this.readQuery(this.route.snapshot.queryParamMap);
     this.initSearchFields();
+    this.route.queryParamMap.pipe(skip(1), takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+      this.readQuery(params);
+      this.initSearchFields();
+      if (this.canView) {
+        this.load();
+      }
+    });
     if (!this.canView) {
       this.loaded = true;
       return;
@@ -443,12 +396,6 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
   }
 
   readonly pageSubtitle = 'Every payment recorded for this parish on the current business date.';
-
-  get dateCaption(): string {
-    const date = this.meta?.business_date || this.collectionDate || 'parish today';
-    const zone = this.meta?.timezone ? ` · ${this.meta.timezone}` : '';
-    return `${date}${zone}`;
-  }
 
   get drawerFilterCount(): number {
     return [this.status, this.method, this.bccId, this.projectId, this.collectionDate].filter(Boolean).length;
@@ -529,6 +476,21 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
       filters.push({ key: 'collection_date', label: 'Collection date', value: this.collectionDate, displayValue: this.collectionDate });
     }
     return filters;
+  }
+
+  get todayCollectionFilterChips(): StewardshipFilterChip[] {
+    return this.getActiveFilters().map((filter) => ({
+      key: filter.key,
+      label: filter.label,
+      displayValue: filter.displayValue,
+    }));
+  }
+
+  onTodayCollectionFilterChipRemove(chip: StewardshipFilterChip): void {
+    const match = this.getActiveFilters().find((f) => f.key === chip.key);
+    if (match) {
+      this.removeFilter(match);
+    }
   }
 
   removeFilter(filter: ActiveFilter): void {
@@ -643,8 +605,13 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
     this.refreshing = this.loaded;
     this.loadError = null;
     const filters = this.buildFilters();
-    this.donationsService.getPayments(filters).subscribe({
-      next: (res) => {
+    const payments$ = this.donationsService.getPayments(filters);
+    const dashboard$ = this.kpiFocus === 'completion'
+      ? this.donationsService.getDashboardSummary().pipe(catchError(() => of(null)))
+      : of(null);
+
+    forkJoin({ payments: payments$, dashboard: dashboard$ }).subscribe({
+      next: ({ payments: res, dashboard }) => {
         if (seq !== this.loadSeq) {
           return;
         }
@@ -652,6 +619,11 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
         this.totalItems = res.data?.total ?? 0;
         this.page = res.data?.current_page ?? this.page;
         this.meta = res.meta ?? null;
+        if (this.kpiFocus === 'completion') {
+          this.monthCollectedForCompletion = dashboard?.data?.period_collections?.current_month_collected ?? 0;
+        } else {
+          this.monthCollectedForCompletion = null;
+        }
         this.loaded = true;
         this.refreshing = false;
         this.cdr.markForCheck();
@@ -717,6 +689,7 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
         bcc_id: this.bccId || null,
         project_id: this.projectId || null,
         collection_date: this.collectionDate || null,
+        focus: this.kpiFocus || null,
         page: this.page > 1 ? this.page : null,
         per_page: this.perPage !== 20 ? this.perPage : null,
         sort: this.sortColumn !== 'payment_date' ? this.sortColumn : null,
@@ -736,8 +709,30 @@ export class TodaysCollectionsComponent implements OnInit, OnDestroy {
     this.collectionDate = params.get('collection_date') || '';
     this.page = Number(params.get('page') || 1) || 1;
     this.perPage = Number(params.get('per_page') || 20) || 20;
+    const rawFocus = params.get('focus') || '';
+    this.kpiFocus = KPI_FOCUS_VALUES.includes(rawFocus as KpiFocus) ? (rawFocus as KpiFocus) : '';
+    this.queryHadExplicitSort = !!params.get('sort');
     this.sortColumn = params.get('sort') || 'payment_date';
     this.sortDirection = (params.get('direction') as SortDirection) || 'desc';
+    if (!this.queryHadExplicitSort) {
+      this.applyFocusDefaultSort();
+    }
+  }
+
+  private applyFocusDefaultSort(): void {
+    switch (this.kpiFocus) {
+      case 'amount':
+      case 'average':
+        this.sortColumn = 'amount';
+        this.sortDirection = 'desc';
+        break;
+      case 'families':
+        this.sortColumn = 'family_name';
+        this.sortDirection = 'asc';
+        break;
+      default:
+        break;
+    }
   }
 
   private initSearchFields(): void {

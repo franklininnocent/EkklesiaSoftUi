@@ -7,6 +7,7 @@ import {
   HostListener,
   Input,
   OnChanges,
+  OnDestroy,
   Output,
   SimpleChanges,
   inject
@@ -14,6 +15,9 @@ import {
 import { ChurchLeadership } from '@core/models/church';
 import { ChurchLeadershipService } from '@core/services/church/church-leadership.service';
 import { LEADERSHIP_ROLE_OPTIONS } from '../church-leader-workspace/church-leader-role.config';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
+import { CF_OVERLAY_Z, CfOverlayHandle, CfOverlayStackService } from '@core/services/cf-overlay-stack.service';
 
 interface ParsedBiography {
   biography: string;
@@ -24,14 +28,17 @@ interface ParsedBiography {
 @Component({
   selector: 'app-church-leader-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, CfBrandLoaderComponent],
   templateUrl: './church-leader-detail.component.html',
   styleUrl: './church-leader-detail.component.scss',
   changeDetection: ChangeDetectionStrategy.OnPush
 })
-export class ChurchLeaderDetailComponent implements OnChanges {
+export class ChurchLeaderDetailComponent implements OnChanges, OnDestroy {
   private readonly leadershipService = inject(ChurchLeadershipService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly overlayStack = inject(CfOverlayStackService);
+  private overlayHandle: CfOverlayHandle | null = null;
+  overlayZIndex: number = CF_OVERLAY_Z.drawer;
 
   @Input() open = false;
   @Input() leader: ChurchLeadership | null = null;
@@ -48,6 +55,13 @@ export class ChurchLeaderDetailComponent implements OnChanges {
   loadError: string | null = null;
 
   ngOnChanges(changes: SimpleChanges): void {
+    if (changes['open']) {
+      if (this.open) {
+        this.registerOverlay();
+      } else {
+        this.releaseOverlay();
+      }
+    }
     if ((changes['open']?.currentValue || changes['leader']) && this.open && this.leader) {
       this.loadLeaderDetails(this.leader.id);
     }
@@ -56,6 +70,10 @@ export class ChurchLeaderDetailComponent implements OnChanges {
       this.loadError = null;
       this.loading = false;
     }
+  }
+
+  ngOnDestroy(): void {
+    this.releaseOverlay();
   }
 
   get displayLeader(): ChurchLeadership | null {
@@ -119,15 +137,36 @@ export class ChurchLeaderDetailComponent implements OnChanges {
     return parsed;
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
-    if (this.open && !this.loading) {
-      this.requestClose();
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event: Event): void {
+    if (!this.open || this.loading) {
+      return;
     }
+    if (this.overlayHandle && !this.overlayHandle.isTop()) {
+      return;
+    }
+    (event as KeyboardEvent).preventDefault();
+    (event as KeyboardEvent).stopImmediatePropagation();
+    this.requestClose();
   }
 
   requestClose(): void {
+    this.releaseOverlay();
     this.closed.emit();
+  }
+
+  private registerOverlay(): void {
+    if (this.overlayHandle) {
+      return;
+    }
+    this.overlayHandle = this.overlayStack.push('drawer', () => this.requestClose());
+    this.overlayZIndex = this.overlayHandle.zIndex;
+  }
+
+  private releaseOverlay(): void {
+    this.overlayHandle?.release();
+    this.overlayHandle = null;
+    this.overlayZIndex = CF_OVERLAY_Z.drawer;
   }
 
   requestEdit(): void {
@@ -149,11 +188,7 @@ export class ChurchLeaderDetailComponent implements OnChanges {
       return 'Not set';
     }
     try {
-      return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-      }).format(new Date(value));
+      return cfFormatDate(value) || value;
     } catch {
       return value;
     }
@@ -164,13 +199,7 @@ export class ChurchLeaderDetailComponent implements OnChanges {
       return 'Not set';
     }
     try {
-      return new Intl.DateTimeFormat(undefined, {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit'
-      }).format(new Date(value));
+      return cfFormatDate(value, 'datetime') || value;
     } catch {
       return value;
     }

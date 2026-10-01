@@ -1,11 +1,26 @@
 <div class="bcc-members">
   <app-list-toolbar
+    class="bcc-members__toolbar"
     searchPlaceholder="Search members or families…"
     [searchValue]="search"
     [filterCount]="activeFilterCount"
     (searchChange)="onSearch($event)"
     (filtersOpened)="onFiltersOpened()"
   >
+    <span *ngIf="activeFilters.length" toolbarAfterFilters class="bcc-members__chips" role="status" aria-label="Active filters">
+      <span class="cf-badge cf-badge--info" *ngFor="let filter of activeFilters">
+        {{ filter.label }}: {{ filter.displayValue }}
+        <button
+          type="button"
+          class="bcc-members__chip-remove"
+          (click)="removeFilter(filter.key)"
+          [attr.aria-label]="'Remove filter: ' + filter.label"
+        >
+          ×
+        </button>
+      </span>
+      <button type="button" class="cf-btn cf-btn--sm" (click)="onFiltersCleared()">Clear filters</button>
+    </span>
     <button type="button" class="cf-btn" [class.cf-btn-primary]="view === 'people'" (click)="setView('people')">
       Members
     </button>
@@ -17,16 +32,10 @@
     </button>
   </app-list-toolbar>
 
-  <div class="bcc-members__filter-summary" *ngIf="activeFilterCount > 0" role="status">
-    <span class="cf-meta">Filtered by {{ filterSummary }}</span>
-    <button type="button" class="cf-btn cf-btn--sm" (click)="onFiltersCleared()">Clear filters</button>
-  </div>
-
   <p class="cf-meta" *ngIf="bccStatus !== 'active'">This BCC is not active. Activate it to add families.</p>
 
-  <div class="cf-loading-block" *ngIf="loading" role="status">
-    <p class="cf-loading-block__label">Loading members…</p>
-    <app-loading-skeleton type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
+  <div class="cf-loading-block" *ngIf="loading && !hasVisibleRows" role="status">
+    <app-loading-skeleton label="Loading members…" type="table" [rows]="5" [columns]="6"></app-loading-skeleton>
   </div>
 
   <div class="cf-inline-alert" *ngIf="loadError && !loading" role="alert">
@@ -34,7 +43,7 @@
     <button type="button" class="cf-btn cf-btn-primary" (click)="load()">Try again</button>
   </div>
 
-  <ng-container *ngIf="!loading && !loadError && view === 'people'">
+  <ng-container *ngIf="!loadError && view === 'people' && (people.length || !loading)">
     <app-data-table *ngIf="people.length; else emptyPeople">
       <thead>
         <tr>
@@ -93,7 +102,7 @@
     </ng-template>
   </ng-container>
 
-  <ng-container *ngIf="!loading && !loadError && view === 'families'">
+  <ng-container *ngIf="!loadError && view === 'families' && (families.length || !loading)">
     <app-data-table *ngIf="families.length; else emptyFamilies">
       <thead>
         <tr>
@@ -158,8 +167,10 @@
     *ngIf="total > perPage"
     [currentPage]="page"
     [pageSize]="perPage"
+    [pageSizeOptions]="pageSizeOptions"
     [totalItems]="total"
     (pageChange)="onPageChange($event)"
+    (pageSizeChange)="onPageSizeChange($event)"
   ></app-pagination>
 
   <div class="bcc-members__assign cf-panel" *ngIf="showAssign" role="dialog" aria-label="Add family">
@@ -173,9 +184,9 @@
     <ul class="bcc-members__lookup">
       <li *ngFor="let family of lookupResults">
         <button type="button" class="bcc-members__lookup-item" (click)="selectedFamily = family">
-          <strong>{{ family.family_name }}</strong>
+          <strong>{{ family | cfFamilyPickerLabel }}</strong>
           <span class="cf-meta">
-            {{ family.family_code }} · {{ family.member_count }} members
+            {{ family.member_count }} members
             <ng-container *ngIf="!family.eligible"> · in {{ family.current_bcc_name }}</ng-container>
           </span>
         </button>
@@ -183,7 +194,7 @@
     </ul>
     <label *ngIf="selectedFamily && !selectedFamily.eligible">
       <input type="checkbox" [(ngModel)]="transfer" />
-      Transfer {{ selectedFamily.family_name }} from {{ selectedFamily.current_bcc_name }}
+      Transfer {{ selectedFamily | cfFamilyPickerLabel }} from {{ selectedFamily.current_bcc_name }}
     </label>
     <div class="bcc-overview__actions">
       <button type="button" class="cf-btn" (click)="showAssign = false">Cancel</button>

@@ -77,7 +77,7 @@
         <span class="cf-caption support-detail__sla-risk" *ngIf="t.sla?.at_risk">SLA at risk</span>
       </div>
       <p class="cf-caption support-detail__updated" *ngIf="t.updated_at">
-        Updated {{ t.updated_at | date: 'medium' }}
+        Updated {{ t.updated_at | cfDate: 'datetime' }}
       </p>
     </div>
     <dl class="support-detail__meta-grid cf-meta">
@@ -107,7 +107,7 @@
       </div>
       <div *ngIf="t.created_at">
         <dt>Opened</dt>
-        <dd>{{ t.created_at | date: 'medium' }}</dd>
+        <dd>{{ t.created_at | cfDate: 'datetime' }}</dd>
       </div>
     </dl>
     <p class="cf-caption support-detail__sla" *ngIf="slaCaption(t) as slaText">{{ slaText }}</p>
@@ -121,7 +121,7 @@
         <article *ngFor="let c of t.comments" class="support-detail__comment">
           <p class="support-detail__comment-meta cf-meta">
             <strong>{{ c.author?.name || 'Unknown' }}</strong>
-            · {{ c.created_at | date: 'short' }}
+            · {{ c.created_at | cfDate: 'datetime' }}
           </p>
           <p class="cf-body support-detail__comment-body">{{ c.body }}</p>
         </article>
@@ -147,7 +147,7 @@
         <article *ngFor="let c of t.internal_comments" class="support-detail__comment">
           <p class="support-detail__comment-meta cf-meta">
             <strong>{{ c.author?.name || 'Unknown' }}</strong>
-            · {{ c.created_at | date: 'short' }}
+            · {{ c.created_at | cfDate: 'datetime' }}
           </p>
           <p class="cf-body support-detail__comment-body">{{ c.body }}</p>
         </article>
@@ -174,7 +174,7 @@
             <span *ngIf="e.old_value && e.new_value">
               — {{ statusLabel(e.old_value) }} → {{ statusLabel(e.new_value) }}
             </span>
-            <span class="support-detail__activity-time">· {{ e.created_at | date: 'short' }}</span>
+            <span class="support-detail__activity-time">· {{ e.created_at | cfDate: 'datetime' }}</span>
             <span *ngIf="e.actor?.name as actorName"> · {{ actorName }}</span>
             <span *ngIf="e.reason" class="support-detail__activity-reason"> — {{ e.reason }}</span>
           </li>
@@ -248,7 +248,7 @@
           </div>
           <div *ngIf="t.sla?.resolved_at as resolvedAt">
             <dt>Resolved at</dt>
-            <dd>{{ resolvedAt | date: 'medium' }}</dd>
+            <dd>{{ resolvedAt | cfDate: 'datetime' }}</dd>
           </div>
         </dl>
         <p class="cf-body support-detail__prewrap" *ngIf="t.resolution_summary">

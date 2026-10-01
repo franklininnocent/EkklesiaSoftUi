@@ -30,6 +30,7 @@
         [class.cf-confirm__error]="isDescriptionTooLong"
       >
         {{ remainingCharacters }} characters remaining
+        <span *ngIf="isDescriptionTooShort"> · at least {{ descriptionMinLength }} characters</span>
       </span>
     </div>
   </div>
@@ -47,10 +48,10 @@
       type="button"
       [class]="confirmBtnClass"
       (click)="onConfirm()"
-      [disabled]="isBusy || isDescriptionTooLong || isDescriptionMissing"
+      [disabled]="isBusy || isDescriptionTooLong || isDescriptionMissing || isDescriptionTooShort"
     >
       <span *ngIf="!isBusy">{{ confirmText }}</span>
-      <span *ngIf="isBusy" class="cf-confirm__spinner" aria-hidden="true"></span>
+      <app-cf-brand-loader *ngIf="isBusy" size="button" label="Working" [showLabel]="false" />
       <span *ngIf="isBusy" class="cf-sr-only">Working…</span>
     </button>
   </div>

@@ -45,6 +45,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { resolveMediaDisplaySrc } from '@core/utils/media-url.util';
 import { SubscriptionAdminService } from '@features/subscriptions/services/subscription-admin.service';
 import { subscriptionAdminCapabilities } from '@features/subscriptions/services/subscription-admin-access';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 export type TenantListView = 'table' | 'card';
 
@@ -698,18 +699,11 @@ export class TenantManagerComponent implements OnInit, OnDestroy {
   }
 
   formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(dateString) || dateString;
   }
 
   formatShortDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-    });
+    return cfFormatDate(dateString, 'monthYear') || dateString;
   }
 
   isInTrial(tenant: Tenant): boolean {

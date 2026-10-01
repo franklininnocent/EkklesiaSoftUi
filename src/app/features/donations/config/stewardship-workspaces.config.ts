@@ -11,6 +11,8 @@ export interface StewardshipWorkspace {
   id: StewardshipWorkspaceId;
   label: string;
   hint: string;
+  /** Screen label for the active workspace zone (executive vs operations vs config). */
+  zone: string;
   links: StewardshipNavLink[];
 }
 
@@ -19,6 +21,7 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
     id: 'leadership',
     label: 'Dashboard',
     hint: 'Health & decisions',
+    zone: 'Executive overview',
     links: [
       { path: '/donations', label: 'Overview', exact: true, description: 'Financial Operations Center' },
       { path: '/donations/expenses', label: 'Disbursements', description: 'Parish expense register' },
@@ -29,8 +32,9 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
   },
   {
     id: 'collect',
-    label: 'Collect',
+    label: 'Collect payments',
     hint: 'Payments & receipts',
+    zone: 'Operational collection',
     links: [
       { path: '/donations/collection-day', label: 'Collection Day', description: 'Live collection workspace' },
       { path: '/donations/today-collections', label: "Today's Collections", description: 'All payments for the parish business date' },
@@ -45,8 +49,9 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
     id: 'projects',
     label: 'Projects',
     hint: 'Funding progress',
+    zone: 'Projects & funding',
     links: [
-      { path: '/donations/projects', label: 'Projects', description: 'Active funding campaigns' },
+      { path: '/donations/projects', label: 'Building projects', description: 'Building and special parish projects' },
       { path: '/donations/campaigns', label: 'Campaigns', description: 'Special appeals' },
       { path: '/donations/project-installments', label: 'Installments', description: 'Project installment tracking' }
     ]
@@ -55,6 +60,7 @@ export const STEWARDSHIP_WORKSPACES: StewardshipWorkspace[] = [
     id: 'configure',
     label: 'Configure',
     hint: 'Plans & settings',
+    zone: 'Configuration',
     links: [
       { path: '/donations/plans', label: 'Contribution Plans', description: 'Mandatory and voluntary plans' },
       { path: '/donations/categories', label: 'Categories', description: 'Contribution categories' },

@@ -49,19 +49,6 @@ describe('BCCService', () => {
     });
   });
 
-  it('loads parish dashboard and strips empty filter params', () => {
-    service.getDashboard({ period: '1y', status: 'all', search: '' }).subscribe((response) => {
-      expect(response.success).toBe(true);
-    });
-
-    const req = httpMock.expectOne((request) => {
-      return request.url === `${baseUrl}/dashboard` && request.params.get('period') === '1y';
-    });
-    expect(req.request.params.has('status')).toBe(false);
-    expect(req.request.params.has('search')).toBe(false);
-    req.flush({ success: true, data: { bccs: { total: 3 } } });
-  });
-
   it('creates and updates a BCC', () => {
     const payload = {
       name: 'New BCC',

@@ -16,6 +16,7 @@ import { Archdiocese } from '@core/models/church';
 import { PhoneCodeService } from '@core/services/phone-code.service';
 import { PhoneInputComponent } from '@shared/components/phone-input/phone-input.component';
 import { ModalShellComponent } from '@shared/components/modal-shell/modal-shell.component';
+import { CfBusyLabelComponent } from '@shared/components/cf-busy-label/cf-busy-label.component';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 
@@ -39,7 +40,7 @@ const PASSWORD_PATTERN = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\
 @Component({
   selector: 'app-tenant-create-modal',
   standalone: true,
-  imports: [CommonModule, FormsModule, NgSelectModule, PhoneInputComponent, ModalShellComponent],
+  imports: [CommonModule, FormsModule, NgSelectModule, PhoneInputComponent, ModalShellComponent, CfBusyLabelComponent],
   templateUrl: './tenant-create-modal.html',
   styleUrls: ['./tenant-create-modal.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

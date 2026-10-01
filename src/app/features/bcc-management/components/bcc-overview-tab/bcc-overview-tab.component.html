@@ -1,7 +1,6 @@
 <div class="bcc-overview">
   <div class="cf-loading-block cf-panel" *ngIf="loading" role="status" aria-live="polite" aria-busy="true">
-    <p class="cf-loading-block__label">Loading community overview…</p>
-    <app-loading-skeleton type="card" [rows]="2" [columns]="4"></app-loading-skeleton>
+    <app-loading-skeleton label="Loading community overview…" type="card" [rows]="2" [columns]="4"></app-loading-skeleton>
     <app-loading-skeleton type="card" [rows]="4" [columns]="2"></app-loading-skeleton>
   </div>
 
@@ -38,16 +37,16 @@
         [class.bcc-overview__kpi--attention]="!o.leadership.has_primary"
         (click)="go('leadership')"
       >
-        <span class="bcc-overview__kpi-label">Leadership</span>
-        <strong class="bcc-overview__kpi-value bcc-overview__kpi-value--status">
-          <ng-container *ngIf="o.leadership.has_primary; else noLeaderKpi">
-            {{ o.leadership.primary_leader || 'Primary assigned' }}
-          </ng-container>
-          <ng-template #noLeaderKpi>Attention</ng-template>
-        </strong>
-        <span class="bcc-overview__kpi-hint">
-          {{ o.leadership.has_primary ? (o.leadership.active_count + ' active') : 'No primary leader' }}
+        <span class="bcc-overview__kpi-head">
+          <span class="bcc-overview__kpi-label">Leadership</span>
+          <span class="bcc-overview__kpi-hint">
+            {{ o.leadership.has_primary ? (o.leadership.active_count + ' active') : 'No primary leader' }}
+          </span>
         </span>
+        <strong class="bcc-overview__kpi-value bcc-overview__kpi-value--status">
+          {{ primaryLeaderName(o) }}
+        </strong>
+        <span class="bcc-overview__kpi-phone" *ngIf="primaryLeaderPhone() as phone">{{ phone }}</span>
       </button>
     </div>
 
@@ -60,9 +59,7 @@
     </p>
 
     <div class="bcc-overview__grid">
-      <!-- Community profile + Life stage (left half, two columns) -->
-      <div class="bcc-overview__pair bcc-overview__pair--left">
-        <section class="bcc-overview__panel bcc-overview__panel--nested cf-panel" aria-labelledby="bcc-community-profile">
+      <section class="bcc-overview__panel bcc-overview__panel--third cf-panel" aria-labelledby="bcc-community-profile">
           <header class="bcc-overview__section-head">
             <h2 id="bcc-community-profile">Community profile</h2>
           </header>
@@ -90,9 +87,9 @@
             [showPercent]="true"
             emptyMessage="No families assigned to this BCC yet."
           ></app-bcc-overview-chart>
-        </section>
+      </section>
 
-        <section class="bcc-overview__panel bcc-overview__panel--nested cf-panel" aria-labelledby="bcc-life-stage">
+      <section class="bcc-overview__panel bcc-overview__panel--third cf-panel" aria-labelledby="bcc-life-stage">
           <header class="bcc-overview__section-head">
             <h2 id="bcc-life-stage">Life stage</h2>
           </header>
@@ -107,12 +104,9 @@
           <p class="cf-meta" *ngIf="zeroLifeStages(o).length">
             No members recorded in: {{ zeroLifeStages(o).join(', ') }}.
           </p>
-        </section>
-      </div>
+      </section>
 
-      <!-- Membership status + Gender (right half, two columns) -->
-      <div class="bcc-overview__pair bcc-overview__pair--right">
-        <section class="bcc-overview__panel bcc-overview__panel--nested cf-panel" aria-labelledby="bcc-membership-status">
+      <section class="bcc-overview__panel bcc-overview__panel--third cf-panel" aria-labelledby="bcc-membership-status">
           <header class="bcc-overview__section-head">
             <h2 id="bcc-membership-status">Membership status</h2>
             <span class="cf-meta" title="Members whose current membership status is Active.">
@@ -127,9 +121,9 @@
             emptyMessage="No members assigned to this BCC yet."
             (sliceSelect)="onMembershipSlice($event)"
           ></app-bcc-overview-chart>
-        </section>
+      </section>
 
-        <section class="bcc-overview__panel bcc-overview__panel--nested cf-panel" aria-labelledby="bcc-gender">
+      <section class="bcc-overview__panel cf-panel" aria-labelledby="bcc-gender">
           <header class="bcc-overview__section-head">
             <h2 id="bcc-gender">Gender</h2>
           </header>
@@ -152,29 +146,8 @@
             emptyMessage="No gender data available yet."
             (sliceSelect)="onGenderSlice($event)"
           ></app-bcc-overview-chart>
-        </section>
-      </div>
-
-      <!-- Children & babies -->
-      <section class="bcc-overview__panel cf-panel" aria-labelledby="bcc-children">
-        <header class="bcc-overview__section-head">
-          <h2 id="bcc-children">Children &amp; babies</h2>
-        </header>
-        <div class="bcc-overview__child-grid">
-          <button type="button" class="bcc-overview__child-card" (click)="go('members', { view: 'people', age_band: 'babies' })">
-            <span class="cf-meta">Babies (0–2)</span>
-            <strong>{{ o.babies.total }}</strong>
-            <span class="cf-meta">Boys {{ o.babies.boys }} · Girls {{ o.babies.girls }}</span>
-          </button>
-          <button type="button" class="bcc-overview__child-card" (click)="go('members', { view: 'people', age_band: 'children' })">
-            <span class="cf-meta">Children (3–12)</span>
-            <strong>{{ o.children.total }}</strong>
-            <span class="cf-meta">Boys {{ o.children.boys }} · Girls {{ o.children.girls }}</span>
-          </button>
-        </div>
       </section>
 
-      <!-- 9. Leadership -->
       <section class="bcc-overview__panel cf-panel" aria-labelledby="bcc-leadership">
         <header class="bcc-overview__section-head">
           <h2 id="bcc-leadership">Leadership</h2>
@@ -214,46 +187,7 @@
         </ng-template>
         <button type="button" class="cf-btn" (click)="go('leadership')">View Leadership</button>
       </section>
-
-      <!-- 10. Demographic completeness -->
-      <section class="bcc-overview__panel cf-panel" aria-labelledby="bcc-data-quality">
-        <header class="bcc-overview__section-head">
-          <h2 id="bcc-data-quality">Demographic completeness</h2>
-        </header>
-        <p class="bcc-overview__completeness">
-          <strong>{{ o.data_quality.complete_count }} of {{ o.data_quality.total }}</strong>
-          member profiles complete
-        </p>
-        <p class="bcc-overview__metric">{{ completenessPercent(o) }}%</p>
-        <p class="cf-meta" *ngIf="o.data_quality.incomplete_count > 0">
-          {{ o.data_quality.incomplete_count }}
-          {{ o.data_quality.incomplete_count === 1 ? 'member needs' : 'members need' }}
-          demographic information
-        </p>
-        <p class="cf-meta" [attr.title]="o.data_quality.definition">
-          {{ o.data_quality.definition }}
-        </p>
-        <button type="button" class="cf-btn" (click)="go('members', { view: 'people' })">
-          View Members
-        </button>
-      </section>
     </div>
-
-    <!-- 11. Community trend (full width) -->
-    <app-bcc-growth-panel
-      class="bcc-overview__trend"
-      title="Community trend"
-      subtitle="End-of-month membership connected to this BCC"
-      peopleLabel="Members"
-      familiesLabel="Families"
-      emptyTitle="Not enough historical data yet"
-      emptyDescription="As BCC membership history grows, changes in members and families will appear here."
-      [families]="o.growth?.families || []"
-      [people]="o.growth?.members || []"
-      [insufficientHistory]="!!o.growth?.insufficient_history"
-      [measure]="growthMeasure"
-      (measureChange)="onGrowthMeasure($event)"
-    ></app-bcc-growth-panel>
 
     <app-cf-empty-state
       *ngIf="o.total_families === 0 && o.total_members === 0"

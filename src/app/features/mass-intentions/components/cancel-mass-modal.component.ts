@@ -29,7 +29,7 @@ export interface CancelMassPayload {
       <form class="cf-split-form" (ngSubmit)="submit()">
         <div class="cf-split-form__body cancel-mass__body">
           <p class="cancel-mass__lead">
-            Choose where each intention goes. Leave as not scheduled or move to another Mass.
+            Every unsaid intention must be moved to another Mass before this Mass can be cancelled.
           </p>
           @for (row of intentions; track row.obligation_id) {
             @if (!row.is_said) {
@@ -41,13 +41,17 @@ export interface CancelMassPayload {
                   (ngModelChange)="setTarget(row.obligation_id, $event)"
                   [ngModelOptions]="{ standalone: true }"
                 >
-                  <option value="">Not scheduled</option>
+                  <option value="" disabled>Select a Mass</option>
                   @for (mass of otherCelebrations; track mass.id) {
                     <option [value]="mass.id">{{ massLabel(mass) }}</option>
                   }
                 </select>
               </div>
             }
+          }
+          @if (needsAddMass()) {
+            <p class="cf-meta">No other Mass is in range. Add a one-time Mass, then choose it above.</p>
+            <button type="button" class="cf-btn cf-btn-primary" (click)="addMassRequested.emit()">Add a Mass</button>
           }
           @if (!fixedReason) {
             <label class="cf-split-field">
@@ -68,7 +72,7 @@ export interface CancelMassPayload {
           <button
             type="submit"
             class="cf-btn cf-btn-primary cancel-mass__danger"
-            [disabled]="!effectiveReason().trim()"
+            [disabled]="!canSubmit()"
           >
             Cancel this Mass
           </button>
@@ -110,6 +114,7 @@ export class CancelMassModalComponent {
   @Input() fixedReason: string | null = null;
   @Output() closed = new EventEmitter<void>();
   @Output() confirmed = new EventEmitter<CancelMassPayload>();
+  @Output() addMassRequested = new EventEmitter<void>();
 
   readonly reason = signal('');
   private readonly targets = signal<Record<string, string>>({});
@@ -132,6 +137,24 @@ export class CancelMassModalComponent {
     return (this.fixedReason ?? this.reason()).trim();
   }
 
+  needsAddMass(): boolean {
+    const unsaid = this.intentions.some((row) => !row.is_said);
+    return unsaid && this.otherCelebrations.length === 0;
+  }
+
+  canSubmit(): boolean {
+    if (!this.effectiveReason()) {
+      return false;
+    }
+    const map = this.targets();
+    return this.intentions
+      .filter((row) => !row.is_said)
+      .every((row) => {
+        const target = map[row.obligation_id];
+        return typeof target === 'string' && target.length > 0;
+      });
+  }
+
   close(): void {
     this.reason.set('');
     this.targets.set({});
@@ -148,7 +171,7 @@ export class CancelMassModalComponent {
       .filter((row) => !row.is_said)
       .map((row) => ({
         obligation_id: row.obligation_id,
-        celebration_id: map[row.obligation_id] || null,
+        celebration_id: map[row.obligation_id],
       }));
 
     this.confirmed.emit({ reason, reassignments });

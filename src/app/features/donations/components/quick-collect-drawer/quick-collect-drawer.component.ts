@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, ViewChild, inject, OnInit } from '@angular/core';
+import { ChangeDetectorRef, Component, DestroyRef, ElementRef, HostListener, ViewChild, inject, OnInit, OnDestroy } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
@@ -7,12 +7,15 @@ import { debounceTime, distinctUntilChanged, Subject, switchMap, of } from 'rxjs
 import { FamilyService } from '@core/services/family.service';
 import { Family } from '@core/models/family.model';
 import { ToastService } from '@core/services/toast.service';
+import { CfOverlayHandle, CfOverlayStackService, CF_OVERLAY_Z } from '@core/services/cf-overlay-stack.service';
+import { restoreActiveElement, saveActiveElement, trapFocus } from '@shared/utils/focus-trap.util';
 import { DonationsService } from '../../services/donations.service';
-import { QuickCollectRecentFamily, QuickCollectService } from '../../services/quick-collect.service';
+import { QuickCollectLaunchContext, QuickCollectRecentFamily, QuickCollectService } from '../../services/quick-collect.service';
 import { ReceiptPrintService } from '../../services/receipt-print.service';
 import { localDateOnly, requiresGatewayReference } from '../../utils/local-date-only';
 import { formatPaymentDateTime } from '../../utils/payment-datetime';
 import {
+  CollectPaymentContext,
   DonationFamilyFinancialProfile,
   DonationPayment,
   DonationReceiptPreview,
@@ -21,6 +24,9 @@ import {
 import { CfCurrencyPipe } from '@shared/pipes/cf-currency.pipe';
 import { ChurchCurrencyService } from '@core/services/church-currency.service';
 import { CfActionIconComponent } from '@shared/components/cf-action-icon/cf-action-icon.component';
+import { CfBrandLoaderComponent } from '@shared/components/cf-brand-loader/cf-brand-loader.component';
+import { CfFamilyPickerLabelPipe } from '@shared/pipes/cf-family-picker-label.pipe';
+import { formatFamilyPickerLabel, resolveFamilyHeadPersonName } from '@shared/utils/family-display.util';
 
 type CollectPhase = 'collect' | 'success';
 type CollectType = 'general' | 'mandatory' | 'project' | 'offering';
@@ -29,7 +35,7 @@ interface AllocationOption {
   label: string;
   amount: number;
   type: CollectType;
-  allocatable_type: 'due' | 'project_installment' | 'fund';
+  allocatable_type: 'due' | 'project_installment' | 'project' | 'fund';
   allocatable_id: string;
 }
 
@@ -45,16 +51,18 @@ interface ActivityRow {
 @Component({
   selector: 'app-quick-collect-drawer',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule, CfCurrencyPipe, CfActionIconComponent],
+  imports: [CommonModule, FormsModule, RouterModule, CfCurrencyPipe, CfActionIconComponent, CfBrandLoaderComponent, CfFamilyPickerLabelPipe],
   template: `
-    <div class="qc-backdrop" *ngIf="isOpen" (click)="close()" aria-hidden="true"></div>
+    <div class="qc-backdrop" *ngIf="isOpen" [style.z-index]="overlayZIndex" (click)="close()" aria-hidden="true"></div>
 
     <aside
       class="qc-drawer"
       *ngIf="isOpen"
+      #drawerEl
       role="dialog"
       aria-modal="true"
       aria-labelledby="qc-title"
+      [style.z-index]="overlayZIndex"
       (keydown)="onDrawerKeydown($event)"
     >
       <header class="qc-header">
@@ -135,7 +143,7 @@ interface ActivityRow {
                     [(ngModel)]="searchQuery"
                     (ngModelChange)="onSearchChange($event)"
                     (keydown)="onSearchKeydown($event)"
-                    placeholder="Search by name, ID, phone, or member…"
+                    placeholder="Search by family code, head name, phone, or member…"
                     autocomplete="off"
                     aria-label="Search family"
                     [attr.aria-controls]="searchResults.length ? 'qc-search-results' : null"
@@ -161,9 +169,7 @@ interface ActivityRow {
                       [attr.aria-selected]="selectedFamily?.id === family.id"
                       (click)="selectFamily(family)"
                     >
-                      <strong>{{ family.family_name }}</strong>
-                      <span>{{ family.family_code }}</span>
-                      <small *ngIf="family.head_of_family">{{ family.head_of_family }}</small>
+                      <strong>{{ family | cfFamilyPickerLabel }}</strong>
                     </button>
                   </li>
                 </ul>
@@ -177,7 +183,7 @@ interface ActivityRow {
                       *ngFor="let family of recentFamilies"
                       (click)="selectRecentFamily(family)"
                     >
-                      {{ family.family_name }}
+                      {{ family | cfFamilyPickerLabel }}
                     </button>
                   </div>
                 </div>
@@ -185,8 +191,7 @@ interface ActivityRow {
                 <article class="qc-selected" *ngIf="selectedFamily">
                   <div class="qc-selected__head">
                     <div>
-                      <strong>{{ selectedFamily.family_name }}</strong>
-                      <span>{{ selectedFamily.family_code }}</span>
+                      <strong>{{ selectedFamily | cfFamilyPickerLabel }}</strong>
                     </div>
                     <button
                       type="button"
@@ -202,6 +207,7 @@ interface ActivityRow {
                     Outstanding {{ familyProfile.totals.pending_due | cfCurrency : null : 0 }}
                     · Paid {{ familyProfile.totals.total_paid | cfCurrency : null : 0 }}
                   </p>
+                  <p *ngIf="contextHint" class="qc-selected__hint">{{ contextHint }}</p>
                 </article>
 
                 <div class="qc-suggestions" *ngIf="selectedFamily && allocationOptions.length">
@@ -345,11 +351,13 @@ interface ActivityRow {
             class="cf-btn cf-btn-icon cf-btn-primary"
             *ngIf="phase === 'collect'"
             [disabled]="!canSubmit || saving"
+            [attr.aria-busy]="saving"
             (click)="submit()"
             [attr.aria-label]="submitLabel"
             [attr.title]="submitLabel"
           >
-            <app-cf-action-icon name="collect-payment" />
+            <app-cf-brand-loader *ngIf="saving" size="button" label="Recording payment" [showLabel]="false" />
+            <app-cf-action-icon *ngIf="!saving" name="collect-payment" />
           </button>
         </div>
       </footer>
@@ -444,6 +452,7 @@ interface ActivityRow {
     .qc-selected__head { display: flex; justify-content: space-between; gap: 0.75rem; align-items: flex-start; }
     .qc-selected span { display: block; color: var(--cf-muted); font-size: 0.82rem; margin-top: 0.1rem; }
     .qc-selected__meta { margin: 0.45rem 0 0; font-size: 0.84rem; color: var(--cf-slate-700); }
+    .qc-selected__hint { margin: 0.45rem 0 0; font-size: 0.8rem; color: var(--cf-muted); line-height: 1.4; }
     .qc-link { border: 0; background: none; padding: 0; color: var(--cf-primary); font-size: 0.82rem; cursor: pointer; }
     .qc-suggestions { display: grid; gap: 0.4rem; }
     .qc-suggestions__label { font-size: 0.78rem; color: var(--cf-muted); font-weight: 600; }
@@ -502,12 +511,14 @@ interface ActivityRow {
     }
   `]
 })
-export class QuickCollectDrawerComponent implements OnInit {
+export class QuickCollectDrawerComponent implements OnInit, OnDestroy {
   @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
   @ViewChild('amountInput') amountInput?: ElementRef<HTMLInputElement>;
+  @ViewChild('drawerEl') drawerEl?: ElementRef<HTMLElement>;
 
   private readonly churchCurrency = inject(ChurchCurrencyService);
   private readonly quickCollectService = inject(QuickCollectService);
+  private readonly overlayStack = inject(CfOverlayStackService);
 
   get currencySymbol(): string {
     return this.churchCurrency.currencySymbol() ?? '';
@@ -520,6 +531,12 @@ export class QuickCollectDrawerComponent implements OnInit {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly search$ = new Subject<string>();
   private autoResetTimer: ReturnType<typeof setTimeout> | null = null;
+  private overlayHandle: CfOverlayHandle | null = null;
+  private previousActiveElement: HTMLElement | null = null;
+  private focusTrapCleanup: (() => void) | null = null;
+  launchContext: QuickCollectLaunchContext | null = null;
+  contextHint: string | null = null;
+  overlayZIndex: number = CF_OVERLAY_Z.drawer;
 
   isOpen = false;
   phase: CollectPhase = 'collect';
@@ -594,24 +611,7 @@ export class QuickCollectDrawerComponent implements OnInit {
 
     this.quickCollectService.open$
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.openDrawer());
-
-    this.quickCollectService.openForFamily$
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((familyId) => {
-        this.openDrawer();
-        this.familyService.getFamily(familyId).subscribe({
-          next: (response) => {
-            if (response?.data) {
-              this.selectFamily(response.data);
-            }
-          },
-          error: () => {
-            this.error = 'Unable to load family. Please search manually.';
-            this.toastService.error(this.error, 'Quick Collect');
-          }
-        });
-      });
+      .subscribe((context) => this.openDrawer(context));
 
     this.search$.pipe(
       debounceTime(150),
@@ -641,7 +641,11 @@ export class QuickCollectDrawerComponent implements OnInit {
     if (!this.isOpen || event.key !== 'Escape') {
       return;
     }
+    if (this.overlayHandle && !this.overlayHandle.isTop()) {
+      return;
+    }
     event.preventDefault();
+    event.stopImmediatePropagation();
     this.close();
   }
 
@@ -676,19 +680,34 @@ export class QuickCollectDrawerComponent implements OnInit {
     }
   }
 
-  openDrawer(): void {
+  openDrawer(context: QuickCollectLaunchContext = {}): void {
+    const wasOpen = this.isOpen;
+    this.resetForNext(false);
+    this.launchContext = this.hasLaunchContext(context) ? { ...context } : null;
     this.isOpen = true;
     this.phase = 'collect';
     this.error = null;
     this.recentFamilies = this.quickCollectService.getRecentFamilies();
     this.loadFunds();
     this.loadRecentActivity();
-    setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
+    if (!wasOpen) {
+      this.registerOverlay();
+    }
+    if (this.launchContext?.familyId) {
+      this.loadFamilyById(this.launchContext.familyId);
+    } else {
+      setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
+    }
   }
 
   close(): void {
     this.clearAutoReset();
     this.isOpen = false;
+    this.releaseOverlay();
+  }
+
+  ngOnDestroy(): void {
+    this.releaseOverlay();
   }
 
   onSearchChange(value: string): void {
@@ -708,11 +727,19 @@ export class QuickCollectDrawerComponent implements OnInit {
   }
 
   selectFamily(family: Family): void {
+    if (this.launchContext) {
+      const familyChanged = !!this.launchContext.familyId && this.launchContext.familyId !== family.id;
+      this.launchContext = {
+        ...this.launchContext,
+        familyId: family.id,
+        ...(familyChanged ? { dueId: undefined, installmentId: undefined, memberId: undefined } : {}),
+      };
+    }
     this.selectedFamily = family;
-    this.payerName = family.head_of_family || family.family_name;
+    this.payerName = resolveFamilyHeadPersonName(family) || family.head_of_family || '';
     this.searchResults = [];
     this.highlightedIndex = -1;
-    this.searchQuery = family.family_name;
+    this.searchQuery = formatFamilyPickerLabel(family);
     this.familyProfile = null;
     this.error = null;
     this.selectedAllocation = null;
@@ -726,11 +753,7 @@ export class QuickCollectDrawerComponent implements OnInit {
           this.fundId = this.funds[0].id;
         }
         this.allocationOptions = this.buildAllocationOptions(this.familyProfile);
-        this.autoSelectCollectableAllocation();
-        if (this.familyProfile && !this.amount) {
-          const pending = this.familyProfile.totals.pending_due;
-          this.amount = pending > 0 ? pending : null;
-        }
+        this.applyAuthoritativeContext(family.id);
         this.refreshUpiIntent();
         setTimeout(() => this.amountInput?.nativeElement.focus(), 0);
       },
@@ -752,7 +775,9 @@ export class QuickCollectDrawerComponent implements OnInit {
   applyAllocation(option: AllocationOption): void {
     this.selectedAllocation = option;
     this.collectType = option.type;
-    this.amount = option.amount;
+    if (option.amount > 0) {
+      this.amount = option.amount;
+    }
     if (option.allocatable_type === 'fund') {
       this.fundId = option.allocatable_id;
     }
@@ -815,7 +840,7 @@ export class QuickCollectDrawerComponent implements OnInit {
         this.lastPaymentId = res.data?.id ?? null;
         const categoryLabel = this.funds.find((fund) => fund.id === this.fundId)?.name || 'Contribution';
         this.lastSuccess = {
-          familyName: this.selectedFamily!.family_name,
+          familyName: formatFamilyPickerLabel(this.selectedFamily!),
           amount: this.amount!,
           categoryLabel,
           receiptGenerated: true,
@@ -856,6 +881,7 @@ export class QuickCollectDrawerComponent implements OnInit {
 
   collectAnother(): void {
     this.clearAutoReset();
+    this.launchContext = null;
     this.resetForNext();
   }
 
@@ -916,7 +942,7 @@ export class QuickCollectDrawerComponent implements OnInit {
       if (fund) {
         options.push({
           label: `${fund.name} (general gift)`,
-          amount: profile.totals.pending_due > 0 ? profile.totals.pending_due : 500,
+          amount: profile.totals.pending_due > 0 ? profile.totals.pending_due : 0,
           type: 'general',
           allocatable_type: 'fund',
           allocatable_id: fund.id
@@ -1010,7 +1036,9 @@ export class QuickCollectDrawerComponent implements OnInit {
         const rows = res.data?.data ?? [];
         this.activityRows = rows.map((payment) => ({
           id: payment.id,
-          family_name: payment.family?.family_name || payment.payer_name || 'Family',
+          family_name: payment.family
+            ? formatFamilyPickerLabel(payment.family as Family)
+            : payment.payer_name || 'Family',
           amount: payment.amount,
           method: payment.method,
           time_label: formatPaymentDateTime(payment.created_at || payment.payment_date),
@@ -1030,7 +1058,7 @@ export class QuickCollectDrawerComponent implements OnInit {
     }
   }
 
-  private resetForNext(): void {
+  private resetForNext(focusSearch = true): void {
     this.phase = 'collect';
     this.selectedFamily = null;
     this.familyProfile = null;
@@ -1050,7 +1078,130 @@ export class QuickCollectDrawerComponent implements OnInit {
     this.upiIntent = null;
     this.searchResults = [];
     this.highlightedIndex = -1;
-    setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
+    this.contextHint = null;
+    this.paymentDate = '';
+    if (focusSearch) {
+      setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
+    }
+  }
+
+  private hasLaunchContext(context: QuickCollectLaunchContext): boolean {
+    return !!(
+      context.familyId
+      || context.projectId
+      || context.campaignId
+      || context.dueId
+      || context.installmentId
+      || context.memberId
+    );
+  }
+
+  private loadFamilyById(familyId: string): void {
+    this.familyService.getFamily(familyId).subscribe({
+      next: (response) => {
+        if (response?.data) {
+          this.selectFamily(response.data);
+        }
+      },
+      error: () => {
+        this.error = 'Unable to load family. Please search manually.';
+        this.toastService.error(this.error, 'Quick Collect');
+      }
+    });
+  }
+
+  private applyAuthoritativeContext(familyId: string): void {
+    const context = this.launchContext;
+    this.donationsService.getCollectContext({
+      family_id: familyId,
+      project_id: context?.projectId,
+      campaign_id: context?.campaignId,
+      due_id: context?.dueId,
+      installment_id: context?.installmentId
+    }).subscribe({
+      next: (res) => this.applyCollectContext(res.data),
+      error: () => {
+        this.autoSelectCollectableAllocation();
+        if (!this.paymentDate) {
+          this.paymentDate = localDateOnly();
+        }
+        if (this.familyProfile && this.amount == null) {
+          const pending = this.familyProfile.totals.pending_due;
+          this.amount = pending > 0 ? pending : null;
+        }
+      }
+    });
+  }
+
+  private applyCollectContext(context: CollectPaymentContext | null | undefined): void {
+    if (!context) {
+      this.autoSelectCollectableAllocation();
+      return;
+    }
+    if (context.payment_date && !this.paymentDate) {
+      this.paymentDate = context.payment_date;
+    } else if (!this.paymentDate) {
+      this.paymentDate = localDateOnly();
+    }
+    if (context.project?.fund_id && this.funds.some((fund) => fund.id === context.project?.fund_id)) {
+      this.fundId = context.project.fund_id;
+    }
+    const suggested = context.suggested_allocation;
+    if (suggested) {
+      const option: AllocationOption = {
+        label: suggested.label,
+        amount: suggested.collectible_amount,
+        type: suggested.allocatable_type === 'due' ? 'mandatory'
+          : suggested.allocatable_type === 'fund' ? 'general'
+            : 'project',
+        allocatable_type: suggested.allocatable_type,
+        allocatable_id: suggested.allocatable_id
+      };
+      const exists = this.allocationOptions.some(
+        (item) => item.allocatable_type === option.allocatable_type && item.allocatable_id === option.allocatable_id
+      );
+      if (!exists) {
+        this.allocationOptions = [option, ...this.allocationOptions];
+      }
+      this.applyAllocation(option);
+      this.contextHint = this.launchContext && (this.launchContext.dueId || this.launchContext.installmentId || this.launchContext.projectId || this.launchContext.campaignId)
+        ? 'Loaded from the selected record. You can change family, amount, category, date, or method before recording.'
+        : 'You can change any details before recording.';
+    } else {
+      this.autoSelectCollectableAllocation();
+      this.contextHint = context.message || 'You can change any details before recording.';
+    }
+    if (this.amount == null && context.collectible_amount > 0 && !suggested) {
+      this.amount = context.collectible_amount;
+    }
+    if (context.message && !context.can_collect) {
+      this.error = context.message;
+    }
+    this.cdr.markForCheck();
+  }
+
+  private registerOverlay(): void {
+    this.previousActiveElement = saveActiveElement();
+    this.overlayHandle = this.overlayStack.push('drawer', () => this.close(), {
+      canClose: () => !this.saving
+    });
+    this.overlayZIndex = this.overlayHandle.zIndex;
+    setTimeout(() => {
+      if (this.isOpen && this.drawerEl?.nativeElement) {
+        this.focusTrapCleanup?.();
+        this.focusTrapCleanup = trapFocus(this.drawerEl.nativeElement, { focusFirst: false });
+      }
+    }, 0);
+  }
+
+  private releaseOverlay(): void {
+    this.focusTrapCleanup?.();
+    this.focusTrapCleanup = null;
+    this.overlayHandle?.release();
+    this.overlayHandle = null;
+    this.overlayZIndex = CF_OVERLAY_Z.drawer;
+    restoreActiveElement(this.previousActiveElement);
+    this.previousActiveElement = null;
   }
 
   private parseApiError(err: { error?: { message?: string; errors?: Record<string, string[]> } }): string {

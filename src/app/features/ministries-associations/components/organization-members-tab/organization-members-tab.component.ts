@@ -36,6 +36,7 @@ import { MinistriesApiService } from '../../services/ministries-api.service';
 import { EnrollMemberModalComponent } from '../enroll-member-modal/enroll-member-modal.component';
 import { MembershipStatusModalComponent } from '../membership-status-modal/membership-status-modal.component';
 import { ReEnrollMemberModalComponent } from '../re-enroll-member-modal/re-enroll-member-modal.component';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 type StatusFilter = '' | MembershipStatus;
 type MemberTypeFilter = '' | MemberType;
@@ -311,11 +312,7 @@ export class OrganizationMembersTabComponent implements OnInit, OnChanges, OnDes
       return value;
     }
 
-    return date.toLocaleDateString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-    });
+    return cfFormatDate(date) || '—';
   }
 
   statusTone(status: MembershipStatus): StatusBadgeTone {

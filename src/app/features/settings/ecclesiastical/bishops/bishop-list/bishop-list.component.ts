@@ -19,11 +19,14 @@ import { CfEmptyStateComponent } from '@shared/components/cf-empty-state/cf-empt
 import { AdvancedSearchPanelComponent, SearchField } from '@shared/components/advanced-search-panel/advanced-search-panel.component';
 import { PageHeaderComponent } from '@shared/components/page-header/page-header.component';
 import { BishopAvatarComponent } from '@shared/components/bishop-avatar/bishop-avatar.component';
+import { CfDatePipe } from '@shared/pipes/cf-date.pipe';
+import { cfFormatDate } from '@shared/utils/cf-intl.util';
 
 @Component({
   selector: 'app-bishop-list',
   standalone: true,
   imports: [
+    CfDatePipe,
     CommonModule, 
     FormsModule,
     RouterModule,
@@ -278,7 +281,7 @@ export class BishopListComponent implements OnInit {
           } else if (field.type === 'boolean') {
             displayValue = value ? 'Yes' : 'No';
           } else if (field.type === 'date') {
-            displayValue = new Date(value).toLocaleDateString();
+            displayValue = cfFormatDate(value) || value;
           }
 
           activeFilters.push({

@@ -10,7 +10,7 @@
  */
 
 export type CfFractionDigits = 0 | 2;
-export type CfDateStyle = 'date' | 'datetime' | 'time';
+export type CfDateStyle = 'date' | 'datetime' | 'datetimeDayFirst' | 'time' | 'weekdayDate' | 'monthYear';
 
 const CURRENCY_LOCALES: Readonly<Record<string, string>> = {
   INR: 'en-IN',
@@ -27,13 +27,8 @@ const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 const DATE_TIME = /^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)(?:\.(\d+))?(Z|[+-]\d{2}:?\d{2})?$/;
 
 const numberFormats = new Map<string, Intl.NumberFormat>();
-const dateFormats = new Map<string, Intl.DateTimeFormat>();
-
-const DATE_STYLE_OPTIONS: Readonly<Record<CfDateStyle, Intl.DateTimeFormatOptions>> = {
-  date: { year: 'numeric', month: 'short', day: 'numeric' },
-  datetime: { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' },
-  time: { hour: 'numeric', minute: '2-digit' },
-};
+const ENGLISH_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const ENGLISH_WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
 export function cfLocaleForCurrency(currencyCode: string): string {
   return CURRENCY_LOCALES[currencyCode.toUpperCase()] ?? DEFAULT_MONEY_LOCALE;
@@ -91,18 +86,55 @@ export function cfFormatMoney(
   }
 }
 
-function dateFormat(locale: string, style: CfDateStyle): Intl.DateTimeFormat {
-  const key = `${locale}|${style}`;
-  let format = dateFormats.get(key);
-  if (!format) {
-    try {
-      format = new Intl.DateTimeFormat(locale, DATE_STYLE_OPTIONS[style]);
-    } catch {
-      format = new Intl.DateTimeFormat(CF_DEFAULT_DATE_LOCALE, DATE_STYLE_OPTIONS[style]);
-    }
-    dateFormats.set(key, format);
+function pad2(value: number): string {
+  return String(value).padStart(2, '0');
+}
+
+/** `9:59 AM` — 12-hour clock, no seconds. Uses the Date's local wall time. */
+export function cfFormatClock(date: Date): string {
+  let hour = date.getHours();
+  const minute = pad2(date.getMinutes());
+  const period = hour >= 12 ? 'PM' : 'AM';
+  hour = hour % 12;
+  if (hour === 0) {
+    hour = 12;
   }
-  return format;
+  return `${hour}:${minute} ${period}`;
+}
+
+/** `30 Sep 2026` — English three-letter month, unpadded day. */
+export function cfFormatDateOnly(date: Date): string {
+  return `${date.getDate()} ${ENGLISH_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+/** `30 Sep 2026, 9:59 AM` */
+export function cfFormatDateTime(date: Date): string {
+  return `${cfFormatDateOnly(date)}, ${cfFormatClock(date)}`;
+}
+
+/** `30 Sep` for same-year ranges and celebration chips. */
+export function cfFormatDayMonth(date: Date): string {
+  return `${date.getDate()} ${ENGLISH_MONTHS[date.getMonth()]}`;
+}
+export function cfFormatMonthYear(date: Date): string {
+  return `${ENGLISH_MONTHS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+export function cfEnglishWeekdayLong(date: Date): string {
+  return ENGLISH_WEEKDAYS[date.getDay()];
+}
+
+export function cfEnglishWeekdayShort(date: Date): string {
+  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.getDay()] ?? '';
+}
+
+export function cfEnglishMonthShort(date: Date): string {
+  return ENGLISH_MONTHS[date.getMonth()];
+}
+
+/** `Wednesday, 30 Sep 2026` */
+export function cfFormatWeekdayDate(date: Date): string {
+  return `${ENGLISH_WEEKDAYS[date.getDay()]}, ${cfFormatDateOnly(date)}`;
 }
 
 /** Parses API date values; `YYYY-MM-DD` becomes local midnight of that calendar day. */
@@ -130,11 +162,33 @@ export function cfParseDate(value: string | Date | null | undefined): Date | nul
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
+/**
+ * User-facing date display. Month names are always English `Jan`–`Dec` (`Sep`, never `Sept`).
+ * The `locale` argument is ignored so tenants never see browser-locale date order.
+ * Timezone conversion is not applied: instants use the Date's local wall clock.
+ */
 export function cfFormatDate(
   value: string | Date | null | undefined,
   style: CfDateStyle = 'date',
   locale: string = CF_DEFAULT_DATE_LOCALE,
 ): string {
+  void locale;
   const date = cfParseDate(value);
-  return date ? dateFormat(locale, style).format(date) : '';
+  if (!date) {
+    return '';
+  }
+  switch (style) {
+    case 'datetime':
+    case 'datetimeDayFirst':
+      return cfFormatDateTime(date);
+    case 'time':
+      return cfFormatClock(date);
+    case 'weekdayDate':
+      return cfFormatWeekdayDate(date);
+    case 'monthYear':
+      return cfFormatMonthYear(date);
+    case 'date':
+    default:
+      return cfFormatDateOnly(date);
+  }
 }

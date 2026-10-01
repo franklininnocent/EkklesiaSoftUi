@@ -30,7 +30,7 @@ test.describe('Family and members photo viewer', () => {
     const context = await createTenantAdminContext(browser);
     const page = await context.newPage();
 
-    await page.goto('/members');
+    await page.goto('/members/list');
     await page.waitForLoadState('networkidle');
 
     const photoTrigger = page.getByRole('button', { name: /^View photo of / });
@@ -53,7 +53,7 @@ test.describe('Family and members photo viewer', () => {
     const context = await createTenantAdminContext(browser);
     const page = await context.newPage();
 
-    await page.goto('/members');
+    await page.goto('/members/list');
     await page.waitForLoadState('networkidle');
 
     const firstRow = page.locator('tbody tr').first();
